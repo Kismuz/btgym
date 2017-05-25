@@ -10,7 +10,7 @@ OpenAI Gym is.., well, everyone knows OpenAI.
 http://github.com/openai/gym
 
 The project in early pre-pre-alpha stage and you are likely to only find chunks of code and notebooks at the moment.
-
+```
 OUTLINE:
 
 Proposed data flow:
@@ -82,6 +82,6 @@ Backtrader server starts when BacktraderEnv is instantiated, runs as separate pr
    Finishes episode upon recieving <action>='done' or according to Backtrader strategy logic, falls
    back to control mode.
 
-
+```
 
 
