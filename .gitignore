@@ -1,0 +1,13 @@
+# Backtrader gym
+
+workbench/
+
+data_samples/
+
+build/
+
+dist/
+
+gym_bt.egg-info
+
+

@@ -22,5 +22,5 @@ from setuptools import setup
 
 setup(name='gym_bt',
       version='0.0.1',
-      install_requires=['gym', 'backtrader[plotting]', 'pyzmq']
+      install_requires=['gym', 'backtrader[plotting]', 'pyzmq', 'numpy']
 )  
