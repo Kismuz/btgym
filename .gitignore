@@ -8,6 +8,6 @@ build/
 
 dist/
 
-gym_bt.egg-info
+btgym.egg-info/
 
-
+.ipynb_checkpoints/

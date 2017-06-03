@@ -17,9 +17,4 @@
 #
 ###############################################################################
 
-from gym.envs.registration import register
-
-register(
-    id='backtrader-v000',
-    entry_point='gym_bt.envs:BacktraderEnv',
-)
+from gym_bt.envs.backtrader import BacktraderEnv
