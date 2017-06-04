@@ -20,7 +20,7 @@
 
 from setuptools import setup
 
-setup(name='gym_bt',
+setup(name='btgym',
       version='0.0.1',
       install_requires=['gym', 'backtrader[plotting]', 'pyzmq', 'numpy']
 )  

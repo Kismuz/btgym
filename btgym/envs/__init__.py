@@ -17,4 +17,4 @@
 #
 ###############################################################################
 
-from gym_bt.envs.backtrader import BacktraderEnv
+from btgym.envs.backtrader import BacktraderEnv

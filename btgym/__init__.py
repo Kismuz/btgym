@@ -20,6 +20,6 @@
 from gym.envs.registration import register
 
 register(
-    id='backtrader-v000',
+    id='backtrader-v0000',
     entry_point='btgym.envs:BacktraderEnv',
 )
