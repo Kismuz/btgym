@@ -177,9 +177,11 @@ class BacktraderEnv(gym.Env):
         if not self.server or not self.server.is_alive():
             self.log.info('No running server found, starting...')
             self._start_server()
-        # In case server is in 'episode mode'
-        self.socket.send_pyobj('_done')
-        self.control_response = self.socket.recv_pyobj()
+        # Paranoid 'episode mode' check:
+        self.control_response = '---'
+        while not 'Control mode' in self.control_response:
+            self.socket.send_pyobj('_done')
+            self.control_response = self.socket.recv_pyobj()
         # Now, it is in 'control mode':
         self.socket.send_pyobj('_reset')
         self.control_response = self.socket.recv_pyobj()
@@ -213,6 +215,17 @@ class BacktraderEnv(gym.Env):
         self.log.debug('Step(): recieved response {} as {}'.format(self.step_response, type(self.step_response)))
         return self.step_response
 
+    def _close(self):
+        """
+        Implementation of OpenAI Gym env.close method.
+        Puts server in Control Mode
+        """
+        # Paranoid close:
+        self.control_response = '---'
+        while not 'Control mode' in self.control_response:
+            self.socket.send_pyobj('_done')
+            self.control_response = self.socket.recv_pyobj()
+
     def get_stat(self):
         """
         Returns last episode statistics.
@@ -222,19 +235,19 @@ class BacktraderEnv(gym.Env):
         if not self.server or not self.server.is_alive():
             self.log.info('No running server found')
             return None
+        # Paranoid 'episode mode' check:
         self.control_response = '---'
         attempt = 0
-        while self.control_response != 'Control mode, send <_reset>, <_getstat> or <_stop>.':
-            # In case server is in 'episode mode'
+        while not 'Control mode' in self.control_response:
             self.socket.send_pyobj('_done')
             self.control_response = self.socket.recv_pyobj()
             attempt +=1
-            self.log.info('GET_STAT ATTEMPT: {}\nRESPONSE: '.format (attempt, self.control_response))
-        # Now, it is in 'control mode':
+            self.log.debug('GET_STAT ATTEMPT: {}\nRESPONSE: '.format (attempt, self.control_response))
+        # Now, got that control mode:
         self.socket.send_pyobj('_getstat')
         return self.socket.recv_pyobj()
 
-    def _close(self):
+    def _stop_server(self):
         """
         Stops BT server process
         """
@@ -280,16 +293,19 @@ class _EpisodeComm(bt.Analyzer):
     No, as part of core server operational logic, should not be explicitly called/edited by user.
     Yes, it analyzes nothing.
     """
+    log = None
+    socket = None
     response = None
-    params = dict(
-        socket = None,
-        log = None,)
+    #params = dict(
+    #    socket = None,
+    #    log = None,)
 
     def __init__(self):
         """
-        Wired way to pass server log handler...
+        Just get log and ZMQ socket from parent.
         """
-        self.strategy.log = self.p.log
+        self.log = self.strategy.env._log
+        self.socket = self.strategy.env._socket
 
     def prenext(self):
         pass
@@ -302,15 +318,15 @@ class _EpisodeComm(bt.Analyzer):
         Actual env.step() communication is here.
         """
         # Receive action from outer world:
-        self.strategy.action = self.p.socket.recv_pyobj()
-        self.p.log.info('COMM recieved: {}'.format(self.strategy.action))
+        self.strategy.action = self.socket.recv_pyobj()
+        self.log.debug('COMM recieved: {}'.format(self.strategy.action))
         self.response = {'state': self.strategy.state,
                          'reward': self.strategy.reward,
                          'done': self.strategy.is_done,
                          'info': self.strategy.info}
         # Send response:
-        self.p.socket.send_pyobj(self.response)
-        self.p.log.info('COMM sent: {}//{}'.format(self.response['done'], self.response['info']))
+        self.socket.send_pyobj(self.response)
+        self.log.debug('COMM sent: {}//{}'.format(self.response['done'], self.response['info']))
 
 
 ############################## Base BTServer Strategy Class ##############################
@@ -346,7 +362,7 @@ class BTserverStrategy(bt.Strategy):
 
     def __init__(self):
         # Inherit logger from cerebro:
-        #self.log = self.env.p.log
+        self.log = self.env._log
 
         # A wacky way to define strategy 'minimum period'
         # for proper time-embedded state composition:
@@ -431,14 +447,7 @@ class BTserverStrategy(bt.Strategy):
             self.is_done = False
             return
         # Or else, initiate fallback to Control Mode; still executes strategy cycle once:
-        self.log.info('RUNSTOP() evoked with {}'.format(self.broker_message))
-        self.env.runstop()
-
-
-    def episode_stop(self):
-        """
-        Well, finishes current episode.
-        """
+        self.log.debug('RUNSTOP() evoked with {}'.format(self.broker_message))
         self.env.runstop()
 
     def notify_order(self, order):
@@ -487,7 +496,7 @@ class BTserverStrategy(bt.Strategy):
         self.broker_message = '-'
 
         # How we're doing?:
-        #self.get_done()
+        self.get_done()
 
         if not self.is_done:
             # All the strategy computations should be performed here as function of <self.action>,
@@ -514,7 +523,7 @@ class BTserverStrategy(bt.Strategy):
         # Gather response:
         self.get_state()
         self.get_reward()
-        self.get_done()
+        #self.get_done()
         self.get_info() 
 
         # Somewhere at this point, _EpisodeComm() is exchanging information with environment wrapper,
@@ -576,7 +585,7 @@ class EpisodicDataFeed():
             # until minimum  length condition is satisfied:
 
             # !!-->TODO: Can loop forever, if something is wrong with data, etc.
-            # need sanity check: rise exeption after 100 retries ???
+            # need sanity check: e.g. rise exeption after 100 retries ???
 
             self.log.info('Sampling episode data:')
             rnd_start_timestamp = int(self.firststamp \
@@ -708,7 +717,7 @@ class BTserver(multiprocessing.Process):
             # Stuck here until 'reset' or 'stop':
             while True:
                 service_input = socket.recv_pyobj()
-                log.info('Control mode: recieved <{}>'.format(service_input))
+                log.debug('Control mode: recieved <{}>'.format(service_input))
                 # Check if it's time to exit:
                 if service_input == '_stop':
                     # Server shutdown logic:
@@ -737,11 +746,12 @@ class BTserver(multiprocessing.Process):
             # Got '_reset' signal, prepare Cerebro subclass and run episode:
             cerebro = copy.deepcopy(self.cerebro)
 
+            cerebro._socket = socket
+            cerebro._log = log
+
             # Add communication ability:
             cerebro.addanalyzer(_EpisodeComm,
-                                _name='communicator',
-                                socket=socket,
-                                log=log,)
+                                _name='communicator',)
 
             # Add random episode data:
             cerebro.adddata(self.data.sample_episode(self.min_episode_len, self.max_episode_time))
@@ -751,11 +761,11 @@ class BTserver(multiprocessing.Process):
             log.info('Episode finished.')
 
             # Get statistics:
-            episode_result = dict(number = episode_number,)
+            episode_result = dict(episode = episode_number,)
                                   #stats = episode.stats,
                                   #analyzers = episode.analyzers,
-            log.info('ANALYZERS: {}'.format(len(episode.analyzers)))
-            log.info('DATADEEDS: {}'.format(len(episode.datas)))
+            log.debug('ANALYZERS: {}'.format(len(episode.analyzers)))
+            log.debug('DATADEEDS: {}'.format(len(episode.datas)))
 
         # Just in case -- we actually shouldnt get there except by some error:
         return None
