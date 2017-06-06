@@ -25,19 +25,18 @@ import datetime
 import random
 import itertools
 import zmq
-import importlib
+import copy
 
 import os
 
 import gym
 from gym import error, spaces
-from gym import utils
-from gym.utils import seeding, closer
+#from gym import utils
+#from gym.utils import seeding, closer
 
 import backtrader as bt
 import backtrader.feeds as btfeeds
 import backtrader.indicators as btind
-
 
 ############################## Environment part ##############################
 
@@ -45,19 +44,19 @@ class BacktraderEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self,
-                 data_filename=None, # TODO: check file actually exists
-                 datafeed_params=None,
-                 port=5500,
-                 min_episode_len=2000,
-                 max_episode_days=2,
-                 custom_strategy_class=None,
-                 state_embed_dim=10,
-                 state_dim_1=4,
-                 # TODO: drawdown_call param, etc.
-                 portfolio_actions=['hold', 'buy', 'sell', 'close'],
+                 data_filename=None, #TODO: server/Data params
+                 datafeed_params=None, #TODO: server/Data params
+                 port=5500, #TODO: server/Communicator params
+                 min_episode_len=2000, #TODO: server/Data params
+                 max_episode_days=2, #TODO: server/Data params
+                 cerebro=None, 
+                 state_dim_time=10, # TODO: RL PARAM
+                 state_dim_0=4, # TODO: RL PARAM
+                 # TODO:  <--- encapsulate by adding: stats, brokers, analyzers, sizers etc. PASS via CEREBRO_CLASS
+                 portfolio_actions=['hold', 'buy', 'sell', 'close'], # TODO: server/Communicator params
                  verbose=False, ):
 
-        # Check datafeed existence:
+        # Check datafile existence:
         if not os.path.isfile(data_filename):
             raise FileNotFoundError('Datafeed not found: ' + data_filename)
 
@@ -69,36 +68,6 @@ class BacktraderEnv(gym.Env):
             logging.getLogger().setLevel(logging.ERROR)
         self.verbose = verbose
 
-        # Server/network parameters:
-        self.server = None
-        self.port = port
-        self.network_address = 'tcp://127.0.0.1:{}'.format(port)
-
-        # Set client channel:
-        # first, kill any process using server port:
-        # cmd = "kill $( lsof -i:{} -t ) > /dev/null 2>&1".format(self.port)
-        # os.system(cmd)
-        # ZMQ!:
-        self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.REQ)
-        self.socket.connect(self.network_address)
-
-        # Episode data and computattion logic related parameters:
-        self.min_episode_len = min_episode_len
-        self.max_episode_days = max_episode_days
-        self.custom_strategy_class = custom_strategy_class
-
-        # Observation space:
-        self.state_embed_dim = state_embed_dim
-        self.state_dim_1 = state_dim_1
-        self.observation_space = spaces.Box(low=0.0,
-                                            high=10.0,
-                                            shape=(self.state_dim_1,
-                                                   self.state_embed_dim))
-
-        # Action space and corresponding server messages:
-        self.action_space = spaces.Discrete(len(portfolio_actions))
-        self.server_actions = portfolio_actions + ['_done', '_reset', '_stop']
         """
         Default parsing parameters for source-specific CSV datafeed class.
         Correctly parses 1 minute Forex generic ASCII
@@ -127,7 +96,56 @@ class BacktraderEnv(gym.Env):
             self.datafeed_params = datafeed_params
             self.datafeed_params['dataname'] = data_filename
 
-        self.log.info('Environment is ready.')
+        """
+        Configure default Backtrader computational engine (cerebro).
+        Executed only if bt.Cerebro custom subclass has been passed to environment.
+        """
+        if not cerebro:
+            self.cerebro = bt.Cerebro()
+            self.cerebro.addstrategy(BTserverStrategy,
+                                     state_dim_time=state_dim_time,
+                                     state_dim_0=state_dim_0)
+            self.cerebro.broker.setcash(10.0)
+            self.cerebro.broker.setcommission(commission=0.001)
+            self.cerebro.addobserver(bt.observers.DrawDown)
+            self.cerebro.addsizer(bt.sizers.SizerFix, stake=10)
+        else:
+            self.cerebro = cerebro
+
+        # Server/network parameters:
+        self.server = None
+        self.port = port
+        self.network_address = 'tcp://127.0.0.1:{}'.format(port)
+
+        # Episode data related parameters:
+        self.min_episode_len = min_episode_len
+        self.max_episode_days = max_episode_days
+
+        # Infer observation space from cerebro parameters:
+        # Observation space:
+        self.state_dim_time = state_dim_time
+        self.state_dim_0 = state_dim_0
+        # 2dim matrix in [0,10]. Override if needed:
+        self.observation_space = spaces.Box(low=0.0,
+                                            high=10.0,
+                                            shape=(self.state_dim_0,
+                                                   self.state_dim_time))
+
+        # Action space and corresponding server messages:
+        self.action_space = spaces.Discrete(len(portfolio_actions))
+        self.server_actions = portfolio_actions + ['_done', '_reset', '_stop','_getstat']
+
+        # Set client channel:
+        # first, kill any process using server port:
+        # cmd = "kill $( lsof -i:{} -t ) > /dev/null 2>&1".format(self.port)
+        # os.system(cmd)
+        # Summon ZMQ:
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.REQ)
+        self.socket.connect(self.network_address)
+
+        # Finally:
+        self.log.info('Environment is ready...')
 
     def _start_server(self):
         """
@@ -136,10 +154,10 @@ class BacktraderEnv(gym.Env):
         self.server = BTserver(dataparams=self.datafeed_params,
                                min_episode_len=self.min_episode_len,
                                max_episode_time=self.max_episode_days,
-                               strategy_class=self.custom_strategy_class,
+                               cerebro=self.cerebro,
                                network_address=self.network_address,
-                               state_embed_dim=self.state_embed_dim,
-                               state_dim_1=self.state_dim_1,
+                               state_dim_time=self.state_dim_time,
+                               state_dim_0=self.state_dim_0,
                                verbose=self.verbose)
         self.server.daemon = False
         self.server.start()
@@ -152,7 +170,7 @@ class BacktraderEnv(gym.Env):
 
     def _reset(self):
         """
-        Implementation of OpenAI env.reset method.
+        Implementation of OpenAI Gym env.reset method.
         Rewinds backtrader server and starts new episode
         within randomly selected time period.
         """
@@ -162,7 +180,7 @@ class BacktraderEnv(gym.Env):
         # In case server is in 'episode mode'
         self.socket.send_pyobj('_done')
         self.control_response = self.socket.recv_pyobj()
-        # Definetely, server now is  in 'control mode':
+        # Now, it is in 'control mode':
         self.socket.send_pyobj('_reset')
         self.control_response = self.socket.recv_pyobj()
         # Get initial episode response:
@@ -183,10 +201,10 @@ class BacktraderEnv(gym.Env):
 
     def _step(self, action):
         """
-        Implementation of OpenAI env.step method.
+        Implementation of OpenAI Gym env.step method.
         Relies on remote backtrader server for actual environment dynamics computing.
         """
-        # Are YOU in The Actions List?
+        # Are you in the list?
         assert self.action_space.contains(action)
         # Send action to backtrader engine, recieve response
         self.socket.send_pyobj(self.server_actions[action])
@@ -194,6 +212,27 @@ class BacktraderEnv(gym.Env):
         # DBG
         self.log.debug('Step(): recieved response {} as {}'.format(self.step_response, type(self.step_response)))
         return self.step_response
+
+    def get_stat(self):
+        """
+        Returns last episode statistics.
+        Note: when evoked, forces running (if any) episode to terminate.
+        """
+        # If there's server running?
+        if not self.server or not self.server.is_alive():
+            self.log.info('No running server found')
+            return None
+        self.control_response = '---'
+        attempt = 0
+        while self.control_response != 'Control mode, send <_reset>, <_getstat> or <_stop>.':
+            # In case server is in 'episode mode'
+            self.socket.send_pyobj('_done')
+            self.control_response = self.socket.recv_pyobj()
+            attempt +=1
+            self.log.info('GET_STAT ATTEMPT: {}\nRESPONSE: '.format (attempt, self.control_response))
+        # Now, it is in 'control mode':
+        self.socket.send_pyobj('_getstat')
+        return self.socket.recv_pyobj()
 
     def _close(self):
         """
@@ -216,11 +255,276 @@ class BacktraderEnv(gym.Env):
             self.log.info('Server process exit code: {}'.format(self.server.exitcode))
 
 
-############################## Server part ##############################
+
+"""
+class BTserverCerebro(bt.Cerebro):
+    "
+    Base class for any cerebro user-defined class passed to BacktraderEnv.
+    This class wrapper is meant for passing options to BTserver process easily.
+    One should instantiate cerebro class adding BTserverStrategy subclass,
+    Observers and Analyzers and pass it as argument to Gym Environment.
+    Note: datafeeds and episode related parameters shouldn't be added to
+    BTserverCerebro since those are passed to Environment (and further to BTserver process)
+    as separate arguments. This is done for convenience of tuning those hyperparameters.
+    "
+    params = dict(
+        state_dim_time=10,
+        state_dim_0=4,
+        )
+"""
+############################## BT Server in-episode comm. method ##############################
+
+class _EpisodeComm(bt.Analyzer):
+    """
+    Performs client-server REQ/REP communication while in episode mode.
+    No, as part of core server operational logic, should not be explicitly called/edited by user.
+    Yes, it analyzes nothing.
+    """
+    response = None
+    params = dict(
+        socket = None,
+        log = None,)
+
+    def __init__(self):
+        """
+        Wired way to pass server log handler...
+        """
+        self.strategy.log = self.p.log
+
+    def prenext(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def next(self):
+        """
+        Actual env.step() communication is here.
+        """
+        # Receive action from outer world:
+        self.strategy.action = self.p.socket.recv_pyobj()
+        self.p.log.info('COMM recieved: {}'.format(self.strategy.action))
+        self.response = {'state': self.strategy.state,
+                         'reward': self.strategy.reward,
+                         'done': self.strategy.is_done,
+                         'info': self.strategy.info}
+        # Send response:
+        self.p.socket.send_pyobj(self.response)
+        self.p.log.info('COMM sent: {}//{}'.format(self.response['done'], self.response['info']))
+
+
+############################## Base BTServer Strategy Class ##############################
+
+class BTserverStrategy(bt.Strategy):
+    """
+    Controls Environment inner dynamics and backtesting logic.
+    Any State, Reward and Info computation logic can be implemented by
+    subclassing BTserverStrategy and overriding at least get_state(), get_reward(), get_info(),
+    set_datalines() methods (and not forgetting locally import required packages!).
+    One can always go deeper and override __init__ () and next() methods for desired
+    server cerebro engine behaviour, including order execution etc.
+    Since it is bt.Strategy subclass, see:
+    https://www.backtrader.com/docu/strategy.html
+    for more information.
+    """
+    # Locally import required libraries (call it as self.<lib-name>):
+    importlib = __import__('importlib') # import importer
+    np = importlib.import_module('numpy')
+    # Set:
+    log = None
+    state = None
+    reward = None
+    info ='_'
+    is_done = False
+    iteration = 0
+    action = 'hold'
+    order = None
+    broker_message = '-'
+    params = dict(state_dim_time=10, # state time embedding dimension (just convention)
+                  state_dim_0=4, # one can add dim_1, dim_2, ... if needed; should match env.observation_space
+                  drawdown_call=20, ) # simplest condition to exit
+
+    def __init__(self):
+        # Inherit logger from cerebro:
+        #self.log = self.env.p.log
+
+        # A wacky way to define strategy 'minimum period'
+        # for proper time-embedded state composition:
+        self.data.dim_sma = btind.SimpleMovingAverage(self.datas[0],
+                                                      period=self.p.state_dim_time)
+        # Add custom Lines if any (just a wrapper):
+        self.set_datalines()
+
+    def set_datalines(self):
+        """
+        Default datalines are: Open, Low, High, Close.
+        Any other custom data lines, indicators, etc.
+        should be explicitly defined by overriding this method.
+        evoked once by Strategy.__init__().
+        """
+        pass
+
+    def get_state(self):
+        """
+        Default state observation composer.
+        Returns time-embedded environment state observation as [n,m] numpy matrix, where
+        n - number of signal features,
+        m - time-embedding length.
+        One can override this method,
+        defining necessary calculations and return arbitrary shaped tensor.
+        It's possible either to compute entire featurized environment state
+        or just pass raw price data to RL algorithm featurizer module.
+        Note1: 'data' referes to bt.startegy datafeed and should be treated as such.
+        Datafeed Lines that are not default to BTserverStrategy should be explicitly defined in
+        define_datalines().
+        Note2: 'n' is essentially == env.state_dim_0.
+        """
+        self.state = self.np.row_stack((self.data.open.get(size=self.p.state_dim_time),
+                                        self.data.low.get(size=self.p.state_dim_time),
+                                        self.data.high.get(size=self.p.state_dim_time),
+                                        self.data.close.get(size=self.p.state_dim_time),))
+
+    def get_reward(self):
+        """
+        Default reward estimator.
+        Same as for state composer applies. Can return raw portfolio
+        performance statictics or enclose entire reward estimation algorithm.
+        """
+        self.reward = (self.stats.broker.value[0] - self.stats.broker.value[-1]) * 1e2
+
+    def get_info(self):
+        """
+        Composes information part of environment response,
+        can be any string/object. Override by own taste.
+        """
+        self.info = ('Step: {}\nAgent action: {}\n' +
+                     'Portfolio Value: {:.5f}\n' +
+                     'Reward: {:.4f}\n' +
+                     '{}\n' + # Order message here
+                     'Drawdown: {:.4f}\n' +
+                     'Max.Drawdown: {:.4f}\n').format(self.iteration,
+                                                      self.action,
+                                                      self.stats.broker.value[0],
+                                                      self.reward,
+                                                      self.broker_message,
+                                                      self.stats.drawdown.drawdown[0],
+                                                      self.stats.drawdown.maxdrawdown[0])
+
+    def get_done(self):
+        """
+        Default episode termination estimator, checks conditions episode stop is called upon,
+        <self.is_done> flag is also used as part of environment response.
+        """
+        # Prepare for the worst and run checks:
+        self.is_done = True
+        # Will it be last step of the episode?:
+        if self.iteration >= self.data.p.numrecords - self.p.state_dim_time:
+            self.broker_message = 'END OF DATA!'
+        elif self.action =='_done':
+            self.broker_message = '_DONE SIGNAL RECEIVED'
+        # Any money left?:
+        elif  self.stats.drawdown.maxdrawdown[0] > self.p.drawdown_call:
+            self.broker_message = 'DRAWDOWN CALL!'
+        #...............
+        # Finally, it seems ok to continue:
+        else:
+            self.is_done = False
+            return
+        # Or else, initiate fallback to Control Mode; still executes strategy cycle once:
+        self.log.info('RUNSTOP() evoked with {}'.format(self.broker_message))
+        self.env.runstop()
+
+
+    def episode_stop(self):
+        """
+        Well, finishes current episode.
+        """
+        self.env.runstop()
+
+    def notify_order(self, order):
+        """
+        Just ripped from backtrader tutorial.
+        """
+        if order.status in [order.Submitted, order.Accepted]:
+            # Buy/Sell order submitted/accepted to/by broker - Nothing to do
+            return
+        # Check if an order has been completed
+        # Attention: broker could reject order if not enougth cash
+        if order.status in [order.Completed]:
+            if order.isbuy():
+                self.broker_message = 'BUY executed,\nPrice: {:.5f}, Cost: {:.4f}, Comm: {:.4f}'. \
+                    format(order.executed.price,
+                           order.executed.value,
+                           order.executed.comm)
+                self.buyprice = order.executed.price
+                self.buycomm = order.executed.comm
+            else:  # Sell
+                self.broker_message = 'SELL executed,\nPrice: {:.5f}, Cost: {:.4f}, Comm: {:.4f}'. \
+                    format(order.executed.price,
+                           order.executed.value,
+                           order.executed.comm)
+            self.bar_executed = len(self)
+        elif order.status in [order.Canceled]:
+            self.broker_message = 'Order Canceled'
+        elif order.status in [order.Margin, order.Rejected]:
+            self.broker_message = 'Order Margin/Rejected'
+        self.order = None
+
+    def next(self):
+        """
+        Default implementation.
+        Defines one step environment routine for server 'Episode mode';
+        At least, it should handle order execution logic according to action received and
+        nvoke following methods:
+                self.get_done() - should be early in code,
+                ....
+                self.get_state()
+                self.get_reward()
+                self.get_info()  - this should be on last place.
+        """
+        # Housekeeping:
+        self.iteration += 1
+        self.broker_message = '-'
+
+        # How we're doing?:
+        #self.get_done()
+
+        if not self.is_done:
+            # All the strategy computations should be performed here as function of <self.action>,
+            # this ensures async. server/client computations.
+            # Note: that implies that action execution is lagged for 1 step.
+            # <is_done> flag can also be rised here by trading logic events,
+            # e.g. <OMG! We became too rich!>/<Hide! Black Swan is coming!>
+
+            # Simple action-to-order logic:
+            if self.action == 'hold' or self.order:
+                pass
+            elif self.action == 'buy':
+                self.order = self.buy()
+                self.broker_message = 'New BUY created; ' + self.broker_message
+            elif self.action == 'sell':
+                self.order = self.sell()
+                self.broker_message = 'New SELL created; ' + self.broker_message
+            elif self.action == 'close':
+                self.order = self.close()
+                self.broker_message = 'New CLOSE created; ' + self.broker_message
+        else: # time to leave:
+            self.close()
+            
+        # Gather response:
+        self.get_state()
+        self.get_reward()
+        self.get_done()
+        self.get_info() 
+
+        # Somewhere at this point, _EpisodeComm() is exchanging information with environment wrapper,
+        # obtaining <self.action> and sending <state,reward,done,info>... Never mind.
+
+############################## Episodic Datafeed Class ##############################
 
 class TestDataLen(bt.Strategy):
     """
-    Service strategy, used by <EpisodicDataFeed>.test_data_period() method
+    Service strategy, used by <EpisodicDataFeed>.test_data_period() method.
     """
     params = dict(start_date=None, end_date=None)
 
@@ -232,7 +536,7 @@ class TestDataLen(bt.Strategy):
 
 
 class EpisodicDataFeed():
-    """ 
+    """
     BTfeeds class wrapper. Implements random episode sampling.
     Doesn't rely on pandas, works ok, but is pain-slow and needs rewriting.
     """
@@ -274,7 +578,7 @@ class EpisodicDataFeed():
             # !!-->TODO: Can loop forever, if something is wrong with data, etc.
             # need sanity check: rise exeption after 100 retries ???
 
-            self.log.info('Sampling episode...')
+            self.log.info('Sampling episode data:')
             rnd_start_timestamp = int(self.firststamp \
                                       + (self.laststamp - max_days_stamp
                                          - self.firststamp) * random.random())
@@ -297,7 +601,7 @@ class EpisodicDataFeed():
     def measure(self):
         """
         Stores statistic for entire datafeed:
-        total nuber of rows (records),
+        total number of rows (records),
         date/times of first and last records (as timestamps).
         """
         self.log.info('Looking up entire datafeed. It may take some time.')
@@ -306,197 +610,15 @@ class EpisodicDataFeed():
         self.firststamp = time.mktime(self.firstdate.timetuple())
         self.laststamp = time.mktime(self.lastdate.timetuple())
 
-
-class BTserverStrategy(bt.Strategy):
-    """
-    Controls Environment inner dynamics.
-    Custom State, Reward and Info computation logic can be implemented outside
-    as subclass and passed to environment via <custom_strategy_class> parameter.
-    To do this one should override get_state(), get_reward(), get_info(),
-    set_datalines() methods (and do not forget locally import required packages).
-    Since it is bt.Strategy subclass, see:
-    https://www.backtrader.com/docu/strategy.html
-    for more information.
-    !!-->TODO: implement is_done as customisable method 
-    """
-    # Locally import required libraries. Call it as self.<name>!
-    np = importlib.import_module('numpy')
-    params = dict(
-        socket=None,
-        max_steps=0,
-        state_dimension=10,
-        state_dim_1=4,
-        drawdown_call=10, )
-
-    def __init__(self):
-        self.p.log = logging.getLogger('WorkHorse')
-        # A wacky way to define strategy 'minimum period' for proper embedded state composition:
-        self.data.dim_sma = btind.SimpleMovingAverage(self.datas[0],
-                                                      period=self.p.state_dimension)
-        # Add custom Lines if any:
-        self.set_datalines()
-
-        # Housekeeping:
-        self.iteration = 0
-        self.action = 'hold'
-        self.order = None
-        self.order_message = '-'
-
-    def set_datalines(self):
-        """
-        Default datalines are: Open, Low, High, Close.
-        Any other custom data lines, indicators, etc.
-        should be explicitly defined by overriding this method.
-        Envoked once by Strategy.__init__().
-        """
-        pass
-
-    def get_state(self):
-        """
-        Default state observation composer.
-        Returns time-embedded environment state observation as [n,m] numpy matrix, where
-        n - number of signal features,
-        m - time-embedding length.
-        One can override this method,
-        defining nesessery calculations and return arbitrary shaped tensor.
-        It's possible either to compute entire featurized environment state
-        or just pass raw price data to RL algorithm featurizer module.
-        Note1: 'data' referes to bt.startegy datafeed and should be treated as such.
-        Datafeed Lines that are not default to BTserverStrategy should be explicitly defined in
-        define_datalines().
-        Note2: n is essentially == env.state_dim_1. 
-        """
-        self.state = self.np.row_stack((self.data.open.get(size=self.p.state_dimension),
-                                        self.data.low.get(size=self.p.state_dimension),
-                                        self.data.high.get(size=self.p.state_dimension),
-                                        self.data.close.get(size=self.p.state_dimension),))
-
-    def get_reward(self):
-        """
-        Default reward estimator.
-        Same as for state composer applies. Can return raw portfolio
-        performance statictics or enclose entire reward estimation algorithm.
-        """
-        self.reward = (self.stats.broker.value[0] - self.stats.broker.value[-1]) * 1e2
-
-    def get_info(self):
-        """
-        Composes information part of environment response,
-        which can be any string/object. Override by own taste.
-        """
-        self.info = ('Step: {}\nAgent action: {}\n' +
-                     'Portfolio Value: {:.5f}\n' +
-                     'Reward: {:.4f}\n{}\n' +
-                     'Drawdown: {:.4f}\n' +
-                     'Max.Drawdown: {:.4f}\n').format(self.iteration,
-                                                      self.action,
-                                                      self.stats.broker.value[0],
-                                                      self.reward,
-                                                      self.order_message,
-                                                      self.stats.drawdown.drawdown[0],
-                                                      self.stats.drawdown.maxdrawdown[0])
-
-    def episode_stop(self):
-        """
-        Well, finishes current episode.
-        """
-        self.env.runstop()
-
-    def notify_order(self, order):
-        """
-        Well...
-        Just ripped from backtrader tutorial.
-        """
-        if order.status in [order.Submitted, order.Accepted]:
-            # Buy/Sell order submitted/accepted to/by broker - Nothing to do
-            return
-        # Check if an order has been completed
-        # Attention: broker could reject order if not enougth cash
-        if order.status in [order.Completed]:
-            if order.isbuy():
-                self.order_message = 'BUY executed,\nPrice: {:.5f}, Cost: {:.4f}, Comm: {:.4f}'. \
-                    format(order.executed.price,
-                           order.executed.value,
-                           order.executed.comm)
-                self.buyprice = order.executed.price
-                self.buycomm = order.executed.comm
-            else:  # Sell
-                self.order_message = 'SELL executed,\nPrice: {:.5f}, Cost: {:.4f}, Comm: {:.4f}'. \
-                    format(order.executed.price,
-                           order.executed.value,
-                           order.executed.comm)
-            self.bar_executed = len(self)
-        elif order.status in [order.Canceled]:
-            self.order_message = 'Order Canceled'
-        elif order.status in [order.Margin, order.Rejected]:
-            self.order_message = 'Order Margin/Rejected'
-        self.order = None
-
-    def next(self):
-        """
-        Defines one step environment routine for server 'Episode mode'
-        """
-        # Housekeeping:
-        is_done = False
-        self.iteration += 1
-
-        # Will it be last step of the episode?
-        if self.iteration >= self.data.p.numrecords - self.p.state_dimension:
-            is_done = True
-            self.order_message = 'END OF DATA!'
-        else:
-            # All the strategy computing should be performed here as function of <self.action>,
-            # this ensures async. server/client computations.
-            # Note: that implies that action execution is delayed for 1 step.
-            # <is_done> flag can also be rised here by trading logic, e.g. <OMG! We became too rich!>
-            #
-            if self.stats.drawdown.maxdrawdown[0] > self.p.drawdown_call:  # Any money left?
-                is_done = True  # Trade No More
-                self.order_message = 'DRAWDOWN CALL!'
-            else:
-                if self.action == 'hold' or self.order:
-                    pass
-                elif self.action == 'buy':
-                    self.order = self.buy()
-                    self.order_message = 'New BUY created; ' + self.order_message
-                elif self.action == 'sell':
-                    self.order = self.sell()
-                    self.order_message = 'New SELL created; ' + self.order_message
-                elif self.action == 'close':
-                    self.order = self.close()
-                    self.order_message = 'New CLOSE created; ' + self.order_message
-
-                    # Gather response:
-        self.get_state()
-        self.get_reward()
-        self.get_info()  # should be on last place!
-
-        # Receive action from outer world:
-        next_action = self.p.socket.recv_pyobj()
-        self.p.log.debug('Server recieved: {} as: {}'.format(next_action, type(next_action)))
-        if next_action == '_done': is_done = True  # = client calls env.reset()
-
-        # Send response:
-        self.p.socket.send_pyobj({'state': self.state,
-                                  'reward': self.reward,
-                                  'done': is_done,
-                                  'info': self.info})
-        # Housekeeping:
-        self.action = next_action  # carry action to be executed by next step
-        self.order_message = '-'  # clear order message
-
-        # Maybe initiate fallback to Control Mode?
-        if is_done:
-            self.close()
-            self.episode_stop()
-
+##############################  BT Server Main part ##############################
 
 class BTserver(multiprocessing.Process):
     """
-    Backtrader server.
+    Backtrader server class.
     Control signals:
     IN:
     '_reset' - rewinds backtrader engine and runs new episode;
+    '_getstat' - retrieve last run episode results and statistics;
     '_stop' - server shut-down.
     OUT:
     info: <string message> - reports current server status.
@@ -526,9 +648,9 @@ class BTserver(multiprocessing.Process):
                  min_episode_len,
                  max_episode_time,
                  network_address,
-                 strategy_class=None,
-                 state_embed_dim=10,
-                 state_dim_1=4,
+                 cerebro=None,
+                 state_dim_time=10,
+                 state_dim_0=4,
                  verbose=False):
         """
         Configures BT server instance.
@@ -538,37 +660,38 @@ class BTserver(multiprocessing.Process):
         self.min_episode_len = min_episode_len
         self.max_episode_time = max_episode_time
         self.network_address = network_address
-        self.state_embed_dim = state_embed_dim
-        self.state_dim_1 = state_dim_1
+        self.state_dim_time = state_dim_time
+        self.state_dim_0 = state_dim_0
         self.verbose = verbose
 
-        # Use default strategy class in none has been passed in:
-        if not strategy_class:
-            self.strategy_class = BTserverStrategy
+        # Cerebro class to execute:
+        if not cerebro:
+            raise AssertionError('Server has not recieved any bt.cerebro() class. Nothing to run!')
         else:
-            self.strategy_class = strategy_class
+            self.cerebro = cerebro
 
         # Define datafeed:
         class CSVData(btfeeds.GenericCSVData):
             """Backtrader CSV datafeed class"""
             params = self.dataparams
-
         self.data = EpisodicDataFeed(CSVData)
 
     def run(self):
         """
-        Server process execution body. This method is envoked by env._start_server().
+        Server process execution body. This method is evoked by env._start_server().
         """
         # Verbosity control:
         if self.verbose:
             logging.getLogger().setLevel(logging.INFO)
         else:
             logging.getLogger().setLevel(logging.ERROR)
-        log = logging.getLogger('BT_server main')
+        log = logging.getLogger('BT_server')
+
         self.process = multiprocessing.current_process()
         log.info('Server process PID: {}'.format(self.process.pid))
-        wonderful_results = []
-        some_important_statisitc = []
+
+        # Housekeeping:
+        cerebro_result = 'No runs has been made.'
 
         # Set up a comm. channel for server as zmq socket
         # to carry both service and data signal
@@ -585,44 +708,55 @@ class BTserver(multiprocessing.Process):
             # Stuck here until 'reset' or 'stop':
             while True:
                 service_input = socket.recv_pyobj()
+                log.info('Control mode: recieved <{}>'.format(service_input))
                 # Check if it's time to exit:
                 if service_input == '_stop':
-                    # Release comm channel, gather statistic and exit:
-                    # TODO: Gather and somehow pass over global statistics
                     # Server shutdown logic:
-                    some_important_statisitc = True
-                    message = 'Server is exiting.'
-                    log.info(message)
-                    socket.send_pyobj(message)  # pairs '_stop' input
+                    # send last run statistic, release comm channel and exit:
+                    log.info('Server is exiting.')
+                    socket.send_pyobj(cerebro_result)
                     socket.close()
                     context.destroy()
-                    return wonderful_results, some_important_statisitc
-                    # And where do you think you actually return it, hah?  <-- TODO: dump stats to file or something
-                if service_input == '_reset':
-                    message = 'Starting new episode'
+                    return None
+
+                elif service_input == '_reset':
+                    message = 'Starting episode.'
                     log.info(message)
                     socket.send_pyobj(message)  # pairs '_reset'
                     break
-                message = 'Server control mode, send <_reset> or <_stop>.'
-                # log.info(message)
-                socket.send_pyobj(message)  # pairs any other input
 
-            # Got '_reset' signal, prepare Cerebro instance and enter 'Episode Mode':
-            cerebro = bt.Cerebro(stdstats=False)
-            cerebro.addstrategy(self.strategy_class,
+                elif service_input == '_getstat':
+                    socket.send_pyobj(episode_result)
+                    log.info('Episode statistic sent.')
+
+                else: # ignore any other input
+                    message = 'Control mode, send <_reset>, <_getstat> or <_stop>.'
+                    log.debug(message)
+                    socket.send_pyobj(message)  # pairs any other input
+
+            # Got '_reset' signal, prepare Cerebro subclass and run episode:
+            cerebro = copy.deepcopy(self.cerebro)
+
+            # Add communication ability:
+            cerebro.addanalyzer(_EpisodeComm,
+                                _name='communicator',
                                 socket=socket,
-                                state_dimension=self.state_embed_dim,
-                                state_dim_1=self.state_dim_1)
-            cerebro.broker.setcash(10.0)
-            cerebro.broker.setcommission(commission=0.001)
-            cerebro.addobserver(bt.observers.DrawDown)
-            cerebro.addsizer(bt.sizers.SizerFix, stake=10)
+                                log=log,)
 
+            # Add random episode data:
             cerebro.adddata(self.data.sample_episode(self.min_episode_len, self.max_episode_time))
-            # log.info('Starting Portfolio Value: {:.4f}'.format(cerebro.broker.getvalue()))
-            wonderful_results = cerebro.run(stdstats=True)
-            # log.info('Final Portfolio Value: {:.4f}'.format(cerebro.broker.getvalue()))
 
-        # Just in case -- we actually shouldnt get there except by some error
-        return wonderful_results, some_important_statisitc
+            # Finally:
+            episode = cerebro.run(stdstats=True)[0]
+            log.info('Episode finished.')
+
+            # Get statistics:
+            episode_result = dict(number = episode_number,)
+                                  #stats = episode.stats,
+                                  #analyzers = episode.analyzers,
+            log.info('ANALYZERS: {}'.format(len(episode.analyzers)))
+            log.info('DATADEEDS: {}'.format(len(episode.datas)))
+
+        # Just in case -- we actually shouldnt get there except by some error:
+        return None
 
