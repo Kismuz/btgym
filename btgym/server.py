@@ -20,15 +20,12 @@
 import logging
 #logging.basicConfig(format='%(name)s: %(message)s')
 import multiprocessing
-import time
-import datetime
-import random
+
 import itertools
 import zmq
 import copy
 
 import backtrader as bt
-import backtrader.feeds as btfeeds
 
 ###################### BT Server in-episode communocation method ##############
 
@@ -38,6 +35,7 @@ class _EpisodeComm(bt.Analyzer):
     Adding this [misused] analyzer to cerebro instance enables strategy REQ/REP communication while in episode mode.
     No, as part of core server operational logic, it should not be explicitly called/edited.
     Yes, it actually analyzes nothing.
+    TODO: maybe callback?
     """
     log = None
     socket = None
@@ -71,110 +69,21 @@ class _EpisodeComm(bt.Analyzer):
         self.socket.send_pyobj(self.response)
         self.log.debug('COMM sent: {}//{}'.format(self.response['done'], self.response['info']))
 
-############################## Episodic Datafeed Class #########################
+##############################  BTgym Server Main  ##############################
 
-
-class TestDataLen(bt.Strategy):
-    """
-    Service strategy, only used by <EpisodicDataFeed>.test_data_period() method.
-    """
-    params = dict(start_date=None, end_date=None)
-
-    def nextstart(self):
-        self.p.start_date = self.data.datetime.date()
-
-    def stop(self):
-        self.p.end_date = self.data.datetime.date()
-
-
-class EpisodicDataFeed():
-    """
-    BTfeeds class wrapper. Implements random episode sampling.
-    Doesn't rely on pandas, works ok, but is pain-slow and needs rewriting.
-    """
-    # TODO: make it faster
-
-    def __init__(self, BTFeedDataClass):
-        self.dataclass = BTFeedDataClass
-        self.log = logging.getLogger('Epidode datafeed')
-
-    def test_data_period(self, fromdate=None, todate=None):
-        """
-        Takes datafeed class and date/time constraints;
-        returns actual number of  records and start/finish dates
-        instantiated datafeed would contain under given constraints.
-        """
-        TestData = bt.Cerebro(stdstats=False, preload=False)
-        TestData.addstrategy(TestDataLen)
-        data = self.dataclass(fromdate=fromdate, todate=todate)
-        TestData.adddata(data)
-        self.log.info('Init.  data range from {} to {}'.format(data.params.fromdate, data.params.todate))
-        result = TestData.run()[0]
-        self.log.info('Result data range from {} to {}'.format(result.p.start_date, result.p.end_date))
-        return [result.data.close.buflen(),
-                result.p.start_date,
-                result.p.end_date, ]
-
-    def sample_episode(self, min_len=2000, max_days=2):
-        """
-        For dataclass passed in, randomly samples
-        <params.fromdate> and <params.todate> constraints;
-        returns constrained datafeed, such as:
-        datafeed number of records >= min_len,
-        datafeed datetime period <= max_days.
-        """
-        max_days_stamp = 86400 * max_days
-        while True:
-            # Keep sampling random timestamps in datadeed first/last stamps range
-            # until minimum  length condition is satisfied:
-
-            # TODO: Can loop forever, if something is wrong with data, etc.
-            # need sanity check: e.g. rise exeption after 100 retries ???
-
-            self.log.info('Sampling episode data:')
-            rnd_start_timestamp = int(self.firststamp \
-                                      + (self.laststamp - max_days_stamp
-                                         - self.firststamp) * random.random())
-            # Add maximum days:
-            rnd_end_timestamp = rnd_start_timestamp + max_days_stamp
-            # Convert to datetime:
-            random_fromdate = datetime.datetime.fromtimestamp(rnd_start_timestamp)
-            random_todate = datetime.datetime.fromtimestamp(rnd_end_timestamp)
-            # Minimum length check:
-            [num_records, _1, _2] = self.test_data_period(random_fromdate, random_todate)
-            self.log.info('Episode length: {}'.format(num_records))
-
-            if num_records >= min_len: break
-        random_datafeed = self.dataclass(fromdate=random_fromdate,
-                                         todate=random_todate,
-                                         numrecords=num_records)
-        self.log.info('Sample accepted.')
-        return random_datafeed
-
-    def measure(self):
-        """
-        Stores statistic for entire datafeed:
-        total number of rows (records),
-        date/times of first and last records (as timestamps).
-        """
-        self.log.info('Looking up entire datafeed. It may take some time.')
-        [self.numrecords, self.firstdate, self.lastdate] = self.test_data_period(None, None)
-        self.log.info('Total datafeed records: {}'.format(self.numrecords))
-        self.firststamp = time.mktime(self.firstdate.timetuple())
-        self.laststamp = time.mktime(self.lastdate.timetuple())
-
-##############################  BT Server Main part ##############################
-
-class BTserver(multiprocessing.Process):
+class BTgymServer(multiprocessing.Process):
     """
     Backtrader server class.
+
     Control signals:
     IN:
     '_reset' - rewinds backtrader engine and runs new episode;
-    '_getstat' - retrieve last run episode results and statistics;
+    '_getstat' - retrieve episode results and statistics;
     '_stop' - server shut-down.
     OUT:
-    info: <string message> - reports current server status.
+    <string message> - reports current server status;
+    <statisic dict> - last run episode statisics.  NotImplemented.
+
     Whithin-episode signals:
     IN:
     {'buy', 'sell', 'hold', 'close', '_done'} - actions;
@@ -187,44 +96,50 @@ class BTserver(multiprocessing.Process):
                                      4 - num. of data features (Lines);
                        reward - current portfolio statistics for environment reward estimation;
                        done - episode termination flag;
-                       info - auxiliary diagnostic information, if any.
+                       info - auxiliary information.
 
     Parameters:
-    dataparms - CSV file name and parsing parameters;
-    max_steps - <int>, maximum episode length;
+    TODO: rewrite !!! -->
+    datafeed  - class BTgymData instance;
+    cerebro - subclass bt.Cerebro;
     network_address - <str>, network address to bind to;
-    cerebro_params - <dict>: trading engine-specific parameters, excl. datafeed
+    verbose - verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
     """
 
     def __init__(self,
-                 dataparams,
-                 network_address,
+                 datafeed=None,
                  cerebro=None,
+                 network_address=None,
                  verbose=False):
         """
         Configures BT server instance.
         """
-        super(BTserver, self).__init__()
-        self.dataparams = dataparams
-        self.network_address = network_address
-        self.verbose = verbose
+        super(BTgymServer, self).__init__()
 
+        # Paranoid checks:
         # Cerebro class to execute:
         if not cerebro:
             raise AssertionError('Server has not recieved any bt.cerebro() class. Nothing to run!')
         else:
             self.cerebro = cerebro
 
-        # Configure datafeed subclass:
-        class CSVData(btfeeds.GenericCSVData):
-            """Backtrader CSV datafeed class"""
-            params = self.dataparams
-            params['numrecords'] = 0
-        self.data = EpisodicDataFeed(CSVData)
+        # Datafeed instance to load from:
+        if not datafeed:
+            raise AssertionError('Server has not recieved any datafeed. Nothing to run!')
+        else:
+            self.datafeed = datafeed
+
+        # Net:
+        if not network_address:
+            raise AssertionError('Server has not recieved network address to bind to!')
+        else:
+            self.network_address = network_address
+
+        self.verbose = verbose
 
     def run(self):
         """
-        Server process execution body. This method is evoked by env._start_server().
+        Server process runtime body. This method is evoked by env._start_server().
         """
         # Verbosity control:
         if self.verbose:
@@ -234,7 +149,7 @@ class BTserver(multiprocessing.Process):
                 logging.getLogger().setLevel(logging.INFO)
         else:
             logging.getLogger().setLevel(logging.ERROR)
-        log = logging.getLogger('BT_server')
+        log = logging.getLogger('BTgym_server')
 
         self.process = multiprocessing.current_process()
         log.info('Server process PID: {}'.format(self.process.pid))
@@ -249,8 +164,11 @@ class BTserver(multiprocessing.Process):
         socket = context.socket(zmq.REP)
         socket.bind(self.network_address)
 
-        # Lookup datafeed:
-        self.data.measure()
+        # Actually load data to BTgymData instance:
+        self.datafeed.read_csv()
+
+        # Add logging:
+        self.datafeed.log = log
 
         # Server 'Control Mode' loop:
         for episode_number in itertools.count(1):
@@ -295,8 +213,7 @@ class BTserver(multiprocessing.Process):
                                 _name='communicator',)
 
             # Add random episode data:
-            cerebro.adddata(self.data.sample_episode(cerebro.min_episode_len,
-                                                     cerebro.max_episode_days))
+            cerebro.adddata(self.datafeed.sample_random().to_btfeed())
 
             # Finally:
             episode = cerebro.run(stdstats=True, preload=False)[0]

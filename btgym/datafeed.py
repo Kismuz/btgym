@@ -22,7 +22,6 @@ import logging
 
 import datetime
 import random
-import copy
 import os
 
 import backtrader.feeds as btfeeds
@@ -128,15 +127,18 @@ class BTgymData():
         Returns bt.datafeed instance.
         """
         if not self.data.empty:
-            return btfeeds.PandasDirectData(dataname=self.data,
-                                            timeframe=self.timeframe,
-                                            datetime=self.datetime,
-                                            open=self.open,
-                                            high=self.high,
-                                            low=self.low,
-                                            close=self.close,
-                                            volume=self.volume,
-                                            openinterest=self.openinterest)
+           btfeed = btfeeds.PandasDirectData(dataname=self.data,
+                                             timeframe=self.timeframe,
+                                             datetime=self.datetime,
+                                             open=self.open,
+                                             high=self.high,
+                                             low=self.low,
+                                             close=self.close,
+                                             volume=self.volume,
+                                             openinterest=self.openinterest,)
+           btfeed.numrecords = self.data.shape[0]
+           return btfeed
+
         else:
             msg = 'BTgymData instance holds no data. Hint: forgot to call .read_csv()?'
             self.log.info(msg)
@@ -152,7 +154,7 @@ class BTgymData():
         self.episode_num_records = int(self.max_episode_len.total_seconds() / (60 * self.timeframe))
 
         self.log.info('Maximum episode time duration set to: {}.'.format(self.max_episode_len))
-        self.log.info('Corresponding max. number of steps: {}.'.format(self.episode_num_records))
+        self.log.info('Respective number of steps: {}.'.format(self.episode_num_records))
         self.log.info('Maximum allowed data time gap set to: {}.\n'.format(self.max_time_gap))
 
         # Sanity check param:
@@ -202,6 +204,6 @@ class BTgymData():
                 attempts += 1
 
         msg = ('Quitting after {} sampling attempts.' +
-               'Hint: check sampling params and datafeed consistency.').format(attempts)
+               'Hint: check sampling params / datafeed consistency.').format(attempts)
         self.log.info(msg)
         raise RuntimeError(msg)

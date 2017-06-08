@@ -22,14 +22,14 @@ import backtrader.indicators as btind
 
 import numpy as np
 
-############################## Base BTServer Strategy Class ###################
+############################## Base BTgymStrategy Class ###################
 
 
-class BTserverStrategy(bt.Strategy):
+class BTgymStrategy(bt.Strategy):
     """
     Controls Environment inner dynamics and backtesting logic.
     Any State, Reward and Info computation logic can be implemented by
-    subclassing BTserverStrategy and overriding at least get_state(), get_reward(), get_info(),
+    subclassing BTgymStrategy and overriding at least get_state(), get_reward(), get_info(),
     set_datalines() methods.
     One can always go deeper and override __init__ () and next() methods for desired
     server cerebro engine behaviour, including order execution etc.
@@ -83,7 +83,7 @@ class BTserverStrategy(bt.Strategy):
         It's possible either to compute entire featurized environment state
         or just pass raw price data to RL algorithm featurizer module.
         Note1: 'data' referes to bt.startegy datafeeds and should be treated as such.
-        Datafeed Lines that are not default to BTserverStrategy should be explicitly defined in
+        Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in
         define_datalines().
         Note2: 'n' is essentially == env.state_dim_0.
         """
@@ -126,7 +126,7 @@ class BTserverStrategy(bt.Strategy):
         # Prepare for the worst and run checks:
         self.is_done = True
         # Will it be last step of the episode?:
-        if self.iteration >= self.data.p.numrecords - self.p.state_dim_time:
+        if self.iteration >= self.data.numrecords - self.p.state_dim_time:
             self.broker_message = 'END OF DATA!'
         elif self.action == '_done':
             self.broker_message = '_DONE SIGNAL RECEIVED'
@@ -144,7 +144,7 @@ class BTserverStrategy(bt.Strategy):
 
     def notify_order(self, order):
         """
-        Just taken from backtrader tutorial.
+        Shamelessly taken from backtrader tutorial.
         """
         if order.status in [order.Submitted, order.Accepted]:
             # Buy/Sell order submitted/accepted to/by broker - Nothing to do

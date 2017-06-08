@@ -30,32 +30,28 @@ from gym import error, spaces
 
 import backtrader as bt
 
-from btgym.server import BTserver
-from btgym.strategy import BTserverStrategy
+from btgym.server import BTgymServer
+from btgym.strategy import BTgymStrategy
+from btgym.datafeed import BTgymData
 
-############################## Environment part ##############################
+############################## OpenAI Gym Environment  ##############################
 
 class BacktraderEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self,
-                 data_filename,  # server arg, required, CSV data filename
-                 datafeed_params=None,  # server arg/ if None - default CSV parsing params will be used
-                 port=5500,  # server arg/ port to use
-                 min_episode_len=2000,  # cerebro arg/ minimum episode number of data records (rows)
-                 max_episode_days=2,  # cerebro arg/ maximum episode time in days
-                 cerebro=None,   # server arg/ bt.cerbro class for server to execute,
-                                 # if None - default strategy will be used
+                 filename=None,  # Source CSV data file; if given - overrides source file of given BTgymData instance.
+                 datafeed=None,  # BTgymData-feed instance.
+                 cerebro=None,   # bt.Cerbro subclass for server to execute,
+                                 # if None - Cerebro with default strategy will be used
                  state_dim_time=10,  # environment/cerebro.strategy arg/ state observation time-embedding dimensionality
                                      # get overriden if cerebro arg is not None
                  state_dim_0=4,  # environment/cerebro.strategy arg/ state observation feature dimensionality,
                                  # get overriden if cerebro arg is not None
                  portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions
+                 port=5500,  # server arg/ port to use
                  verbose=False, ):  # environment/server arg
 
-        # Check datafile existence:
-        if not os.path.isfile(data_filename):
-            raise FileNotFoundError('Datafeed not found: ' + data_filename)
 
         # Verbosity control:
         self.log = logging.getLogger('Env')
@@ -67,39 +63,28 @@ class BacktraderEnv(gym.Env):
         else:
             logging.getLogger().setLevel(logging.ERROR)
         self.verbose = verbose
-        """
-        Default parsing parameters for source-specific CSV datafeed class.
-        Correctly parses 1 minute Forex generic ASCII
-        data files from www.HistData.com:
-        """
-        if not datafeed_params:
-            self.datafeed_params = dict(
-                dataname=data_filename,
-                # nullvalue= 0.0,
-                fromdate=None,
-                todate=None,
-                dtformat='%Y%m%d %H%M%S',
-                headers=False,
-                separator=';',
-                timeframe=1,
-                datetime=0,
-                high=1,
-                low=2,
-                open=3,
-                close=4,
-                volume=5,
-                openinterest=-1,
-                info='1 min FX generic ASCII, www.HistData.com', )
+
+        # Check CSV datafile existence:
+        if not os.path.isfile(str(filename)):
+            if datafeed:
+                # If BTgymData instance been passed:
+                self.datafeed = datafeed
+            else:
+                raise FileNotFoundError('BTgymData not set / data file not found: ' + str(filename))
         else:
-            self.datafeed_params = datafeed_params
-            self.datafeed_params['dataname'] = data_filename
-        """
-        Default configuration for Backtrader computational engine (cerebro).
-        Executed only if no bt.Cerebro custom subclass has been given:
-        """
+            if datafeed:
+                # If BTgymData instance and datafile has been passed:
+                self.datafeed = datafeed
+                # Override data file:
+                self.datafeed.filename = filename
+            else:  # make default feed instance with given CSV file:
+                self.datafeed = BTgymData(filename=filename)
+
+        # Default configuration for Backtrader computational engine (cerebro).
+        # Executed only if no bt.Cerebro custom subclass has been given:
         if not cerebro:
             self.cerebro = bt.Cerebro()
-            self.cerebro.addstrategy(BTserverStrategy,
+            self.cerebro.addstrategy(BTgymStrategy,
                                      state_dim_time=state_dim_time,
                                      state_dim_0=state_dim_0)
             self.cerebro.broker.setcash(10.0)
@@ -108,10 +93,6 @@ class BacktraderEnv(gym.Env):
             self.cerebro.addsizer(bt.sizers.SizerFix, stake=10)
         else:
             self.cerebro = cerebro
-
-        # Episode related params, added to any cerebro class:
-        self.cerebro.min_episode_len = min_episode_len
-        self.cerebro.max_episode_days = max_episode_days
 
         # Server process/network parameters:
         self.server = None
@@ -147,10 +128,10 @@ class BacktraderEnv(gym.Env):
         """
         Configures backtrader REQ/REP server instance and starts server process.
         """
-        self.server = BTserver(dataparams=self.datafeed_params,
-                               cerebro=self.cerebro,
-                               network_address=self.network_address,
-                               verbose=self.verbose)
+        self.server = BTgymServer(datafeed=self.datafeed,
+                                  cerebro=self.cerebro,
+                                  network_address=self.network_address,
+                                  verbose=self.verbose)
         self.server.daemon = False
         self.server.start()
         # Wait for server to startup
@@ -212,7 +193,7 @@ class BacktraderEnv(gym.Env):
     def _close(self):
         """
         [kind of] Implementation of OpenAI Gym env.close method.
-        Puts server in Control Mode
+        Puts BTgym server in Control Mode:
         """
         _ = self._force_control_mode()
         # maybe TODO something
