@@ -104,7 +104,7 @@ class EpisodicDataFeed():
         returns actual number of  records and start/finish dates
         instantiated datafeed would contain under given constraints.
         """
-        TestData = bt.Cerebro(stdstats=False)
+        TestData = bt.Cerebro(stdstats=False, preload=False)
         TestData.addstrategy(TestDataLen)
         data = self.dataclass(fromdate=fromdate, todate=todate)
         TestData.adddata(data)
@@ -299,7 +299,7 @@ class BTserver(multiprocessing.Process):
                                                      cerebro.max_episode_days))
 
             # Finally:
-            episode = cerebro.run(stdstats=True)[0]
+            episode = cerebro.run(stdstats=True, preload=False)[0]
             log.info('Episode finished.')
             # TODO: finally make that stat passing over!
             # Get statistics:
