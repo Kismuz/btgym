@@ -9,7 +9,7 @@ http://www.backtrader.com/
 OpenAI Gym is.., well, everyone knows OpenAI.
 http://github.com/openai/gym
 
-The project in early pre-pre-alpha stage and you are likely to only find chunks of code and notebooks at the moment.
+### Update 9.06.17: Basic work done. Few days to first working alpha.
 ```
 OUTLINE:
 
