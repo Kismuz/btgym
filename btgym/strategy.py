@@ -36,6 +36,8 @@ class BTgymStrategy(bt.Strategy):
     Since it is bt.Strategy subclass, see:
     https://www.backtrader.com/docu/strategy.html
     for more information.
+    Note: bt.observers.DrawDown observer will be added to any BTgymStrategy instance
+    by BTgymServer process at runtime.
     """
 
     # Set-list:
@@ -50,7 +52,7 @@ class BTgymStrategy(bt.Strategy):
     broker_message = '-'
     params = dict(state_dim_time=10,  # state time embedding dimension (just convention)
                   state_dim_0=4,  # one can add dim_1, dim_2, ... if needed; should match env.observation_space
-                  drawdown_call=20,)  # simplest condition to exit
+                  drawdown_call=20,)  # simplest condition to finish episode
 
     def __init__(self):
         # Inherit logger from cerebro:
@@ -68,7 +70,7 @@ class BTgymStrategy(bt.Strategy):
         Default datalines are: Open, Low, High, Close.
         Any other custom data lines, indicators, etc.
         should be explicitly defined by overriding this method.
-        Evoked once by Strategy.__init__().
+        Invoked once by Strategy.__init__().
         """
         pass
 
@@ -109,19 +111,21 @@ class BTgymStrategy(bt.Strategy):
                      'Portfolio Value: {:.5f}\n' +
                      'Reward: {:.4f}\n' +
                      '{}\n' +  # broker message is here
+                     'Broker Value: {:.4f}\n' +
                      'Drawdown: {:.4f}\n' +
                      'Max.Drawdown: {:.4f}\n').format(self.iteration,
                                                       self.action,
                                                       self.stats.broker.value[0],
                                                       self.reward,
                                                       self.broker_message,
+                                                      self.stats.broker.value[0],
                                                       self.stats.drawdown.drawdown[0],
                                                       self.stats.drawdown.maxdrawdown[0])
 
     def get_done(self):
         """
         Default episode termination estimator, checks conditions episode stop is called upon,
-        <self.is_done> flag is also used as part of environment response.
+        <self.is_done> flag is also sent as part of environment response.
         """
         # Prepare for the worst and run checks:
         self.is_done = True
@@ -139,7 +143,7 @@ class BTgymStrategy(bt.Strategy):
             self.is_done = False
             return
         # Or else, initiate fallback to Control Mode; still executes strategy cycle once:
-        self.log.debug('RUNSTOP() evoked with {}'.format(self.broker_message))
+        self.log.debug('RUNSTOP() invoked with {}'.format(self.broker_message))
         self.env.runstop()
 
     def notify_order(self, order):
@@ -176,7 +180,7 @@ class BTgymStrategy(bt.Strategy):
         Default implementation.
         Defines one step environment routine for server 'Episode mode';
         At least, it should handle order execution logic according to action received and
-        evoke following methods:
+        call following methods:
                 self.get_done()
                 self.get_state()
                 self.get_reward()
@@ -190,7 +194,7 @@ class BTgymStrategy(bt.Strategy):
         self.get_done()
 
         if not self.is_done:
-            # All the next() computations should be performed here [as function of <self.action>],
+            # All the regular step  computations should be performed here [as function of <self.action>],
             # this ensures async. server/client execution.
             # Note: that implies that action execution is lagged for 1 step.
             # <is_done> flag can also be rised here by trading logic events,

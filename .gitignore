@@ -1,13 +1,17 @@
 # Backtrader gym
 
-workbench/
+*.pyc
 
-data_samples/
+/workbench/
 
-build/
+/data_samples/
 
-dist/
+/build/
 
-btgym.egg-info/
+/dist/
+
+/*.egg-info
+
+/*.egg
 
 .ipynb_checkpoints/

@@ -2,10 +2,14 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="85c54f3b-0306-4cd8-9343-ada4a4c0d61f" name="Default" comment="">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.gitignore" afterPath="$PROJECT_DIR$/.gitignore" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/btgym/__init__.py" afterPath="$PROJECT_DIR$/btgym/__init__.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/btgym/datafeed.py" afterPath="$PROJECT_DIR$/btgym/datafeed.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/btgym/envs/backtrader.py" afterPath="$PROJECT_DIR$/btgym/envs/backtrader.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/btgym/server.py" afterPath="$PROJECT_DIR$/btgym/server.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/btgym/strategy.py" afterPath="$PROJECT_DIR$/btgym/strategy.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/setup.py" afterPath="$PROJECT_DIR$/setup.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -17,11 +21,21 @@
   <component name="ExecutionTargetManager" SELECTED_TARGET="default_target" />
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
+      <file leaf-file-name="setup.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/setup.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="726">
+              <caret line="33" column="33" lean-forward="false" selection-start-line="33" selection-start-column="33" selection-end-line="33" selection-end-column="33" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
       <file leaf-file-name="server.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/btgym/server.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1146">
-              <caret line="125" column="40" lean-forward="false" selection-start-line="125" selection-start-column="40" selection-end-line="125" selection-end-column="40" />
+            <state relative-caret-position="4862">
+              <caret line="221" column="57" lean-forward="false" selection-start-line="221" selection-start-column="36" selection-end-line="221" selection-end-column="57" />
               <folding>
                 <element signature="e#837#851#0" expanded="true" />
               </folding>
@@ -32,8 +46,8 @@
       <file leaf-file-name="datafeed.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/btgym/datafeed.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="422">
-              <caret line="137" column="76" lean-forward="false" selection-start-line="137" selection-start-column="76" selection-end-line="137" selection-end-column="76" />
+            <state relative-caret-position="638">
+              <caret line="29" column="15" lean-forward="false" selection-start-line="29" selection-start-column="6" selection-end-line="29" selection-end-column="15" />
               <folding>
                 <element signature="e#837#851#0" expanded="true" />
               </folding>
@@ -44,8 +58,8 @@
       <file leaf-file-name="backtrader.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/btgym/envs/backtrader.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="5346">
-              <caret line="248" column="0" lean-forward="true" selection-start-line="248" selection-start-column="0" selection-end-line="248" selection-end-column="0" />
+            <state relative-caret-position="704">
+              <caret line="32" column="55" lean-forward="false" selection-start-line="32" selection-start-column="55" selection-end-line="32" selection-end-column="55" />
               <folding>
                 <element signature="e#858#872#0" expanded="true" />
               </folding>
@@ -53,11 +67,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="strategy.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="strategy.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/btgym/strategy.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="650">
-              <caret line="146" column="19" lean-forward="false" selection-start-line="146" selection-start-column="19" selection-end-line="146" selection-end-column="19" />
+            <state relative-caret-position="2464">
+              <caret line="112" column="55" lean-forward="true" selection-start-line="112" selection-start-column="55" selection-end-line="112" selection-end-column="55" />
               <folding>
                 <element signature="e#837#860#0" expanded="true" />
               </folding>
@@ -90,8 +104,9 @@
       <find>BTserver</find>
       <find>BTgymServerStrategy</find>
       <find>dataparams</find>
-      <find>BTserverStrategy</find>
       <find>datafeed_class</find>
+      <find>BTserverStrategy</find>
+      <find>evoke</find>
     </findStrings>
     <replaceStrings>
       <replace>state_dim_time</replace>
@@ -106,8 +121,9 @@
       <replace>log.info</replace>
       <replace>self.episode_num_records</replace>
       <replace>BTgymServer</replace>
-      <replace>BTgymStrategy</replace>
       <replace>datafeed</replace>
+      <replace>BTgymStrategy</replace>
+      <replace>invoke</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -119,22 +135,22 @@
         <option value="$PROJECT_DIR$/gym_bt/envs/bt_env.py" />
         <option value="$PROJECT_DIR$/gym_bt/envs/__init__.py" />
         <option value="$PROJECT_DIR$/gym_bt/__init__.py" />
-        <option value="$PROJECT_DIR$/btgym/__init__.py" />
         <option value="$PROJECT_DIR$/btgym/envs/__init__.py" />
-        <option value="$PROJECT_DIR$/setup.py" />
         <option value="$PROJECT_DIR$/README.md" />
         <option value="$PROJECT_DIR$/btgym/envs/strategy.py" />
         <option value="$PROJECT_DIR$/btgym/envs/server.py" />
-        <option value="$PROJECT_DIR$/btgym/server.py" />
         <option value="$PROJECT_DIR$/btgym/datafeed.py" />
-        <option value="$PROJECT_DIR$/btgym/envs/backtrader.py" />
+        <option value="$PROJECT_DIR$/btgym/server.py" />
         <option value="$PROJECT_DIR$/btgym/strategy.py" />
+        <option value="$PROJECT_DIR$/btgym/__init__.py" />
+        <option value="$PROJECT_DIR$/btgym/envs/backtrader.py" />
+        <option value="$PROJECT_DIR$/setup.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="434" />
-    <option name="y" value="25" />
+    <option name="x" value="524" />
+    <option name="y" value="82" />
     <option name="width" value="1788" />
     <option name="height" value="1347" />
   </component>
@@ -292,7 +308,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="434" y="25" width="1788" height="1347" extended-state="0" />
+    <frame x="524" y="82" width="1788" height="1347" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.2832569" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
@@ -415,14 +431,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="550">
-          <caret line="25" column="3" lean-forward="false" selection-start-line="25" selection-start-column="3" selection-end-line="25" selection-end-column="3" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/btgym/envs/backtrader-fullcode-before-split.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -439,38 +447,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/btgym/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="484">
-          <caret line="22" column="24" lean-forward="false" selection-start-line="22" selection-start-column="24" selection-end-line="22" selection-end-column="24" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/btgym/server.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1146">
-          <caret line="125" column="40" lean-forward="false" selection-start-line="125" selection-start-column="40" selection-end-line="125" selection-end-column="40" />
-          <folding>
-            <element signature="e#837#851#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/btgym/datafeed.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="422">
-          <caret line="137" column="76" lean-forward="false" selection-start-line="137" selection-start-column="76" selection-end-line="137" selection-end-column="76" />
-          <folding>
-            <element signature="e#837#851#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/btgym/envs/backtrader.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="5346">
-          <caret line="248" column="0" lean-forward="true" selection-start-line="248" selection-start-column="0" selection-end-line="248" selection-end-column="0" />
+        <state relative-caret-position="704">
+          <caret line="32" column="55" lean-forward="false" selection-start-line="32" selection-start-column="55" selection-end-line="32" selection-end-column="55" />
           <folding>
             <element signature="e#858#872#0" expanded="true" />
           </folding>
@@ -479,11 +459,47 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/btgym/strategy.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="650">
-          <caret line="146" column="19" lean-forward="false" selection-start-line="146" selection-start-column="19" selection-end-line="146" selection-end-column="19" />
+        <state relative-caret-position="2464">
+          <caret line="112" column="55" lean-forward="true" selection-start-line="112" selection-start-column="55" selection-end-line="112" selection-end-column="55" />
           <folding>
             <element signature="e#837#860#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/btgym/datafeed.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="638">
+          <caret line="29" column="15" lean-forward="false" selection-start-line="29" selection-start-column="6" selection-end-line="29" selection-end-column="15" />
+          <folding>
+            <element signature="e#837#851#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/btgym/server.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="4862">
+          <caret line="221" column="57" lean-forward="false" selection-start-line="221" selection-start-column="36" selection-end-line="221" selection-end-column="57" />
+          <folding>
+            <element signature="e#837#851#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/btgym/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="484">
+          <caret line="22" column="31" lean-forward="true" selection-start-line="22" selection-start-column="31" selection-end-line="22" selection-end-column="31" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/setup.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="726">
+          <caret line="33" column="33" lean-forward="false" selection-start-line="33" selection-start-column="33" selection-end-line="33" selection-end-column="33" />
+          <folding />
         </state>
       </provider>
     </entry>

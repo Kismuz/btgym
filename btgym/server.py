@@ -43,7 +43,7 @@ class _EpisodeComm(bt.Analyzer):
 
     def __init__(self):
         """
-        Inherit .log and ZMQ socket from parent.
+        Inherit logger and ZMQ socket from parent:
         """
         self.log = self.strategy.env._log
         self.socket = self.strategy.env._socket
@@ -84,7 +84,7 @@ class BTgymServer(multiprocessing.Process):
     <string message> - reports current server status;
     <statisic dict> - last run episode statisics.  NotImplemented.
 
-    Whithin-episode signals:
+    Within-episode signals:
     IN:
     {'buy', 'sell', 'hold', 'close', '_done'} - actions;
                                            *'_done' - stops current episode.
@@ -99,7 +99,6 @@ class BTgymServer(multiprocessing.Process):
                        info - auxiliary information.
 
     Parameters:
-    TODO: rewrite !!! -->
     datafeed  - class BTgymData instance;
     cerebro - subclass bt.Cerebro;
     network_address - <str>, network address to bind to;
@@ -114,6 +113,7 @@ class BTgymServer(multiprocessing.Process):
         """
         Configures BT server instance.
         """
+
         super(BTgymServer, self).__init__()
 
         # Paranoid checks:
@@ -139,7 +139,7 @@ class BTgymServer(multiprocessing.Process):
 
     def run(self):
         """
-        Server process runtime body. This method is evoked by env._start_server().
+        Server process runtime body. This method is invoked by env._start_server().
         """
         # Verbosity control:
         if self.verbose:
@@ -154,8 +154,8 @@ class BTgymServer(multiprocessing.Process):
         self.process = multiprocessing.current_process()
         log.info('Server process PID: {}'.format(self.process.pid))
 
-        # Housekeeping:
-        cerebro_result = 'No runs has been made.'
+        # Runtime Housekeeping:
+        episode_result = dict()
 
         # Set up a comm. channel for server as ZMQ socket
         # to carry both service and data signal
@@ -172,16 +172,19 @@ class BTgymServer(multiprocessing.Process):
 
         # Server 'Control Mode' loop:
         for episode_number in itertools.count(1):
+
             # Stuck here until '_reset' or '_stop':
             while True:
                 service_input = socket.recv_pyobj()
                 log.debug('Server Control mode: recieved <{}>'.format(service_input))
+
                 # Check if it's time to exit:
                 if service_input == '_stop':
                     # Server shutdown logic:
                     # send last run statistic, release comm channel and exit:
-                    log.info('Server is exiting.')
-                    socket.send_pyobj(cerebro_result)
+                    message = 'Server is exiting.'
+                    log.info(message)
+                    socket.send_pyobj(message)
                     socket.close()
                     context.destroy()
                     return None
@@ -208,6 +211,16 @@ class BTgymServer(multiprocessing.Process):
             cerebro._socket = socket
             cerebro._log = log
 
+            # Add DrawdDown observer if not already:
+            dd_added = False
+            for observer in cerebro.observers:
+
+                if bt.observers.DrawDown in observer:
+                    dd_added = True
+
+            if not dd_added:
+                cerebro.addobserver(bt.observers.DrawDown)
+
             # Add communication utility:
             cerebro.addanalyzer(_EpisodeComm,
                                 _name='communicator',)
@@ -218,13 +231,17 @@ class BTgymServer(multiprocessing.Process):
             # Finally:
             episode = cerebro.run(stdstats=True, preload=False)[0]
             log.info('Episode finished.')
-            # TODO: finally make that stat passing over!
-            # Get statistics:
-            episode_result = dict(episode = episode_number,)
-                                  #stats = episode.stats,
-                                  #analyzers = episode.analyzers,
-            log.debug('ANALYZERS: {}'.format(len(episode.analyzers)))
-            log.debug('DATAFEEDS: {}'.format(len(episode.datas)))
+
+            # Recover that bloody analytics:
+            analyzers_list = episode.analyzers.getnames()
+            analyzers_list.remove('communicator')
+
+            episode_result['counter'] = episode_number
+
+            for name in analyzers_list:
+                episode_result['counter'] = episode_number
+                episode_result[name] = episode.analyzers.getbyname(name).get_analysis()
+
 
         # Just in case -- we actually shouldnt get there except by some error:
         return None

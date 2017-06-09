@@ -163,6 +163,7 @@ class BTgymData():
 
         # # Keep sampling random enter points until all conditions are met:
         while attempts <= max_attempts:
+
             # Randomly sample record (row) from entire datafeed:
             first_row = int((self.data.shape[0] - self.episode_num_records - 1) * random.random())
             episode_first_day = self.data[first_row:first_row + 1].index[0]
@@ -190,7 +191,6 @@ class BTgymData():
             episode_sample = self.data[first_row: last_row]
             episode_sample_len = (episode_sample.index[-1] - episode_sample.index[0]).to_pytimedelta()
             self.log.info('Episode duration: {}.'.format(episode_sample_len, ))
-
             self.log.info('Total episode timegap: {}.'.format(episode_sample_len - self.max_episode_len))
 
             # Perfom data gap check:

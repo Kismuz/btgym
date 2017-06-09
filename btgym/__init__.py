@@ -19,6 +19,11 @@
 
 from gym.envs.registration import register
 
+from .datafeed import BTgymData
+from .server import BTgymServer
+from .strategy import BTgymStrategy
+from .envs.backtrader import BacktraderEnv
+
 register(
     id='backtrader-v0000',
     entry_point='btgym.envs:BacktraderEnv',

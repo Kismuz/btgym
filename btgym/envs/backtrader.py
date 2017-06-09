@@ -30,9 +30,7 @@ from gym import error, spaces
 
 import backtrader as bt
 
-from btgym.server import BTgymServer
-from btgym.strategy import BTgymStrategy
-from btgym.datafeed import BTgymData
+from btgym import BTgymServer, BTgymStrategy, BTgymData
 
 ############################## OpenAI Gym Environment  ##############################
 
@@ -56,33 +54,46 @@ class BacktraderEnv(gym.Env):
         # Verbosity control:
         self.log = logging.getLogger('Env')
         if verbose:
+
             if verbose == 2:
                 logging.getLogger().setLevel(logging.DEBUG)
+
             else:
                 logging.getLogger().setLevel(logging.INFO)
+
         else:
             logging.getLogger().setLevel(logging.ERROR)
+
         self.verbose = verbose
 
         # Check CSV datafile existence:
         if not os.path.isfile(str(filename)):
+
             if datafeed:
                 # If BTgymData instance been passed:
                 self.datafeed = datafeed
+
             else:
                 raise FileNotFoundError('BTgymData not set / data file not found: ' + str(filename))
+
         else:
+
             if datafeed:
                 # If BTgymData instance and datafile has been passed:
                 self.datafeed = datafeed
                 # Override data file:
                 self.datafeed.filename = filename
-            else:  # make default feed instance with given CSV file:
+
+            else:
+                # Make default feed instance with given CSV file:
                 self.datafeed = BTgymData(filename=filename)
 
         # Default configuration for Backtrader computational engine (cerebro).
-        # Executed only if no bt.Cerebro custom subclass has been given:
+        # Executed only if no bt.Cerebro custom subclass has been given.
+        # Note: bt.observers.DrawDown observer will be added to any BTgymStrategy instance
+        # by BTgymServer process at runtime.
         if not cerebro:
+
             self.cerebro = bt.Cerebro()
             self.cerebro.addstrategy(BTgymStrategy,
                                      state_dim_time=state_dim_time,
@@ -91,6 +102,7 @@ class BacktraderEnv(gym.Env):
             self.cerebro.broker.setcommission(commission=0.001)
             self.cerebro.addobserver(bt.observers.DrawDown)
             self.cerebro.addsizer(bt.sizers.SizerFix, stake=10)
+
         else:
             self.cerebro = cerebro
 
@@ -136,6 +148,7 @@ class BacktraderEnv(gym.Env):
         self.server.start()
         # Wait for server to startup
         time.sleep(1)
+
         self.log.info('Server started, pinging {} ...'.format(self.network_address))
         self.socket.send_pyobj('ping!')
         self.server_response = self.socket.recv_pyobj()
@@ -162,6 +175,7 @@ class BacktraderEnv(gym.Env):
             # Check if state_space is as expected:
             try:
                 assert self.server_response['state'].shape == self.observation_space.shape
+
             except:
                 msg = ('\nState observation shape mismatch!\n' +
                        'Shape set by env: {},\n' +
@@ -171,7 +185,9 @@ class BacktraderEnv(gym.Env):
                 self.log.info(msg)
                 self._stop_server()
                 raise AssertionError(msg)
+
             return self.server_response
+
         else:
             msg = 'Something went wrong. env.reset() cant get response from server.'
             self.log.info(msg)
@@ -184,10 +200,13 @@ class BacktraderEnv(gym.Env):
         """
         # Are you in the list?
         assert self.action_space.contains(action)
+
         # Send action to backtrader engine, recieve response
         self.socket.send_pyobj(self.server_actions[action])
         self.server_response = self.socket.recv_pyobj()
+
         self.log.debug('Step(): recieved response {} as {}'.format(self.server_response, type(self.server_response)))
+
         return self.server_response
 
     def _close(self):
@@ -208,24 +227,28 @@ class BacktraderEnv(gym.Env):
             self.log.info(msg)
             self.server_response = msg
             return False
+
         else:
             self.server_response = 'NONE'
             attempt = 0
+
             while not 'CONTROL' in self.server_response:
                 self.socket.send_pyobj('_done')
                 self.server_response = self.socket.recv_pyobj()
                 attempt += 1
                 self.log.debug('FORCE CONTROL MODE attempt: {}.\nResponse: {}'.format(attempt, self.server_response))
+
             return True
 
     def get_stat(self):
         """
         Returns last episode statistics.
-        Note: when evoked, forces running episode to terminate.
+        Note: when invoked, forces running episode to terminate.
         """
         if self._force_control_mode():
             self.socket.send_pyobj('_getstat')
             return self.socket.recv_pyobj()
+
         else:
             return self.server_response
 
@@ -235,14 +258,19 @@ class BacktraderEnv(gym.Env):
         """
         if not self.server:
             self.log.info('No server process found. Hint: Forgot to start?')
+
         else:
+
             if self._force_control_mode():
+
                 if not self.socket.closed:
                     self.socket.send_pyobj('_stop')
                     self.server_response = self.socket.recv_pyobj()
+
                 else:
                     self.server.terminate()
                     self.server.join()
+
             else:
                 self.log.info('Server seems stopped already.')
             self.log.info('Server process exit code: {}'.format(self.server.exitcode))
