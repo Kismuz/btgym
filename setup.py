@@ -30,6 +30,6 @@ setup(name='btgym',
       license='GPLv3+',
       classifiers=['Development Status :: 3 - Alpha',],
       version='0.0.1',
-      install_requires=['gym', 'backtrader[plotting]', 'pyzmq', 'numpy', ],
+      install_requires=['gym', 'backtrader', 'pyzmq', 'numpy', ],
       include_package_data=False,
 )

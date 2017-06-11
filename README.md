@@ -1,12 +1,13 @@
 ## Backtrader gym environment
-The idea is to implement  OpenAI Gym environment for Backtrader backtesting/trading library to test some
+The idea is to implement  OpenAI Gym environment for Backtrader backtesting/trading library to apply
 reinforcement learning algorithms in algo-trading domain.
 
 Backtrader is open-source algorithmic trading library, well structured and maintained at:
 http://github.com/mementum/backtrader
 http://www.backtrader.com/
 
-OpenAI Gym is.., well, everyone knows OpenAI.
+OpenAI Gym is...,
+well, everyone knows Gym.
 http://github.com/openai/gym
 
 ### Update 9.06.17: Basic work done. Few days to first working alpha.
@@ -17,21 +18,21 @@ Proposed data flow:
 
             BacktraderEnv                                  RL alorithm
                                            +-+
-   (episode mode)  +<------<action>------->| |<--------------------------------------+
+   (episode mode)  +<-----<action>--- -----| |<--------------------------------------+
           |        |                       |e|                                       |
-          +<------>+-------<state >------->|n|--->[feature  ]---><state>--+->[agent]-+
-          |        |       <matrix>        |v|    [estimator]             |     |
+          +<------>+------<state observ.>->|n|--->[feature  ]---><state>--+->[agent]-+
+          |        |      <      matrix >  |v|    [estimator]             |     |
           |        |                       |.|                            |     |
-    [Backtrader]   +-------<portfolio >--->|s|--->[reward   ]---><reward>-+     |
+    [Backtrader]   +------<portfolio >-- ->|s|--->[reward   ]---><reward>-+     |
     [Server    ]   |       <statistics>    |t|    [estimator]                   |
        |           |                       |e|                                  |
-       |           +-------<is_done>------>|p|--+>[runner]<-------------------->+
+       |           +------<is_done>-- ---->|p|--+>[runner]<-------------------->+
   (control mode)   |                       | |  |    |
-       |           +-------<aux.info>----->| |--+    |
+       |           +------<aux.info>--- -->| |--+    |
        |                                   +-+       |
-       +--<'stop'><-------------------->|env.close|--+
+       +--<'_stop'><------------------->|env._stop|--+
        |                                             |
-       +--<'reset'><------------------->|env.reset|--+
+       +--<'_reset'><------------------>|env.reset|--+
 
 
  Notes:

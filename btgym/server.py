@@ -32,10 +32,11 @@ import backtrader as bt
 
 class _EpisodeComm(bt.Analyzer):
     """
-    Adding this [misused] analyzer to cerebro instance enables strategy REQ/REP communication while in episode mode.
-    No, as part of core server operational logic, it should not be explicitly called/edited.
+    This [kind of] misused analyzer handles strategy/environment communication logic
+    while in episode mode.
+    As part of core server operational logic, it should not be explicitly called/edited.
     Yes, it actually analyzes nothing.
-    TODO: maybe callback?
+    TODO: make it kind of callback?
     """
     log = None
     socket = None
@@ -56,9 +57,17 @@ class _EpisodeComm(bt.Analyzer):
 
     def next(self):
         """
-        Actual env.step() communication is here.
+        Actual env.step() communication and episode termination is here.
         """
-        # Receive action from outer world:
+
+        # Gather response:
+        self.strategy.get_state()
+        self.strategy.get_reward()
+        self.strategy._get_done()
+        self.strategy.get_done()
+        self.strategy.get_info()
+
+        # Halt and wait to receive action from outer world:
         self.strategy.action = self.socket.recv_pyobj()
         self.log.debug('COMM recieved: {}'.format(self.strategy.action))
         self.response = {'state': self.strategy.state,
@@ -67,7 +76,17 @@ class _EpisodeComm(bt.Analyzer):
                          'info': self.strategy.info}
         # Send response:
         self.socket.send_pyobj(self.response)
-        self.log.debug('COMM sent: {}//{}'.format(self.response['done'], self.response['info']))
+        #self.log.debug('COMM sent: {}//{}'.format(self.response['done'], self.response['info']))
+
+        # If done, initiate fallback to Control Mode:
+        if self.strategy.is_done:
+            self.log.debug('RunStop() invoked with {}'.format(self.strategy.broker_message))
+            self.strategy.close()
+            self.strategy.env.runstop()
+
+        # Strategy housekeeping:
+        self.strategy.iteration += 1
+        self.strategy.broker_message = '-'
 
 ##############################  BTgym Server Main  ##############################
 

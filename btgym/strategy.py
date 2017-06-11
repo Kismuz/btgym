@@ -29,15 +29,15 @@ class BTgymStrategy(bt.Strategy):
     """
     Controls Environment inner dynamics and backtesting logic.
     Any State, Reward and Info computation logic can be implemented by
-    subclassing BTgymStrategy and overriding at least get_state(), get_reward(), get_info(),
-    set_datalines() methods.
+    subclassing BTgymStrategy and overriding at least get_state(), get_reward(),
+    get_info(), is_done() and set_datalines() methods.
     One can always go deeper and override __init__ () and next() methods for desired
     server cerebro engine behaviour, including order execution etc.
     Since it is bt.Strategy subclass, see:
     https://www.backtrader.com/docu/strategy.html
     for more information.
-    Note: bt.observers.DrawDown observer will be added to any BTgymStrategy instance
-    by BTgymServer process at runtime.
+    Note: bt.observers.DrawDown observer will be automatically added [by server process]
+    to BTgymStrategy instance at runtime.
     """
 
     # Set-list:
@@ -46,7 +46,7 @@ class BTgymStrategy(bt.Strategy):
     reward = None
     info = '_'
     is_done = False
-    iteration = 0
+    iteration = 1
     action = 'hold'
     order = None
     broker_message = '-'
@@ -69,7 +69,7 @@ class BTgymStrategy(bt.Strategy):
         """
         Default datalines are: Open, Low, High, Close.
         Any other custom data lines, indicators, etc.
-        should be explicitly defined by overriding this method.
+        should be explicitly defined by overriding this method [convention].
         Invoked once by Strategy.__init__().
         """
         pass
@@ -78,7 +78,7 @@ class BTgymStrategy(bt.Strategy):
         """
         Default state observation composer.
         Returns time-embedded environment state observation as [n,m] numpy matrix, where
-        n - number of signal features,
+        n - number of signal features [ == env.state_dim_0],
         m - time-embedding length.
         One can override this method,
         defining necessary calculations and return arbitrary shaped tensor.
@@ -87,7 +87,6 @@ class BTgymStrategy(bt.Strategy):
         Note1: 'data' referes to bt.startegy datafeeds and should be treated as such.
         Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in
         define_datalines().
-        Note2: 'n' is essentially == env.state_dim_0.
         """
         self.state = np.row_stack((self.data.open.get(size=self.p.state_dim_time),
                                    self.data.low.get(size=self.p.state_dim_time),
@@ -100,6 +99,8 @@ class BTgymStrategy(bt.Strategy):
         Same as for state composer applies. Can return raw portfolio
         performance statictics or enclose entire reward estimation algorithm.
         """
+        # Let it be 1-step portfolio value delta:
+        # TODO: make it more sensible
         self.reward = (self.stats.broker.value[0] - self.stats.broker.value[-1]) * 1e2
 
     def get_info(self):
@@ -124,27 +125,43 @@ class BTgymStrategy(bt.Strategy):
 
     def get_done(self):
         """
-        Default episode termination estimator, checks conditions episode stop is called upon,
-        <self.is_done> flag is also sent as part of environment response.
+        Episode termination estimator,
+        defines any trading logic conditions episode stop is called upon,
+        e.g. <OMG! Stop it, we became too rich!> .
+        It is just a structural a convention method.
+        If any desired condition is met, it should set <self.is_done> variable to True,
+        and [optionaly] set <self.broker_message> to some info string.
+        Episode runtime termination logic is:
+        ANY <get_done condition is met> OR ANY <_get_done() default condition is met>
         """
-        # Prepare for the worst and run checks:
-        self.is_done = True
-        # Will it be last step of the episode?:
-        if self.iteration >= self.data.numrecords - self.p.state_dim_time:
-            self.broker_message = 'END OF DATA!'
-        elif self.action == '_done':
-            self.broker_message = '_DONE SIGNAL RECEIVED'
-        # Any money left?:
-        elif self.stats.drawdown.maxdrawdown[0] > self.p.drawdown_call:
-            self.broker_message = 'DRAWDOWN CALL!'
-        # ...............
-        # Finally, it seems ok to continue:
-        else:
-            self.is_done = False
-            return
-        # Or else, initiate fallback to Control Mode; still executes strategy cycle once:
-        self.log.debug('RUNSTOP() invoked with {}'.format(self.broker_message))
-        self.env.runstop()
+        pass
+
+    def _get_done(self):
+        """
+        Default episode termination method,
+        checks base conditions episode stop is called upon:
+        1. Reached maximum episode duration. Need to check it explicitly, because <self.is_done> flag
+           is sent as part of environment response.
+        2. Got '_done' signal from outside. E.g. via env.reset() method invoked by outer RL algorithm.
+        3. Hit drawdown threshold.
+        """
+
+        # Base episode termination rules:
+        is_done_rules = [
+            # Will it be last step of the episode?:
+            (self.iteration >= self.data.numrecords - self.p.state_dim_time, 'END OF DATA!'),
+            # If agent/server forces episode termination?:
+            (self.action == '_done', '_DONE SIGNAL RECEIVED'),
+            # Any money left?:
+            (self.stats.drawdown.maxdrawdown[0] > self.p.drawdown_call, 'DRAWDOWN CALL!'),
+        ]
+
+        # Sweep through:
+        for (condition, message) in is_done_rules:
+            if condition:
+                self.is_done = True
+                self.broker_message = message
+
 
     def notify_order(self, order):
         """
@@ -154,7 +171,7 @@ class BTgymStrategy(bt.Strategy):
             # Buy/Sell order submitted/accepted to/by broker - Nothing to do
             return
         # Check if an order has been completed
-        # Attention: broker could reject order if not enougth cash
+        # Attention: broker could reject order if not enough cash
         if order.status in [order.Completed]:
             if order.isbuy():
                 self.broker_message = 'BUY executed,\nPrice: {:.5f}, Cost: {:.4f}, Comm: {:.4f}'. \
@@ -179,46 +196,21 @@ class BTgymStrategy(bt.Strategy):
         """
         Default implementation.
         Defines one step environment routine for server 'Episode mode';
-        At least, it should handle order execution logic according to action received and
-        call following methods:
-                self.get_done()
-                self.get_state()
-                self.get_reward()
-                self.get_info()  - this should be on last place.
+        At least, it should handle order execution logic according to action received.
         """
-        # Housekeeping:
-        self.iteration += 1
-        self.broker_message = '-'
 
-        # How we're doing?:
-        self.get_done()
+        # Simple action-to-order logic:
+        if self.action == 'hold' or self.order:
+            pass
+        elif self.action == 'buy':
+            self.order = self.buy()
+            self.broker_message = 'New BUY created; ' + self.broker_message
+        elif self.action == 'sell':
+            self.order = self.sell()
+            self.broker_message = 'New SELL created; ' + self.broker_message
+        elif self.action == 'close':
+            self.order = self.close()
+            self.broker_message = 'New CLOSE created; ' + self.broker_message
 
-        if not self.is_done:
-            # All the regular step  computations should be performed here [as function of <self.action>],
-            # this ensures async. server/client execution.
-            # Note: that implies that action execution is lagged for 1 step.
-            # <is_done> flag can also be rised here by trading logic events,
-            # e.g. <OMG! We became too rich!>/<Hide! Black Swan is coming!>
-
-            # Simple action-to-order logic:
-            if self.action == 'hold' or self.order:
-                pass
-            elif self.action == 'buy':
-                self.order = self.buy()
-                self.broker_message = 'New BUY created; ' + self.broker_message
-            elif self.action == 'sell':
-                self.order = self.sell()
-                self.broker_message = 'New SELL created; ' + self.broker_message
-            elif self.action == 'close':
-                self.order = self.close()
-                self.broker_message = 'New CLOSE created; ' + self.broker_message
-        else:  # time to leave:
-            self.close()
-
-        # Gather response:
-        self.get_state()
-        self.get_reward()
-        self.get_info()
-
-        # Somewhere at this point, server-side _EpisodeComm() is exchanging information with environment wrapper,
-        # obtaining <self.action> and sending <state,reward,done,info>... never mind.
+        # Somewhere after this point, server-side _EpisodeComm() is exchanging information with environment wrapper,
+        # obtaining <self.action> , composing and sending <state,reward,done,info> etc... never mind.

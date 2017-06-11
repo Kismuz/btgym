@@ -33,7 +33,9 @@ class BTgymData():
     Currently pipes CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine.
     Implements random episode data sampling.
     Suggested usage:
-        D = BTgymData(<params>)
+        ---user defined ---
+        D = BTgymData(<filename>,<params>)
+        ---inner BTgymServer routine---
         D.read_csv(<filename>)
         Repeat until bored:
             Episode = D.get_sample()

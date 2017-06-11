@@ -205,7 +205,8 @@ class BacktraderEnv(gym.Env):
         self.socket.send_pyobj(self.server_actions[action])
         self.server_response = self.socket.recv_pyobj()
 
-        self.log.debug('Step(): recieved response {} as {}'.format(self.server_response, type(self.server_response)))
+        self.log.debug('Env.step() recieved response:\n{}\nAs type: {}'.
+                       format(self.server_response, type(self.server_response)))
 
         return self.server_response
 
