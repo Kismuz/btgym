@@ -125,7 +125,7 @@ class BTgymData():
 
     def to_btfeed(self):
         """
-        Performs pandas-->bt.feed conversion.
+        Performs BTgymData-->bt.feed conversion.
         Returns bt.datafeed instance.
         """
         if not self.data.empty:
@@ -148,7 +148,7 @@ class BTgymData():
 
     def sample_random(self):
         """
-        Randomly samples continious subset of data and
+        Randomly samples continuous subset of data and
         returns BTgymData instance, holding continuous data episode with
         number of records ~ max_episode_len.
         """

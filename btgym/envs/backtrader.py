@@ -35,21 +35,23 @@ from btgym import BTgymServer, BTgymStrategy, BTgymData
 ############################## OpenAI Gym Environment  ##############################
 
 class BacktraderEnv(gym.Env):
+    """
+    OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
+    """
     metadata = {'render.modes': ['human']}
 
     def __init__(self,
                  filename=None,  # Source CSV data file; if given - overrides source file of given BTgymData instance.
                  datafeed=None,  # BTgymData-feed instance.
                  cerebro=None,   # bt.Cerbro subclass for server to execute,
-                                 # if None - Cerebro with default strategy will be used
+                                 # if None - Cerebro with default strategy will be used.
                  state_dim_time=10,  # environment/cerebro.strategy arg/ state observation time-embedding dimensionality
-                                     # get overriden if cerebro arg is not None
+                                     # get overridden if cerebro arg is not None.
                  state_dim_0=4,  # environment/cerebro.strategy arg/ state observation feature dimensionality,
-                                 # get overriden if cerebro arg is not None
+                                 # get overridden if cerebro arg is not None.
                  portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions
-                 port=5500,  # server arg/ port to use
-                 verbose=False, ):  # environment/server arg
-
+                 port=5500,  # server arg/ port to use.
+                 verbose=False, ):  #  verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
 
         # Verbosity control:
         self.log = logging.getLogger('Env')
@@ -255,7 +257,7 @@ class BacktraderEnv(gym.Env):
 
     def _stop_server(self):
         """
-        Stops BT server process.
+        Stops BT server process, releases network resources.
         """
         if not self.server:
             self.log.info('No server process found. Hint: Forgot to start?')

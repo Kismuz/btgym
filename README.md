@@ -26,7 +26,7 @@ or continuous (portfolio reballancing vector, as for portfolio optimisation sett
 - agent's goal is to maximize cumulative capital;
 - 'market liquidity' and 'capital impact' assumptions are met.
 
-####Data selection options for backtest agent training:
+#### Data selection options for backtest agent training:
 
 - random sampling:
   historic price dchange dataset is divided to training, cross-validation and testing subsets.
@@ -41,7 +41,7 @@ or continuous (portfolio reballancing vector, as for portfolio optimisation sett
   furthest to most recent training data.
   NOTE: only random sampling is currently implemented.
 
-####Environment engine:
+#### Environment engine:
 
   BTgym uses Backtrader framework for actual environment computations, see:
 https://www.backtrader.com/docu/index.html for extensive documentation.
@@ -81,50 +81,15 @@ Schematic data flow:
 
 ```
 
-TODO: REWRITE
- Notes:
- 1. While feature estimator and 'MDP state composer' are traditionally parts of RL algorithms,
-    reward estimation is often performed inside environment. In case of portfolio optimisation
-    reward function can be tricky, so it is reasonable to make it easyly accessable inside RL algorithm,
-    computed by [reward estimator] module and based on some set of portfolio statisics.
- 2. [state matrix], returned by Environment is 2d [m,n] array of floats, where m - number of Backtrader
-    Datafeed values: v[-n], v[-n+1], v[-n+2],...,v[0] i.e. from present step to n steps back, and
-    every v[i] is itself a vector of m features (open, close,...,volume,..., mov.avg., etc.).
-    - in case of n=1 process is obviously POMDP. Ensure MDP property by 'frame stacking' or/and
-      employing reccurent function approximators. When n>>1 process [somehow] approaches MDP (by means of
-      Takens' delay embedding theorem).
-    - features are defined by BTgymStrategy,wich is added. TODO: rewrite
-    - same holds for portfolio statistics.
-    <<TODO: pass features and stats as parameters of environment>> DONE,
- 3. Action space is discrete with basic actions: 'buy', 'sell', 'hold', 'close',
-    and control action 'done' for early epidsode termination.
-    <<!:very incomplete: order amounts? ordering logic not defined>>
- 4. This environment is meant to be [not nessesserily] paired with Tensorforce RL library,
-    that's where [runner] module came from.
 
- 5. Why Gym, not Universe VNC environment?
-    For algorithmic trading, clearly, vnc-type environment fits much better.
-    But to the best of my knowledge, OpenAI yet to publish docs on custom Universe VNC environment creation.
 
- 6. Why Backtrader library, not Zipline/PyAlgotrader etc.?
-    Those are excellent platforms, but what I really like about Backtrader is open programming logic
-    and ease of customisation. You dont't need to do tricks, say, to disable automatic calendar fetching
-    as with Zipline. I mean, it's nice feature and very convinient for trading people but prevents from
-    correctly running intraday trading strategies. IMO Backtrader is simply better suited for this kind of experiments.
-
- 7. Why Forex data?
-    Obviously environment is data/market agnostic. Backtesting dataset size is what matters.
-    Deep Q-value algorithm, most sample efficient among deep RL, take 1M steps just to lift off.
-    1 year 1 minute FX data contains about 300K samples.Feeding several years of data makes it realistic
-    to expect algorithm to converge for intraday trading (~1000-1500 steps per episode).
-    That's just preliminary experiment assumption, not proved!
-
-####Server inner operation details:
-    Backtrader server starts when BacktraderEnv is instantiated, runs as separate process, follows
-Request/Reply pattern (every request should be paired with reply message) and operates one of two modes:
+#### Server inner operation details:
+    Backtrader server starts when Btgym Environment is instantiated, runs as separate process, follows
+simple Request/Reply pattern (every request should be paired with reply message) and operates one of two modes:
 1. Control mode: initial mode, accepts only '_reset', '_stop' and '_getstat' messages. Any other message is ignored
-   and replied with simple info messge. Shuts down upon recieving 'stop' via environment close() method,
+   and replied with simple info messge. Shuts down upon recieving ' stop' via environment _stop_server() method,
    goes to episode mode upon 'reset' (via env.reset()) and send last run episode statistic (if any) upon '_getstat'
+   via env.get_stat().
 2. Episode mode: runs episode following passed bt.Cerebro subclass logic and parameters. Accepts <action> messages,
    returns tuple <[state observ. tensor], [reward], [is_done], [aux.info]>.
    Finishes episode upon recieving <action>='_done' or according to Cerebro logic, falls
@@ -140,7 +105,7 @@ nesessery Strategy next() actions (e.g. issues orders, computes observations etc
 composes environment response and sends it back to environment wrapper.
 Repeats until episode termination conditions are met.
 
-####Simple workflow:
+#### Simple workflow:
 1. Define strategy by subclassing BTgymStrategy, which is by itself is subclass of bt.Strategy and
    controls Environment inner dynamics and backtesting logic. As for RL-specific part,any State,
    Reward and Info computation logic can be implemented by overriding get_state(), get_reward(),
@@ -154,17 +119,6 @@ Repeats until episode termination conditions are met.
     BTgymData() is simply Backtrader.feeds class wrapper, which pipes
     CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine
     and implements random episode data sampling.
-    Suggested usage:
-        ---user defined ---
-        D = BTgymData(<filename>,<params>)
-        ---inner BTgymServer routine---
-        D.read_csv(<filename>)
-        Repeat until bored:
-            Episode = D.get_sample()
-            DataFeed = Episode.to_btfeed()
-            C = bt.Cerebro()
-            C.adddata(DataFeed)
-            C.run()
 
 4. Instantiate (or make) gym environment by passing Cerebro and BTgymData instance along with other kwargs
 
@@ -172,6 +126,180 @@ Repeats until episode termination conditions are met.
 
 See notebooks in examples directory.
 
+
+###  Reference [incomplete, see source files]:
+
+### class BacktraderEnv(gym.Env, args):
+   OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
+   See source code comments for parameters definitions.
+
+Methods:
+
+#### reset():
+    Implementation of OpenAI Gym env.reset method.
+    'Rewinds' backtrader server and starts new episode
+    within randomly selected time period.
+
+#### step(action):
+   Implementation of OpenAI Gym env.step method.
+   Relies on remote backtrader server for actual environment dynamics computing.
+   Accepts::
+    {'buy', 'sell', 'hold', 'close'} - actions;
+   Returns:
+    response - <dict>:
+        Observation - observation of the current environment state, could be any tensor;
+            default is [4,m] array of <fl32>, where:
+            m - num. of last datafeed values,
+            4 - num. of data features (O,H,L,CS lines).
+       Reward - current portfolio statistics for environment reward estimation;
+       Done - episode termination flag;
+       Info - auxiliary information.
+
+#### close():
+    [kind of] Implementation of OpenAI Gym env.close method.
+    Forces BTgymServer to get in 'Control Mode'.
+
+#### get_stat():
+    Returns last episode statistics.
+    Note: when invoked, forces running episode to terminate.
+
+_stop_server():
+        Stops BT server process, releases network resources.
+
+### class BTgymStrategy():
+    Controls Environment inner dynamics and backtesting logic.
+Any State, Reward and Info computation logic can be implemented by
+subclassing BTgymStrategy and overriding at least get_state(), get_reward(),
+get_info(), is_done() and set_datalines() methods.
+One can always go deeper and override __init__ () and next() methods for desired
+server cerebro engine behaviour, including order execution etc.
+Since it is bt.Strategy subclass, see:
+https://www.backtrader.com/docu/strategy.html
+for more information.
+Note: bt.observers.DrawDown observer will be automatically added [by server process]
+to BTgymStrategy instance at runtime.
+
+Specific methods:
+
+#### set_datalines():
+    Default datalines are: Open, Low, High, Close (see Backtrader docs).
+    Any other custom data lines, indicators, etc.
+    should be explicitly defined by overriding this method [just a convention].
+    Invoked once by Strategy.__init__().
+
+#### get_state():
+    Default state observation composer.
+    Returns time-embedded environment state observation as [n,m] numpy matrix, where
+    n - number of signal features [ == env.state_dim_0],
+    m - time-embedding length.
+    One can override this method,
+    defining necessary calculations and return arbitrary shaped tensor.
+    It's possible either to compute entire featurized environment state
+    or just pass raw price data to RL algorithm featurizer module.
+    Note1: 'data' referes to bt.startegy datafeeds and should be treated as such.
+    Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in
+    define_datalines().
+
+#### get_reward():
+    Default reward estimator.
+    Same as for state composer applies. Can return raw portfolio
+    performance statictics or enclose entire reward estimation algorithm.
+
+#### get_info():
+    Composes information part of environment response,
+    can be any string/object. Override by own taste.
+
+#### get_done():
+    Episode termination estimator,
+    defines any trading logic conditions episode stop is called upon,
+    e.g. <OMG! Stop it, we became too rich!> .
+    It is just a structural convention method.
+    If any desired condition is met, it should set <self.is_done> variable to True,
+    and [optionaly] set <self.broker_message> to some info string.
+    Episode runtime termination logic is:
+    ANY <get_done() condition is met> OR ANY <_get_done() default condition is met>
+
+#### _get_done():
+    Default [hidden] episode termination method,
+    checks base conditions episode stop is called upon:
+    1. Reached maximum episode duration. Need to check it explicitly, because <self.is_done> flag
+       is sent as part of environment response.
+    2. Got '_done' signal from outside. E.g. via env.reset() method invoked by outer RL algorithm.
+    3. Hit drawdown threshold.
+
+#### next():
+    Default implementation for BTgymStrategy exists.
+    Defines one step environment routine for server 'Episode mode';
+    At least, it should handle order execution logic according to action received.
+
+### class BTgymData():
+Backtrader.feeds class wrapper.
+Currently pipes CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine.
+Implements random episode data sampling.
+Default parameters are set to correctly parse 1 minute Forex generic ASCII
+data files from www.HistData.com:
+See source code comments for parameters definitions.
+Suggested usage:
+    ---user defined ---
+    D = BTgymData(<filename>,<params>)
+    ---inner BTgymServer routine---
+    D.read_csv(<filename>)
+    Repeat until bored:
+        Episode = D.get_sample()
+        DataFeed = Episode.to_btfeed()
+        C = bt.Cerebro()
+        C.adddata(DataFeed)
+        C.run()
+
+Methods:
+
+#### read_csv(filename):
+    Loads data: CSV file.
+
+#### sample_random():
+    Randomly samples continuous subset of data and
+    returns BTgymData instance, holding continuous data episode with
+    number of records ~ max_episode_len.
+
+#### to_btfeed():
+        Performs BTgymData-->bt.feed conversion.
+        Returns bt.datafeed instance.
+
+
+### Notes:
+ 1. There is a choice: where to place most of state observation/reward estimation preprocessing such as
+    featurization, normalization, frame skipping and other MDP-zation:
+    either to put it inside environment or to do it inside RL algorytm. While feature estimator are usually
+    parts of RL algorithms, reward estimation is often performed inside environment. In case of portfolio optimisation
+    reward function can be tricky (not mention state preparation), so it is reasonable to make it easyly accessable
+    inside single module for ease of experimenting and hyperparameter tuning.
+      BTgym allows to do it both ways: either pass "raw" state observation and do all heavy work in RL loop by employng
+    favorite data preprocessing techniques or put it inside get_state() and get_reward() methods. As a mention,it seems
+    reasonable to pass all preprocessing work to server, since it can be done asynchronious to agent own computations
+    and somehow speed up training.
+ 2. [state matrix], returned by Environment by default is 2d [m,n] array of floats, where m - number of Backtrader
+    Datafeed values: v[-n], v[-n+1], v[-n+2],...,v[0] i.e. from present step to n steps back, and
+    every v[i] is itself a vector of m features (open, close,...,volume,..., mov.avg., etc.).
+    - in case of n=1 process is obviously POMDP. Ensure MDP property by 'frame stacking' or/and
+    employing reccurent function approximators. When n>>1 process [somehow] approaches MDP (by means of
+    Takens' delay embedding theorem).
+
+ 5. Why Gym, not Universe VNC environment?
+    For algorithmic trading, clearly, vnc-type environment fits much better.
+    But to best of my knowledge, OpenAI yet to publish "DIY VNC environment" kit.
+
+ 6. Why Backtrader library, not Zipline/PyAlgotrader etc.?
+    Those are excellent platforms, but what I really like about Backtrader is open and clear [to me]  programming logic
+    and ease of customisation. You dont't need to do tricks, say, to disable automatic calendar fetching
+    as with Zipline. I mean, it's nice feature and very convinient for trading people but prevents from
+    correctly running intraday trading strategies. IMO Backtrader is simply better suited for this kind of experiments.
+
+ 7. Why Currency data by default?
+    Obviously environment is data/market agnostic. Backtesting dataset size is what matters.
+    Deep Q-value algorithm, most sample efficient among deep RL, take 1M steps just to lift off.
+    1 year 1 minute FX data contains about 300K samples. Feeding several years of data makes it realistic
+    to expect algorithm to converge for intra-day trading setting (~1400-2800 steps per episode).
+    That's just preliminary experiment assumption, not proved!
 
 
 
