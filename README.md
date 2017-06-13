@@ -10,8 +10,10 @@ OpenAI Gym is...,
 well, everyone knows Gym.
 http://github.com/openai/gym
 
-### Update 9.06.17: Basic work done. Few days to first working alpha.
+#### Update 9.06.17: Basic work done. Few days to first working alpha.
+#### Update 14.06.17: still working. No examples yet.
 
+TODO: QUICKSTART AND EXAMPLES
 
 ####Outline:
 
@@ -49,9 +51,9 @@ In brief, assuming basic backtrader and OpenAI Gym knowledge:
 - User defines backtrading engine parameters by composing Backtrader.Cerebro() subclass,
   data feed as subclass of Backtrader.datafeeds() and passes it as arguments when making BTgym
   environment. See backtrader docs for details.
-- Envoronment starts separate server process responsible for rendering gym environment
+- Environment starts separate server process responsible for rendering gym environment
   queries like env.reset() and env.step() by repeatedly sampling episodes form given data and running
-  Cerebro enginge on it. See OpenAI Gym for details.
+  backtasting Cerebro enginge on it. See OpenAI Gym for definitions.
 
 See notebooks in examples directory.
 
@@ -161,7 +163,12 @@ Methods:
 
 #### get_stat():
     Returns last episode statistics.
-    Note: when invoked, forces running episode to terminate.
+    Currently, returns <dict.> of results, obtained from calling all
+    attached to Cerebro() analyzers by their get_analysis() methods.
+    See backtrader docs for analyzers reference.
+    Note:
+    1. Drawdown Analyzer is get attached by default.
+    2. When invoked, forces running episode to terminate.
 
 _stop_server():
         Stops BT server process, releases network resources.
@@ -190,10 +197,10 @@ Specific methods:
 #### get_state():
     Default state observation composer.
     Returns time-embedded environment state observation as [n,m] numpy matrix, where
-    n - number of signal features [ == env.state_dim_0],
+    n - number of signal features [ == env.state_dim_0, def == 4 ],
     m - time-embedding length.
     One can override this method,
-    defining necessary calculations and return arbitrary shaped tensor.
+    defining necessary calculations and returning arbitrary shaped tensor.
     It's possible either to compute entire featurized environment state
     or just pass raw price data to RL algorithm featurizer module.
     Note1: 'data' referes to bt.startegy datafeeds and should be treated as such.
@@ -203,7 +210,7 @@ Specific methods:
 #### get_reward():
     Default reward estimator.
     Same as for state composer applies. Can return raw portfolio
-    performance statictics or enclose entire reward estimation algorithm.
+    performance statictics or enclose entire reward estimation module.
 
 #### get_info():
     Composes information part of environment response,
@@ -277,6 +284,7 @@ Methods:
     favorite data preprocessing techniques or put it inside get_state() and get_reward() methods. As a mention,it seems
     reasonable to pass all preprocessing work to server, since it can be done asynchronious to agent own computations
     and somehow speed up training.
+
  2. [state matrix], returned by Environment by default is 2d [m,n] array of floats, where m - number of Backtrader
     Datafeed values: v[-n], v[-n+1], v[-n+2],...,v[0] i.e. from present step to n steps back, and
     every v[i] is itself a vector of m features (open, close,...,volume,..., mov.avg., etc.).
@@ -284,22 +292,36 @@ Methods:
     employing reccurent function approximators. When n>>1 process [somehow] approaches MDP (by means of
     Takens' delay embedding theorem).
 
- 5. Why Gym, not Universe VNC environment?
+ 3. Why Gym, not Universe VNC environment?
     For algorithmic trading, clearly, vnc-type environment fits much better.
-    But to best of my knowledge, OpenAI yet to publish "DIY VNC environment" kit.
+    But to best of my knowledge, OpenAI yet to publish "DIY VNC environment" kit. Time will tell.
 
- 6. Why Backtrader library, not Zipline/PyAlgotrader etc.?
+ 4. Why Backtrader library, not Zipline/PyAlgotrader etc.?
     Those are excellent platforms, but what I really like about Backtrader is open and clear [to me]  programming logic
     and ease of customisation. You dont't need to do tricks, say, to disable automatic calendar fetching
     as with Zipline. I mean, it's nice feature and very convinient for trading people but prevents from
     correctly running intraday trading strategies. IMO Backtrader is simply better suited for this kind of experiments.
 
- 7. Why Currency data by default?
+ 5. Why Currency data by default?
     Obviously environment is data/market agnostic. Backtesting dataset size is what matters.
     Deep Q-value algorithm, most sample efficient among deep RL, take 1M steps just to lift off.
     1 year 1 minute FX data contains about 300K samples. Feeding several years of data makes it realistic
     to expect algorithm to converge for intra-day trading setting (~1400-2800 steps per episode).
-    That's just preliminary experiment assumption, not proved!
+    That's just preliminary experiment assumption, not proved at all!
+
+ 6. Mostly for backtrader users: as you can see, in case of reinforcement learning, bt.Strategy is mostly used for
+    technical and service tasks, like data preparations and order executions, while all trading desisions are taken
+    by RL agent.
+
+ 7. Realisation note: my commit was to treat backtrader engine as black box and create wrapper using explicitly
+    defined and documented methods only. While it is obviously not efficiency-optimised approach, I think
+    it is still decent solution with backend-like attitude.
+
+ 7. General purpose of making this bridge is to give RL folks convinient and recognizible framework for
+    running experiments on algorithmic trading tasks. For backtrader users, hopefully, it can be possibility to
+    explore new field of decision-making algorithms.
+
+#### This work is in early development stage, any rports, feedback and suggestions are welcome.
 
 
 

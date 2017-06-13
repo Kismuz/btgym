@@ -30,13 +30,12 @@ import backtrader as bt
 ###################### BT Server in-episode communocation method ##############
 
 
-class _EpisodeComm(bt.Analyzer):
+class _BTgymAnalyzer(bt.Analyzer):
     """
     This [kind of] misused analyzer handles strategy/environment communication logic
     while in episode mode.
     As part of core server operational logic, it should not be explicitly called/edited.
     Yes, it actually analyzes nothing.
-    TODO: make it kind of callback?
     """
     log = None
     socket = None
@@ -241,8 +240,8 @@ class BTgymServer(multiprocessing.Process):
                 cerebro.addobserver(bt.observers.DrawDown)
 
             # Add communication utility:
-            cerebro.addanalyzer(_EpisodeComm,
-                                _name='communicator',)
+            cerebro.addanalyzer(_BTgymAnalyzer,
+                                _name='env_analyzer',)
 
             # Add random episode data:
             cerebro.adddata(self.datafeed.sample_random().to_btfeed())
@@ -253,7 +252,7 @@ class BTgymServer(multiprocessing.Process):
 
             # Recover that bloody analytics:
             analyzers_list = episode.analyzers.getnames()
-            analyzers_list.remove('communicator')
+            analyzers_list.remove('env_analyzer')
 
             episode_result['counter'] = episode_number
 
