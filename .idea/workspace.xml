@@ -4,11 +4,6 @@
     <list default="true" id="85c54f3b-0306-4cd8-9343-ada4a4c0d61f" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/README.md" afterPath="$PROJECT_DIR$/README.md" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/btgym/datafeed.py" afterPath="$PROJECT_DIR$/btgym/datafeed.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/btgym/envs/backtrader.py" afterPath="$PROJECT_DIR$/btgym/envs/backtrader.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/btgym/server.py" afterPath="$PROJECT_DIR$/btgym/server.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/btgym/strategy.py" afterPath="$PROJECT_DIR$/btgym/strategy.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/setup.py" afterPath="$PROJECT_DIR$/setup.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -30,11 +25,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="server.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="server.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/btgym/server.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1156">
-              <caret line="83" column="33" lean-forward="false" selection-start-line="83" selection-start-column="33" selection-end-line="83" selection-end-column="33" />
+            <state relative-caret-position="-352">
+              <caret line="67" column="32" lean-forward="false" selection-start-line="67" selection-start-column="32" selection-end-line="67" selection-end-column="32" />
               <folding>
                 <element signature="e#837#851#0" expanded="true" />
               </folding>
@@ -45,24 +40,40 @@
       <file leaf-file-name="datafeed.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/btgym/datafeed.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="278">
-              <caret line="36" column="42" lean-forward="false" selection-start-line="36" selection-start-column="42" selection-end-line="36" selection-end-column="42" />
+            <state relative-caret-position="616">
+              <caret line="38" column="30" lean-forward="false" selection-start-line="38" selection-start-column="30" selection-end-line="38" selection-end-column="30" />
               <folding>
                 <element signature="e#837#851#0" expanded="true" />
+                <marker date="1497166425215" expanded="true" signature="1026:1596" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1497166425215" expanded="true" signature="1689:1957" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="2765:2864" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="2973:3866" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="3761:3866" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="3906:4765" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="3915:3980" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1497166425215" expanded="true" signature="4139:4590" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="4604:4765" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="4791:5770" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="4800:4899" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1497166425215" expanded="true" signature="4931:5598" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="5613:5770" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="5809:5997" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1497166425215" expanded="true" signature="6649:8747" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="7125:7529" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="7631:7749" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="8455:8632" ph="..." />
+                <marker date="1497166425215" expanded="true" signature="8650:8747" ph="..." />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="README.md" pinned="false" current-in-tab="false">
+      <file leaf-file-name="README.md" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/README.md">
-          <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
-            <state split_layout="FIRST">
-              <first_editor relative-caret-position="506">
-                <caret line="23" column="33" lean-forward="false" selection-start-line="23" selection-start-column="33" selection-end-line="23" selection-end-column="33" />
-                <folding />
-              </first_editor>
-              <second_editor />
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1276">
+              <caret line="58" column="40" lean-forward="false" selection-start-line="58" selection-start-column="40" selection-end-line="58" selection-end-column="40" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -70,10 +81,24 @@
       <file leaf-file-name="backtrader.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/btgym/envs/backtrader.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="721">
-              <caret line="207" column="60" lean-forward="false" selection-start-line="207" selection-start-column="60" selection-end-line="207" selection-end-column="60" />
+            <state relative-caret-position="4290">
+              <caret line="208" column="23" lean-forward="false" selection-start-line="208" selection-start-column="23" selection-end-line="208" selection-end-column="23" />
               <folding>
                 <element signature="e#858#872#0" expanded="true" />
+                <marker date="1497166426347" expanded="true" signature="8506:8708" ph="..." />
+                <marker date="1497166426347" expanded="true" signature="8515:8638" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1497166426347" expanded="true" signature="8744:9468" ph="..." />
+                <marker date="1497166426347" expanded="true" signature="8753:8808" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1497166426347" expanded="true" signature="8905:9045" ph="..." />
+                <marker date="1497166426347" expanded="true" signature="9060:9468" ph="..." />
+                <marker date="1497166426347" expanded="true" signature="9184:9443" ph="..." />
+                <marker date="1497166426347" expanded="true" signature="9493:9808" ph="..." />
+                <marker date="1497166426347" expanded="true" signature="9502:9623" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1497166426347" expanded="true" signature="9662:9753" ph="..." />
+                <marker date="1497166426347" expanded="true" signature="9846:9894" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1497166426347" expanded="true" signature="10058:10328" ph="..." />
+                <marker date="1497166426347" expanded="true" signature="10102:10222" ph="..." />
+                <marker date="1497166426347" expanded="true" signature="10245:10328" ph="..." />
               </folding>
             </state>
           </provider>
@@ -82,10 +107,12 @@
       <file leaf-file-name="strategy.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/btgym/strategy.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-72">
+            <state relative-caret-position="792">
               <caret line="39" column="7" lean-forward="false" selection-start-line="39" selection-start-column="7" selection-end-line="39" selection-end-column="7" />
               <folding>
                 <element signature="e#837#860#0" expanded="true" />
+                <marker date="1497166426015" expanded="true" signature="1036:1254" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1497166426015" expanded="true" signature="9542:9557" ph="..." />
               </folding>
             </state>
           </provider>
@@ -151,20 +178,20 @@
         <option value="$PROJECT_DIR$/btgym/envs/strategy.py" />
         <option value="$PROJECT_DIR$/btgym/envs/server.py" />
         <option value="$PROJECT_DIR$/btgym/__init__.py" />
-        <option value="$PROJECT_DIR$/README.md" />
         <option value="$PROJECT_DIR$/setup.py" />
         <option value="$PROJECT_DIR$/btgym/envs/backtrader.py" />
-        <option value="$PROJECT_DIR$/btgym/server.py" />
         <option value="$PROJECT_DIR$/btgym/strategy.py" />
         <option value="$PROJECT_DIR$/btgym/datafeed.py" />
+        <option value="$PROJECT_DIR$/btgym/server.py" />
+        <option value="$PROJECT_DIR$/README.md" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="524" />
-    <option name="y" value="82" />
+    <option name="x" value="132" />
+    <option name="y" value="52" />
     <option name="width" value="1788" />
-    <option name="height" value="1347" />
+    <option name="height" value="1148" />
   </component>
   <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="1" id="Add" />
@@ -320,13 +347,14 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="524" y="82" width="1788" height="1347" extended-state="0" />
+    <frame x="132" y="52" width="1788" height="1148" extended-state="0" />
+    <editor active="true" />
     <layout>
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.2832569" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.28299776" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3295362" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -334,23 +362,12 @@
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Data View" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.28299776" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
-      <window_info id="Data View" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="VcsContentAnnotationSettings">
@@ -363,17 +380,7 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/README.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
-        <state split_layout="SPLIT">
-          <first_editor relative-caret-position="0">
-            <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-            <folding />
-          </first_editor>
-          <second_editor />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/README.md" />
     <entry file="file://$PROJECT_DIR$/gym_bt/__init__.py" />
     <entry file="file://$PROJECT_DIR$/setup.py">
       <provider selected="true" editor-type-id="text-editor">
@@ -385,17 +392,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/gym_bt/envs/__init__.py" />
     <entry file="file://$PROJECT_DIR$/gym_bt/envs/bt_env.py" />
-    <entry file="file://$PROJECT_DIR$/README.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
-        <state split_layout="SPLIT">
-          <first_editor relative-caret-position="0">
-            <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-            <folding />
-          </first_editor>
-          <second_editor />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/README.md" />
     <entry file="file://$APPLICATION_HOME_DIR$/helpers/python-skeletons/multiprocessing/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-2068">
@@ -411,7 +408,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -419,7 +415,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="440">
           <caret line="20" column="0" lean-forward="true" selection-start-line="20" selection-start-column="0" selection-end-line="20" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -429,6 +424,20 @@
           <caret line="32" column="55" lean-forward="false" selection-start-line="32" selection-start-column="55" selection-end-line="32" selection-end-column="55" />
           <folding>
             <element signature="e#858#872#0" expanded="true" />
+            <marker date="1497166426347" expanded="true" signature="8506:8708" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="8515:8638" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="8744:9468" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="8753:8808" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="8905:9045" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9060:9468" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9184:9443" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9493:9808" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9502:9623" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="9662:9753" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9846:9894" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="10058:10328" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="10102:10222" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="10245:10328" ph="..." />
           </folding>
         </state>
       </provider>
@@ -439,6 +448,8 @@
           <caret line="112" column="55" lean-forward="true" selection-start-line="112" selection-start-column="55" selection-end-line="112" selection-end-column="55" />
           <folding>
             <element signature="e#837#860#0" expanded="true" />
+            <marker date="1497166426015" expanded="true" signature="1036:1254" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426015" expanded="true" signature="9542:9557" ph="..." />
           </folding>
         </state>
       </provider>
@@ -449,6 +460,25 @@
           <caret line="29" column="15" lean-forward="false" selection-start-line="29" selection-start-column="6" selection-end-line="29" selection-end-column="15" />
           <folding>
             <element signature="e#837#851#0" expanded="true" />
+            <marker date="1497166425215" expanded="true" signature="1026:1596" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="1689:1957" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="2765:2864" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="2973:3866" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="3761:3866" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="3906:4765" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="3915:3980" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="4139:4590" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="4604:4765" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="4791:5770" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="4800:4899" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="4931:5598" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="5613:5770" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="5809:5997" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="6649:8747" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="7125:7529" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="7631:7749" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="8455:8632" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="8650:8747" ph="..." />
           </folding>
         </state>
       </provider>
@@ -467,7 +497,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="484">
           <caret line="22" column="31" lean-forward="true" selection-start-line="22" selection-start-column="31" selection-end-line="22" selection-end-column="31" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -480,15 +509,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/README.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
-        <state split_layout="FIRST">
-          <first_editor relative-caret-position="506">
-            <caret line="23" column="33" lean-forward="false" selection-start-line="23" selection-start-column="33" selection-end-line="23" selection-end-column="33" />
-            <folding />
-          </first_editor>
-          <second_editor />
-        </state>
-      </provider>
       <provider editor-type-id="text-editor">
         <state relative-caret-position="528">
           <caret line="24" column="81" lean-forward="false" selection-start-line="24" selection-start-column="81" selection-end-line="24" selection-end-column="81" />
@@ -520,6 +540,25 @@
           <caret line="29" column="15" lean-forward="false" selection-start-line="29" selection-start-column="6" selection-end-line="29" selection-end-column="15" />
           <folding>
             <element signature="e#837#851#0" expanded="true" />
+            <marker date="1497166425215" expanded="true" signature="1026:1596" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="1689:1957" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="2765:2864" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="2973:3866" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="3761:3866" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="3906:4765" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="3915:3980" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="4139:4590" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="4604:4765" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="4791:5770" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="4800:4899" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="4931:5598" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="5613:5770" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="5809:5997" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="6649:8747" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="7125:7529" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="7631:7749" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="8455:8632" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="8650:8747" ph="..." />
           </folding>
         </state>
       </provider>
@@ -530,6 +569,20 @@
           <caret line="32" column="55" lean-forward="false" selection-start-line="32" selection-start-column="55" selection-end-line="32" selection-end-column="55" />
           <folding>
             <element signature="e#858#872#0" expanded="true" />
+            <marker date="1497166426347" expanded="true" signature="8506:8708" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="8515:8638" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="8744:9468" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="8753:8808" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="8905:9045" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9060:9468" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9184:9443" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9493:9808" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9502:9623" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="9662:9753" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9846:9894" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="10058:10328" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="10102:10222" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="10245:10328" ph="..." />
           </folding>
         </state>
       </provider>
@@ -540,6 +593,8 @@
           <caret line="112" column="55" lean-forward="true" selection-start-line="112" selection-start-column="55" selection-end-line="112" selection-end-column="55" />
           <folding>
             <element signature="e#837#860#0" expanded="true" />
+            <marker date="1497166426015" expanded="true" signature="1036:1254" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426015" expanded="true" signature="9542:9557" ph="..." />
           </folding>
         </state>
       </provider>
@@ -616,23 +671,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/README.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
-        <state split_layout="FIRST">
-          <first_editor relative-caret-position="506">
-            <caret line="23" column="33" lean-forward="false" selection-start-line="23" selection-start-column="33" selection-end-line="23" selection-end-column="33" />
-            <folding />
-          </first_editor>
-          <second_editor />
-        </state>
-      </provider>
-      <provider editor-type-id="text-editor">
-        <state relative-caret-position="-9">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/setup.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="704">
@@ -643,41 +681,84 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/btgym/strategy.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-72">
+        <state relative-caret-position="792">
           <caret line="39" column="7" lean-forward="false" selection-start-line="39" selection-start-column="7" selection-end-line="39" selection-end-column="7" />
           <folding>
             <element signature="e#837#860#0" expanded="true" />
+            <marker date="1497166426015" expanded="true" signature="1036:1254" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426015" expanded="true" signature="9542:9557" ph="..." />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/btgym/datafeed.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="278">
-          <caret line="36" column="42" lean-forward="false" selection-start-line="36" selection-start-column="42" selection-end-line="36" selection-end-column="42" />
+        <state relative-caret-position="616">
+          <caret line="38" column="30" lean-forward="false" selection-start-line="38" selection-start-column="30" selection-end-line="38" selection-end-column="30" />
           <folding>
             <element signature="e#837#851#0" expanded="true" />
+            <marker date="1497166425215" expanded="true" signature="1026:1596" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="1689:1957" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="2765:2864" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="2973:3866" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="3761:3866" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="3906:4765" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="3915:3980" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="4139:4590" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="4604:4765" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="4791:5770" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="4800:4899" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="4931:5598" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="5613:5770" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="5809:5997" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166425215" expanded="true" signature="6649:8747" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="7125:7529" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="7631:7749" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="8455:8632" ph="..." />
+            <marker date="1497166425215" expanded="true" signature="8650:8747" ph="..." />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/btgym/envs/backtrader.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="721">
-          <caret line="207" column="60" lean-forward="false" selection-start-line="207" selection-start-column="60" selection-end-line="207" selection-end-column="60" />
+        <state relative-caret-position="4290">
+          <caret line="208" column="23" lean-forward="false" selection-start-line="208" selection-start-column="23" selection-end-line="208" selection-end-column="23" />
           <folding>
             <element signature="e#858#872#0" expanded="true" />
+            <marker date="1497166426347" expanded="true" signature="8506:8708" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="8515:8638" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="8744:9468" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="8753:8808" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="8905:9045" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9060:9468" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9184:9443" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9493:9808" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9502:9623" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="9662:9753" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="9846:9894" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1497166426347" expanded="true" signature="10058:10328" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="10102:10222" ph="..." />
+            <marker date="1497166426347" expanded="true" signature="10245:10328" ph="..." />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/btgym/server.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1156">
-          <caret line="83" column="33" lean-forward="false" selection-start-line="83" selection-start-column="33" selection-end-line="83" selection-end-column="33" />
+        <state relative-caret-position="-352">
+          <caret line="67" column="32" lean-forward="false" selection-start-line="67" selection-start-column="32" selection-end-line="67" selection-end-column="32" />
           <folding>
             <element signature="e#837#851#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/README.md">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1276">
+          <caret line="58" column="40" lean-forward="false" selection-start-line="58" selection-start-column="40" selection-end-line="58" selection-end-column="40" />
+          <folding />
         </state>
       </provider>
     </entry>

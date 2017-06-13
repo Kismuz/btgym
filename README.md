@@ -11,6 +11,38 @@ well, everyone knows Gym.
 http://github.com/openai/gym
 
 ### Update 9.06.17: Basic work done. Few days to first working alpha.
+
+
+Outline:
+
+Consider reinforcement learning setup for equity/currency trading:
+- agent action space either discrete ('buy', 'sell', 'close'[position], 'hold'[do nothing])
+or continuous (portfolio reballancing vector, as for portfolio optimisation setting);
+- environment is episodic: maximum  episode duration and episode termination conditions
+  are set;
+- for every timestep of the episode agent is given environment state observation as tensor of last
+  m price open/high/low/close values for every equity considered and based on that information is making
+  trading/investemeent decisions.
+- agent's goal is to maximize cumulative capital;
+- 'market liquidity' and 'capital impact' assumptions are met.
+
+Data selection for backtest agent training:
+
+- random sampling:
+  historic price dchange ataset is divided to training, cross-validation and testing subsets.
+  Since agent actions do not influence market,it is posible to randomly sample continuous subset
+  of training data for every episode. This is most data-efficient method.
+  Cross-validation and testing performed later as usual on most "recent" data;
+- sequential sampling:
+  full dataset is feeded sequentially as if agent is performing real-time trading,
+  episode by episode. Most reality-like, least data-efficient;
+- sliding time-window sampling:
+  mixture of above, episde is sampled randomly from comparatively short time period, sliding from
+  furthest to most recent training data.
+  NOTE: only random sampling is currently implemented.
+
+
+
 ```
 OUTLINE:
 
@@ -23,10 +55,10 @@ Proposed data flow:
           +<------>+------<state observ.>->|n|--->[feature  ]---><state>--+->[agent]-+
           |        |      <      matrix >  |v|    [estimator]             |     |
           |        |                       |.|                            |     |
-    [Backtrader]   +------<portfolio >-- ->|s|--->[reward   ]---><reward>-+     |
-    [Server    ]   |       <statistics>    |t|    [estimator]                   |
+    [Backtrader]   +------<portfolio  >--->|s|--->[reward   ]---><reward>-+     |
+    [Server    ]   |      <statistics>     |t|    [estimator]                   |
        |           |                       |e|                                  |
-       |           +------<is_done>-- ---->|p|--+>[runner]<-------------------->+
+       |           +------<is_done>------->|p|--+>[runner]<-------------------->+
   (control mode)   |                       | |  |    |
        |           +------<aux.info>--- -->| |--+    |
        |                                   +-+       |
@@ -34,7 +66,7 @@ Proposed data flow:
        |                                             |
        +--<'_reset'><------------------>|env.reset|--+
 
-
+TODO: REWRITE
  Notes:
  1. While feature estimator and 'MDP state composer' are traditionally parts of RL algorithms,
     reward estimation is often performed inside environment. In case of portfolio optimisation
@@ -46,10 +78,9 @@ Proposed data flow:
     - in case of n=1 process is obviously POMDP. Ensure MDP property by 'frame stacking' or/and
       employing reccurent function approximators. When n>>1 process [somehow] approaches MDP (by means of
       Takens' delay embedding theorem).
-    - features are defined by WorkHorseStrategy.next() method,
-      wich itself lives inside bt_server_process() function, and can be customised as needed.
+    - features are defined by BTgymStrategy,wich is added. TODO: rewrite
     - same holds for portfolio statistics.
-    <<TODO: pass features and stats as parameters of environment>>
+    <<TODO: pass features and stats as parameters of environment>> DONE,
  3. Action space is discrete with basic actions: 'buy', 'sell', 'hold', 'close',
     and control action 'done' for early epidsode termination.
     <<!:very incomplete: order amounts? ordering logic not defined>>
