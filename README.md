@@ -177,7 +177,7 @@ Accepts:
 Returns:
 - response - <dict.>:
     - Observation - observation of the current environment state, could be any tensor;
-        default is [4,m] array of <fl32>, where:
+        default is [4,m] array of <fl32.>, where:
         - m - num. of last datafeed values,
         - 4 - num. of data features (O,H,L,C  price values).
     - Reward - current portfolio statistics for environment reward estimation;
@@ -205,7 +205,7 @@ Controls Environment inner dynamics and backtesting logic.
 Any State, Reward and Info computation logic can be implemented by
 subclassing BTgymStrategy and overriding at least get_state(), get_reward(),
 get_info(), is_done() and set_datalines() methods.
-- One can always go deeper and override init() and next() methods for desired
+- One can always 'go deeper' and override init() and next() methods for desired
 server cerebro engine behaviour, including order execution etc.
 - Since it is bt.Strategy subclass, see:
 https://www.backtrader.com/docu/strategy.html
@@ -217,7 +217,7 @@ to BTgymStrategy instance at runtime.
 *- specific to BTgymStrategy.
 
 #### set_datalines():
-Default datalines are: Open, Low, High, Close and Volume**(see Backtrader docs).
+Default datalines are: Open, Low, High, Close [and Volume**] (see Backtrader docs).
 Any other custom data lines, indicators, etc.
 should be explicitly defined by overriding this method.
 Invoked once by Strategy init().
@@ -239,6 +239,7 @@ define_datalines().
 
 #### get_reward():
 Default reward estimator.
+- default implementation: returns one-step portfolio value difference.
 - Same as for state composer applies. Can return raw portfolio
 performance statictics or enclose entire reward estimation module.
 
@@ -251,14 +252,14 @@ can be any string/object.
 Episode termination estimator,
 defines any trading logic conditions episode stop is called upon,
 e.g. <OMG! Stop it, we became too rich!> .
-- It is just a structural convention method.
-- If any desired condition is met, it should set <self.is_done> variable to True,
-and [optionaly] set <self.broker_message> to some info string.
+- If any desired condition is met, it should set BTgymStrategy <is_done.> variable to True,
+and [optionaly] set <broker_message.> to some info string.
 - Episode runtime termination logic is:
 ANY <get_done() condition is met> OR ANY <_get_done() default condition is met>
+- It is just a structural convention method.
 
 #### _get_done():
-Default [hidden] episode termination method,
+Default episode termination method,
 checks base conditions episode stop is called upon:
 1. Reached maximum episode duration. Need to check it explicitly, because <self.is_done> flag
    is sent as part of environment response.
@@ -267,8 +268,8 @@ checks base conditions episode stop is called upon:
 
 #### next():
 Default implementation for BTgymStrategy exists.
-- Defines one step environment routine for server 'Episode mode';
-At least, it should handle order execution logic according to action received.
+- Defines one step environment routine for server 'Episode mode'.
+- At least, it should handle order execution logic according to action received.
 
 ### class BTgymData():
 Backtrader.CSVfeeds() class wrapper.
@@ -292,16 +293,16 @@ Repeat until bored:
 ```
 #### Methods:
 #### read_csv(filename):
-Loads data: CSV file.
+Loads CSV data file.
 
 #### sample_random():
-Randomly samples continuous subset of data and
-returns BTgymData instance, holding continuous data episode with
+Randomly samples continuous subset of data.
+- Returns BTgymData instance, holding single episode data with
 number of records ~ max_episode_len.
 
 #### to_btfeed():
 Performs BTgymData-->bt.feed conversion.
-Returns bt.datafeed instance.
+- Returns cerebro-ready bt.datafeed instance.
 
 ### Notes:
  1. There is a choice: where to place most of state observation/reward estimation and prepossessing such as
@@ -313,7 +314,7 @@ Returns bt.datafeed instance.
     so it is reasonable to make it easyly accessable inside single module for ease of experimenting
     and hyperparameter tuning.
      - BTgym allows to do it both ways: either pass "raw" state observation and do all heavy work inside RL loop
-     by employng data preprocessing techniques of choise, or put it inside get_state() and get_reward() methods.
+      or put it inside get_state() and get_reward() methods.
     - To mention,it seems reasonable to pass all preprocessing work to server, since it can be done asynchronously
     with agent own computations and thus somehow speed up training.
 
