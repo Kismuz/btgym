@@ -1,24 +1,21 @@
-## Backtrader gym environment
-Implementation of OpenAI Gym environment for Backtrader backtesting/trading library:
-apply reinforcement learning algorithms in algo-trading domain.
+### Backtrader gym Environment
+**Implementation of OpenAI Gym environment for Backtrader backtesting/trading library:
+apply reinforcement learning algorithms in algo-trading domain.**
 
-Backtrader is open-source algorithmic trading library, well structured and maintained at:
+**Backtrader is open-source algorithmic trading library, well structured and maintained at:
 http://github.com/mementum/backtrader
-http://www.backtrader.com/
+http://www.backtrader.com/**
 
-OpenAI Gym is...,
-well, everyone knows Gym.
-http://github.com/openai/gym
-
-#### Update 9.06.17: Basic work done. Few days to first working alpha.
-#### Update 14.06.17: still working. No examples yet.
+**OpenAI Gym is...,
+well, everyone knows Gym:
+http://github.com/openai/gym**
 
 #### Outline:
 General purpose of making this wrapper is to give RL community convenient and recognizable framework for
 running realistic experiments on algorithmic trading tasks. For backtrader users, it could be possibility to
 explore new field of decision-making algorithms.
 
-This work is in early development stage, any reports, feedback and suggestions are welcome.
+##### This work is in early development stage, any reports, feedback and suggestions are welcome.
 
 #### Current state and limitations:
 - first beta as of 16.06.17;
@@ -27,18 +24,16 @@ This work is in early development stage, any reports, feedback and suggestions a
 - only one equity/currency pair can be traded;
 - no 'skip-frames' inside environment;
 - env.get_stat() method is returning strategy analyzers results only. No observers yet.
--
+- no plotting features, except for using pycharm integration. Not shure if it suited for intraday strategies.
 
 #### Installation
-Clone or copy btgym Github repository to local disk, cd to that directory an run:
-```
-pip install e .
-```
-to instal package and all dependencies. Btgym requires gym, backtrader, pandas, numpy, pyzmq.
-Examples requires scipy.
+Clone or copy btgym repository to local disk, cd to it and run: `pip install e .`
+to instal package and all dependencies.
+Btgym requires:  `gym, backtrader, pandas, numpy, pyzmq.`
+Examples requires: `scipy.`
 
 #### Quickstart and examples
-TODO
+NotImplemented.
 
 #### General problem setting:
 Consider reinforcement learning setup for equity/currency trading:
@@ -77,8 +72,9 @@ In brief:
   backtasting Cerebro enginge on it. See OpenAI Gym documentation for details.
 
 See notebooks in examples directory.
+#### Data flow:
 ```
-Schematic data flow:
+
 
             BacktraderEnv                                  RL alorithm
                                            +-+
@@ -102,49 +98,47 @@ Schematic data flow:
 #### Server inner operation details:
   Backtrader server starts when Btgym Environment is instantiated, runs as separate process, follows
 simple Request/Reply pattern (every request should be paired with reply message) and operates one of two modes:
-1. Control mode: initial mode, accepts only '_reset', '_stop' and '_getstat' messages. Any other message is ignored
-   and replied with simple info messge. Shuts down upon recieving ' stop' via environment _stop_server() method,
-   goes to episode mode upon 'reset' (via env.reset()) and send last run episode statistic (if any) upon '_getstat'
-   via env.get_stat().
-2. Episode mode: runs episode following passed bt.Cerebro() subclass logic and parameters. Accepts <action> messages,
-   returns tuple <[state observ. tensor], [reward], [is_done], [aux.info]>.
-   Finishes episode upon recieving <action>='_done' or according to Cerebro logic, falls
-   back to control mode.
-   Before every episode runtime, BTserver samples episode data and adds it to bt.Cerebro() instance
+- Control mode: initial mode, accepts only '_reset', '_stop' and '_getstat' messages. Any other message is ignored
+  and replied with simple info messge. Shuts down upon recieving ' stop' via environment _stop_server() method,
+  goes to episode mode upon 'reset' (via env.reset()) and send last run episode statistic (if any) upon '_getstat'
+  via env.get_stat().
+- Episode mode: runs episode following passed bt.Cerebro() subclass logic and parameters. Accepts <action> messages,
+  returns tuple <[state observ. tensor], [reward], [is_done], [aux.info]>.
+  Finishes episode upon recieving <action>='_done' or according to Cerebro logic, falls
+  back to control mode.
+ Before every episode runtime, BTserver samples episode data and adds it to bt.Cerebro() instance
 along with specific _BTgymAnalyzer.The service of this hidden Analyzer is twofold:
 first, enables strategy-environment communication by calling RL-related BTgymStrategy methods:
 get_state(), get_reward(), get_info() and is_done() [- see below];
 second, controls episode termination by specified environment conditions.
-  Runtime (server 'Episode mode'): after preparing environment initial state by running start(), prenext() methods
+ Runtime (server 'Episode mode'): after preparing environment initial state by running start(), prenext() methods
 for BTgymStrategy, server halts and waits for incoming agent action. Upon recieving action, server performs all
 nesessery Strategy next() actions (e.g. issues orders, computes observations etc.),
 composes environment response and sends it back to environment wrapper.
 
-Server-side operation pseudo code:
-
+#### Server-side operation pseudo code:
 ```
-
-    Initialise by receiving engine [bt.Cerebro()] and dataset [BTgymData()]
-    Repeat until received '_stop':
-        Wait for incoming message;
-        If message is '_getstat':
-            send episode statistics;
-        If message is '_reset':
-            Randomly sample episode data from BTgymData dataset
-            Add episode data to bt.Cerebro()
-            Add service BTgymAnalyzer() to bt.Cerebro()
-            Add DrawDown observer to bt.Cerebro(), if not already present.
-            Prepare BTgymStrategy initial (pre-next) state
-            Set agent action to 'hold'
-            Repeat until episode termination conditions are met:
-                next(): issue and process broker orders according to recieved agent action
-                        perfprm all backtesting engine computations
-                get_state(): compose stste observation
-                get_reward(): estimate env. reward
-                get_info(): compose aux. information
-                is_done(): check episode termination conditions
-                Recieve action message
-                Send {state, reward, done, info} response
+Initialise by receiving engine [bt.Cerebro()] and dataset [BTgymData()]
+Repeat until received messge '_stop':
+    Wait for incoming message
+    If message is '_getstat':
+        send episode statistics
+    If message is '_reset':
+        Randomly sample episode data from BTgymData dataset
+        Add episode data to bt.Cerebro()
+        Add service BTgymAnalyzer() to bt.Cerebro()
+        Add DrawDown observer to bt.Cerebro(), if not already present
+        Prepare BTgymStrategy initial state
+        Set agent <action> to 'hold'
+        Repeat until episode termination conditions are met:
+            next(): issue and process broker orders according to recieved agent action
+                    perfprm all backtesting engine computations
+            get_state(): compose stste observation
+            get_reward(): estimate env. reward
+            get_info(): compose aux. information
+            is_done(): check episode termination conditions
+            Wait for incoming <action> message
+            Send {state, reward, done, info} response
 ```
 
 #### Simple workflow:
@@ -154,36 +148,29 @@ Server-side operation pseudo code:
    get_info(), is_done() and set_datalines() methods.
    One can always go deeper and override __init__ () and next() methods for desired
    server Cerebro engine behaviour, including order execution logic etc.
-
 2. Instantiate Cerbro, add startegy and backtrader Analyzers an Observers (if needed).
-
 3. Define dataset by passing csv datafile and parameters to BTgymData instance.
     BTgymData() is simply Backtrader.feeds class wrapper, which pipes
     CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine
     and implements random episode data sampling.
-
 4. Instantiate (or make) gym environment by passing Cerebro and BTgymData instance along with other kwargs
-
 5. Run your favorite RL algorithm.
 
-See notebooks in examples directory.
+**See notebooks in examples directory.**
 
 
-###  Reference [incomplete, see source files]:
-
+#### Reference [ incomplete, refer to source files! ]:
 ### class BacktraderEnv(gym.Env, args):
    OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
    See source code comments for parameters definitions.
-
-Methods:
-
+#### Methods:
 #### reset():
-Implementation of OpenAI Gym env.reset method.
+Implementation of OpenAI Gym env.reset() method.
 'Rewinds' backtrader server and starts new episode
 within randomly selected time period.
 
 #### step(action):
-Implementation of OpenAI Gym env.step method.
+Implementation of OpenAI Gym env.step() method.
 Relies on remote backtrader server for actual environment dynamics computing.
 Accepts:
 {'buy', 'sell', 'hold', 'close'} - actions;
@@ -198,7 +185,7 @@ response - <dict>:
 Info - auxiliary information.
 
 #### close():
-[kind of] Implementation of OpenAI Gym env.close method.
+[kind of] Implementation of OpenAI Gym env.close() method.
 Forces BTgymServer to get in 'Control Mode'.
 
 #### get_stat():
@@ -208,7 +195,7 @@ attached to Cerebro() analyzers by their get_analysis() methods.
 See backtrader docs for analyzers reference.
 Note:
 1. Drawdown Analyzer is get attached by default.
-2. When invoked, forces running episode to terminate.
+2. When invoked, this method forces running episode to terminate.
 
 #### _stop_server():
 Stops BT server process, releases network resources.
@@ -226,8 +213,7 @@ for more information.
 Note: bt.observers.DrawDown observer will be automatically added [by server process]
 to BTgymStrategy instance at runtime.
 
-Specific methods:
-
+#### Specific methods:
 #### set_datalines():
 Default datalines are: Open, Low, High, Close (see Backtrader docs).
 Any other custom data lines, indicators, etc.
@@ -280,26 +266,26 @@ Defines one step environment routine for server 'Episode mode';
 At least, it should handle order execution logic according to action received.
 
 ### class BTgymData():
-Backtrader.feeds class wrapper.
+Backtrader.CSVfeeds() class wrapper.
 Currently pipes CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine.
 Implements random episode data sampling.
 Default parameters are set to correctly parse 1 minute Forex generic ASCII
 data files from www.HistData.com:
 See source code comments for parameters definitions.
 Suggested usage:
-        ---user defined ---
-        D = BTgymData(<filename>,<params>)
-        ---inner BTgymServer routine---
-        D.read_csv(<filename>)
-        Repeat until bored:
-            Episode = D.get_sample()
-            DataFeed = Episode.to_btfeed()
-            C = bt.Cerebro()
-            C.adddata(DataFeed)
-            C.run()
-
-Methods:
-
+```
+---user defined ---
+D = BTgymData(<filename>,<params>)
+---inner BTgymServer routine---
+D.read_csv(<filename>)
+Repeat until bored:
+    Episode = D.get_sample()
+    DataFeed = Episode.to_btfeed()
+    C = bt.Cerebro()
+    C.adddata(DataFeed)
+    C.run()
+```
+#### Methods:
 #### read_csv(filename):
 Loads data: CSV file.
 
@@ -311,7 +297,6 @@ number of records ~ max_episode_len.
 #### to_btfeed():
 Performs BTgymData-->bt.feed conversion.
 Returns bt.datafeed instance.
-
 
 ### Notes:
  1. There is a choice: where to place most of state observation/reward estimation preprocessing such as
