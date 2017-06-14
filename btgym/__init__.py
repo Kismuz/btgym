@@ -26,5 +26,5 @@ from .envs.backtrader import BacktraderEnv
 
 register(
     id='backtrader-v0000',
-    entry_point='btgym.envs:BacktraderEnv',
+    entry_point='btgym.envs:BTgymEnv',
 )

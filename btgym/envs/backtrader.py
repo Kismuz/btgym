@@ -34,7 +34,7 @@ from btgym import BTgymServer, BTgymStrategy, BTgymData
 
 ############################## OpenAI Gym Environment  ##############################
 
-class BacktraderEnv(gym.Env):
+class BTgymEnv(gym.Env):
     """
     OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
     """
@@ -90,7 +90,7 @@ class BacktraderEnv(gym.Env):
                 # Make default feed instance with given CSV file:
                 self.datafeed = BTgymData(filename=filename)
 
-        # Default configuration for Backtrader computational engine (cerebro).
+        # Default configuration for Backtrader computational engine (Cerebro).
         # Executed only if no bt.Cerebro custom subclass has been given.
         # Note: bt.observers.DrawDown observer will be added to any BTgymStrategy instance
         # by BTgymServer process at runtime.

@@ -102,8 +102,8 @@ See notebooks in examples directory.
    get_info(), is_done() and set_datalines() methods.
     - One can always 'go deeper' and override init() and next() methods for desired
    Cerebro engine behaviour, including order execution logic, etc.
-2. Instantiate Cerbro, add Startegy, backtrader Analyzers and Observers (if needed).
-3. Define dataset by passing csv datafile and parameters to BTgymData instance.
+2. Instantiate Cerbro, add BTgymStrategy, backtrader Sizers, Analyzers and Observers (if needed).
+3. Define dataset by passing CSV datafile and parameters to BTgymData instance.
     - BTgymData() is simply Backtrader.feeds class wrapper, which pipes
     CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine
     and implements random episode data sampling.
@@ -150,17 +150,17 @@ Repeat until received messge '_stop':
         Prepare BTgymStrategy initial state
         Set agent <action> to 'hold'
         Repeat until episode termination conditions are met:
-            next(): issue and process broker orders according to recieved agent action
-                    perform all backtesting engine computations
-            get_state(): compose stste observation
-            get_reward(): estimate env. reward
-            get_info(): compose aux. information
-            is_done(): check episode termination conditions
+            Issue and process orders according to recieved agent action
+            Perform all backtesting engine computations
+            Estimate state observation 
+            Eestimate env. reward
+            Compose aux. information
+            Check episode termination conditions
             Wait for incoming <action> message
             Send {state, reward, done, info} response
 ```
 #### Reference [ incomplete, refer to source files! ]:
-### class BacktraderEnv(gym.Env, args):
+### class BTgymEnv(gym.Env, args):
    OpenAI Gym environment wrapper for Backtrader framework.
    See source code comments for parameters definitions.
 #### Methods:
