@@ -1,18 +1,18 @@
 ### Backtrader gym Environment
 **Implementation of OpenAI Gym environment for Backtrader backtesting/trading library.**
 
-**Backtrader is open-source algorithmic trading library:
+Backtrader is open-source algorithmic trading library:
 
 http://github.com/mementum/backtrader  
-http://www.backtrader.com/**
+http://www.backtrader.com/
 
-**OpenAI Gym is...,
+OpenAI Gym is...,
 well, everyone knows Gym:
 
-http://github.com/openai/gym**
+http://github.com/openai/gym
 
 #### Outline:
-General purpose of this wrapper is to provide gym-standart framework for
+General purpose of this wrapper is to provide gym-compatible framework for
 running realistic experiments on algorithmic trading tasks, enabling simple and convinient
 exploration of decision-making algorithms.
 
@@ -23,7 +23,7 @@ exploration of decision-making algorithms.
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
 - only one equity/currency pair can be traded;
-- no 'skip-frames' implementattion inside environment;
+- no 'skip-frames' implementation within environment;
 - env.get_stat() method is returning strategy analyzers results only. No observers yet.
 - no plotting features, except if using pycharm integration observer. Not sure if it suited for intraday strategies.
 
@@ -34,7 +34,7 @@ to instal package and all dependencies.
 - Examples requires: `scipy.`
 
 #### Quickstart and examples
-Not_Implemented.
+< Not Implemented. >
 
 #### General problem setting:
 Consider reinforcement learning setup for equity/currency trading:
