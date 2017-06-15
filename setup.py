@@ -31,5 +31,5 @@ setup(name='btgym',
       classifiers=['Development Status :: 3 - Alpha',],
       version='0.0.2',
       install_requires=['gym', 'backtrader', 'pyzmq', 'numpy', 'pandas' ],
-      include_package_data=True,
+      include_package_data=False,
 )

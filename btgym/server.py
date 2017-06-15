@@ -247,7 +247,7 @@ class BTgymServer(multiprocessing.Process):
             cerebro.adddata(self.datafeed.sample_random().to_btfeed())
 
             # Finally:
-            episode = cerebro.run(stdstats=True, preload=False)[0]
+            episode = cerebro.run(stdstats=True, preload=True)[0]
             log.info('Episode finished.')
 
             # Recover that bloody analytics:
@@ -257,7 +257,7 @@ class BTgymServer(multiprocessing.Process):
             episode_result['counter'] = episode_number
 
             for name in analyzers_list:
-                episode_result['counter'] = episode_number
+                #episode_result['counter'] = episode_number
                 episode_result[name] = episode.analyzers.getbyname(name).get_analysis()
 
 
