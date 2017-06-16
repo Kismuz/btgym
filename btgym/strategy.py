@@ -106,22 +106,14 @@ class BTgymStrategy(bt.Strategy):
     def get_info(self):
         """
         Composes information part of environment response,
-        can be any string/object. Override by own taste.
+        can be any object. Override by own taste.
         """
-        self.info = ('Step: {}\nAgent action: {}\n' +
-                     'Portfolio Value: {:.5f}\n' +
-                     'Reward: {:.4f}\n' +
-                     '{}\n' +  # broker message is here
-                     'Broker Value: {:.4f}\n' +
-                     'Drawdown: {:.4f}\n' +
-                     'Max.Drawdown: {:.4f}\n').format(self.iteration,
-                                                      self.action,
-                                                      self.stats.broker.value[0],
-                                                      self.reward,
-                                                      self.broker_message,
-                                                      self.stats.broker.value[0],
-                                                      self.stats.drawdown.drawdown[0],
-                                                      self.stats.drawdown.maxdrawdown[0])
+        self.info = dict(step = self.iteration,
+                         action = self.action,
+                         broker_message = self.broker_message,
+                         broker_value = self.stats.broker.value[0],
+                         drawdown = self.stats.drawdown.drawdown[0],
+                         max_drawdown = self.stats.drawdown.maxdrawdown[0],)
 
     def get_done(self):
         """

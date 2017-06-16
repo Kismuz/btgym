@@ -241,7 +241,7 @@ class BTgymServer(multiprocessing.Process):
 
             # Add communication utility:
             cerebro.addanalyzer(_BTgymAnalyzer,
-                                _name='env_analyzer',)
+                                _name='_env_analyzer',)
 
             # Add random episode data:
             cerebro.adddata(self.datafeed.sample_random().to_btfeed())
@@ -252,12 +252,11 @@ class BTgymServer(multiprocessing.Process):
 
             # Recover that bloody analytics:
             analyzers_list = episode.analyzers.getnames()
-            analyzers_list.remove('env_analyzer')
+            analyzers_list.remove('_env_analyzer')
 
-            episode_result['counter'] = episode_number
+            episode_result['episode'] = episode_number
 
             for name in analyzers_list:
-                #episode_result['counter'] = episode_number
                 episode_result[name] = episode.analyzers.getbyname(name).get_analysis()
 
 
