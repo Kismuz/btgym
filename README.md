@@ -3,82 +3,119 @@
 
 Backtrader is open-source algorithmic trading library:
 
-http://github.com/mementum/backtrader  
+Github: http://github.com/mementum/backtrader  
+Documentattion and community:
 http://www.backtrader.com/
 
 OpenAI Gym is...,
 well, everyone knows Gym:
-
 http://github.com/openai/gym
 
 #### Outline:
 General purpose of this wrapper is to provide gym-integrated framework for
 running realistic experiments on algorithmic trading tasks, enabling simple and convinient
 exploration of decision-making algorithms.
-
-##### This work is in early development stage, any reports, feedback and suggestions are welcome.
+###### This is not out-of-the-box-moneymaker, rather it is framework for exploration of complex non stationary real world environments.
+###### This work is in early development stage, any reports, feedback and suggestions are welcome.
 
 #### Current issues and limitations:
-- working alpha as of 14.06.17;
+- working alpha as of 17.06.17;
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
 - no built-in dataset splitting to training/cv/testing subsets;
 - only one equity/currency pair can be traded;
 - no 'skip-frames' implementation within environment;
 - env.get_stat() method is returning strategy analyzers results only. No observers yet.
-- no plotting features, except if using pycharm integration observer. Not sure if it suited for intraday strategies.
+- no plotting features, except if using pycharm integration observer. Not sure if it is suited for intraday strategies.
+- making new environment kills all processes using specified network port. Watch out your jupyter kernels. 
 
 
 #### Installation
-Clone or copy btgym repository to local disk, cd to it and run: `pip install e .`
+Clone or copy btgym repository to local disk, cd to it and run: **`pip install e . `**
 to instal package and dependencies.
 - Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`.
 - Examples requires: `scipy`, `matplotlib`.
 
 #### Quickstart
 
-Making environment with all possible defaults is as simple as:
+Making environment with all parmeters set to defaults is as simple as:
 
 ```
 from btgym import BTgymEnv
-
-MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv')
  
+MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',)
+```
+Adding more controls may look like:
+```
+from btgym import BTgymEnv
+ 
+MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
+                         episode_len_days=2,
+                         episode_len_hours=23,
+                         episode_len_minutes=55,
+                         drawdown_call=50,
+                         state_dim_time=20,
+                         port=5555,
+                         verbose=1,)
+                 
+```
+Same one but registering environment in Gym way:
+```
+import gym
+from btgym import BTgymEnv
+  
+env_params = dict(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
+                  episode_len_days=2,
+                  episode_len_hours=23,
+                  episode_len_minutes=55,
+                  drawdown_call=50,
+                  state_dim_time=20,
+                  port=5555,
+                  verbose=1,)
+                  
+gym.envs.register(id='backtrader-v5555',
+                  entry_point='btgym:BTgymEnv',
+                  kwargs=env_params)
+                  
+MyEnvironment = gym.make('backtrader-v5555')
 ```
 
-Creating more working
-
+Maximum environment flexibility is achieved by explicitly defining and passing `Dataset` and `Cerebro` instances:
 ```
 import backtrader as bt
 from btgym import BTgymDataset, BTgymStrategy, BTgymEnv
-
+ 
 MyCerebro = bt.Cerebro()
-MyCerebro.addstrategy(MyStrategy,
+MyCerebro.addstrategy(BTgymStrategy,
                       state_dim_time=30,
-                      state_dim_0=30,
-                      drawdown_call=0.5)
-
+                      state_dim_0=4,
+                      drawdown_call=50)
+ 
 MyCerebro.broker.setcash(10.0)
 MyCerebro.broker.setcommission(commission=0.001)
 MyCerebro.addsizer(bt.sizers.SizerFix, stake=10)
-MyCerebro.addobserver(bt.observers.DrawDown)
-
-
-# Provide data source file:
-CSVfilename = '../examples/data/DAT_ASCII_EURUSD_M1_2016.csv'
-
-MyDataset = BTgymDataset(filename=CSVfilename,)
-
-env =BTgymEnv(dataset=MyDataset,
-              engine=MyCerebro,
-              verbose=1)
-
-
+MyCerebro.addanalyzer(bt.analyzers.DrawDown)
+ 
+MyDataset = BTgymDataset(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
+                         start_weekdays=[0, 1, 2, 4], 
+                         start_00=True, 
+                         episode_len_days=0, 
+                         episode_len_hours=23,
+                         episode_len_minutes=55,
+                         time_gap_days=0,
+                         time_gap_hours=5,)
+ 
+MyEnvironment = BTgymEnv(dataset=MyDataset,
+                         engine=MyCerebro,
+                         port=5555,
+                         verbose=1)
 ```
+
+###### See notebooks in examples directory.
 
 #### General problem setting:
 Consider reinforcement learning setup for equity/currency trading:
-- agent action space is discrete ('buy', 'sell', 'close'[position], 'hold'[do nothing]);
+- agent action space is discrete (`buy`, `sell`, `close` [position], `hold` [do nothing]);
 - environment is episodic: maximum  episode duration and episode termination conditions
   are set;
 - for every timestep of the episode agent is given environment state observation as tensor of last
@@ -93,14 +130,14 @@ Consider reinforcement learning setup for equity/currency trading:
 - random sampling:
   historic price change dataset is divided to training, cross-validation and testing subsets.
   Since agent actions do not influence market, it is possible to randomly sample continuous subset
-  of training data for every episode. This is most data-efficient method.
+  of training data for every episode. [Seems to be] most data-efficient method.
   Cross-validation and testing performed later as usual on most "recent" data;
 - sequential sampling:
   full dataset is feeded sequentially as if agent is performing real-time trading,
-  episode by episode. Most reality-like, least data-efficient;
+  episode by episode. Most reality-like, least data-efficient, natural non-stationarity remedy.
 - sliding time-window sampling:
   mixture of above, episde is sampled randomly from comparatively short time period, sliding from
-  furthest to most recent training data.
+  furthest to most recent training data. Should be less prone to overfitting than random sampling.
 - NOTE: only random sampling is currently implemented.
 
 #### Environment engine:
@@ -114,7 +151,7 @@ In brief:
   queries like `env.reset()` and `env.step()` by repeatedly sampling episodes form given dataset and running
   backtesting `Cerebro` engine on it. See OpenAI Gym documentation for details.
 
-See notebooks in examples directory.
+###### See notebooks in examples directory.
 #### Data flow:
 ```
             BTgym Environment                                 RL alorithm
@@ -155,7 +192,7 @@ See notebooks in examples directory.
     - advance one timframe of episode by calling `env.step()`, perform agent training or testing;
     - after single episode is finished, retrieve agent performance statistic by `env.get_stat()`.
 
-**See notebooks in examples directory.**
+###### See notebooks in examples directory.
 #### Server operation details:
 Backtrader server starts when `env.reset()` method is called for first time , runs as separate process, follows
 simple Request/Reply pattern (every request should be paired with reply message) and operates one of two modes:
@@ -228,7 +265,7 @@ Returns:
     - `Info` - auxiliary information.
 
 #### close():
-[kind of] Implementation of OpenAI Gym `env.close()` method.
+[Kind of] implementation of OpenAI Gym `env.close()` method.
 Forces BTgymServer to go in 'Control Mode'.
 
 #### get_stat():

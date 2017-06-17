@@ -25,6 +25,9 @@ import itertools
 import zmq
 import copy
 
+import time
+from datetime import timedelta
+
 import backtrader as bt
 
 ###################### BT Server in-episode communocation method ##############
@@ -247,14 +250,17 @@ class BTgymServer(multiprocessing.Process):
             cerebro.adddata(self.dataset.sample_random().to_btfeed())
 
             # Finally:
+            start_time = time.time()
             episode = cerebro.run(stdstats=True, preload=True)[0]
-            log.info('Episode finished.')
+            elapsed_time = timedelta(seconds=round(time.time() - start_time))
+            log.info('Episode elapsed time: {}.'.format(elapsed_time))
 
             # Recover that bloody analytics:
             analyzers_list = episode.analyzers.getnames()
             analyzers_list.remove('_env_analyzer')
 
             episode_result['episode'] = episode_number
+            episode_result['time'] = elapsed_time
 
             for name in analyzers_list:
                 episode_result[name] = episode.analyzers.getbyname(name).get_analysis()
