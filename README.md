@@ -103,11 +103,11 @@ See notebooks in examples directory.
     - One can always 'go deeper' and override init() and next() methods for desired
    Cerebro engine behaviour, including order execution logic, etc.
 2. Instantiate Cerbro, add BTgymStrategy, backtrader Sizers, Analyzers and Observers (if needed).
-3. Define dataset by passing CSV datafile and parameters to BTgymData instance.
-    - BTgymData() is simply Backtrader.feeds class wrapper, which pipes
+3. Define dataset by passing CSV datafile and parameters to BTgymDataset instance.
+    - BTgymDataset() is simply Backtrader.feeds class wrapper, which pipes
     CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine
     and implements random episode data sampling.
-4. Instantiate (or make) gym environment by passing Cerebro and BTgymData instance along with other kwargs.
+4. Instantiate (or make) gym environment by passing Cerebro and BTgymDataset instance along with other kwargs.
 5. Run your favorite RL algorithm:
     - start episode by calling env.reset();
     - advance one timframe of episode by calling env.step(), perform agent training or testing;
@@ -137,13 +137,13 @@ composes environment response and sends it back to agent.
 
 **Server loop:**
 ```
-Initialize by receiving engine [bt.Cerebro()] and dataset [BTgymData()]
+Initialize by receiving engine [bt.Cerebro()] and dataset [BTgymDataset()]
 Repeat until received messge '_stop':
     Wait for incoming message
     If message is '_getstat':
         send episode statistics
     If message is '_reset':
-        Randomly sample episode data from BTgymData dataset
+        Randomly sample episode data from BTgymDataset
         Add episode data to bt.Cerebro()
         Add service BTgymAnalyzer() to bt.Cerebro()
         Add DrawDown observer to bt.Cerebro(), if not already present
@@ -271,7 +271,7 @@ Default implementation for BTgymStrategy exists.
 - Defines one step environment routine for server 'Episode mode'.
 - At least, it should handle order execution logic according to action received.
 
-### class BTgymData():
+### class BTgymDataset():
 Backtrader.CSVfeeds() class wrapper.
 - Currently pipes CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine.
 - Implements random episode data sampling.
@@ -281,7 +281,7 @@ data files from www.HistData.com:
 - Suggested usage:
 ```
 ---user defined ---
-D = BTgymData(<filename>,<params>)
+D = BTgymDataset(<filename>,<params>)
 ---inner BTgymServer routine---
 D.read_csv(<filename>)
 Repeat until bored:
@@ -297,11 +297,11 @@ Loads CSV data file.
 
 #### sample_random():
 Randomly samples continuous subset of data.
-- Returns BTgymData instance, holding single episode data with
+- Returns BTgymDataset instance, holding single episode data with
 number of records ~ max_episode_len.
 
 #### to_btfeed():
-Performs BTgymData-->bt.feed conversion.
+Performs BTgymDataset-->bt.feed conversion.
 - Returns cerebro-ready bt.datafeed instance.
 
 ### Notes:

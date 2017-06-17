@@ -117,14 +117,14 @@ class BTgymServer(multiprocessing.Process):
                        info - auxiliary information.
 
     Parameters:
-    datafeed  - class BTgymData instance;
+    datafeed  - class BTgymDataset instance;
     cerebro - subclass bt.Cerebro;
     network_address - <str>, network address to bind to;
     verbose - verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
     """
 
     def __init__(self,
-                 datafeed=None,
+                 dataset=None,
                  cerebro=None,
                  network_address=None,
                  verbose=False):
@@ -142,10 +142,10 @@ class BTgymServer(multiprocessing.Process):
             self.cerebro = cerebro
 
         # Datafeed instance to load from:
-        if not datafeed:
+        if not dataset:
             raise AssertionError('Server has not recieved any datafeed. Nothing to run!')
         else:
-            self.datafeed = datafeed
+            self.dataset = dataset
 
         # Net:
         if not network_address:
@@ -182,11 +182,11 @@ class BTgymServer(multiprocessing.Process):
         socket = context.socket(zmq.REP)
         socket.bind(self.network_address)
 
-        # Actually load data to BTgymData instance:
-        self.datafeed.read_csv()
+        # Actually load data to BTgymDataset instance:
+        self.dataset.read_csv()
 
         # Add logging:
-        self.datafeed.log = log
+        self.dataset.log = log
 
         # Server 'Control Mode' loop:
         for episode_number in itertools.count(1):
@@ -244,7 +244,7 @@ class BTgymServer(multiprocessing.Process):
                                 _name='_env_analyzer',)
 
             # Add random episode data:
-            cerebro.adddata(self.datafeed.sample_random().to_btfeed())
+            cerebro.adddata(self.dataset.sample_random().to_btfeed())
 
             # Finally:
             episode = cerebro.run(stdstats=True, preload=True)[0]

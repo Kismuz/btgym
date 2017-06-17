@@ -27,14 +27,14 @@ import os
 import backtrader.feeds as btfeeds
 import pandas as pd
 
-class BTgymData():
+class BTgymDataset():
     """
     Backtrader.feeds class wrapper.
     Currently pipes CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine.
     Implements random episode data sampling.
     Suggested usage:
         ---user defined ---
-        D = BTgymData(<filename>,<params>)
+        D = BTgymDataset(<filename>,<params>)
         ---inner BTgymServer routine---
         D.read_csv(<filename>)
         Repeat until bored:
@@ -125,7 +125,7 @@ class BTgymData():
 
     def to_btfeed(self):
         """
-        Performs BTgymData-->bt.feed conversion.
+        Performs BTgymDataset-->bt.feed conversion.
         Returns bt.datafeed instance.
         """
         if not self.data.empty:
@@ -142,14 +142,14 @@ class BTgymData():
            return btfeed
 
         else:
-            msg = 'BTgymData instance holds no data. Hint: forgot to call .read_csv()?'
+            msg = 'BTgymDataset instance holds no data. Hint: forgot to call .read_csv()?'
             self.log.info(msg)
             raise AssertionError(msg)
 
     def sample_random(self):
         """
         Randomly samples continuous subset of data and
-        returns BTgymData instance, holding continuous data episode with
+        returns BTgymDataset instance, holding continuous data episode with
         number of records ~ max_episode_len.
         """
         # Maximum possible number of data records (rows) within episode:
@@ -198,7 +198,7 @@ class BTgymData():
             # Perfom data gap check:
             if episode_sample_len - self.max_episode_len < self.max_time_gap:
                 self.log.info('Sample accepted.')
-                episode = BTgymData(**self.attrs)
+                episode = BTgymDataset(**self.attrs)
                 episode.data = episode_sample
                 return episode
             else:

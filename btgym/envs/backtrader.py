@@ -30,7 +30,7 @@ from gym import error, spaces
 
 import backtrader as bt
 
-from btgym import BTgymServer, BTgymStrategy, BTgymData
+from btgym import BTgymServer, BTgymStrategy, BTgymDataset
 
 ############################## OpenAI Gym Environment  ##############################
 
@@ -39,11 +39,11 @@ class BTgymEnv(gym.Env):
     OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
     """
     metadata = {'render.modes': ['human']}
-
+#TODO: change datafeed to dataset
     def __init__(self,
-                 filename=None,  # Source CSV data file; if given - overrides source file of given BTgymData instance.
-                 datafeed=None,  # BTgymData-feed instance.
-                 cerebro=None,   # bt.Cerbro subclass for server to execute,
+                 filename=None,  # Source CSV data file; if given - overrides source file of given BTgymDataset instance.
+                 dataset=None,  # BTgymDataset-feed instance.
+                 cerebro=None,  # bt.Cerbro subclass for server to execute,
                                  # if None - Cerebro with default strategy will be used.
                  state_dim_time=10,  # environment/cerebro.strategy arg/ state observation time-embedding dimensionality
                                      # get overridden if cerebro arg is not None.
@@ -71,24 +71,24 @@ class BTgymEnv(gym.Env):
         # Check CSV datafile existence:
         if not os.path.isfile(str(filename)):
 
-            if datafeed:
-                # If BTgymData instance been passed:
-                self.datafeed = datafeed
+            if dataset:
+                # If BTgymDataset instance been passed:
+                self.dataset = dataset
 
             else:
-                raise FileNotFoundError('BTgymData not set / data file not found: ' + str(filename))
+                raise FileNotFoundError('BTgymDataset not set / data file not found: ' + str(filename))
 
         else:
 
-            if datafeed:
-                # If BTgymData instance and datafile has been passed:
-                self.datafeed = datafeed
+            if dataset:
+                # If BTgymDataset instance and datafile has been passed:
+                self.dataset = dataset
                 # Override data file:
-                self.datafeed.filename = filename
+                self.dataset.filename = filename
 
             else:
                 # Make default feed instance with given CSV file:
-                self.datafeed = BTgymData(filename=filename)
+                self.dataset = BTgymDataset(filename=filename)
 
         # Default configuration for Backtrader computational engine (Cerebro).
         # Executed only if no bt.Cerebro custom subclass has been given.
@@ -142,7 +142,7 @@ class BTgymEnv(gym.Env):
         """
         Configures backtrader REQ/REP server instance and starts server process.
         """
-        self.server = BTgymServer(datafeed=self.datafeed,
+        self.server = BTgymServer(dataset=self.dataset,
                                   cerebro=self.cerebro,
                                   network_address=self.network_address,
                                   verbose=self.verbose)
