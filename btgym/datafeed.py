@@ -34,20 +34,20 @@ class BTgymDataset():
     Implements random episode data sampling.
     Suggested usage:
         ---user defined ---
-        D = BTgymDataset(<filename>,<params>)
+        Dataset = BTgymDataset(<filename>,<params>)
         ---inner BTgymServer routine---
-        D.read_csv(<filename>)
+        Dataset.read_csv(<filename>)
         Repeat until bored:
-            Episode = D.get_sample()
-            DataFeed = Episode.to_btfeed()
-            C = bt.Cerebro()
-            C.adddata(DataFeed)
-            C.run()
+            EpisodeDataset = Dataset.get_sample()
+            DataFeed = EpisodeDataset.to_btfeed()
+            Engine = bt.Cerebro()
+            Engine.adddata(DataFeed)
+            Engine.run()
     TODO: implement sequential sampling.
     """
     #  To-be attributes and their default values:
     attrs = dict(
-        filename=None,  # Should be given either upon instantiation or calling read_csv()
+        filename=None,  # Should be given either upon init. or calling read_csv()
 
         # Default parameters for source-specific CSV datafeed class,
         # correctly parses 1 minute Forex generic ASCII
@@ -70,7 +70,7 @@ class BTgymDataset():
         volume=5,
         openinterest=-1,
 
-        # Random sampling params:
+        # Random-sampling params:
         start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
         start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
         episode_len_days=1,  # Maximum episode time duration in d, h, m.
@@ -106,7 +106,7 @@ class BTgymDataset():
 
     def read_csv(self, filename=None):
         """
-        Loads data: CSV file --> pandas dataframe
+        Populates instance by loading data: CSV file --> pandas dataframe
         """
         if filename:
             self.filename = filename  # override data source if  one is given
@@ -193,11 +193,12 @@ class BTgymDataset():
             episode_sample = self.data[first_row: last_row]
             episode_sample_len = (episode_sample.index[-1] - episode_sample.index[0]).to_pytimedelta()
             self.log.info('Episode duration: {}.'.format(episode_sample_len, ))
-            self.log.info('Total episode timegap: {}.'.format(episode_sample_len - self.max_episode_len))
+            self.log.info('Total episode time gap: {}.'.format(episode_sample_len - self.max_episode_len))
 
             # Perfom data gap check:
             if episode_sample_len - self.max_episode_len < self.max_time_gap:
                 self.log.info('Sample accepted.')
+                # If Ok - return smaller dataset:
                 episode = BTgymDataset(**self.attrs)
                 episode.data = episode_sample
                 return episode
@@ -206,6 +207,6 @@ class BTgymDataset():
                 attempts += 1
 
         msg = ('Quitting after {} sampling attempts.' +
-               'Hint: check sampling params / datafeed consistency.').format(attempts)
+               'Hint: check sampling params / dataset consistency.').format(attempts)
         self.log.info(msg)
         raise RuntimeError(msg)

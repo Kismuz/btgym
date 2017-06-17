@@ -39,19 +39,36 @@ class BTgymEnv(gym.Env):
     OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
     """
     metadata = {'render.modes': ['human']}
-#TODO: change datafeed to dataset
+
     def __init__(self,
-                 filename=None,  # Source CSV data file; if given - overrides source file of given BTgymDataset instance.
-                 dataset=None,  # BTgymDataset-feed instance.
-                 cerebro=None,  # bt.Cerbro subclass for server to execute,
-                                 # if None - Cerebro with default strategy will be used.
-                 state_dim_time=10,  # environment/cerebro.strategy arg/ state observation time-embedding dimensionality
-                                     # get overridden if cerebro arg is not None.
-                 state_dim_0=4,  # environment/cerebro.strategy arg/ state observation feature dimensionality,
-                                 # get overridden if cerebro arg is not None.
-                 portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions
+                 # Dataset parameters:
+                 filename=None,  # Source CSV data file; has no effect if <dataset> is not None
+                 dataset=None,  # BTgymDataset instance.
+                                # if None - dataset with <filename> and default parameters will be set.
+
+                 # Episode params, has no effect if <dataset> is not None:
+                 start_weekdays=[0, 1, 2, ],  # Only weekdays from the list will be used for episode start.
+                 start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
+                 episode_len_days=1,  # Maximum episode time duration in d:h:m.
+                 episode_len_hours=23,
+                 episode_len_minutes=55,
+                 time_gap_days=0,  # Maximum data time gap allowed within sample in d:h.
+                 time_gap_hours=5, # If set < 1 day, samples containing weekends and holidays gaps will be rejected.
+
+                 # Backtrader engine parameters:
+                 engine=None,  # bt.Cerbro subclass for server to execute,
+                               # if None - Cerebro() with default BTgymStrategy parameters will be set.
+
+                 # Engine parameters, has no effect if <engine> arg is not None:
+                 state_dim_time=10,  # environment/cerebro.strategy arg/ state observation time-embedding dimensionality.
+                 state_dim_0=4,  # environment/cerebro.strategy arg/ state observation feature dimensionality.
+                 drawdown_call=10,  # episode maximum drawdown threshold,
+
+                 # Other:
+                 portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions,
+                                                                      # should consist with BTgymStrategy exec. logic.
                  port=5500,  # server arg/ port to use.
-                 verbose=False, ):  #  verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
+                 verbose=0, ):  #  verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
 
         # Verbosity control:
         self.log = logging.getLogger('Env')
@@ -68,45 +85,45 @@ class BTgymEnv(gym.Env):
 
         self.verbose = verbose
 
-        # Check CSV datafile existence:
-        if not os.path.isfile(str(filename)):
-
-            if dataset:
-                # If BTgymDataset instance been passed:
-                self.dataset = dataset
-
-            else:
-                raise FileNotFoundError('BTgymDataset not set / data file not found: ' + str(filename))
+        # Dataset preparation:
+        if dataset:
+            # If BTgymDataset instance has been passed:
+            self.dataset = dataset
 
         else:
 
-            if dataset:
-                # If BTgymDataset instance and datafile has been passed:
-                self.dataset = dataset
-                # Override data file:
-                self.dataset.filename = filename
+            if not os.path.isfile(str(filename)):
+                raise FileNotFoundError('Dataset source data file not found: ' + str(filename))
 
             else:
-                # Make default feed instance with given CSV file:
-                self.dataset = BTgymDataset(filename=filename)
+                # If no BTgymDataset has been passed,
+                # Make default dataset with given CSV file:
+                self.dataset = BTgymDataset(filename=filename,
+                                            start_weekdays=start_weekdays,
+                                            start_00=start_00,
+                                            episode_len_days=episode_len_days,
+                                            episode_len_hours=episode_len_hours,
+                                            episode_len_minutes=episode_len_minutes,
+                                            time_gap_days=time_gap_days,
+                                            time_gap_hours=time_gap_hours, )
 
         # Default configuration for Backtrader computational engine (Cerebro).
         # Executed only if no bt.Cerebro custom subclass has been given.
         # Note: bt.observers.DrawDown observer will be added to any BTgymStrategy instance
         # by BTgymServer process at runtime.
-        if not cerebro:
-
-            self.cerebro = bt.Cerebro()
-            self.cerebro.addstrategy(BTgymStrategy,
-                                     state_dim_time=state_dim_time,
-                                     state_dim_0=state_dim_0)
-            self.cerebro.broker.setcash(10.0)
-            self.cerebro.broker.setcommission(commission=0.001)
-            self.cerebro.addobserver(bt.observers.DrawDown)
-            self.cerebro.addsizer(bt.sizers.SizerFix, stake=10)
+        if not engine:
+            self.engine = bt.Cerebro()
+            self.engine.addstrategy(BTgymStrategy,
+                                    state_dim_time=state_dim_time,
+                                    state_dim_0=state_dim_0,
+                                    drawdown_call=drawdown_call)
+            self.engine.broker.setcash(10.0)
+            self.engine.broker.setcommission(commission=0.001)
+            self.engine.addobserver(bt.observers.DrawDown)
+            self.engine.addsizer(bt.sizers.SizerFix, stake=10)
 
         else:
-            self.cerebro = cerebro
+            self.engine = engine
 
         # Server process/network parameters:
         self.server = None
@@ -117,8 +134,8 @@ class BTgymEnv(gym.Env):
         # default is 2d matrix, values in [0,10]. Override if needed:
         self.observation_space = spaces.Box(low=0.0,
                                             high=10.0,
-                                            shape=(self.cerebro.strats[0][0][2]['state_dim_0'],
-                                                   self.cerebro.strats[0][0][2]['state_dim_time']))
+                                            shape=(self.engine.strats[0][0][2]['state_dim_0'],
+                                                   self.engine.strats[0][0][2]['state_dim_time']))
         self.log.debug('OBS. SHAPE: {}'.format(self.observation_space.shape))
 
         # Action space and corresponding server messages:
@@ -143,7 +160,7 @@ class BTgymEnv(gym.Env):
         Configures backtrader REQ/REP server instance and starts server process.
         """
         self.server = BTgymServer(dataset=self.dataset,
-                                  cerebro=self.cerebro,
+                                  cerebro=self.engine,
                                   network_address=self.network_address,
                                   verbose=self.verbose)
         self.server.daemon = False

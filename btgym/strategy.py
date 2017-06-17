@@ -52,7 +52,7 @@ class BTgymStrategy(bt.Strategy):
     broker_message = '-'
     params = dict(state_dim_time=10,  # state time embedding dimension (just convention)
                   state_dim_0=4,  # one can add dim_1, dim_2, ... if needed; should match env.observation_space
-                  drawdown_call=20,)  # simplest condition to finish episode
+                  drawdown_call=10,)  # simplest condition to finish episode
 
     def __init__(self):
         # Inherit logger from cerebro:
