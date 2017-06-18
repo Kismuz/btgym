@@ -31,12 +31,12 @@ bridging RL decision-making algorithms and [almost] real world environments.
 - making new environment kills all processes using specified network port. Watch out your jupyter kernels. 
 ****
 #### Installation
-Clone or copy btgym repository to local disk, cd to it and run: `pip install e . `
+Clone or copy btgym repository to local disk, cd to it and run: `pip install -e . `
 to install package and dependencies e.g.:
 ``` 
 got clone https://github.com/Kismuz/btgym.git
 cd btgym
-pip install e .
+pip install -e .
 ```
 - Run `git pull` in btgym directory to update.
 - Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`.
@@ -161,11 +161,11 @@ In brief:
                                            +-+
    (episode mode)  +<-----<action>--- -----| |<--------------------------------------+
           |        |                       |e|                                       |
-          +<------>+------<state observ.>->|n|--->[feature *]---><state>--+->[agent]-+
-          |        |      <      matrix >  |v|    [estimator]             |     |
+          +<------>+------<       state >->|n|--->[feature *]---><state>--+->[agent]-+
+          |        |      < observation >  |v|    [estimator]             |     |
           |        |                       |.|                            |     |
-    [Backtrader]   +------<portfolio  >--->|s|--->[reward  *]---><reward>-+     |
-    [Server    ]   |      <statistics>     |t|    [estimator]                   |
+    [Backtrader]   +-----<  portfolio >--->|s|--->[reward  *]---><reward>-+     |
+    [Server    ]   |     < statistics >    |t|    [estimator]                   |
        |           |                       |e|                                  |
        |           +------<is_done>------->|p|--+>[runner **]<----------------->+
   (control mode)   |                       | |  |    |
@@ -265,13 +265,13 @@ Repeat until received messge '_stop':
     where m - number of Backtrader Datafeed values: v[-n], v[-n+1], v[-n+2],...,v[0],
     i.e. from n steps back to present step, and every v[i] is itself a vector of m features
     (open, close,...,volume,..., mov.avg., etc.).
-    - in case of n=1 process is obviously POMDP. Ensure MDP property by 'frame stacking' or/and
+    - in case of n=1 process is obviously POMDP. Ensure Markov property by 'frame stacking' or/and
     employing recurrent function approximators.
     - When n>1 process [somehow] approaches MDP (by means of Takens' delay embedding theorem).
 
  3. Why Gym, not Universe VNC environment?
     - For algorithmic trading, vnc-type environment should fit better.
-    But to best of my knowledge, OpenAI is yet to publish its "DIY VNC environment" kit. We'll wait.
+    But to best of my knowledge, OpenAI is yet to publish its "DIY VNC environment" kit. Let's wait.
 
  4. Why Backtrader library, not Zipline/PyAlgotrader etc.?
     - Those are excellent platforms, but what I really like about Backtrader is clear [to me], flexible  programming logic
