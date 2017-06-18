@@ -1,15 +1,16 @@
 ### Backtrader gym Environment
 **Implementation of OpenAI Gym environment for Backtrader backtesting/trading library.**
 
-Backtrader is open-source algorithmic trading library:
-
+Backtrader is open-source algorithmic trading library:  
 GitHub: http://github.com/mementum/backtrader  
 Documentation and community:
 http://www.backtrader.com/
 
 OpenAI Gym is...,
-well, everyone knows Gym:
-http://github.com/openai/gym
+well, everyone knows Gym:  
+GitHub: http://github.com/openai/gym  
+Documentation and community:
+https://gym.openai.com/
 
 #### Outline:
 General purpose of this wrapper is to provide gym-integrated framework for
@@ -146,38 +147,39 @@ https://www.backtrader.com/docu/index.html.
 In brief:
 - User defines backtrading engine parameters by composing `Backtrader.Cerebro()` subclass,
   provides historic prices dataset as `BTgymDataset()` instance and passes it as arguments when making BTgym environment.
-  See Backtrader documentation for details.
+  See https://www.backtrader.com/docu/concepts.html for general Backtrader concepts descriptions.
 - Environment starts separate server process responsible for rendering gym environment
   queries like `env.reset()` and `env.step()` by repeatedly sampling episodes form given dataset and running
-  backtesting `Cerebro` engine on it. See OpenAI Gym documentation for details.
+  backtesting `Cerebro` engine on it. See OpenAI Gym documentation for details: https://gym.openai.com/docs
 
-###### See notebooks in examples directory.
 #### Data flow:
 ```
             BTgym Environment                                 RL alorithm
                                            +-+
    (episode mode)  +<-----<action>--- -----| |<--------------------------------------+
           |        |                       |e|                                       |
-          +<------>+------<state observ.>->|n|--->[feature  ]---><state>--+->[agent]-+
+          +<------>+------<state observ.>->|n|--->[feature *]---><state>--+->[agent]-+
           |        |      <      matrix >  |v|    [estimator]             |     |
           |        |                       |.|                            |     |
-    [Backtrader]   +------<portfolio  >--->|s|--->[reward   ]---><reward>-+     |
+    [Backtrader]   +------<portfolio  >--->|s|--->[reward  *]---><reward>-+     |
     [Server    ]   |      <statistics>     |t|    [estimator]                   |
        |           |                       |e|                                  |
-       |           +------<is_done>------->|p|--+>[runner]<-------------------->+
+       |           +------<is_done>------->|p|--+>[runner **]<----------------->+
   (control mode)   |                       | |  |    |
        |           +------<aux.info>--- -->| |--+    |
        |                                   +-+       |
        +--<'_stop'><------------------->|env._stop|--+
        |                                             |
        +--<'_reset'><------------------>|env.reset|--+
-
+ 
+* - can be done on server side;
+** - RL framework specific module;
 ```
 #### Simple workflow:
 1. Define backtesting `BTgymStrategy(bt.Strategy)`, which will
    control Environment inner dynamics and backtesting logic.
-    - As for RL-specific part,any State,
-   Reward and Info computation logic can be implemented by overriding `get_state()`, `get_reward()`,
+    - As for RL-specific part, any `STATE`,
+   `REWARD`, `DONE` and `INFO` computation logic can be implemented by overriding `get_state()`, `get_reward()`,
    `get_info()`, `is_done()` and `set_datalines()` methods.
     - As for Broker/Trading specific part, custom order execution logic, stake sizing,
       analytics tracking can be implemented as for regular `bt.Strategy()`.
@@ -211,7 +213,7 @@ simple Request/Reply pattern (every request should be paired with reply message)
     - Episode runtime: after preparing environment initial state by running `BTgymStrategy` `start()`, `prenext()`
       methods, server halts and waits for incoming agent `action`. Upon receiving `action`, server performs all
 necessary `next()` computations (e.g. issues orders, computes broker values etc.),
-composes environment response and sends it back to agent. Actually, since 'no market impact' is assumed, all state
+composes environment response and sends it back to agent ( via `_BTgymAnalyzer`). Actually, since 'no market impact' is assumed, all state
 computations are performed one step ahead:
 
 **Server loop:**
@@ -224,7 +226,7 @@ Repeat until received messge '_stop':
     If message is '_reset':
         Randomly sample episode data from BTgymDataset
         Add episode data to bt.Cerebro()
-        Add service BTgymAnalyzer() to bt.Cerebro()
+        Add service _BTgymAnalyzer() to bt.Cerebro()
         Add DrawDown observer to bt.Cerebro(), if not already present
         Prepare BTgymStrategy initial state
         Set agent <action> to 'hold'
@@ -255,13 +257,13 @@ Accepts:
 `'buy', 'sell', 'hold', 'close'` - actions;
 Returns:
 - response - `dict`:
-    - `Observation` - observation of the current environment state, could be any tensor;
+    - `OBSERVATION` - observation of the current environment state, could be any tensor;
         default is [4,m] array of < fl32 >, where:
         - m - num. of last datafeed values,
-        - 4 - num. of data features (O,H,L,C  price values).
-    - `Reward` - current portfolio statistics for environment reward estimation;
-    - `Done` - episode termination flag;
-    - `Info` - auxiliary information.
+        - 4 - num. of data features (O, H, L, C  price values).
+    - `REWARD` - current portfolio statistics for environment reward estimation;
+    - `DONE` - episode termination flag;
+    - `INFO` - auxiliary information.
 
 #### close():
 [Kind of] implementation of OpenAI Gym `env.close()` method.
@@ -271,7 +273,7 @@ Forces BTgymServer to go in 'Control Mode'.
 Returns last episode statistics.
 Currently, returns `dict` of results, obtained from calling all
 attached to `Cerebro()` analyzers by their `get_analysis()` methods.
-See backtrader docs for analyzers reference.
+See backtrader docs for analyzers reference: https://www.backtrader.com/docu/analyzers/analyzers.html
 - Note:
     - Drawdown Analyzer is get attached by default.
     - When invoked, this method forces running episode to terminate.
@@ -286,7 +288,7 @@ Any `State`, `Reward` and `Info` computation logic can be implemented by
 subclassing `BTgymStrategy()` and overriding at least `get_state()`, `get_reward()`,
 `get_info()`, `is_done()` and `set_datalines()` methods.
 - One can always 'go deeper' and override `init()` and `next()` methods for desired
-server cerebro engine behaviour, including order execution etc.
+server cerebro engine behaviour, including order execution management logic etc.
 - Since it is `bt.Strategy()` subclass, see:
 https://www.backtrader.com/docu/strategy.html
 for more information.
@@ -333,7 +335,7 @@ Episode termination estimator,
 defines any trading logic conditions episode stop is called upon,
 e.g. <OMG! Stop it, we became too rich!> .
 - If any desired condition is met, it should set BTgymStrategy `is_done` variable to True,
-and [optionaly] set `broker_message` to some info string.
+and [optionally] set `broker_message` to some info string.
 - Episode runtime termination logic is:
 `ANY <get_done() condition is met> OR ANY <_get_done() default condition is met>`
 - It is just a structural convention method.
@@ -412,28 +414,29 @@ Performs `BTgymDataset`-->`bt.feed` conversion.
 
  4. Why Backtrader library, not Zipline/PyAlgotrader etc.?
     - Those are excellent platforms, but what I really like about Backtrader is clear [to me], flexible  programming logic
-    and ease of customisation. You dont't need to do tricks, say, to disable automatic calendar fetching
-    as with Zipline. I mean, it's nice feature and making it easy-to-run for trading people but prevents from
+    and ease of customisation. You dont't need to do tricks, say, to disable automatic calendar fetching, etc.
+    I mean, it's nice feature and making it easy-to-run for trading people but prevents from
     correctly running intraday trading strategies. Since RL-algo-trading is in active research stage, it's impossible to tell
     in advance which setup and logic could do the job. IMO Backtrader is just well suited for this kinds of experiments.
+    Besides this framework is being actively maintained.
 
  5. Why Currency data by default?
     - Obviously environment is data/market agnostic. Backtesting dataset size is what matters.
-    Deep Q-value algorithm, most sample efficient among deep RL, take 1M steps just to lift off.
+    Deep Q-value algorithm, most sample efficient among deep RL, take about 1M steps just to lift off.
     1 year 1 minute FX data contains about 300K samples. Feeding dataset consisting of several years of data and
     performing random sampling [hopefully]
     makes it realistic to expect algorithm to converge for intra-day or intra-week trading setting (~1500-5000 steps per episode).
     Besides, currency trading holds market liquidity and impact assumptions.
     - That's just preliminary assumption, not proved at all!
 
- 6. Mostly for backtrader users:
+ 6. Note for backtrader users:
     - There is a shift on meaning 'Backtrader Strategy' in case of reinforcement learning: BtgymStrategy is mostly used for
     technical and service tasks, like data preparation and order executions, while all trading decisions are taken
     by RL agent.
 
- 7. On implementattion: 
+ 7. On current implementation: 
     - my commit was to treat backtrader engine as black box and create wrapper using explicitly
-    defined and documented methods only. While it is obviously not efficiency-optimised approach, I think
+    defined and documented methods only. While it is not efficiency-optimised approach, I think
     it is still decent alpha-solution.
 
 
