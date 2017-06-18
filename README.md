@@ -3,8 +3,8 @@
 
 Backtrader is open-source algorithmic trading library:
 
-Github: http://github.com/mementum/backtrader  
-Documentattion and community:
+GitHub: http://github.com/mementum/backtrader  
+Documentation and community:
 http://www.backtrader.com/
 
 OpenAI Gym is...,
@@ -38,7 +38,7 @@ to instal package and dependencies.
 
 #### Quickstart
 
-Making environment with all parmeters set to defaults is as simple as:
+Making gym environment with all parmeters set to defaults is as simple as:
 
 ```
 from btgym import BTgymEnv
@@ -145,7 +145,7 @@ Consider reinforcement learning setup for equity/currency trading:
 https://www.backtrader.com/docu/index.html.
 In brief:
 - User defines backtrading engine parameters by composing `Backtrader.Cerebro()` subclass,
-  provides historic prices dataset as `BTgymDataset()` instance passes it as arguments when making BTgym environment.
+  provides historic prices dataset as `BTgymDataset()` instance and passes it as arguments when making BTgym environment.
   See Backtrader documentation for details.
 - Environment starts separate server process responsible for rendering gym environment
   queries like `env.reset()` and `env.step()` by repeatedly sampling episodes form given dataset and running
@@ -179,7 +179,7 @@ In brief:
     - As for RL-specific part,any State,
    Reward and Info computation logic can be implemented by overriding `get_state()`, `get_reward()`,
    `get_info()`, `is_done()` and `set_datalines()` methods.
-    - As for Broker/Trading specific part, custom order execution logic can be implemented, stake sizing,
+    - As for Broker/Trading specific part, custom order execution logic, stake sizing,
       analytics tracking can be implemented as for regular `bt.Strategy()`.
 2. Instantiate `Cerbro()`, add `BTgymStrategy()`, backtrader `Sizers`, `Analyzers` and `Observers` (if needed).
 3. Define dataset by passing CSV datafile and parameters to BTgymDataset instance.
@@ -192,7 +192,6 @@ In brief:
     - advance one timframe of episode by calling `env.step()`, perform agent training or testing;
     - after single episode is finished, retrieve agent performance statistic by `env.get_stat()`.
 
-###### See notebooks in examples directory.
 #### Server operation details:
 Backtrader server starts when `env.reset()` method is called for first time , runs as separate process, follows
 simple Request/Reply pattern (every request should be paired with reply message) and operates one of two modes:
@@ -278,16 +277,17 @@ See backtrader docs for analyzers reference.
     - When invoked, this method forces running episode to terminate.
 
 #### _stop_server():
-Stops BT server process, releases network resources.
+Stops BT server process.
+- Note: server will automatically restart upon calling `env.reset()`.
 
 ### class BTgymStrategy():
 Controls Environment inner dynamics and backtesting logic.
 Any `State`, `Reward` and `Info` computation logic can be implemented by
-subclassing BTgymStrategy and overriding at least `get_state()`, `get_reward()`,
+subclassing `BTgymStrategy()` and overriding at least `get_state()`, `get_reward()`,
 `get_info()`, `is_done()` and `set_datalines()` methods.
 - One can always 'go deeper' and override `init()` and `next()` methods for desired
 server cerebro engine behaviour, including order execution etc.
-- Since it is bt.Strategy subclass, see:
+- Since it is `bt.Strategy()` subclass, see:
 https://www.backtrader.com/docu/strategy.html
 for more information.
 - Note: `bt.observers.DrawDown` observer will be automatically added [by server process]
