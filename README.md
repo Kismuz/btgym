@@ -1,6 +1,6 @@
 ### Backtrader gym Environment
 **Implementation of OpenAI Gym environment for Backtrader backtesting/trading library.**
-
+****
 Backtrader is open-source algorithmic trading library:  
 GitHub: http://github.com/mementum/backtrader  
 Documentation and community:
@@ -11,14 +11,14 @@ well, everyone knows Gym:
 GitHub: http://github.com/openai/gym  
 Documentation and community:
 https://gym.openai.com/
-
+****
 #### Outline:
 General purpose of this wrapper is to provide gym-integrated framework for
-running realistic experiments on algorithmic trading tasks, enabling simple and convinient
-exploration of decision-making algorithms.
-###### This is not out-of-the-box-moneymaker, rather it is framework for exploration of complex non stationary real world environments.
-###### This work is in early development stage, any reports, feedback and suggestions are welcome.
-
+running realistic experiments on algorithmic trading tasks,
+bridging RL decision-making algorithms and [almost] real world environments.
+###### This is not out-of-the-box-moneymaker, rather it is framework for exploration of complex non stationary time-series based environments.
+###### This work is in early development stage, any reports, feedback and contributions are welcome.
+*****
 #### Current issues and limitations:
 - working alpha as of 17.06.17;
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
@@ -29,25 +29,29 @@ exploration of decision-making algorithms.
 - env.get_stat() method is returning strategy analyzers results only. No observers yet.
 - no plotting features, except if using pycharm integration observer. Not sure if it is suited for intraday strategies.
 - making new environment kills all processes using specified network port. Watch out your jupyter kernels. 
-
-
+****
 #### Installation
-Clone or copy btgym repository to local disk, cd to it and run: **`pip install e . `**
-to instal package and dependencies.
+Clone or copy btgym repository to local disk, cd to it and run: `pip install e . `
+to install package and dependencies e.g.:
+``` 
+got clone https://github.com/Kismuz/btgym.git
+cd btgym
+pip install e .
+```
+- Run `git pull` in btgym directory to update.
 - Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`.
 - Examples requires: `scipy`, `matplotlib`.
-
+****
 #### Quickstart
-
 Making gym environment with all parmeters set to defaults is as simple as:
 
-```
+```python
 from btgym import BTgymEnv
  
 MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',)
 ```
 Adding more controls may look like:
-```
+```python
 from btgym import BTgymEnv
  
 MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
@@ -61,7 +65,7 @@ MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv
                  
 ```
 Same one but registering environment in Gym way:
-```
+```python
 import gym
 from btgym import BTgymEnv
   
@@ -82,7 +86,7 @@ MyEnvironment = gym.make('backtrader-v5555')
 ```
 
 Maximum environment flexibility is achieved by explicitly defining and passing `Dataset` and `Cerebro` instances:
-```
+```python
 import backtrader as bt
 from btgym import BTgymDataset, BTgymStrategy, BTgymEnv
  
@@ -111,9 +115,8 @@ MyEnvironment = BTgymEnv(dataset=MyDataset,
                          port=5555,
                          verbose=1)
 ```
-
-###### See notebooks in examples directory.
-
+###### See notebooks in `examples` directory.
+****
 #### General problem setting:
 Consider reinforcement learning setup for equity/currency trading:
 - agent action space is discrete (`buy`, `sell`, `close` [position], `hold` [do nothing]);
@@ -152,9 +155,9 @@ In brief:
   queries like `env.reset()` and `env.step()` by repeatedly sampling episodes form given dataset and running
   backtesting `Cerebro` engine on it. See OpenAI Gym documentation for details: https://gym.openai.com/docs
 
-#### Data flow:
+##### Data flow:
 ```
-            BTgym Environment                                 RL alorithm
+            BTgym Environment                                 RL Framework
                                            +-+
    (episode mode)  +<-----<action>--- -----| |<--------------------------------------+
           |        |                       |e|                                       |
@@ -175,7 +178,7 @@ In brief:
 * - can be done on server side;
 ** - RL framework specific module;
 ```
-#### Simple workflow:
+#### Workflow:
 1. Define backtesting `BTgymStrategy(bt.Strategy)`, which will
    control Environment inner dynamics and backtesting logic.
     - As for RL-specific part, any `STATE`,
@@ -193,7 +196,7 @@ In brief:
     - start episode by calling `env.reset()`;
     - advance one timframe of episode by calling `env.step()`, perform agent training or testing;
     - after single episode is finished, retrieve agent performance statistic by `env.get_stat()`.
-
+****
 #### Server operation details:
 Backtrader server starts when `env.reset()` method is called for first time , runs as separate process, follows
 simple Request/Reply pattern (every request should be paired with reply message) and operates one of two modes:
@@ -216,8 +219,8 @@ necessary `next()` computations (e.g. issues orders, computes broker values etc.
 composes environment response and sends it back to agent ( via `_BTgymAnalyzer`). Actually, since 'no market impact' is assumed, all state
 computations are performed one step ahead:
 
-**Server loop:**
-```
+##### Server loop:
+```{r, tidy=FALSE, eval=FALSE, highlight=FALSE }
 Initialize by receiving engine [bt.Cerebro()] and dataset [BTgymDataset()]
 Repeat until received messge '_stop':
     Wait for incoming message
@@ -240,7 +243,7 @@ Repeat until received messge '_stop':
             Wait for incoming <action> message
             Send {state, reward, done, info} response
 ```
-
+****
 ### Notes:
  1. There is a choice: where to place most of state observation/reward estimation and prepossessing such as
     featurization, normalization, frame skipping and all other -zation: either to hide it inside environment or to do it
@@ -293,9 +296,9 @@ Repeat until received messge '_stop':
     - my commit was to treat backtrader engine as black box and create wrapper using explicitly
     defined and documented methods only. While it is not efficiency-optimised approach, I think
     it is still decent alpha-solution.
-
+****
 ### Reference
-_**- incomplete, refer to source files!**_
+_**- very incomplete, refer to source files!**_
 
 ### class BTgymEnv(gym.Env, args):
    OpenAI Gym environment wrapper for Backtrader framework.
@@ -441,6 +444,7 @@ number of records ~ max_episode_len.
 #### to_btfeed():
 Performs `BTgymDataset`-->`bt.feed` conversion.
 - Returns Cerebro-ready `bt.datafeed` instance.
+****
 
 
 
