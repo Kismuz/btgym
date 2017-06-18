@@ -15,7 +15,7 @@ https://gym.openai.com/
 #### Outline:
 General purpose of this wrapper is to provide gym-integrated framework for
 running realistic experiments on algorithmic trading tasks,
-bridging RL decision-making algorithms and [almost] real world environments.
+bridging RL decision-making algorithms with [close to] real world environments.
 ###### This is not out-of-the-box-moneymaker, rather it is framework for exploration of complex non stationary time-series based environments.
 ###### This work is in early development stage, any reports, feedback and contributions are welcome.
 *****
@@ -191,7 +191,7 @@ In brief:
     - `BTgymDataset()` is simply `Backtrader.feeds` class wrapper, which pipes
     `CSV`[source]-->`pandas`[for efficient sampling]-->`bt.feeds` routine
     and implements random episode data sampling.
-4. Initialize (or use `make()`, if need to register) gym environment with `Cerebro()` and `BTgymDataset()` along with other kwargs.
+4. Initialize (or register and `make()`) gym environment with `Cerebro()` and `BTgymDataset()` along with other kwargs.
 5. Run your favorite RL algorithm:
     - start episode by calling `env.reset()`;
     - advance one timframe of episode by calling `env.step()`, perform agent training or testing;
@@ -220,7 +220,7 @@ composes environment response and sends it back to agent ( via `_BTgymAnalyzer`)
 computations are performed one step ahead:
 
 ##### Server loop:
-```{r, tidy=FALSE, eval=FALSE, highlight=FALSE }
+```
 Initialize by receiving engine [bt.Cerebro()] and dataset [BTgymDataset()]
 Repeat until received messge '_stop':
     Wait for incoming message
@@ -245,7 +245,6 @@ Repeat until received messge '_stop':
 ```
 ****
  
-  
  Notes:
 -------
  1. There is a choice: where to place most of state observation/reward estimation and prepossessing such as
@@ -300,8 +299,10 @@ Repeat until received messge '_stop':
     defined and documented methods only. While it is not efficiency-optimised approach, I think
     it is still decent alpha-solution.
 ****
-## Reference*:
- 
+   
+    
+Reference*:
+----------
 ###### *- very incomplete, refer to source files!
 
 ### class BTgymEnv(gym.Env, args):
