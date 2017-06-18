@@ -240,7 +240,63 @@ Repeat until received messge '_stop':
             Wait for incoming <action> message
             Send {state, reward, done, info} response
 ```
-#### Reference [ incomplete, refer to source files! ]:
+
+### Notes:
+ 1. There is a choice: where to place most of state observation/reward estimation and prepossessing such as
+    featurization, normalization, frame skipping and all other -zation: either to hide it inside environment or to do it
+    inside RL algorytm?
+    - E.g. while state feature estimators are commonly parts of RL algorithms, reward estimation is often taken
+    directly from environment.
+    In case of portfolio optimisation reward function can be tricky (not to mention state preprocessing),
+    so it is reasonable to make it easyly accessable inside single module for ease of experimenting
+    and hyperparameter tuning.
+     - BTgym allows to do it both ways: either pass "raw" state observation and do all heavy work inside RL loop
+      or put it inside get_state() and get_reward() methods.
+    - To mention, it seems reasonable to pass all preprocessing work to server, since it can be done asynchronously
+    with agent own computations and thus somehow speed up training.
+
+ 2. [state matrix], returned by Environment by default is 2d [m,n] numpy array of floats,
+    where m - number of Backtrader Datafeed values: v[-n], v[-n+1], v[-n+2],...,v[0],
+    i.e. from n steps back to present step, and every v[i] is itself a vector of m features
+    (open, close,...,volume,..., mov.avg., etc.).
+    - in case of n=1 process is obviously POMDP. Ensure MDP property by 'frame stacking' or/and
+    employing recurrent function approximators.
+    - When n>1 process [somehow] approaches MDP (by means of Takens' delay embedding theorem).
+
+ 3. Why Gym, not Universe VNC environment?
+    - For algorithmic trading, vnc-type environment should fit better.
+    But to best of my knowledge, OpenAI is yet to publish its "DIY VNC environment" kit. We'll wait.
+
+ 4. Why Backtrader library, not Zipline/PyAlgotrader etc.?
+    - Those are excellent platforms, but what I really like about Backtrader is clear [to me], flexible  programming logic
+    and ease of customisation. You dont't need to do tricks, say, to disable automatic calendar fetching, etc.
+    I mean, it's nice feature and making it easy-to-run for trading people but prevents from
+    correctly running intraday trading strategies. Since RL-algo-trading is in active research stage, it's impossible to tell
+    in advance which setup and logic could do the job. IMO Backtrader is just well suited for this kinds of experiments.
+    Besides this framework is being actively maintained.
+
+ 5. Why Currency data by default?
+    - Obviously environment is data/market agnostic. Backtesting dataset size is what matters.
+    Deep Q-value algorithm, most sample efficient among deep RL, take about 1M steps just to lift off.
+    1 year 1 minute FX data contains about 300K samples. Feeding dataset consisting of several years of data and
+    performing random sampling [hopefully]
+    makes it realistic to expect algorithm to converge for intra-day or intra-week trading setting (~1500-5000 steps per episode).
+    Besides, currency trading holds market liquidity and impact assumptions.
+    - That's just preliminary assumption, not proved at all!
+
+ 6. Note for backtrader users:
+    - There is a shift on meaning 'Backtrader Strategy' in case of reinforcement learning: BtgymStrategy is mostly used for
+    technical and service tasks, like data preparation and order executions, while all trading decisions are taken
+    by RL agent.
+
+ 7. On current implementation: 
+    - my commit was to treat backtrader engine as black box and create wrapper using explicitly
+    defined and documented methods only. While it is not efficiency-optimised approach, I think
+    it is still decent alpha-solution.
+
+### Reference
+_**- incomplete, refer to source files!**_
+
 ### class BTgymEnv(gym.Env, args):
    OpenAI Gym environment wrapper for Backtrader framework.
    See source code comments for parameters definitions.
@@ -385,59 +441,6 @@ number of records ~ max_episode_len.
 #### to_btfeed():
 Performs `BTgymDataset`-->`bt.feed` conversion.
 - Returns Cerebro-ready `bt.datafeed` instance.
-
-### Notes:
- 1. There is a choice: where to place most of state observation/reward estimation and prepossessing such as
-    featurization, normalization, frame skipping and all other -zation: either to hide it inside environment or to do it
-    inside RL algorytm?
-    - E.g. while state feature estimators are commonly parts of RL algorithms, reward estimation is often taken
-    directly from environment.
-    In case of portfolio optimisation reward function can be tricky (not to mention state preprocessing),
-    so it is reasonable to make it easyly accessable inside single module for ease of experimenting
-    and hyperparameter tuning.
-     - BTgym allows to do it both ways: either pass "raw" state observation and do all heavy work inside RL loop
-      or put it inside get_state() and get_reward() methods.
-    - To mention, it seems reasonable to pass all preprocessing work to server, since it can be done asynchronously
-    with agent own computations and thus somehow speed up training.
-
- 2. [state matrix], returned by Environment by default is 2d [m,n] numpy array of floats,
-    where m - number of Backtrader Datafeed values: v[-n], v[-n+1], v[-n+2],...,v[0],
-    i.e. from n steps back to present step, and every v[i] is itself a vector of m features
-    (open, close,...,volume,..., mov.avg., etc.).
-    - in case of n=1 process is obviously POMDP. Ensure MDP property by 'frame stacking' or/and
-    employing recurrent function approximators.
-    - When n>1 process [somehow] approaches MDP (by means of Takens' delay embedding theorem).
-
- 3. Why Gym, not Universe VNC environment?
-    - For algorithmic trading, vnc-type environment should fit better.
-    But to best of my knowledge, OpenAI is yet to publish its "DIY VNC environment" kit. We'll wait.
-
- 4. Why Backtrader library, not Zipline/PyAlgotrader etc.?
-    - Those are excellent platforms, but what I really like about Backtrader is clear [to me], flexible  programming logic
-    and ease of customisation. You dont't need to do tricks, say, to disable automatic calendar fetching, etc.
-    I mean, it's nice feature and making it easy-to-run for trading people but prevents from
-    correctly running intraday trading strategies. Since RL-algo-trading is in active research stage, it's impossible to tell
-    in advance which setup and logic could do the job. IMO Backtrader is just well suited for this kinds of experiments.
-    Besides this framework is being actively maintained.
-
- 5. Why Currency data by default?
-    - Obviously environment is data/market agnostic. Backtesting dataset size is what matters.
-    Deep Q-value algorithm, most sample efficient among deep RL, take about 1M steps just to lift off.
-    1 year 1 minute FX data contains about 300K samples. Feeding dataset consisting of several years of data and
-    performing random sampling [hopefully]
-    makes it realistic to expect algorithm to converge for intra-day or intra-week trading setting (~1500-5000 steps per episode).
-    Besides, currency trading holds market liquidity and impact assumptions.
-    - That's just preliminary assumption, not proved at all!
-
- 6. Note for backtrader users:
-    - There is a shift on meaning 'Backtrader Strategy' in case of reinforcement learning: BtgymStrategy is mostly used for
-    technical and service tasks, like data preparation and order executions, while all trading decisions are taken
-    by RL agent.
-
- 7. On current implementation: 
-    - my commit was to treat backtrader engine as black box and create wrapper using explicitly
-    defined and documented methods only. While it is not efficiency-optimised approach, I think
-    it is still decent alpha-solution.
 
 
 
