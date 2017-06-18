@@ -1,4 +1,4 @@
-### Backtrader gym Environment
+## Backtrader gym Environment
 **Implementation of OpenAI Gym environment for Backtrader backtesting/trading library.**
 ****
 Backtrader is open-source algorithmic trading library:  
@@ -178,7 +178,7 @@ In brief:
 * - can be done on server side;
 ** - RL framework specific module;
 ```
-#### Workflow:
+#### Sample workflow:
 1. Define backtesting `BTgymStrategy(bt.Strategy)`, which will
    control Environment inner dynamics and backtesting logic.
     - As for RL-specific part, any `STATE`,
@@ -244,7 +244,10 @@ Repeat until received messge '_stop':
             Send {state, reward, done, info} response
 ```
 ****
-### Notes:
+ 
+  
+ Notes:
+-------
  1. There is a choice: where to place most of state observation/reward estimation and prepossessing such as
     featurization, normalization, frame skipping and all other -zation: either to hide it inside environment or to do it
     inside RL algorytm?
@@ -297,8 +300,9 @@ Repeat until received messge '_stop':
     defined and documented methods only. While it is not efficiency-optimised approach, I think
     it is still decent alpha-solution.
 ****
-### Reference
-_**- very incomplete, refer to source files!**_
+## Reference*:
+ 
+###### *- very incomplete, refer to source files!
 
 ### class BTgymEnv(gym.Env, args):
    OpenAI Gym environment wrapper for Backtrader framework.
