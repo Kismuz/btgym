@@ -173,6 +173,52 @@ class BTgymEnv(gym.Env):
         self.server_response = self.socket.recv_pyobj()
         self.log.info('Server seems ready with response: <{}>'.format(self.server_response))
 
+    def _stop_server(self):
+        """
+        Stops BT server process, releases network resources.
+        """
+        if not self.server:
+            self.log.info('No server process found. Hint: Forgot to start?')
+
+        else:
+
+            if self._force_control_mode():
+
+                if not self.socket.closed:
+                    self.socket.send_pyobj('_stop')
+                    self.server_response = self.socket.recv_pyobj()
+
+                else:
+                    self.server.terminate()
+                    self.server.join()
+
+            else:
+                self.log.info('Server seems stopped already.')
+            self.log.info('Server process exit code: {}'.format(self.server.exitcode))
+            
+    def _force_control_mode(self):
+        """
+        Puts BT server to control mode.
+        """
+        # Is there any server process?
+        if not self.server or not self.server.is_alive():
+            msg = 'No running server found.'
+            self.log.info(msg)
+            self.server_response = msg
+            return False
+
+        else:
+            self.server_response = 'NONE'
+            attempt = 0
+
+            while not 'CONTROL' in self.server_response:
+                self.socket.send_pyobj('_done')
+                self.server_response = self.socket.recv_pyobj()
+                attempt += 1
+                self.log.debug('FORCE CONTROL MODE attempt: {}.\nResponse: {}'.format(attempt, self.server_response))
+
+            return True
+
     def _reset(self):
         """
         Implementation of OpenAI Gym env.reset method.
@@ -237,29 +283,6 @@ class BTgymEnv(gym.Env):
         _ = self._force_control_mode()
         # maybe TODO something
 
-    def _force_control_mode(self):
-        """
-        Puts BT server to control mode.
-        """
-        # Is there any server process?
-        if not self.server or not self.server.is_alive():
-            msg = 'No running server found.'
-            self.log.info(msg)
-            self.server_response = msg
-            return False
-
-        else:
-            self.server_response = 'NONE'
-            attempt = 0
-
-            while not 'CONTROL' in self.server_response:
-                self.socket.send_pyobj('_done')
-                self.server_response = self.socket.recv_pyobj()
-                attempt += 1
-                self.log.debug('FORCE CONTROL MODE attempt: {}.\nResponse: {}'.format(attempt, self.server_response))
-
-            return True
-
     def get_stat(self):
         """
         Returns last episode statistics.
@@ -272,25 +295,3 @@ class BTgymEnv(gym.Env):
         else:
             return self.server_response
 
-    def _stop_server(self):
-        """
-        Stops BT server process, releases network resources.
-        """
-        if not self.server:
-            self.log.info('No server process found. Hint: Forgot to start?')
-
-        else:
-
-            if self._force_control_mode():
-
-                if not self.socket.closed:
-                    self.socket.send_pyobj('_stop')
-                    self.server_response = self.socket.recv_pyobj()
-
-                else:
-                    self.server.terminate()
-                    self.server.join()
-
-            else:
-                self.log.info('Server seems stopped already.')
-            self.log.info('Server process exit code: {}'.format(self.server.exitcode))

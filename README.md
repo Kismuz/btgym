@@ -14,13 +14,20 @@ https://gym.openai.com/
 ****
 #### Outline:
 General purpose of this wrapper is to provide gym-integrated framework for
-running realistic experiments on algorithmic trading tasks,
-bridging RL decision-making algorithms with [close to] real world environments.
-###### This is not out-of-the-box-moneymaker, rather it is framework for exploration of complex non stationary time-series based environments.
-###### This work is in early development stage, any reports, feedback and contributions are welcome.
+running reinforcement learning experiments 
+in [close to] real world algorithmic trading environments.
+
+```
+DISCLAIMER:
+This package is neither out-of-the-box-moneymaker, nor it provides ready-to-converge RL solutions.
+Rather, it is framework for setting experiments with complex, non stationary, time-series based environments.
+I have no idea what kind of algorithm and setup will solve it [if ever]. Explore on your own!
+```
+###### This work is in early development stage. Any suggestions, feedback and contributions are welcome.
+
 *****
 #### Current issues and limitations:
-- working alpha as of 17.06.17;
+- working alpha v0.0.2 as of 17.06.17;
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
 - no built-in dataset splitting to training/cv/testing subsets;
@@ -31,16 +38,17 @@ bridging RL decision-making algorithms with [close to] real world environments.
 - making new environment kills all processes using specified network port. Watch out your jupyter kernels. 
 ****
 #### Installation
-Clone or copy btgym repository to local disk, cd to it and run: `pip install -e . `
+- Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`.
+- Examples requires: `scipy`, `matplotlib`.
+- Clone or copy btgym repository to local disk, cd to it and run: `pip install -e . `
 to install package and dependencies e.g.:
 ``` 
 got clone https://github.com/Kismuz/btgym.git
 cd btgym
 pip install -e .
 ```
-- Run `git pull` in btgym directory to update.
-- Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`.
-- Examples requires: `scipy`, `matplotlib`.
+- Run `git pull` in `btgym` directory to update to latest version.
+
 ****
 #### Quickstart
 Making gym environment with all parmeters set to defaults is as simple as:
@@ -64,7 +72,7 @@ MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv
                          verbose=1,)
                  
 ```
-Same one but registering environment in Gym way:
+Same one but registering environment in Gym preferred way:
 ```python
 import gym
 from btgym import BTgymEnv
@@ -220,9 +228,9 @@ composes environment response and sends it back to agent ( via `_BTgymAnalyzer`)
 computations are performed one step ahead:
 
 ##### Server loop:
-```
+```pseudocode
 Initialize by receiving engine [bt.Cerebro()] and dataset [BTgymDataset()]
-Repeat until received messge '_stop':
+Repeat until received message '_stop':
     Wait for incoming message
     If message is '_getstat':
         send episode statistics
@@ -245,8 +253,8 @@ Repeat until received messge '_stop':
 ```
 ****
  
- Notes:
--------
+## Notes:
+
  1. There is a choice: where to place most of state observation/reward estimation and prepossessing such as
     featurization, normalization, frame skipping and all other -zation: either to hide it inside environment or to do it
     inside RL algorytm?
@@ -265,11 +273,11 @@ Repeat until received messge '_stop':
     i.e. from n steps back to present step, and every v[i] is itself a vector of m features
     (open, close,...,volume,..., mov.avg., etc.).
     - in case of n=1 process is obviously POMDP. Ensure Markov property by 'frame stacking' or/and
-    employing recurrent function approximators.
+    employing stateful function approximators.
     - When n>1 process [somehow] approaches MDP (by means of Takens' delay embedding theorem).
 
  3. Why Gym, not Universe VNC environment?
-    - For algorithmic trading, vnc-type environment should fit better.
+    - At a glance, vnc-type environment should fit algorithmic trading extremely well.
     But to best of my knowledge, OpenAI is yet to publish its "DIY VNC environment" kit. Let's wait.
 
  4. Why Backtrader library, not Zipline/PyAlgotrader etc.?
@@ -301,8 +309,7 @@ Repeat until received messge '_stop':
 ****
    
     
-Reference*:
-----------
+## Reference*:
 ###### *- very incomplete, refer to source files!
 
 ### class BTgymEnv(gym.Env, args):
