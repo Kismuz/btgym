@@ -251,9 +251,9 @@ class BTgymServer(multiprocessing.Process):
 
             # Finally:
             start_time = time.time()
-            episode = cerebro.run(stdstats=True, preload=True)[0]
+            episode = cerebro.run(stdstats=True, preload=False)[0]
 
-            elapsed_time = timedelta(seconds=round(time.time() - start_time))
+            elapsed_time = timedelta(seconds=time.time() - start_time)
             log.info('Episode elapsed time: {}.'.format(elapsed_time))
 
             # Recover that bloody analytics:

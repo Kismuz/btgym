@@ -282,12 +282,30 @@ class BTgymEnv(gym.Env):
         Implementation of OpenAI Gym env.step method.
         Relies on remote backtrader server for actual environment dynamics computing.
         """
-        # Are you in the list?
-        assert self.action_space.contains(action)
+
+        # Are you in the list and ready to go?
+        try:
+            assert self.action_space.contains(action) and (self.socket and not self.socket.closed)
+
+        except:
+            msg = ('\nAt least one of these is wrong:\n' +
+                   'Action error: space is {}, action sent is {}\n' +
+                   'Network error [socket doesnt exists or closed]: {}\n').\
+                       format(self.action_space,
+                              action,
+                              not self.socket or self.socket.closed,)
+            self.log.info(msg)
+            raise AssertionError(msg)
 
         # Send action to backtrader engine, recieve response
         self.socket.send_pyobj(self.server_actions[action])
         self.server_response = self.socket.recv_pyobj()
+        try:
+            assert type(self.server_response) == dict
+
+        except:
+            msg = 'Environment response is: {}\nHint: Forgot to call reset()?'.format(self.server_response)
+            raise AssertionError(msg)
 
         self.log.debug('Env.step() recieved response:\n{}\nAs type: {}'.
                        format(self.server_response, type(self.server_response)))
