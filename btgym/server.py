@@ -232,7 +232,7 @@ class BTgymServer(multiprocessing.Process):
             cerebro._socket = socket
             cerebro._log = log
 
-            # Add DrawdDown observer if not already:
+            # Add DrawDown observer if not already:
             dd_added = False
             for observer in cerebro.observers:
 
@@ -252,6 +252,7 @@ class BTgymServer(multiprocessing.Process):
             # Finally:
             start_time = time.time()
             episode = cerebro.run(stdstats=True, preload=True)[0]
+
             elapsed_time = timedelta(seconds=round(time.time() - start_time))
             log.info('Episode elapsed time: {}.'.format(elapsed_time))
 

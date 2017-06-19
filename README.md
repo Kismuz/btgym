@@ -35,7 +35,7 @@ I have no idea what kind of algorithm and setup will solve it [if ever]. Explore
 - no 'skip-frames' implementation within environment;
 - env.get_stat() method is returning strategy analyzers results only. No observers yet.
 - no plotting features, except if using pycharm integration observer. Not sure if it is suited for intraday strategies.
-- making new environment kills all processes using specified network port. Watch out your jupyter kernels. 
+- ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ Fixed 
 ****
 #### Installation
 - Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`.

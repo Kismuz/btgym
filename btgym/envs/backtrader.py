@@ -127,6 +127,8 @@ class BTgymEnv(gym.Env):
 
         # Server process/network parameters:
         self.server = None
+        self.context = None
+        self.socket = None
         self.port = port
         self.network_address = 'tcp://127.0.0.1:{}'.format(port)
 
@@ -142,16 +144,6 @@ class BTgymEnv(gym.Env):
         self.action_space = spaces.Discrete(len(portfolio_actions))
         self.server_actions = portfolio_actions + ('_done', '_reset', '_stop','_getstat')
 
-        # Set up client channel:
-        # First, kill any process using server port:
-        # TODO: sort of overkill?
-        cmd = "kill $( lsof -i:{} -t ) > /dev/null 2>&1".format(self.port)
-        os.system(cmd)
-        # Summon ZMQ:
-        self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.REQ)
-        self.socket.connect(self.network_address)
-
         # Finally:
         self.log.info('Environment is ready.')
 
@@ -159,6 +151,23 @@ class BTgymEnv(gym.Env):
         """
         Configures backtrader REQ/REP server instance and starts server process.
         """
+
+        # Ensure network resources:
+        # 1. Release client-side, if any:
+        if self.context:
+            self.context.destroy()
+            self.socket = None
+
+        # 2. Kill any process using server port:
+        cmd = "kill $( lsof -i:{} -t ) > /dev/null 2>&1".format(self.port)
+        os.system(cmd)
+
+        # Set up client channel:
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.REQ)
+        self.socket.connect(self.network_address)
+
+        # Configure and start server:
         self.server = BTgymServer(dataset=self.dataset,
                                   cerebro=self.engine,
                                   network_address=self.network_address,
@@ -177,37 +186,47 @@ class BTgymEnv(gym.Env):
         """
         Stops BT server process, releases network resources.
         """
+
         if not self.server:
-            self.log.info('No server process found. Hint: Forgot to start?')
+            self.log.info('No server process found.')
 
         else:
 
             if self._force_control_mode():
-
-                if not self.socket.closed:
-                    self.socket.send_pyobj('_stop')
-                    self.server_response = self.socket.recv_pyobj()
-
-                else:
-                    self.server.terminate()
-                    self.server.join()
+                # In case server is running and client side is ok:
+                self.socket.send_pyobj('_stop')
+                self.server_response = self.socket.recv_pyobj()
 
             else:
-                self.log.info('Server seems stopped already.')
-            self.log.info('Server process exit code: {}'.format(self.server.exitcode))
-            
+                self.server.terminate()
+                self.server.join()
+                self.server_response = 'Server process terminated.'
+
+            self.log.info('{} Exit code: {}'.format(self.server_response,
+                                                    self.server.exitcode))
+
+        # Release client-side, if any:
+        if self.context:
+            self.context.destroy()
+
+
     def _force_control_mode(self):
         """
         Puts BT server to control mode.
         """
-        # Is there any server process?
-        if not self.server or not self.server.is_alive():
-            msg = 'No running server found.'
-            self.log.info(msg)
-            self.server_response = msg
-            return False
+        # Check is there any faults with server process and connection?
+        network_error = [
+            (not self.server or not self.server.is_alive(), 'No running server found.'),
+            (not self.context or self.context.closed, 'No network connection found.'),
+        ]
+        for (err, msg) in network_error:
+            if err:
+                self.log.info(msg)
+                self.server_response = msg
+                return False
 
         else:
+            # If everything works, insist to go 'control':
             self.server_response = 'NONE'
             attempt = 0
 
@@ -254,7 +273,7 @@ class BTgymEnv(gym.Env):
             return self.server_response
 
         else:
-            msg = 'Something went wrong. env.reset() cant get response from server.'
+            msg = 'Something went wrong. env.reset() can not get response from server.'
             self.log.info(msg)
             raise ChildProcessError(msg)
 
