@@ -328,7 +328,7 @@ Relies on remote backtrader server for actual environment dynamics computing.
 Accepts:
 `'buy', 'sell', 'hold', 'close'` - actions;
 Returns:
-- response - `tuple`:
+- response - `tuple (O, R, D, I)`:
     - `OBSERVATION` - observation of the current environment state, could be any tensor;
         default is [4,m] array of < fl32 >, where:
         - m - num. of last datafeed values,
