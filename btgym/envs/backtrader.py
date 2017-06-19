@@ -34,6 +34,10 @@ from btgym import BTgymServer, BTgymStrategy, BTgymDataset
 
 ############################## OpenAI Gym Environment  ##############################
 
+#TODO: reset - return only state or full tuple
+#TODO: implement random records samples ?!!!!, somehow infer min/max state values - ? checking entire dataset ?
+
+
 class BTgymEnv(gym.Env):
     """
     OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
@@ -106,7 +110,7 @@ class BTgymEnv(gym.Env):
                                             episode_len_minutes=episode_len_minutes,
                                             time_gap_days=time_gap_days,
                                             time_gap_hours=time_gap_hours, )
-
+                # TODO: get dataset statistic for observation_shape high / low computing. Do not pass real data to server!
         # Default configuration for Backtrader computational engine (Cerebro).
         # Executed only if no bt.Cerebro custom subclass has been given.
         # Note: bt.observers.DrawDown observer will be added to any BTgymStrategy instance
@@ -133,9 +137,9 @@ class BTgymEnv(gym.Env):
         self.network_address = 'tcp://127.0.0.1:{}'.format(port)
 
         # Infer env. observation space from cerebro strategy parameters,
-        # default is 2d matrix, values in [0,10]. Override if needed:
+        # default is 2d matrix, values in [0,1]. Override if needed:
         self.observation_space = spaces.Box(low=0.0,
-                                            high=10.0,
+                                            high=2.0,
                                             shape=(self.engine.strats[0][0][2]['state_dim_0'],
                                                    self.engine.strats[0][0][2]['state_dim_time']))
         self.log.debug('OBS. SHAPE: {}'.format(self.observation_space.shape))
@@ -230,7 +234,7 @@ class BTgymEnv(gym.Env):
             self.server_response = 'NONE'
             attempt = 0
 
-            while not 'CONTROL' in self.server_response:
+            while not 'CONTROL_MODE' in str(self.server_response):
                 self.socket.send_pyobj('_done')
                 self.server_response = self.socket.recv_pyobj()
                 attempt += 1
@@ -238,7 +242,8 @@ class BTgymEnv(gym.Env):
 
             return True
 
-    def _reset(self):
+    def _reset(self,
+               state_only=True): # By default, returns only initial state observation (Gym convention).
         """
         Implementation of OpenAI Gym env.reset method.
         'Rewinds' backtrader server and starts new episode
@@ -258,19 +263,22 @@ class BTgymEnv(gym.Env):
 
             # Check if state_space is as expected:
             try:
-                assert self.server_response['state'].shape == self.observation_space.shape
+                assert self.server_response[0].shape == self.observation_space.shape
 
             except:
                 msg = ('\nState observation shape mismatch!\n' +
                        'Shape set by env: {},\n' +
                        'Shape returned by server: {}.\n' +
                        'Hint: Wrong get_state() parameters?').format(self.observation_space.shape,
-                                                                     self.server_response['state'].shape)
+                                                                     self.server_response[0].shape)
                 self.log.info(msg)
                 self._stop_server()
                 raise AssertionError(msg)
 
-            return self.server_response
+            if state_only:
+                return self.server_response[0]
+            else:
+                return self.server_response
 
         else:
             msg = 'Something went wrong. env.reset() can not get response from server.'
@@ -300,8 +308,10 @@ class BTgymEnv(gym.Env):
         # Send action to backtrader engine, recieve response
         self.socket.send_pyobj(self.server_actions[action])
         self.server_response = self.socket.recv_pyobj()
+
+        # Check if we really got that dict:
         try:
-            assert type(self.server_response) == dict
+            assert type(self.server_response) == tuple and len(self.server_response) == 4
 
         except:
             msg = 'Environment response is: {}\nHint: Forgot to call reset()?'.format(self.server_response)

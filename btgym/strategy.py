@@ -24,7 +24,6 @@ import numpy as np
 
 ############################## Base BTgymStrategy Class ###################
 
-
 class BTgymStrategy(bt.Strategy):
     """
     Controls Environment inner dynamics and backtesting logic.

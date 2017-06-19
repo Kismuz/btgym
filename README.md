@@ -202,7 +202,7 @@ In brief:
 4. Initialize (or register and `make()`) gym environment with `Cerebro()` and `BTgymDataset()` along with other kwargs.
 5. Run your favorite RL algorithm:
     - start episode by calling `env.reset()`;
-    - advance one timframe of episode by calling `env.step()`, perform agent training or testing;
+    - advance one step of episode by calling `env.step()`, perform agent training or testing;
     - after single episode is finished, retrieve agent performance statistic by `env.get_stat()`.
 ****
 #### Server operation details:
@@ -213,7 +213,7 @@ simple Request/Reply pattern (every request should be paired with reply message)
   goes to episode mode upon `_reset` (via `env.reset()`) and send last run episode statistic (if any) upon `_getstat`
   via `env.get_stat()`.
 - Episode mode: runs episode according `BtGymStrategy()` logic. Accepts `action` messages,
-  returns `dict.`: {`[state observation], [reward], [is_done], [aux.info]`}.
+  returns `tuple`: `([state observation], [reward], [is_done], [aux.info])`.
   Finishes episode upon recieving `action`==`_done` or according to strategy termination rules, than falls
   back to control mode.
     - Before every episode start, BTserver samples episode data and adds it to `bt.Cerebro()` instance
@@ -249,7 +249,7 @@ Repeat until received message '_stop':
             Compose aux. information
             Check episode termination conditions
             Wait for incoming <action> message
-            Send {state, reward, done, info} response
+            Send (state, reward, done, info) response
 ```
 ****
  
@@ -316,6 +316,7 @@ Repeat until received message '_stop':
    OpenAI Gym environment wrapper for Backtrader framework.
    See source code comments for parameters definitions.
 #### Methods:
+
 #### reset():
 Implementation of OpenAI Gym `env.reset()` method.
 'Rewinds' backtrader server and starts new episode
@@ -327,7 +328,7 @@ Relies on remote backtrader server for actual environment dynamics computing.
 Accepts:
 `'buy', 'sell', 'hold', 'close'` - actions;
 Returns:
-- response - `dict`:
+- response - `tuple`:
     - `OBSERVATION` - observation of the current environment state, could be any tensor;
         default is [4,m] array of < fl32 >, where:
         - m - num. of last datafeed values,

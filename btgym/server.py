@@ -72,13 +72,14 @@ class _BTgymAnalyzer(bt.Analyzer):
         # Halt and wait to receive action from outer world:
         self.strategy.action = self.socket.recv_pyobj()
         self.log.debug('COMM recieved: {}'.format(self.strategy.action))
-        self.response = {'state': self.strategy.state,
-                         'reward': self.strategy.reward,
-                         'done': self.strategy.is_done,
-                         'info': self.strategy.info}
-        # Send response:
+
+        # Compose response <o, r, d, i> tuple (Gym convention):
+        self.response = (self.strategy.state,
+                         self.strategy.reward,
+                         self.strategy.is_done,
+                         self.strategy.info)
+        # Send:
         self.socket.send_pyobj(self.response)
-        #self.log.debug('COMM sent: {}//{}'.format(self.response['done'], self.response['info']))
 
         # If done, initiate fallback to Control Mode:
         if self.strategy.is_done:
@@ -110,7 +111,7 @@ class BTgymServer(multiprocessing.Process):
     {'buy', 'sell', 'hold', 'close', '_done'} - actions;
                                            *'_done' - stops current episode.
     OUT:
-    response - <dict>: observation - observation of the current environment state,
+    response  <tuple>: observation - observation of the current environment state,
                                      could be any tensor; default is:
                                      [4,m] array of <fl32>, where:
                                      m - num. of last datafeed values,
@@ -221,9 +222,9 @@ class BTgymServer(multiprocessing.Process):
                     log.info('Episode statistic sent.')
 
                 else:  # ignore any other input
-                    # NOTE: response string must include 'CONTROL' exact substring
+                    # NOTE: response string must include 'CONTROL_MODE' exact substring
                     # for env.reset(), env.get_stat(), env.close() correct operation.
-                    message = 'CONTROL mode, send <_reset>, <_getstat> or <_stop>.'
+                    message = 'CONTROL_MODE, send <_reset>, <_getstat> or <_stop>.'
                     log.debug('Server sent: ' + message)
                     socket.send_pyobj(message)  # pairs any other input
 
