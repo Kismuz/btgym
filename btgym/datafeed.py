@@ -45,51 +45,56 @@ class BTgymDataset():
             Engine.run()
     TODO: implement sequential sampling.
     """
-    #  To-be attributes and their default values:
-    attrs = dict(
-        filename=None,  # Should be given either upon init. or calling read_csv()
-
-        # Default parameters for source-specific CSV datafeed class,
-        # correctly parses 1 minute Forex generic ASCII
-        # data files from www.HistData.com:
-
-        # CSV to Pandas params.
-        sep=';',
-        header=0,
-        index_col=0,
-        parse_dates=True,
-        names=['open', 'high', 'low', 'close', 'volume'],
-
-        # Pandas to BT.feeds params:
-        timeframe=1,
-        datetime=0,
-        open=1,
-        high=2,
-        low=3,
-        close=4,
-        volume=-1,
-        openinterest=-1,
-
-        # Random-sampling params:
-        start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
-        start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
-        episode_len_days=1,  # Maximum episode time duration in d, h, m.
-        episode_len_hours=23,
-        episode_len_minutes=55,
-        time_gap_days=0,  # Maximum data time gap allowed within sample in d, h.
-        time_gap_hours=5,  # If set < 1 day, samples containing weekends and holidays gaps will be rejected.
-
-        # Other:
-        log=None,
-        data=None, # Will hold actual data as pandas dataframe
-        data_stat=None # Dataset descriptive statistic as pandas dataframe
-    )
 
     def __init__(self, **kwargs):
-        # Lasy-set instance attributes:
+        #  To-be attributes and their default values:
+        self.attrs = dict(
+            filename=None,  # Should be given either upon init. or calling read_csv()
+
+            # Default parameters for source-specific CSV datafeed class,
+            # correctly parses 1 minute Forex generic ASCII
+            # data files from www.HistData.com:
+
+            # CSV to Pandas params.
+            sep=';',
+            header=0,
+            index_col=0,
+            parse_dates=True,
+            names=['open', 'high', 'low', 'close', 'volume'],
+
+            # Pandas to BT.feeds params:
+            timeframe=1,
+            datetime=0,
+            open=1,
+            high=2,
+            low=3,
+            close=4,
+            volume=-1,
+            openinterest=-1,
+
+            # Random-sampling params:
+            start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
+            start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
+            episode_len_days=1,  # Maximum episode time duration in d, h, m.
+            episode_len_hours=23,
+            episode_len_minutes=55,
+            time_gap_days=0,  # Maximum data time gap allowed within sample in d, h.
+            time_gap_hours=5,  # If set < 1 day, samples containing weekends and holidays gaps will be rejected.
+
+            # Other:
+            log = None,
+        )
+
+        self.data = None,  # Will hold actual data as pandas dataframe
+        self.data_stat = None  # Dataset descriptive statistic as pandas dataframe
+
+        # Set instance attributes:
         self.attrs.update(kwargs)
         for key, value in self.attrs.items():
             setattr(self, key, value)
+
+        # exclude logger from kwargs:
+        _ = self.attrs.pop('log')
 
         # Maximum data time gap allowed within sample as pydatetimedelta obj:
         self.max_time_gap = datetime.timedelta(days=self.time_gap_days,
@@ -155,6 +160,7 @@ class BTgymDataset():
 
         if flush_data:
             self.data = None
+            self.log.info('Data flushed.')
 
         return self.data_stat
 

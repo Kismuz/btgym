@@ -44,44 +44,61 @@ class BTgymEnv(gym.Env):
     """
     metadata = {'render.modes': ['human']}
 
-    def __init__(self,
-                 # Dataset parameters:
-                 filename=None,  # Source CSV data file; has no effect if <dataset> is not None
-                 dataset=None,  # BTgymDataset instance.
-                                # if None - dataset with <filename> and default parameters will be set.
+    def __init__(self, **kwargs):
+        self.dataset = None  # BTgymDataset instance.
+        # if None - dataset with <filename> and default parameters will be set.
 
-                 # Episode params, has no effect if <dataset> is not None:
-                 start_weekdays=[0, 1, 2, ],  # Only weekdays from the list will be used for episode start.
-                 start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
-                 episode_len_days=1,  # Maximum episode time duration in d:h:m.
-                 episode_len_hours=23,
-                 episode_len_minutes=55,
-                 time_gap_days=0,  # Maximum data time gap allowed within sample in d:h.
-                 time_gap_hours=5,  # If set < 1 day, samples containing weekends and holidays gaps will be rejected.
+        self.engine = None  # bt.Cerbro subclass for server to execute, if None -
+        # Cerebro() with default  parameters will be set.
 
-                 # Backtrader engine parameters:
-                 engine=None,  # bt.Cerbro subclass for server to execute,
-                               # if None - Cerebro() with default BTgymStrategy parameters will be set.
+        self.params_dataset = dict(
+            # Dataset parameters:
+            filename=None,  # Source CSV data file; has no effect if <dataset> is not None.
 
-                 # these will have no effect if <engine> arg is not None:
-                 state_dim_time=10,  # environment/cerebro.strategy arg/ state observation time-embedding dimensionality.
-                 state_dim_0=4,  # environment/cerebro.strategy arg/ state observation feature dimensionality.
-                 state_low=None,  # observation space state min/max values,
-                 state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
-                 drawdown_call=10,  # episode maximum drawdown threshold,
+            # Episode params, will have no effect if <dataset> is not None:
+            start_weekdays=[0, 1, 2, ],  # Only weekdays from the list will be used for episode start.
+            start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
+            episode_len_days=1,  # Maximum episode time duration in d:h:m.
+            episode_len_hours=23,
+            episode_len_minutes=55,
+            time_gap_days=0,  # Maximum data time gap allowed within sample in d:h.
+            time_gap_hours=5,  # If set < 1 day, samples containing weekends and holidays gaps will be rejected.
+        )
 
+        self.params_engine = dict(
+            # Backtrader engine parameters:
+            # these will have no effect if <engine> arg is not None and
+            # corresponding arg has been passed (that's different from Dataset args. behaviour):
+            state_dim_time=10,  # environment/cerebro.strategy arg/ state observation time-embedding dimensionality.
+            state_dim_0=4,  # environment/cerebro.strategy arg/ state observation feature dimensionality.
+            state_low=None,  # observation space state min/max values,
+            state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
+            drawdown_call=10,  # episode maximum drawdown threshold,
+        )
 
-                 # Other:
-                 portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions,
-                                                                      # should consist with BTgymStrategy exec. logic.
-                 port=5500,  # server arg/ port to use.
-                 verbose=0, ):  #  verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
+        self.params_other = dict(
+            # Other:
+            portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions,
+            # should consist with BTgymStrategy exec. logic.
+            port=5500,  # server arg/ port to use.
+            verbose=0,  # verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
+        )
+
+        # Update default values with passed kwargs:
+        for args_set in [self.params_dataset, self.params_engine, self.params_other]:
+            for key, value in kwargs.items():
+                if key in args_set:
+                    args_set[key] = value
+
+        # Set env attributes:
+        for key, value in self.params_other.items():
+            setattr(self, key, value)
 
         # Verbosity control:
         self.log = logging.getLogger('Env')
-        if verbose:
+        if self.verbose:
 
-            if verbose == 2:
+            if self.verbose == 2:
                 logging.getLogger().setLevel(logging.DEBUG)
 
             else:
@@ -90,86 +107,108 @@ class BTgymEnv(gym.Env):
         else:
             logging.getLogger().setLevel(logging.ERROR)
 
-        self.verbose = verbose
-
         # Dataset preparation:
-        if dataset:
+        if 'dataset' in kwargs:
             # If BTgymDataset instance has been passed:
-            self.dataset = dataset
+            self.dataset = kwargs['dataset']
+            # [shamefully] append logging:
+            self.dataset.log = self.log
 
         else:
 
-            if not os.path.isfile(str(filename)):
-                raise FileNotFoundError('Dataset source data file not found: ' + str(filename))
+            if (not 'filename' in self.params_dataset) or (not os.path.isfile(str(self.params_dataset['filename']))):
+                raise FileNotFoundError('Dataset source data file not found: ' + str(self.params_dataset['filename']))
 
             else:
                 # If no BTgymDataset has been passed,
                 # Make default dataset with given CSV file:
-                self.dataset = BTgymDataset(filename=filename,
-                                            start_weekdays=start_weekdays,
-                                            start_00=start_00,
-                                            episode_len_days=episode_len_days,
-                                            episode_len_hours=episode_len_hours,
-                                            episode_len_minutes=episode_len_minutes,
-                                            time_gap_days=time_gap_days,
-                                            time_gap_hours=time_gap_hours, )
+                self.dataset = BTgymDataset(filename=self.params_dataset['filename'],
+                                            start_weekdays=self.params_dataset['start_weekdays'],
+                                            start_00=self.params_dataset['start_00'],
+                                            episode_len_days=self.params_dataset['episode_len_days'],
+                                            episode_len_hours=self.params_dataset['episode_len_hours'],
+                                            episode_len_minutes=self.params_dataset['episode_len_minutes'],
+                                            time_gap_days=self.params_dataset['time_gap_days'],
+                                            time_gap_hours=self.params_dataset['time_gap_hours'],
+                                            log=self.log,)
+                self.log.info('Using base BTgymDataset class.')
 
-        # Default configuration for Backtrader computational engine (Cerebro).
-        # Executed only if no bt.Cerebro custom subclass has been given.
-        # Note: bt.observers.DrawDown observer will be added to any BTgymStrategy instance
+        # Engine preparation:
+        if 'engine' in kwargs:
+            # If bt.Cerebro has been passed:
+            # add all missing parameters to BTgymStrategy:
+            for key, value in self.params_engine.items():
+                if key not in kwargs['engine'].strats[0][0][2]:
+                    kwargs['engine'].strats[0][0][2][key] = value
+
+
+            self.engine = kwargs['engine']
+
+        # Note: either way, bt.observers.DrawDown observer will be added to any BTgymStrategy instance
         # by BTgymServer process at runtime.
-        if not engine:
+
+        else:
+            # Default configuration for Backtrader computational engine (Cerebro).
+            # Executed only if no bt.Cerebro custom subclass has been given.
             self.engine = bt.Cerebro()
             self.engine.addstrategy(BTgymStrategy,
-                                    state_dim_time=state_dim_time,
-                                    state_dim_0=state_dim_0,
-                                    state_low=state_low,
-                                    state_high=state_high,
-                                    drawdown_call=drawdown_call)
+                                    state_dim_time=self.params_engine['state_dim_time'],
+                                    state_dim_0=self.params_engine['state_dim_0'],
+                                    state_low=self.params_engine['state_low'],
+                                    state_high=self.params_engine['state_high'],
+                                    drawdown_call=self.params_engine['drawdown_call'])
             self.engine.broker.setcash(10.0)
             self.engine.broker.setcommission(commission=0.001)
             self.engine.addobserver(bt.observers.DrawDown)
             self.engine.addsizer(bt.sizers.SizerFix, stake=10)
+            self.log.info('Using base BTgymStrategy class.')
 
-        else:
-            try:
-                for key in
-                assert k in engine.strats[0][0][2]
-            self.engine = engine
+        # Do backward env. engine parameters updates with parameters from actual strategy:
+        for key, value in self.engine.strats[0][0][2].items():
+            self.params_engine[key] = value
+
+        # Same for env. dataset parameters from actual dataset:
+        for key, value in self.dataset.attrs.items():
+            self.params_dataset[key] = value
 
         # Server process/network parameters:
         self.server = None
         self.context = None
         self.socket = None
-        self.port = port
-        self.network_address = 'tcp://127.0.0.1:{}'.format(port)
+        self.network_address = 'tcp://127.0.0.1:{}'.format(self.port)
 
-        # Infer env. observation space shape from cerebro strategy parameters, default is 2d matrix.
+        # Infer env. observation space shape from BTgymStrategy parameters as 2d matrix;
         # Define env. obs. space minimum and maximum possible values: if not been set explicitly,
-        # try to infer from Dataset price values:
-        """"
-        if not self.engine.strats[0][0][2]['state_low'] or not self.engine.strats[0][0][2]['state_high']:
+        # infer from Dataset price values:
+        if self.engine.strats[0][0][2]['state_low'] == None or \
+            self.engine.strats[0][0][2]['state_high'] == None:
 
-            # Get statistic:
+            # Get dataset statistic:
             self.dataset_stat = self.dataset.describe()
 
-            #Exclude volume from columns we count:
+            # Exclude 'volume' from columns we count:
             data_columns = list(self.dataset.names)
             data_columns.remove('volume')
 
-            # Override with absolute min and max values:
+            # Override with absolute price min and max values:
             self.engine.strats[0][0][2]['state_low'] = self.dataset_stat.loc['min',data_columns].min()
             self.engine.strats[0][0][2]['state_high'] = self.dataset_stat.loc['max', data_columns].max()
 
-        self.observation_space = spaces.Box(low=0.0,
-                                            high=2.0,
+            self.log.info('Inferring obs. space high/low form dataset: {:.6f} / {:.6f}.'.
+                          format(self.engine.strats[0][0][2]['state_low'],
+                                 self.engine.strats[0][0][2]['state_high']))
+
+        # Set space:
+        self.observation_space = spaces.Box(low=self.engine.strats[0][0][2]['state_low'],
+                                            high=self.engine.strats[0][0][2]['state_high'],
                                             shape=(self.engine.strats[0][0][2]['state_dim_0'],
                                                    self.engine.strats[0][0][2]['state_dim_time']))
-        self.log.debug('OBS. SHAPE: {}'.format(self.observation_space.shape))
-        """
-        # Action space and corresponding server messages:
-        self.action_space = spaces.Discrete(len(portfolio_actions))
-        self.server_actions = portfolio_actions + ('_done', '_reset', '_stop','_getstat')
+        self.log.debug('Obs. shape: {}'.format(self.observation_space.shape))
+        self.log.debug('Obs. min:\n{}\nmax:\n{}'.format(self.observation_space.low, self.observation_space.high))
+
+        # Set action space and corresponding server messages:
+        self.action_space = spaces.Discrete(len(self.portfolio_actions))
+        self.server_actions = self.portfolio_actions + ('_done', '_reset', '_stop','_getstat')
 
         # Finally:
         self.log.info('Environment is ready.')
