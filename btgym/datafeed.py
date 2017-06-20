@@ -81,7 +81,8 @@ class BTgymDataset():
 
         # Other:
         log=None,
-        data = None, # Will hold pandas dataframe
+        data=None, # Will hold actual data as pandas dataframe
+        data_stat=None # Dataset descriptive statistic as pandas dataframe
     )
 
     def __init__(self, **kwargs):
@@ -123,25 +124,60 @@ class BTgymDataset():
             self.log.info(msg)
             raise FileNotFoundError(msg)
 
+    def describe(self):
+        """
+        Returns summary dataset statisitc as pandas dataframe:
+            records count,
+            data mean,
+            data std dev,
+            min value,
+            25% percentile,
+            50% percentile,
+            75% percentile,
+            max value
+        for every data column.
+        """
+        # Pretty straightforward.
+        # The only caveat here is that if actual data has not been loaded yet, need to load, describe and unload again,
+        # thus avoiding passing big files to BT server:
+
+        flush_data = False
+        try:
+            assert not self.data.empty
+            pass
+
+        except:
+            self.read_csv()
+            flush_data = True
+
+        self.data_stat = self.data.describe()
+        self.log.info('Dataset summary statistic:\n{}'.format(self.data_stat.to_string()))
+
+        if flush_data:
+            self.data = None
+
+        return self.data_stat
+
     def to_btfeed(self):
         """
         Performs BTgymDataset-->bt.feed conversion.
         Returns bt.datafeed instance.
         """
-        if not self.data.empty:
-           btfeed = btfeeds.PandasDirectData(dataname=self.data,
-                                             timeframe=self.timeframe,
-                                             datetime=self.datetime,
-                                             open=self.open,
-                                             high=self.high,
-                                             low=self.low,
-                                             close=self.close,
-                                             volume=self.volume,
-                                             openinterest=self.openinterest,)
-           btfeed.numrecords = self.data.shape[0]
-           return btfeed
+        try:
+            assert not self.data.empty
+            btfeed = btfeeds.PandasDirectData(dataname=self.data,
+                                              timeframe=self.timeframe,
+                                              datetime=self.datetime,
+                                              open=self.open,
+                                              high=self.high,
+                                              low=self.low,
+                                              close=self.close,
+                                              volume=self.volume,
+                                              openinterest=self.openinterest,)
+            btfeed.numrecords = self.data.shape[0]
+            return btfeed
 
-        else:
+        except:
             msg = 'BTgymDataset instance holds no data. Hint: forgot to call .read_csv()?'
             self.log.info(msg)
             raise AssertionError(msg)

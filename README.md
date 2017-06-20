@@ -457,6 +457,17 @@ number of records ~ max_episode_len.
 #### to_btfeed():
 Performs `BTgymDataset`-->`bt.feed` conversion.
 - Returns Cerebro-ready `bt.datafeed` instance.
+
+#### describe():
+Returns summary dataset statisitc [for every column] as pandas dataframe. Useful for preprocessing.
+- records count,
+- data mean,
+- data std dev,
+- min value,
+- 25% percentile,
+- 50% percentile,
+- 75% percentile,
+- max value.
 ****
 
 
