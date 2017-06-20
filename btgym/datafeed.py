@@ -67,7 +67,7 @@ class BTgymDataset():
         high=2,
         low=3,
         close=4,
-        volume=5,
+        volume=-1,
         openinterest=-1,
 
         # Random-sampling params:

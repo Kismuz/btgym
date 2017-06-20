@@ -51,6 +51,8 @@ class BTgymStrategy(bt.Strategy):
     broker_message = '-'
     params = dict(state_dim_time=10,  # state time embedding dimension (just convention)
                   state_dim_0=4,  # one can add dim_1, dim_2, ... if needed; should match env.observation_space
+                  state_low=None,  # observation space state min/max values,
+                  state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
                   drawdown_call=10,)  # simplest condition to finish episode
 
     def __init__(self):

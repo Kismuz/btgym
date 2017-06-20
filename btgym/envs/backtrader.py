@@ -34,8 +34,8 @@ from btgym import BTgymServer, BTgymStrategy, BTgymDataset
 
 ############################## OpenAI Gym Environment  ##############################
 
-#TODO: reset - return only state or full tuple
-#TODO: implement random records samples ?!!!!, somehow infer min/max state values - ? checking entire dataset ?
+#TODO: implement dataset descriptive statistic retrieving from server
+#TODO: observation_space min/max bounds setting
 
 
 class BTgymEnv(gym.Env):
@@ -57,16 +57,19 @@ class BTgymEnv(gym.Env):
                  episode_len_hours=23,
                  episode_len_minutes=55,
                  time_gap_days=0,  # Maximum data time gap allowed within sample in d:h.
-                 time_gap_hours=5, # If set < 1 day, samples containing weekends and holidays gaps will be rejected.
+                 time_gap_hours=5,  # If set < 1 day, samples containing weekends and holidays gaps will be rejected.
 
                  # Backtrader engine parameters:
                  engine=None,  # bt.Cerbro subclass for server to execute,
                                # if None - Cerebro() with default BTgymStrategy parameters will be set.
 
-                 # Engine parameters, has no effect if <engine> arg is not None:
+                 # these will have no effect if <engine> arg is not None:
                  state_dim_time=10,  # environment/cerebro.strategy arg/ state observation time-embedding dimensionality.
                  state_dim_0=4,  # environment/cerebro.strategy arg/ state observation feature dimensionality.
+                 state_low=None,  # observation space state min/max values,
+                 state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
                  drawdown_call=10,  # episode maximum drawdown threshold,
+
 
                  # Other:
                  portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions,
@@ -110,7 +113,7 @@ class BTgymEnv(gym.Env):
                                             episode_len_minutes=episode_len_minutes,
                                             time_gap_days=time_gap_days,
                                             time_gap_hours=time_gap_hours, )
-                # TODO: get dataset statistic for observation_shape high / low computing. Do not pass real data to server!
+
         # Default configuration for Backtrader computational engine (Cerebro).
         # Executed only if no bt.Cerebro custom subclass has been given.
         # Note: bt.observers.DrawDown observer will be added to any BTgymStrategy instance
@@ -120,6 +123,8 @@ class BTgymEnv(gym.Env):
             self.engine.addstrategy(BTgymStrategy,
                                     state_dim_time=state_dim_time,
                                     state_dim_0=state_dim_0,
+                                    state_low=state_low,
+                                    state_high=state_high,
                                     drawdown_call=drawdown_call)
             self.engine.broker.setcash(10.0)
             self.engine.broker.setcommission(commission=0.001)
@@ -127,6 +132,9 @@ class BTgymEnv(gym.Env):
             self.engine.addsizer(bt.sizers.SizerFix, stake=10)
 
         else:
+            try:
+                for key in
+                assert k in engine.strats[0][0][2]
             self.engine = engine
 
         # Server process/network parameters:
@@ -136,14 +144,29 @@ class BTgymEnv(gym.Env):
         self.port = port
         self.network_address = 'tcp://127.0.0.1:{}'.format(port)
 
-        # Infer env. observation space from cerebro strategy parameters,
-        # default is 2d matrix, values in [0,1]. Override if needed:
+        # Infer env. observation space shape from cerebro strategy parameters, default is 2d matrix.
+        # Define env. obs. space minimum and maximum possible values: if not been set explicitly,
+        # try to infer from Dataset price values:
+        """"
+        if not self.engine.strats[0][0][2]['state_low'] or not self.engine.strats[0][0][2]['state_high']:
+
+            # Get statistic:
+            self.dataset_stat = self.dataset.describe()
+
+            #Exclude volume from columns we count:
+            data_columns = list(self.dataset.names)
+            data_columns.remove('volume')
+
+            # Override with absolute min and max values:
+            self.engine.strats[0][0][2]['state_low'] = self.dataset_stat.loc['min',data_columns].min()
+            self.engine.strats[0][0][2]['state_high'] = self.dataset_stat.loc['max', data_columns].max()
+
         self.observation_space = spaces.Box(low=0.0,
                                             high=2.0,
                                             shape=(self.engine.strats[0][0][2]['state_dim_0'],
                                                    self.engine.strats[0][0][2]['state_dim_time']))
         self.log.debug('OBS. SHAPE: {}'.format(self.observation_space.shape))
-
+        """
         # Action space and corresponding server messages:
         self.action_space = spaces.Discrete(len(portfolio_actions))
         self.server_actions = portfolio_actions + ('_done', '_reset', '_stop','_getstat')
