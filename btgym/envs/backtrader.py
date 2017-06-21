@@ -73,13 +73,17 @@ class BTgymEnv(gym.Env):
             state_dim_0=4,  # environment/cerebro.strategy arg/ state observation feature dimensionality.
             state_low=None,  # observation space state min/max values,
             state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
-            drawdown_call=10,  # episode maximum drawdown threshold,
+            start_cash=10.0,  # initial trading capital.
+            broker_commission=0.001,  # trade execution commission, default is 0.1% of operation value.
+            fixed_stake=10,  # single trade stake is fixed type by def.
+            drawdown_call=90,  # episode maximum drawdown threshold, default is 90% of initial value.
         )
 
         self.params_other = dict(
             # Other:
             portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions,
-            # should consist with BTgymStrategy exec. logic.
+            # should consist with BTgymStrategy order execution logic;
+            # defaults are: 0 - 'do nothing', 1 - 'buy', 2 - 'sell', 3 - 'close position'.
             port=5500,  # server arg/ port to use.
             verbose=0,  # verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
         )
@@ -111,7 +115,7 @@ class BTgymEnv(gym.Env):
         if 'dataset' in kwargs:
             # If BTgymDataset instance has been passed:
             self.dataset = kwargs['dataset']
-            # [shamefully] append logging:
+            # [awry] append logging:
             self.dataset.log = self.log
 
         else:
@@ -136,11 +140,10 @@ class BTgymEnv(gym.Env):
         # Engine preparation:
         if 'engine' in kwargs:
             # If bt.Cerebro has been passed:
-            # add all missing parameters to BTgymStrategy:
+            # fill all missing parameters [if any] with defaults:
             for key, value in self.params_engine.items():
                 if key not in kwargs['engine'].strats[0][0][2]:
                     kwargs['engine'].strats[0][0][2][key] = value
-
 
             self.engine = kwargs['engine']
 
@@ -149,7 +152,7 @@ class BTgymEnv(gym.Env):
 
         else:
             # Default configuration for Backtrader computational engine (Cerebro).
-            # Executed only if no bt.Cerebro custom subclass has been given.
+            # Executed only if no bt.Cerebro custom subclass has been passed.
             self.engine = bt.Cerebro()
             self.engine.addstrategy(BTgymStrategy,
                                     state_dim_time=self.params_engine['state_dim_time'],
@@ -157,29 +160,21 @@ class BTgymEnv(gym.Env):
                                     state_low=self.params_engine['state_low'],
                                     state_high=self.params_engine['state_high'],
                                     drawdown_call=self.params_engine['drawdown_call'])
-            self.engine.broker.setcash(10.0)
-            self.engine.broker.setcommission(commission=0.001)
-            self.engine.addobserver(bt.observers.DrawDown)
-            self.engine.addsizer(bt.sizers.SizerFix, stake=10)
+            self.engine.broker.setcash(self.params_engine['start_cash'])
+            self.engine.broker.setcommission(self.params_engine['broker_commission'])
+            self.engine.addsizer(bt.sizers.SizerFix, stake=self.params_engine['fixed_stake'],)
+
             self.log.info('Using base BTgymStrategy class.')
-
-        # Do backward env. engine parameters updates with parameters from actual strategy:
-        for key, value in self.engine.strats[0][0][2].items():
-            self.params_engine[key] = value
-
-        # Same for env. dataset parameters from actual dataset:
-        for key, value in self.dataset.attrs.items():
-            self.params_dataset[key] = value
 
         # Server process/network parameters:
         self.server = None
         self.context = None
         self.socket = None
-        self.network_address = 'tcp://127.0.0.1:{}'.format(self.port)
+        self.network_address = 'tcp://127.0.0.1:{}'.format(self.port)  # using localhost
 
         # Infer env. observation space shape from BTgymStrategy parameters as 2d matrix;
         # Define env. obs. space minimum and maximum possible values: if not been set explicitly,
-        # infer from Dataset price values:
+        # the only sensible way is to infer from raw Dataset price values:
         if self.engine.strats[0][0][2]['state_low'] == None or \
             self.engine.strats[0][0][2]['state_high'] == None:
 
@@ -210,6 +205,17 @@ class BTgymEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self.portfolio_actions))
         self.server_actions = self.portfolio_actions + ('_done', '_reset', '_stop','_getstat')
 
+        # Do backward env. engine parameters update with values from actual engine:
+        for key, value in self.engine.strats[0][0][2].items():
+            self.params_engine[key] = value
+        self.params_engine['start_cash'] = self.engine.broker.startingcash
+        self.params_engine['broker_commission'] = self.engine.broker.comminfo[None].params.commission
+        self.params_engine['fixed_stake'] = self.engine.sizers[None][2]['stake']
+
+        # Do backward update for env. dataset parameters from actual dataset:
+        for key, value in self.dataset.attrs.items():
+            self.params_dataset[key] = value
+
         # Finally:
         self.log.info('Environment is ready.')
 
@@ -237,7 +243,7 @@ class BTgymEnv(gym.Env):
         self.server = BTgymServer(dataset=self.dataset,
                                   cerebro=self.engine,
                                   network_address=self.network_address,
-                                  verbose=self.verbose)
+                                  log=self.log)
         self.server.daemon = False
         self.server.start()
         # Wait for server to startup

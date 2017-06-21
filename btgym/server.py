@@ -131,7 +131,7 @@ class BTgymServer(multiprocessing.Process):
                  dataset=None,
                  cerebro=None,
                  network_address=None,
-                 verbose=False):
+                 log=None):
         """
         Configures BT server instance.
         """
@@ -157,11 +157,18 @@ class BTgymServer(multiprocessing.Process):
         else:
             self.network_address = network_address
 
-        self.verbose = verbose
+        # To log or not to log:
+        if not log:
+            self.log = logging.getLogger('dummy')
+            self.log.addHandler(logging.NullHandler())
+
+        else:
+            self.log = log
 
     def run(self):
         """
         Server process runtime body. This method is invoked by env._start_server().
+        """
         """
         # Verbosity control:
         if self.verbose:
@@ -172,9 +179,9 @@ class BTgymServer(multiprocessing.Process):
         else:
             logging.getLogger().setLevel(logging.ERROR)
         log = logging.getLogger('BTgym_server')
-
+        """
         self.process = multiprocessing.current_process()
-        log.info('Server process PID: {}'.format(self.process.pid))
+        self.log.info('Server process PID: {}'.format(self.process.pid))
 
         # Runtime Housekeeping:
         episode_result = dict()
@@ -189,23 +196,20 @@ class BTgymServer(multiprocessing.Process):
         # Actually load data to BTgymDataset instance:
         self.dataset.read_csv()
 
-        # Add logging:
-        self.dataset.log = log
-
         # Server 'Control Mode' loop:
         for episode_number in itertools.count(1):
 
             # Stuck here until '_reset' or '_stop':
             while True:
                 service_input = socket.recv_pyobj()
-                log.debug('Server Control mode: recieved <{}>'.format(service_input))
+                self.log.debug('Server Control mode: recieved <{}>'.format(service_input))
 
                 # Check if it's time to exit:
                 if service_input == '_stop':
                     # Server shutdown logic:
                     # send last run statistic, release comm channel and exit:
                     message = 'Server is exiting.'
-                    log.info(message)
+                    self.log.info(message)
                     socket.send_pyobj(message)
                     socket.close()
                     context.destroy()
@@ -213,25 +217,25 @@ class BTgymServer(multiprocessing.Process):
 
                 elif service_input == '_reset':
                     message = 'Starting episode.'
-                    log.info(message)
+                    self.log.info(message)
                     socket.send_pyobj(message)  # pairs '_reset'
                     break
 
                 elif service_input == '_getstat':
                     socket.send_pyobj(episode_result)
-                    log.info('Episode statistic sent.')
+                    self.log.info('Episode statistic sent.')
 
                 else:  # ignore any other input
                     # NOTE: response string must include 'CONTROL_MODE' exact substring
                     # for env.reset(), env.get_stat(), env.close() correct operation.
                     message = 'CONTROL_MODE, send <_reset>, <_getstat> or <_stop>.'
-                    log.debug('Server sent: ' + message)
+                    self.log.debug('Server sent: ' + message)
                     socket.send_pyobj(message)  # pairs any other input
 
             # Got '_reset' signal, prepare Cerebro subclass and run episode:
             cerebro = copy.deepcopy(self.cerebro)
             cerebro._socket = socket
-            cerebro._log = log
+            cerebro._log = self.log
 
             # Add DrawDown observer if not already:
             dd_added = False
@@ -255,14 +259,14 @@ class BTgymServer(multiprocessing.Process):
             episode = cerebro.run(stdstats=True, preload=False)[0]
 
             elapsed_time = timedelta(seconds=time.time() - start_time)
-            log.info('Episode elapsed time: {}.'.format(elapsed_time))
+            self.log.info('Episode elapsed time: {}.'.format(elapsed_time))
 
             # Recover that bloody analytics:
             analyzers_list = episode.analyzers.getnames()
             analyzers_list.remove('_env_analyzer')
 
             episode_result['episode'] = episode_number
-            episode_result['time'] = elapsed_time
+            episode_result['runtime'] = elapsed_time
 
             for name in analyzers_list:
                 episode_result[name] = episode.analyzers.getbyname(name).get_analysis()
