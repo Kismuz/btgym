@@ -34,10 +34,6 @@ from btgym import BTgymServer, BTgymStrategy, BTgymDataset
 
 ############################## OpenAI Gym Environment  ##############################
 
-#TODO: implement dataset descriptive statistic retrieving from server
-#TODO: observation_space min/max bounds setting
-
-
 class BTgymEnv(gym.Env):
     """
     OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
@@ -66,9 +62,7 @@ class BTgymEnv(gym.Env):
         )
 
         self.params_engine = dict(
-            # Backtrader engine parameters:
-            # these will have no effect if <engine> arg is not None and
-            # corresponding arg has been passed (that's different from Dataset args. behaviour):
+            # Backtrader engine parameters, will have no effect if <engine> arg is not None:
             state_dim_time=10,  # environment/cerebro.strategy arg/ state observation time-embedding dimensionality.
             state_dim_0=4,  # environment/cerebro.strategy arg/ state observation feature dimensionality.
             state_low=None,  # observation space state min/max values,
@@ -84,7 +78,7 @@ class BTgymEnv(gym.Env):
             portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions,
             # should consist with BTgymStrategy order execution logic;
             # defaults are: 0 - 'do nothing', 1 - 'buy', 2 - 'sell', 3 - 'close position'.
-            port=5500,  # server arg/ port to use.
+            port=5500,  # network port to use.
             verbose=0,  # verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
         )
 
@@ -139,15 +133,10 @@ class BTgymEnv(gym.Env):
 
         # Engine preparation:
         if 'engine' in kwargs:
-            # If bt.Cerebro has been passed:
-            # fill all missing parameters [if any] with defaults:
-            for key, value in self.params_engine.items():
-                if key not in kwargs['engine'].strats[0][0][2]:
-                    kwargs['engine'].strats[0][0][2][key] = value
-
+            # If bt.Cerebro() instance [subclass actually] has been passed:
             self.engine = kwargs['engine']
 
-        # Note: either way, bt.observers.DrawDown observer will be added to any BTgymStrategy instance
+        # Note: either way, bt.observers.DrawDown observer [and logger] will be added to any BTgymStrategy instance
         # by BTgymServer process at runtime.
 
         else:
