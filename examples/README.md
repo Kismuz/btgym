@@ -6,6 +6,4 @@
 **Setting up environment [full]**: Coming soon.
  
   
-   
-   
-![WrenchRoll](./img/2017-02-08 16-52-45.JPG)
+ 
