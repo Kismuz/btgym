@@ -41,11 +41,8 @@ class BTgymStrategy(bt.Strategy):
 
     # Set-list:
     log = None
-    state = None
-    reward = None
-    info = '_'
-    is_done = False
     iteration = 1
+    is_done = False
     action = 'hold'
     order = None
     broker_message = '-'
@@ -89,32 +86,31 @@ class BTgymStrategy(bt.Strategy):
         Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in
         define_datalines().
         """
-        self.state = np.row_stack((self.data.open.get(size=self.p.state_dim_time),
-                                   self.data.low.get(size=self.p.state_dim_time),
-                                   self.data.high.get(size=self.p.state_dim_time),
-                                   self.data.close.get(size=self.p.state_dim_time),))
+        return np.row_stack((self.data.open.get(size=self.p.state_dim_time),
+                             self.data.low.get(size=self.p.state_dim_time),
+                             self.data.high.get(size=self.p.state_dim_time),
+                             self.data.close.get(size=self.p.state_dim_time),))
 
     def get_reward(self):
         """
-        Default reward estimator.
-        Same as for state composer applies. Can return raw portfolio
-        performance statictics or enclose entire reward estimation algorithm.
+        Default reward estimator. Returns scalar <reward, type=float>.
+        Same principles as for state composer apply. Can return raw portfolio
+        performance statistics or enclose entire reward estimation algorithm.
         """
         # Let it be 1-step portfolio value delta:
-        # TODO: make it more sensible
-        self.reward = (self.stats.broker.value[0] - self.stats.broker.value[-1]) * 1e2
+        return (self.stats.broker.value[0] - self.stats.broker.value[-1]) * 1e2
 
     def get_info(self):
         """
         Composes information part of environment response,
-        can be any object. Override by own taste.
+        can be any object. Override to own taste.
         """
-        self.info = dict(step = self.iteration,
-                         action = self.action,
-                         broker_message = self.broker_message,
-                         broker_value = self.stats.broker.value[0],
-                         drawdown = self.stats.drawdown.drawdown[0],
-                         max_drawdown = self.stats.drawdown.maxdrawdown[0],)
+        return dict(step = self.iteration,
+                    action = self.action,
+                    broker_message = self.broker_message,
+                    broker_value = self.stats.broker.value[0],
+                    drawdown = self.stats.drawdown.drawdown[0],
+                    max_drawdown = self.stats.drawdown.maxdrawdown[0],)
 
     def get_done(self):
         """
@@ -122,12 +118,10 @@ class BTgymStrategy(bt.Strategy):
         defines any trading logic conditions episode stop is called upon,
         e.g. <OMG! Stop it, we became too rich!> .
         It is just a structural a convention method.
-        If any desired condition is met, it should set <self.is_done> variable to True,
-        and [optionaly] set <self.broker_message> to some info string.
-        Episode runtime termination logic is:
-        ANY <get_done condition is met> OR ANY <_get_done() default condition is met>
+        Default method is empty.
+        Expected to return tuple (<is_done, type=bool>, <message, type=str>).
         """
-        pass
+        return False, '-'
 
     def _get_done(self):
         """
@@ -137,8 +131,15 @@ class BTgymStrategy(bt.Strategy):
            is sent as part of environment response.
         2. Got '_done' signal from outside. E.g. via env.reset() method invoked by outer RL algorithm.
         3. Hit drawdown threshold.
-        """
 
+        This method shouldn't be overridden or called explicitly.
+
+        Runtime execution logic is:
+            terminate episode if:
+            get_done() returned (True, 'something')
+            OR
+            ANY _get_done() default condition is met.
+        """
         # Base episode termination rules:
         is_done_rules = [
             # Will it be last step of the episode?:
@@ -148,12 +149,15 @@ class BTgymStrategy(bt.Strategy):
             # Any money left?:
             (self.stats.drawdown.maxdrawdown[0] > self.p.drawdown_call, 'DRAWDOWN CALL!'),
         ]
+        # Append get_done() results:
+        is_done_rules +=[self.get_done()]
 
         # Sweep through:
         for (condition, message) in is_done_rules:
             if condition:
                 self.is_done = True
                 self.broker_message = message
+        return self.is_done
 
 
     def notify_order(self, order):
@@ -191,7 +195,6 @@ class BTgymStrategy(bt.Strategy):
         Defines one step environment routine for server 'Episode mode';
         At least, it should handle order execution logic according to action received.
         """
-
         # Simple action-to-order logic:
         if self.action == 'hold' or self.order:
             pass

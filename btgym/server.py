@@ -42,7 +42,6 @@ class _BTgymAnalyzer(bt.Analyzer):
     """
     log = None
     socket = None
-    response = None
 
     def __init__(self):
         """
@@ -61,28 +60,21 @@ class _BTgymAnalyzer(bt.Analyzer):
         """
         Actual env.step() communication and episode termination is here.
         """
-
         # Gather response:
-        self.strategy.get_state()
-        self.strategy.get_reward()
-        self.strategy._get_done()
-        self.strategy.get_done()
-        self.strategy.get_info()
+        state = self.strategy.get_state()
+        reward = self.strategy.get_reward()
+        is_done = self.strategy._get_done()
+        info = self.strategy.get_info()
 
         # Halt and wait to receive action from outer world:
         self.strategy.action = self.socket.recv_pyobj()
         self.log.debug('COMM recieved: {}'.format(self.strategy.action))
 
-        # Compose response <o, r, d, i> tuple (Gym convention):
-        self.response = (self.strategy.state,
-                         self.strategy.reward,
-                         self.strategy.is_done,
-                         self.strategy.info)
-        # Send:
-        self.socket.send_pyobj(self.response)
+        # Send response as <o, r, d, i> tuple (Gym convention):
+        self.socket.send_pyobj((state, reward, is_done, info))
 
         # If done, initiate fallback to Control Mode:
-        if self.strategy.is_done:
+        if is_done:
             self.log.debug('RunStop() invoked with {}'.format(self.strategy.broker_message))
             self.strategy.close()
             self.strategy.env.runstop()

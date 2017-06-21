@@ -102,7 +102,9 @@ MyCerebro = bt.Cerebro()
 MyCerebro.addstrategy(BTgymStrategy,
                       state_dim_time=30,
                       state_dim_0=4,
-                      drawdown_call=50)
+                      drawdown_call=50,
+                      state_low=None,
+                      state_high=None,)
  
 MyCerebro.broker.setcash(10.0)
 MyCerebro.broker.setcommission(commission=0.001)
@@ -394,23 +396,22 @@ Data Lines that are not default to `BTgymStrategy` should be explicitly defined 
 
 #### get_reward():
 Default reward estimator.
-- Default implementation: returns one-step portfolio value difference.
+- Default implementation: returns amplified one-step portfolio value difference.
 - Same as for state composer applies. Can return raw portfolio
 performance statictics or enclose entire reward estimation module.
 
 #### get_info():
-Composes information part of environment response, default is `dict`, can be any string/object, 
-- Override as needed.
+Composes information part of environment response, by default returns `dict`, but can be any string/object, 
+- Override to own taste.
 
 #### get_done():
 Episode termination estimator,
-defines any trading logic conditions episode stop is called upon,
-e.g. <OMG! Stop it, we became too rich!> .
-- If any desired condition is met, it should set BTgymStrategy `is_done` variable to True,
-and [optionally] set `broker_message` to some info string.
-- Episode runtime termination logic is:
-`ANY <get_done() condition is met> OR ANY <_get_done() default condition is met>`
-- It is just a structural convention method.
+defines any trading logic conditions episode stop is called upon.
+- It is just a structural a convention method.
+- Expected to return tuple `(<is_done, type=bool>, <message, type=str>)`,
+  e.g.: `(True, 'OMG! Stop it, we became too rich!')`
+- Default method is empty.
+
 
 #### _get_done():
 Default episode termination method,
@@ -419,6 +420,15 @@ checks base conditions episode stop is called upon:
    is sent as part of environment response.
 2. Got `_done` signal from outside. E.g. via `env.reset()` method invoked by outer RL algorithm.
 3. Hit drawdown threshold.
+ 
+This method shouldn't be overridden or called explicitly.
+```
+Runtime execution logic is:
+    terminate episode if:
+        get_done() returned (True, 'something')
+        OR
+        ANY _get_done() default condition is met.
+```
 
 #### next():
 Default implementation for `BTgymStrategy` exists.
@@ -428,7 +438,7 @@ Default implementation for `BTgymStrategy` exists.
 ### class BTgymDataset():
 `Backtrader.CSVfeeds()` class wrapper.
 - Currently pipes `CSV`[source]-->`pandas`[for efficient sampling]-->`bt.feeds` routine.
-- Implements random episode data sampling.
+- Supports random episode data sampling.
 - Default parameters are set to correctly parse 1 minute Forex generic ASCII
 data files from www.HistData.com:
 - See source code comments for parameters definitions.
