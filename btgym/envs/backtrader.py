@@ -156,14 +156,13 @@ class BTgymEnv(gym.Env):
         #
         if 'dataset' in kwargs:
             # If BTgymDataset instance has been passed:
-            print(self.kwargs['dataset'])
             self.dataset = kwargs['dataset']
             # Update dataset parameters with kwargs:
             for key, value in self.kwargs['dataset'].items():
                 if key in dir(self.dataset):
                     setattr(self.dataset, key, value)
             # Cleanup:
-            msg = 'custom Dataset class used'
+            msg = 'Custom Dataset class used.'
             self.params['dataset'] = dict(info=msg)
 
         else:
@@ -178,7 +177,7 @@ class BTgymEnv(gym.Env):
             # Use kwargs on top of defaults:
             self.params['dataset'].update(self.kwargs['dataset'])
             self.dataset = BTgymDataset(**self.params['dataset'])
-            msg = 'base Dataset class used'
+            msg = 'Base Dataset class used.'
         # Append logging:
         self.dataset.log = self.log
 
@@ -189,7 +188,7 @@ class BTgymEnv(gym.Env):
             # If full-blown bt.Cerebro() subclass has been passed:
             self.engine = kwargs['engine']
             # Cleanup:
-            msg = 'custom Cerebro engine used'
+            msg = 'Custom Cerebro engine used.'
             self.params['engine'] = dict(info=msg)
             self.params['strategy'] = dict(info=msg)
             # ...and it's done.
@@ -201,7 +200,7 @@ class BTgymEnv(gym.Env):
             # Default configuration for Backtrader computational engine (Cerebro),
             # if no bt.Cerebro() custom subclass has been passed:
             self.engine = bt.Cerebro()
-            msg = 'base Cerebro engine used'
+            msg = 'Base Cerebro engine used.'
 
             # First, set strategy configuration:
             if 'strategy' in kwargs:
@@ -210,7 +209,7 @@ class BTgymEnv(gym.Env):
                 # Add it along with kwargs (ignore defaults):
                 self.engine.addstrategy(self.strategy,**self.kwargs['strategy'])
                 # Cleanup:
-                msg2 = 'custom Strategy class used'
+                msg2 = 'Custom Strategy class used.'
                 self.params['startegy'] = dict(info=msg2)
 
             else:
@@ -218,9 +217,9 @@ class BTgymEnv(gym.Env):
                 self.strategy = BTgymStrategy
                 self.params['strategy'].update(self.kwargs['strategy'])
                 self.engine.addstrategy(self.strategy, **self.params['strategy'])
-                msg2 = 'base Strategy class used'
+                msg2 = 'Base Strategy class used.'
 
-            msg += ', ' + msg2
+            msg += ' ' + msg2
 
             # Second, set Cerebro-level configuration:
             self.engine.broker.setcash(self.params['engine']['start_cash'])
