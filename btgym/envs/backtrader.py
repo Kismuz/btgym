@@ -41,18 +41,19 @@ class BTgymEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, **kwargs):
-        self.dataset = None  # BTgymDataset instance.
-        # if None - dataset with <filename> and default parameters will be set.
+        self.dataset = None  # BTgymDataset instance,
+        # If <dataset>kwarg is passed - it will override all other dataset related kwargs and parameters.
 
-        self.engine = None  # bt.Cerbro subclass for server to execute, if None -
-        # Cerebro() with default  parameters will be set.
+        self.engine = None  # bt.Cerbro subclass for server to execute.
+        # If <engine> kwarg is passed - it will override all other strategy and engine related kwargs and params.
 
         self.params = dict(
             dataset = dict(
                 # Dataset parameters:
                 filename=None,  # Source CSV data file; has no effect if <dataset> is not None.
 
-                # Episode params, will have no effect if <dataset> is not None:
+                # Episode data params,
+                # will have no effect if <dataset> is not None:
                 start_weekdays=[0, 1, 2, ],  # Only weekdays from the list will be used for episode start.
                 start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
                 episode_len_days=1,  # Maximum episode time duration in d:h:m.
@@ -63,7 +64,9 @@ class BTgymEnv(gym.Env):
             ),
 
             engine = dict(
-                # Backtrader engine parameters, will have no effect if <engine> arg is not None:
+                # Backtrader engine parameters,
+                # will have no effect if <engine> arg is not None:
+                strategy=BTgymStrategy,  # base strategy to use if no <startegy> kwarg been passed.
                 state_shape=(4,10), # observation state shape, by convention last dimension is time embedding one;
                     # one can define any shape; match env.observation_space.shape.
                 state_low=None,  # observation space state min/max values,
@@ -145,7 +148,7 @@ class BTgymEnv(gym.Env):
             # Default configuration for Backtrader computational engine (Cerebro).
             # Executed only if no bt.Cerebro() custom subclass has been passed.
             self.engine = bt.Cerebro()
-            self.engine.addstrategy(BTgymStrategy,
+            self.engine.addstrategy(self.params['engine']['strategy'],
                                     state_shape=self.params['engine']['state_shape'],
                                     state_low=self.params['engine']['state_low'],
                                     state_high=self.params['engine']['state_high'],
@@ -194,9 +197,10 @@ class BTgymEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self.params['engine']['portfolio_actions']))
         self.server_actions = self.params['engine']['portfolio_actions'] + ('_done', '_reset', '_stop','_getstat')
 
-        # Do backward env. engine parameters update with values from actual engine:
+        # Do backward env. engine and strategy parameters update with values from actual engine:
         for key, value in self.engine.strats[0][0][2].items():
             self.params['engine'][key] = value
+
         self.params['engine']['start_cash'] = self.engine.broker.startingcash
         self.params['engine']['broker_commission'] = self.engine.broker.comminfo[None].params.commission
         self.params['engine']['fixed_stake'] = self.engine.sizers[None][2]['stake']
