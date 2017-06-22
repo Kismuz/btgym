@@ -68,6 +68,9 @@ class BTgymEnv(gym.Env):
                 state_dim_0=4,  # environment/cerebro.strategy arg/ state observation feature dimensionality.
                 state_low=None,  # observation space state min/max values,
                 state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
+                portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions,
+                    # should consist with BTgymStrategy order execution logic;
+                    # defaults are: 0 - 'do nothing', 1 - 'buy', 2 - 'sell', 3 - 'close position'.
                 start_cash=10.0,  # initial trading capital.
                 broker_commission=0.001,  # trade execution commission, default is 0.1% of operation value.
                 fixed_stake=10,  # single trade stake is fixed type by def.
@@ -76,9 +79,6 @@ class BTgymEnv(gym.Env):
 
             other = dict(
                 # Other:
-                portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions,
-                # should consist with BTgymStrategy order execution logic;
-                # defaults are: 0 - 'do nothing', 1 - 'buy', 2 - 'sell', 3 - 'close position'.
                 port=5500,  # network port to use.
                 verbose=0,  # verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
             ),
@@ -193,8 +193,8 @@ class BTgymEnv(gym.Env):
         self.log.debug('Obs. min:\n{}\nmax:\n{}'.format(self.observation_space.low, self.observation_space.high))
 
         # Set action space and corresponding server messages:
-        self.action_space = spaces.Discrete(len(self.params['other']['portfolio_actions']))
-        self.server_actions = self.params['other']['portfolio_actions'] + ('_done', '_reset', '_stop','_getstat')
+        self.action_space = spaces.Discrete(len(self.params['engine']['portfolio_actions']))
+        self.server_actions = self.params['engine']['portfolio_actions'] + ('_done', '_reset', '_stop','_getstat')
 
         # Do backward env. engine parameters update with values from actual engine:
         for key, value in self.engine.strats[0][0][2].items():
