@@ -352,8 +352,8 @@ class BTgymEnv(gym.Env):
             assert self.action_space.contains(action) and (self.socket and not self.socket.closed)
 
         except:
-            msg = ('\nAt least one of these is wrong:\n' +
-                   'Action error: space is {}, action sent is {}\n' +
+            msg = ('\nAt least one of these occurred:\n' +
+                   'Action error: space is {}, action sent is {}\nOR\n' +
                    'Network error [socket doesnt exists or closed]: {}\n').\
                        format(self.action_space,
                               action,
