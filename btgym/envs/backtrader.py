@@ -64,8 +64,8 @@ class BTgymEnv(gym.Env):
 
             engine = dict(
                 # Backtrader engine parameters, will have no effect if <engine> arg is not None:
-                state_dim_time=10,  # environment/cerebro.strategy arg/ state observation time-embedding dimensionality.
-                state_dim_0=4,  # environment/cerebro.strategy arg/ state observation feature dimensionality.
+                state_shape=(4,10), # observation state shape, by convention last dimension is time embedding one;
+                    # one can define any shape; match env.observation_space.shape.
                 state_low=None,  # observation space state min/max values,
                 state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
                 portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions,
@@ -143,11 +143,10 @@ class BTgymEnv(gym.Env):
 
         else:
             # Default configuration for Backtrader computational engine (Cerebro).
-            # Executed only if no bt.Cerebro custom subclass has been passed.
+            # Executed only if no bt.Cerebro() custom subclass has been passed.
             self.engine = bt.Cerebro()
             self.engine.addstrategy(BTgymStrategy,
-                                    state_dim_time=self.params['engine']['state_dim_time'],
-                                    state_dim_0=self.params['engine']['state_dim_0'],
+                                    state_shape=self.params['engine']['state_shape'],
                                     state_low=self.params['engine']['state_low'],
                                     state_high=self.params['engine']['state_high'],
                                     drawdown_call=self.params['engine']['drawdown_call'])
@@ -187,8 +186,7 @@ class BTgymEnv(gym.Env):
         # Set space:
         self.observation_space = spaces.Box(low=self.engine.strats[0][0][2]['state_low'],
                                             high=self.engine.strats[0][0][2]['state_high'],
-                                            shape=(self.engine.strats[0][0][2]['state_dim_0'],
-                                                   self.engine.strats[0][0][2]['state_dim_time']))
+                                            shape=self.engine.strats[0][0][2]['state_shape'],)
         self.log.debug('Obs. shape: {}'.format(self.observation_space.shape))
         self.log.debug('Obs. min:\n{}\nmax:\n{}'.format(self.observation_space.low, self.observation_space.high))
 
@@ -214,7 +212,6 @@ class BTgymEnv(gym.Env):
         """
         Configures backtrader REQ/REP server instance and starts server process.
         """
-
         # Ensure network resources:
         # 1. Release client-side, if any:
         if self.context:

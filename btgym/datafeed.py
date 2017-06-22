@@ -43,13 +43,13 @@ class BTgymDataset():
             Engine = bt.Cerebro()
             Engine.adddata(DataFeed)
             Engine.run()
-    TODO: implement sequential sampling.
     """
+    # TODO: implement sequential and time-window sampling.
 
     def __init__(self, **kwargs):
         #  To-be attributes and their default values:
         self.attrs = dict(
-            filename=None,  # Should be given either upon init. or calling read_csv()
+            filename=None,  # Should be given either here  or when calling read_csv()
 
             # Default parameters for source-specific CSV datafeed class,
             # correctly parses 1 minute Forex generic ASCII
@@ -63,7 +63,7 @@ class BTgymDataset():
             names=['open', 'high', 'low', 'close', 'volume'],
 
             # Pandas to BT.feeds params:
-            timeframe=1,
+            timeframe=1, # 1 minute.
             datetime=0,
             open=1,
             high=2,
@@ -75,11 +75,11 @@ class BTgymDataset():
             # Random-sampling params:
             start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
             start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
-            episode_len_days=1,  # Maximum episode time duration in d, h, m.
+            episode_len_days=1,  # Maximum episode time duration in days, hours, minutes:
             episode_len_hours=23,
             episode_len_minutes=55,
-            time_gap_days=0,  # Maximum data time gap allowed within sample in d, h.
-            time_gap_hours=5,  # If set < 1 day, samples containing weekends and holidays gaps will be rejected.
+            time_gap_days=0,  # Maximum data time gap allowed within sample in days, hours. Thereby,
+            time_gap_hours=5,  # if set to be < 1 day, samples containing weekends and holidays gaps will be rejected.
 
             # Other:
             log = None,
@@ -93,7 +93,7 @@ class BTgymDataset():
         for key, value in self.attrs.items():
             setattr(self, key, value)
 
-        # exclude logger from kwargs:
+        # Exclude logger from kwargs:
         _ = self.attrs.pop('log')
 
         # Maximum data time gap allowed within sample as pydatetimedelta obj:
@@ -115,7 +115,7 @@ class BTgymDataset():
         Populates instance by loading data: CSV file --> pandas dataframe
         """
         if filename:
-            self.filename = filename  # override data source if  one is given
+            self.filename = filename  # override data source if one is given
         if self.filename and os.path.isfile(self.filename):
             self.data = pd.read_csv(self.filename,
                                     sep=self.sep,
@@ -123,7 +123,7 @@ class BTgymDataset():
                                     index_col=self.index_col,
                                     parse_dates=self.parse_dates,
                                     names=self.names)
-            self.log.info('Sucsessfuly loaded {} records from <{}>.'.format(self.data.shape[0], self.filename))
+            self.log.info('Loaded {} records from <{}>.'.format(self.data.shape[0], self.filename))
         else:
             msg = 'Data file <{}> not specified / not found.'.format(str(self.filename))
             self.log.info(msg)
@@ -131,7 +131,7 @@ class BTgymDataset():
 
     def describe(self):
         """
-        Returns summary dataset statisitc as pandas dataframe:
+        Returns summary dataset statistic as pandas dataframe:
             records count,
             data mean,
             data std dev,
@@ -142,10 +142,9 @@ class BTgymDataset():
             max value
         for every data column.
         """
-        # Pretty straightforward.
+        # Pretty straightforward, using standard pandas utility.
         # The only caveat here is that if actual data has not been loaded yet, need to load, describe and unload again,
         # thus avoiding passing big files to BT server:
-
         flush_data = False
         try:
             assert not self.data.empty
@@ -156,11 +155,11 @@ class BTgymDataset():
             flush_data = True
 
         self.data_stat = self.data.describe()
-        self.log.info('Dataset summary statistic:\n{}'.format(self.data_stat.to_string()))
+        self.log.info('Data summary:\n{}'.format(self.data_stat.to_string()))
 
         if flush_data:
             self.data = None
-            self.log.info('Data flushed.')
+            self.log.info('Flushed data.')
 
         return self.data_stat
 
@@ -191,7 +190,7 @@ class BTgymDataset():
     def sample_random(self):
         """
         Randomly samples continuous subset of data and
-        returns BTgymDataset instance, holding continuous data episode with
+        returns BTgymDataset() instance, containing continuous data episode with
         number of records ~ max_episode_len.
         """
         # Maximum possible number of data records (rows) within episode:
@@ -224,7 +223,8 @@ class BTgymDataset():
             # If 00 option set, get index of first record of that day:
             if self.start_00:
                 adj_timedate = episode_first_day.date()
-                self.log.info('Start time ajusted to 00:00.')
+                self.log.info('Start time adjusted to <00:00.>')
+
             else:
                 adj_timedate = episode_first_day
 
@@ -237,17 +237,19 @@ class BTgymDataset():
             self.log.info('Episode duration: {}.'.format(episode_sample_len, ))
             self.log.info('Total episode time gap: {}.'.format(episode_sample_len - self.max_episode_len))
 
-            # Perfom data gap check:
+            # Perform data gap check:
             if episode_sample_len - self.max_episode_len < self.max_time_gap:
                 self.log.info('Sample accepted.')
-                # If Ok - return smaller dataset:
+                # If sample OK - return episodic-dataset:
                 episode = BTgymDataset(**self.attrs)
                 episode.data = episode_sample
                 return episode
+
             else:
                 self.log.info('Duration too big, resampling...\n')
                 attempts += 1
 
+        # Got here -> sanity check failed:
         msg = ('Quitting after {} sampling attempts.' +
                'Hint: check sampling params / dataset consistency.').format(attempts)
         self.log.info(msg)

@@ -39,18 +39,24 @@ class BTgymStrategy(bt.Strategy):
     to BTgymStrategy instance at runtime.
     """
 
-    # Set-list:
+    # Set-list. We don't to fiddle with subclassing bt.Cerebro(),
+    # so BTgymStrategy will contain all backtrading engine parameters
+    # and attributes one can need at runtime:
     log = None
     iteration = 1
     is_done = False
     action = 'hold'
     order = None
     broker_message = '-'
-    params = dict(state_dim_time=10,  # state time embedding dimension (just convention)
-                  state_dim_0=4,  # one can add dim_1, dim_2, ... if needed; should match env.observation_space
-                  state_low=None,  # observation space state min/max values,
-                  state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
-                  drawdown_call=90,)  # simplest condition to finish episode
+    params = dict(
+        state_shape=(4,10), # observation state shape, by convention last dimension is time embedding one;
+            # one can define any shape; should match env.observation_space.shape.
+        state_low=None,  # observation space state min/max values,
+        state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
+        drawdown_call=90, # simplest condition to finish episode.
+        dataset_stat=None,  # Summary descriptive statistics for entire dataset and
+        episode_stat=None,  # current episode. Got updated by server.
+    )
 
     def __init__(self):
         # Inherit logger from cerebro:
@@ -59,7 +65,7 @@ class BTgymStrategy(bt.Strategy):
         # A wacky way to define strategy 'minimum period'
         # for proper time-embedded state composition:
         self.data.dim_sma = btind.SimpleMovingAverage(self.datas[0],
-                                                      period=self.p.state_dim_time)
+                                                      period=self.p.state_shape[-1])
         # Add custom data Lines if any (just a convenience wrapper):
         self.set_datalines()
 
@@ -76,8 +82,8 @@ class BTgymStrategy(bt.Strategy):
         """
         Default state observation composer.
         Returns time-embedded environment state observation as [n,m] numpy matrix, where
-        n - number of signal features [ == env.state_dim_0],
-        m - time-embedding length.
+        n - number of signal features  == state_shape[0] == 4,
+        m - time-embedding length  == state_shape[-1] == <set by user>.
         One can override this method,
         defining necessary calculations and return arbitrary shaped tensor.
         It's possible either to compute entire featurized environment state
@@ -86,10 +92,10 @@ class BTgymStrategy(bt.Strategy):
         Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in
         define_datalines().
         """
-        return np.row_stack((self.data.open.get(size=self.p.state_dim_time),
-                             self.data.low.get(size=self.p.state_dim_time),
-                             self.data.high.get(size=self.p.state_dim_time),
-                             self.data.close.get(size=self.p.state_dim_time),))
+        return np.row_stack((self.data.open.get(size=self.p.state_shape[-1]),
+                             self.data.low.get(size=self.p.state_shape[-1]),
+                             self.data.high.get(size=self.p.state_shape[-1]),
+                             self.data.close.get(size=self.p.state_shape[-1]),))
 
     def get_reward(self):
         """
@@ -144,7 +150,7 @@ class BTgymStrategy(bt.Strategy):
         # Base episode termination rules:
         is_done_rules = [
             # Will it be last step of the episode?:
-            (self.iteration >= self.data.numrecords - self.p.state_dim_time, 'END OF DATA!'),
+            (self.iteration >= self.data.numrecords - self.p.state_shape[-1], 'END OF DATA!'),
             # If agent/server forces episode termination?:
             (self.action == '_done', '_DONE SIGNAL RECEIVED'),
             # Any money left?:

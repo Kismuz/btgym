@@ -173,7 +173,7 @@ class BTgymServer(multiprocessing.Process):
         log = logging.getLogger('BTgym_server')
         """
         self.process = multiprocessing.current_process()
-        self.log.info('Server process PID: {}'.format(self.process.pid))
+        self.log.info('Server PID: {}'.format(self.process.pid))
 
         # Runtime Housekeeping:
         episode_result = dict()
@@ -187,6 +187,16 @@ class BTgymServer(multiprocessing.Process):
 
         # Actually load data to BTgymDataset instance:
         self.dataset.read_csv()
+
+        # Describe dataset if not already and pass it to strategy params:
+        try:
+            assert not self.data_stat.empty
+            pass
+
+        except:
+            _ = self.dataset.describe()
+
+        self.cerebro.strats[0][0][2]['dataset_stat'] = self.dataset.data_stat
 
         # Server 'Control Mode' loop:
         for episode_number in itertools.count(1):
@@ -224,7 +234,7 @@ class BTgymServer(multiprocessing.Process):
                     self.log.debug('Server sent: ' + message)
                     socket.send_pyobj(message)  # pairs any other input
 
-            # Got '_reset' signal, prepare Cerebro subclass and run episode:
+            # Got '_reset' signal -> prepare Cerebro subclass and run episode:
             cerebro = copy.deepcopy(self.cerebro)
             cerebro._socket = socket
             cerebro._log = self.log
@@ -243,8 +253,14 @@ class BTgymServer(multiprocessing.Process):
             cerebro.addanalyzer(_BTgymAnalyzer,
                                 _name='_env_analyzer',)
 
-            # Add random episode data:
-            cerebro.adddata(self.dataset.sample_random().to_btfeed())
+            # Get random episode dataset:
+            episode_dataset = self.dataset.sample_random()
+
+            # Get episode data statistic and pass it to strategy params:
+            cerebro.strats[0][0][2]['episode_stat'] = episode_dataset.describe()
+
+            # Add data to engine:
+            cerebro.adddata(episode_dataset.to_btfeed())
 
             # Finally:
             start_time = time.time()
@@ -263,6 +279,5 @@ class BTgymServer(multiprocessing.Process):
             for name in analyzers_list:
                 episode_result[name] = episode.analyzers.getbyname(name).get_analysis()
 
-
-        # Just in case -- we actually shouldnt get there except by some error:
+        # Just in case -- we actually shouldn't get there except by some error:
         return None
