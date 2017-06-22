@@ -56,6 +56,7 @@ class BTgymStrategy(bt.Strategy):
         drawdown_call=90, # simplest condition to finish episode.
         dataset_stat=None,  # Summary descriptive statistics for entire dataset and
         episode_stat=None,  # current episode. Got updated by server.
+        portfolio_actions=('hold', 'buy', 'sell', 'close'),  # possible agent actions.
     )
 
     def __init__(self):
