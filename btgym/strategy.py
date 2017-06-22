@@ -97,6 +97,7 @@ class BTgymStrategy(bt.Strategy):
         Same principles as for state composer apply. Can return raw portfolio
         performance statistics or enclose entire reward estimation algorithm.
         """
+        # TODO: make it log-utility
         # Let it be 1-step portfolio value delta:
         return (self.stats.broker.value[0] - self.stats.broker.value[-1]) * 1e2
 
@@ -208,5 +209,5 @@ class BTgymStrategy(bt.Strategy):
             self.order = self.close()
             self.broker_message = 'New CLOSE created; ' + self.broker_message
 
-        # Somewhere after this point, server-side _EpisodeComm() is exchanging information with environment wrapper,
+        # Somewhere after this point, server-side _BTgymAnalyzer() is exchanging information with environment wrapper,
         # obtaining <self.action> , composing and sending <state,reward,done,info> etc... never mind.
