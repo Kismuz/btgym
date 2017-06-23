@@ -57,6 +57,9 @@ class BTgymStrategy(bt.Strategy):
         dataset_stat=None,  # Summary descriptive statistics for entire dataset and
         episode_stat=None,  # current episode. Got updated by server.
         portfolio_actions=('hold', 'buy', 'sell', 'close'),  # possible agent actions.
+        skip_frame=1, # Number of environment steps to skip before returning next response,
+            # e.g. if set to 10 -- agent will interact with environment every 10th episode step;
+            # Every other step agent action is assumed to be 'hold'.
     )
 
     def __init__(self):
@@ -112,6 +115,9 @@ class BTgymStrategy(bt.Strategy):
         """
         Composes information part of environment response,
         can be any object. Override to own taste.
+        Note: Due to 'skip_frame' feature,
+        INFO part of environment response will be a list of all skipped frame's info objects,
+        i.e. [info[-9], info[-8], ..., info[0].
         """
         return dict(step = self.iteration,
                     action = self.action,

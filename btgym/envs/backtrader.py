@@ -75,8 +75,14 @@ class BTgymEnv(gym.Env):
                 state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
                 drawdown_call=90,  # episode maximum drawdown threshold, default is 90% of initial value.
                 portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions,
-                # should consist with BTgymStrategy order execution logic;
-                # defaults are: 0 - 'do nothing', 1 - 'buy', 2 - 'sell', 3 - 'close position'.
+                    # should consist with BTgymStrategy order execution logic;
+                    # defaults are: 0 - 'do nothing', 1 - 'buy', 2 - 'sell', 3 - 'close position'.
+                skip_frame=1,  # Number of environment steps to skip before returning next response,
+                    # e.g. if set to 10 -- agent will interact with environment every 10th episode step;
+                    # Every other step agent action is assumed to be 'hold'.
+                    # Note: INFO part of environment response is a list of all skipped frame's info's,
+                    #       i.e. [info[-9], info[-8], ..., info[0].
+
             ),
             other = dict(
                 # Other:
@@ -230,7 +236,7 @@ class BTgymEnv(gym.Env):
 
         # Define observation space shape, minimum / maximum values and agent action space.
         # Retrieve values from configured engine:
-        for key in ['state_shape', 'state_low', 'state_high', 'portfolio_actions',]:
+        for key in ['state_shape', 'state_low', 'state_high', 'portfolio_actions', 'skip_frame',]:
             try:
                 # Try to pull it from strategy 'passed params':
                 self.params['strategy'][key] = self.engine.strats[0][0][2][key]
@@ -312,7 +318,7 @@ class BTgymEnv(gym.Env):
         time.sleep(1)
 
         self.log.info('Server started, pinging {} ...'.format(self.params['other']['network_address']))
-        self.socket.send_pyobj('ping!')
+        self.socket.send_pyobj({'action':'ping!'})
         self.server_response = self.socket.recv_pyobj()
         self.log.info('Server seems ready with response: <{}>'.format(self.server_response))
 
@@ -320,7 +326,6 @@ class BTgymEnv(gym.Env):
         """
         Stops BT server process, releases network resources.
         """
-
         if not self.server:
             self.log.info('No server process found.')
 
@@ -328,7 +333,7 @@ class BTgymEnv(gym.Env):
 
             if self._force_control_mode():
                 # In case server is running and client side is ok:
-                self.socket.send_pyobj('_stop')
+                self.socket.send_pyobj({'action':'_stop'})
                 self.server_response = self.socket.recv_pyobj()
 
             else:
@@ -350,7 +355,7 @@ class BTgymEnv(gym.Env):
         """
         # Check is there any faults with server process and connection?
         network_error = [
-            (not self.server or not self.server.is_alive(), 'No running server found.'),
+            (not self.server or not self.server.is_alive(), 'No running server found, call reset() to start.'),
             (not self.context or self.context.closed, 'No network connection found.'),
         ]
         for (err, msg) in network_error:
@@ -365,7 +370,7 @@ class BTgymEnv(gym.Env):
             attempt = 0
 
             while not 'CONTROL_MODE' in str(self.server_response):
-                self.socket.send_pyobj('_done')
+                self.socket.send_pyobj({'action':'_done'})
                 self.server_response = self.socket.recv_pyobj()
                 attempt += 1
                 self.log.debug('FORCE CONTROL MODE attempt: {}.\nResponse: {}'.format(attempt, self.server_response))
@@ -384,8 +389,9 @@ class BTgymEnv(gym.Env):
             self.log.info('No running server found, starting...')
             self._start_server()
 
-        if self._force_control_mode():
-            self.socket.send_pyobj('_reset')
+        try:
+            assert self._force_control_mode()
+            self.socket.send_pyobj({'action':'_reset'})
             self.server_response = self.socket.recv_pyobj()
 
             # Get initial episode response:
@@ -396,11 +402,12 @@ class BTgymEnv(gym.Env):
                 assert self.server_response[0].shape == self.observation_space.shape
 
             except:
-                msg = ('\nState observation shape mismatch!\n' +
-                       'Shape set by env: {},\n' +
-                       'Shape returned by server: {}.\n' +
-                       'Hint: Wrong get_state() parameters?').format(self.observation_space.shape,
-                                                                     self.server_response[0].shape)
+                msg = (
+                    '\nState observation shape mismatch!\n' +
+                    'Shape set by env: {},\n' +
+                    'Shape returned by server: {}.\n' +
+                    'Hint: Wrong Strategy.get_state() parameters?'
+                ).format(self.observation_space.shape, self.server_response[0].shape)
                 self.log.info(msg)
                 self._stop_server()
                 raise AssertionError(msg)
@@ -410,7 +417,7 @@ class BTgymEnv(gym.Env):
             else:
                 return self.server_response
 
-        else:
+        except:
             msg = 'Something went wrong. env.reset() can not get response from server.'
             self.log.info(msg)
             raise ChildProcessError(msg)
@@ -420,7 +427,6 @@ class BTgymEnv(gym.Env):
         Implementation of OpenAI Gym env.step method.
         Relies on remote backtrader server for actual environment dynamics computing.
         """
-
         # Are you in the list and ready to go?
         try:
             assert self.action_space.contains(action) and (self.socket and not self.socket.closed)
@@ -436,7 +442,7 @@ class BTgymEnv(gym.Env):
             raise AssertionError(msg)
 
         # Send action to backtrader engine, recieve response
-        self.socket.send_pyobj(self.server_actions[action])
+        self.socket.send_pyobj({'action':self.server_actions[action]})
         self.server_response = self.socket.recv_pyobj()
 
         # Check if we really got that dict:
@@ -458,7 +464,7 @@ class BTgymEnv(gym.Env):
         Puts BTgym server in Control Mode:
         """
         _ = self._force_control_mode()
-        # maybe TODO something
+        # maybe TODO something_more
 
     def get_stat(self):
         """
@@ -466,7 +472,7 @@ class BTgymEnv(gym.Env):
         Note: when invoked, forces running episode to terminate.
         """
         if self._force_control_mode():
-            self.socket.send_pyobj('_getstat')
+            self.socket.send_pyobj({'action':'_getstat'})
             return self.socket.recv_pyobj()
 
         else:

@@ -49,6 +49,8 @@ class _BTgymAnalyzer(bt.Analyzer):
         """
         self.log = self.strategy.env._log
         self.socket = self.strategy.env._socket
+        self.message = None
+        self.info_list = []
 
     def prenext(self):
         pass
@@ -60,18 +62,39 @@ class _BTgymAnalyzer(bt.Analyzer):
         """
         Actual env.step() communication and episode termination is here.
         """
-        # Gather response:
-        state = self.strategy.get_state()
-        reward = self.strategy.get_reward()
+        # We'll do it every step:
+        # If it's time to leave:
         is_done = self.strategy._get_done()
-        info = self.strategy.get_info()
+        # Collect step info:
+        self.info_list.append(self.strategy.get_info())
+        # Put agent on hold:
+        self.strategy.action = 'hold'
 
-        # Halt and wait to receive action from outer world:
-        self.strategy.action = self.socket.recv_pyobj()
-        self.log.debug('COMM recieved: {}'.format(self.strategy.action))
+        # Only if it's time to communicate or episode has come to end:
+        if self.strategy.iteration % self.strategy.p.skip_frame == 0 or is_done:
 
-        # Send response as <o, r, d, i> tuple (Gym convention):
-        self.socket.send_pyobj((state, reward, is_done, info))
+            # Gather response:
+            state = self.strategy.get_state()
+            reward = self.strategy.get_reward()
+
+            # Halt and wait to receive message from outer world:
+            self.message= self.socket.recv_pyobj()
+            msg = 'COMM recieved: {}'.format(self.message)
+            self.log.debug(msg)
+
+            # Paraniod check:
+            try:
+                self.strategy.action = self.message['action']
+
+            except:
+                msg = 'No <action> key recieved:\n' + msg
+                raise AssertionError(msg)
+
+            # Send response as <o, r, d, i> tuple (Gym convention):
+            self.socket.send_pyobj((state, reward, is_done, self.info_list))
+
+            # Reset info:
+            self.info_list = []
 
         # If done, initiate fallback to Control Mode:
         if is_done:
@@ -89,32 +112,39 @@ class BTgymServer(multiprocessing.Process):
     """
     Backtrader server class.
 
-    Control signals:
-    IN:
+    Expects to receive dictionary, containing at least 'action' field.
+
+    Control mode IN:
+    dict(action=<control action, type=str>), where
+    control action is:
     '_reset' - rewinds backtrader engine and runs new episode;
     '_getstat' - retrieve episode results and statistics;
     '_stop' - server shut-down.
+
     OUT:
     <string message> - reports current server status;
     <statisic dict> - last run episode statisics.  NotImplemented.
 
     Within-episode signals:
-    IN:
-    {'buy', 'sell', 'hold', 'close', '_done'} - actions;
-                                           *'_done' - stops current episode.
+    Episode mode IN:
+    dict(action=<agent_action, type=str>, skip_frame=<num_steps_to_skip, type=int>), where:
+    agent_action is:
+    {'buy', 'sell', 'hold', 'close', '_done'} - agent or service actions; '_done' - stops current episode;
+    num_steps_to_skip: skip-frame parameter,
+        defines number of steps to go until next environment-agent communication;
     OUT:
-    response  <tuple>: observation - observation of the current environment state,
-                                     could be any tensor; default is:
-                                     [4,m] array of <fl32>, where:
-                                     m - num. of last datafeed values,
-                                     4 - num. of data features (Lines);
-                       reward - current portfolio statistics for environment reward estimation;
-                       done - episode termination flag;
-                       info - auxiliary information.
+    response  <tuple>: observation, <array> - observation of the current environment state,
+                                             could be any tensor; default is:
+                                             [4,m] array of <fl32>, where:
+                                             m - num. of last datafeed values,
+                                             4 - num. of data features (Lines);
+                       reward, <any> - current portfolio statistics for environment reward estimation;
+                       done, <bool> - episode termination flag;
+                       info, <list> - auxiliary information.
 
     Parameters:
     datafeed  - class BTgymDataset instance;
-    cerebro - subclass bt.Cerebro;
+    cerebro -  bt.Cerebro engine subclass;
     network_address - <str>, network address to bind to;
     verbose - verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
     """
@@ -161,17 +191,6 @@ class BTgymServer(multiprocessing.Process):
         """
         Server process runtime body. This method is invoked by env._start_server().
         """
-        """
-        # Verbosity control:
-        if self.verbose:
-            if self.verbose == 2:
-                logging.getLogger().setLevel(logging.DEBUG)
-            else:
-                logging.getLogger().setLevel(logging.INFO)
-        else:
-            logging.getLogger().setLevel(logging.ERROR)
-        log = logging.getLogger('BTgym_server')
-        """
         self.process = multiprocessing.current_process()
         self.log.info('Server PID: {}'.format(self.process.pid))
 
@@ -190,7 +209,7 @@ class BTgymServer(multiprocessing.Process):
 
         # Describe dataset if not already and pass it to strategy params:
         try:
-            assert not self.data_stat.empty
+            assert not self.dataset.data_stat.empty
             pass
 
         except:
@@ -203,11 +222,20 @@ class BTgymServer(multiprocessing.Process):
 
             # Stuck here until '_reset' or '_stop':
             while True:
+
                 service_input = socket.recv_pyobj()
-                self.log.debug('Server Control mode: recieved <{}>'.format(service_input))
+                msg = 'Server Control mode: recieved <{}>'.format(service_input)
+                self.log.debug(msg)
+
+                try:
+                    assert 'action' in service_input
+
+                except:
+                    msg = 'No <action> key recieved:\n' + msg
+                    raise AssertionError(msg)
 
                 # Check if it's time to exit:
-                if service_input == '_stop':
+                if service_input['action'] == '_stop':
                     # Server shutdown logic:
                     # send last run statistic, release comm channel and exit:
                     message = 'Server is exiting.'
@@ -217,13 +245,13 @@ class BTgymServer(multiprocessing.Process):
                     context.destroy()
                     return None
 
-                elif service_input == '_reset':
+                elif service_input['action'] == '_reset':
                     message = 'Starting episode.'
                     self.log.info(message)
                     socket.send_pyobj(message)  # pairs '_reset'
                     break
 
-                elif service_input == '_getstat':
+                elif service_input['action'] == '_getstat':
                     socket.send_pyobj(episode_result)
                     self.log.info('Episode statistic sent.')
 
