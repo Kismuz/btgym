@@ -1,9 +1,11 @@
-### BTGYM usage examples.
+### BTGYM examples.
+****
 ###### UNDER CONSTRUCTION
-
-**Setting up environment [basic]**: Making environment using base built-in parameters.
+****
+- **Setting up environment [basic]**: Making environment using basic built-in parameters.
  
-**Setting up environment [full]**: Coming soon.
+- **Setting up environment [full]**: Coming soon.
+
  
   
  

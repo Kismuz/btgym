@@ -26,7 +26,7 @@ I have no idea what kind of algorithm and setup will solve it [if ever]. Explore
 ###### This work is in early development stage. Any suggestions, feedback and contributions are welcome.
 
 *****
-#### Current issues and limitations:
+#### Upadte notes, current issues and limitations:
 - working alpha v0.0.2 as of 17.06.17;
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
@@ -36,6 +36,21 @@ I have no idea what kind of algorithm and setup will solve it [if ever]. Explore
 - env.get_stat() method is returning strategy analyzers results only. No observers yet.
 - no plotting features, except if using pycharm integration observer. Not sure if it is suited for intraday strategies.
 - ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ Fixed 
+
+****
+#### TODO's and Road Map:
+ - [x] refine logic for parameters applying priority (engine vs strategy vs kwargs vs defaults);
+ - [ ] full reference docs;
+ - [ ] examples;
+ - [ ] frame-skipping feature;
+ - [ ] dataset tr/cv/t splitting feature;
+ - [ ] retrieving results for observers and plotting features;
+ - [ ] tensorboard integration;
+ - [ ] multiply agents asynchronous operation feature (e.g for A3C):
+    -  [possibly] via dedicated data server;
+ - [ ] sequential and sliding time-window sampling;
+ - [ ] multiply instruments trading;
+ 
 ****
 #### Installation
 - Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`.
@@ -127,7 +142,7 @@ MyEnvironment = BTgymEnv(dataset=MyDataset,
 ```
 ###### See notebooks in `examples` directory.
 ****
-#### General problem setting:
+#### General description:
 Consider reinforcement learning setup for equity/currency trading:
 - agent action space is discrete (`buy`, `sell`, `close` [position], `hold` [do nothing]);
 - environment is episodic: maximum  episode duration and episode termination conditions
@@ -437,7 +452,7 @@ Default implementation for `BTgymStrategy` exists.
 
 ### class BTgymDataset():
 `Backtrader.CSVfeeds()` class wrapper.
-- Currently pipes `CSV`[source]-->`pandas`[for efficient sampling]-->`bt.feeds` routine.
+- Pipes `CSV`[source]-->`pandas`[for efficient sampling]-->`bt.feeds` routine.
 - Supports random episode data sampling.
 - Default parameters are set to correctly parse 1 minute Forex generic ASCII
 data files from www.HistData.com:

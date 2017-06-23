@@ -228,13 +228,7 @@ class BTgymEnv(gym.Env):
 
         self.log.info(msg)
 
-        # DEBUG:
-        #print('HIGH:', self.params['strategy']['state_high'] )
-        #print('LOW:', self.params['strategy']['state_low'])
-
         # Define observation space shape, minimum / maximum values and agent action space.
-
-
         # Retrieve values from configured engine:
         for key in ['state_shape', 'state_low', 'state_high', 'portfolio_actions',]:
             try:
@@ -242,7 +236,7 @@ class BTgymEnv(gym.Env):
                 self.params['strategy'][key] = self.engine.strats[0][0][2][key]
 
             except:
-                # else dig it from strategy defaults:
+                # Or else dig it from strategy defaults:
                 for t_key, t_value in self.engine.strats[0][0][0].params._gettuple():
                     if t_key == key:
                         self.params['strategy'][t_key] = t_value
