@@ -32,17 +32,17 @@ I have no idea what kind of algorithm and setup will solve it [if ever]. Explore
 - only random data sampling is implemented;
 - no built-in dataset splitting to training/cv/testing subsets;
 - only one equity/currency pair can be traded;
-- no 'skip-frames' implementation within environment;
+- ~~no 'skip-frames' implementation within environment;~~ done
 - env.get_stat() method is returning strategy analyzers results only. No observers yet.
 - no plotting features, except if using pycharm integration observer. Not sure if it is suited for intraday strategies.
-- ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ Fixed 
+- ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ fixed 
 
 ****
 #### TODO's and Road Map:
  - [x] refine logic for parameters applying priority (engine vs strategy vs kwargs vs defaults);
  - [ ] full reference docs;
  - [ ] examples;
- - [ ] frame-skipping feature;
+ - [x] frame-skipping feature;
  - [ ] dataset tr/cv/t splitting feature;
  - [ ] retrieving results for observers and plotting features;
  - [ ] tensorboard integration;
