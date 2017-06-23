@@ -1,4 +1,4 @@
-### BTGYM examples.
+### BTgym examples.
 ****
 ###### UNDER CONSTRUCTION
 ****
