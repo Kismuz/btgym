@@ -27,6 +27,10 @@ I have no idea what kind of algorithm and setup will solve it [if ever]. Explore
 
 *****
 #### Upadte notes, current issues and limitations:
+- 23.06.17, alpha 0.0.4:
+  added skip-frame feature,
+  redefined parameters inheritance logic,
+  refined overall stability;
 - working alpha v0.0.2 as of 17.06.17;
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
