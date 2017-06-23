@@ -223,7 +223,7 @@ class BTgymDataset():
             # If 00 option set, get index of first record of that day:
             if self.start_00:
                 adj_timedate = episode_first_day.date()
-                self.log.info('Start time adjusted to <00:00.>')
+                self.log.info('Start time adjusted to <00:00>')
 
             else:
                 adj_timedate = episode_first_day
