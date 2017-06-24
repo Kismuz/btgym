@@ -31,6 +31,7 @@ from gym import error, spaces
 import backtrader as bt
 
 from btgym import BTgymServer, BTgymStrategy, BTgymDataset
+from btgym.rendering import     BTgymRendering
 
 ############################## OpenAI Gym Environment  ##############################
 
@@ -46,6 +47,8 @@ class BTgymEnv(gym.Env):
         self.engine = None  # bt.Cerbro subclass for server to execute.
 
         self.strategy = None  # base strategy to use if no <strategy> kwarg been passed.
+
+        self.plotter = None # Rendering support.
 
         # Default parameters:
         self.params = dict(
@@ -150,7 +153,7 @@ class BTgymEnv(gym.Env):
                 logging.getLogger().setLevel(logging.INFO)
 
         else:
-            logging.getLogger().setLevel(logging.ERROR)
+            logging.getLogger().setLevel(logging.WARNING)
 
         # Server process/network parameters:
         self.server = None
@@ -284,6 +287,9 @@ class BTgymEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self.params['strategy']['portfolio_actions']))
         self.server_actions = self.params['strategy']['portfolio_actions'] + ('_done', '_reset', '_stop','_getstat')
 
+        # Set rendering:
+        self.plotter = BTgymRendering(**kwargs)
+
         # Finally:
         self.server_response = None
         self.env_response = None
@@ -350,7 +356,6 @@ class BTgymEnv(gym.Env):
         if self.context:
             self.context.destroy()
 
-
     def _force_control_mode(self):
         """
         Puts BT server to control mode.
@@ -379,6 +384,22 @@ class BTgymEnv(gym.Env):
 
             return True
 
+    def _assert_response(self, response):
+        """
+        Simple watcher:
+        roughly checks if we really talking to environment (== episode is running).
+        Rises exception if response given is not as expected.
+        """
+        try:
+            assert type(response) == tuple and len(response) == 4
+
+        except:
+            msg = 'Unexpected environment response: {}\nHint: Forgot to call reset()?'.format(response)
+            raise AssertionError(msg)
+
+        self.log.debug('Env response watcher received:\n{}\nas type: {}'.
+                       format(response, type(response)))
+
     def _reset(self, state_only=True): # By default, returns only initial state observation (Gym convention).
         """
         Implementation of OpenAI Gym env.reset method.
@@ -395,12 +416,12 @@ class BTgymEnv(gym.Env):
             self.socket.send_pyobj({'action':'_reset'})
             self.server_response = self.socket.recv_pyobj()
 
-            # Get initial episode response:
-            self.server_response = self._step(0)
+            # Get initial environment response:
+            self.env_response = self._step(0)
 
-            # Check if state_space is as expected:
+            # Check (once) if state_space is as expected:
             try:
-                assert self.server_response[0].shape == self.observation_space.shape
+                assert self.env_response[0].shape == self.observation_space.shape
 
             except:
                 msg = (
@@ -408,15 +429,15 @@ class BTgymEnv(gym.Env):
                     'Shape set by env: {},\n' +
                     'Shape returned by server: {}.\n' +
                     'Hint: Wrong Strategy.get_state() parameters?'
-                ).format(self.observation_space.shape, self.server_response[0].shape)
+                ).format(self.observation_space.shape, self.env_response[0].shape)
                 self.log.info(msg)
                 self._stop_server()
                 raise AssertionError(msg)
 
             if state_only:
-                return self.server_response[0]
+                return self.env_response[0]
             else:
-                return self.server_response
+                return self.env_response
 
         except:
             msg = 'Something went wrong. env.reset() can not get response from server.'
@@ -442,22 +463,14 @@ class BTgymEnv(gym.Env):
             self.log.info(msg)
             raise AssertionError(msg)
 
-        # Send action to backtrader engine, recieve response
+        # Send action to backtrader engine, receive environment response
         self.socket.send_pyobj({'action':self.server_actions[action]})
-        self.server_response = self.socket.recv_pyobj()
+        self.env_response = self.socket.recv_pyobj()
 
-        # Check if we really got that dict:
-        try:
-            assert type(self.server_response) == tuple and len(self.server_response) == 4
+        # Is it?
+        self._assert_response(self.env_response)
 
-        except:
-            msg = 'Environment response is: {}\nHint: Forgot to call reset()?'.format(self.server_response)
-            raise AssertionError(msg)
-
-        self.log.debug('Env.step() recieved response:\n{}\nAs type: {}'.
-                       format(self.server_response, type(self.server_response)))
-
-        return self.server_response
+        return self.env_response
 
     def _close(self):
         """
@@ -479,3 +492,15 @@ class BTgymEnv(gym.Env):
         else:
             return self.server_response
 
+    def _render(self, mode=None, close=None):
+        """
+        Implementation of OpenAI Gym env.render method.
+        Visualises current environment state.
+        Requires matplotlib.
+        """
+        self.log.warning('render mode: {}, close: {}'.format (mode, close))
+        if self.env_response == None:
+            self.log.warning('No steps has been made, nothing to render.')
+
+        else:
+            self.plotter.render_state(self.env_response)

@@ -29,7 +29,7 @@ setup(name='btgym',
       gurl = 'https://github.com/Kismuz/btgym',
       license='GPLv3+',
       classifiers=['Development Status :: 3 - Alpha',],
-      version='0.0.2',
+      version='0.0.4',
       install_requires=['gym', 'backtrader', 'pyzmq', 'numpy', 'pandas' ],
       include_package_data=True,
 )

@@ -22,7 +22,9 @@ from gym.envs.registration import register
 from .datafeed import BTgymDataset
 from .server import BTgymServer
 from .strategy import BTgymStrategy
+from .rendering import BTgymRendering
 from .envs.backtrader import BTgymEnv
+
 
 register(
     id='backtrader-v0000',
