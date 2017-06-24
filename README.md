@@ -21,7 +21,7 @@ in [close to] real world algorithmic trading environments.
 DISCLAIMER:
 This package is neither out-of-the-box-moneymaker, nor it provides ready-to-converge RL solutions.
 Rather, it is framework for setting experiments with complex, non stationary, time-series based environments.
-I have no idea what kind of algorithm and setup will solve it [if ever]. Explore on your own!
+I have no idea what kind of algorithm and setup will solve it [if any]. Explore on your own!
 ```
 ###### This work is in early development stage. Any suggestions, feedback and contributions are welcome.
 

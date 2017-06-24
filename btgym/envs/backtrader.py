@@ -284,8 +284,10 @@ class BTgymEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self.params['strategy']['portfolio_actions']))
         self.server_actions = self.params['strategy']['portfolio_actions'] + ('_done', '_reset', '_stop','_getstat')
 
-
         # Finally:
+        self.server_response = None
+        self.env_response = None
+
         self.log.info('Environment is ready.')
 
     def _start_server(self):
@@ -377,8 +379,7 @@ class BTgymEnv(gym.Env):
 
             return True
 
-    def _reset(self,
-               state_only=True): # By default, returns only initial state observation (Gym convention).
+    def _reset(self, state_only=True): # By default, returns only initial state observation (Gym convention).
         """
         Implementation of OpenAI Gym env.reset method.
         'Rewinds' backtrader server and starts new episode
