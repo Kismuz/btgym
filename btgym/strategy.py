@@ -22,7 +22,9 @@ import backtrader.indicators as btind
 
 import numpy as np
 
+
 ############################## Base BTgymStrategy Class ###################
+
 
 class BTgymStrategy(bt.Strategy):
     """
@@ -49,17 +51,17 @@ class BTgymStrategy(bt.Strategy):
     order = None
     broker_message = '-'
     params = dict(
-        state_shape=(4,10), # observation state shape, by convention last dimension is time embedding one;
-            # one can define any shape; should match env.observation_space.shape.
+        state_shape=(4, 10),  # observation state shape, by convention last dimension is time embedding one;
+                              # one can define any shape; should match env.observation_space.shape.
         state_low=None,  # observation space state min/max values,
         state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
-        drawdown_call=90, # simplest condition to finish episode.
+        drawdown_call=90,  # simplest condition to finish episode.
         dataset_stat=None,  # Summary descriptive statistics for entire dataset and
         episode_stat=None,  # current episode. Got updated by server.
         portfolio_actions=('hold', 'buy', 'sell', 'close'),  # possible agent actions.
-        skip_frame=1, # Number of environment steps to skip before returning next response,
-            # e.g. if set to 10 -- agent will interact with environment every 10th episode step;
-            # Every other step agent action is assumed to be 'hold'.
+        skip_frame=1,  # Number of environment steps to skip before returning next response,
+                       # e.g. if set to 10 -- agent will interact with environment every 10th episode step;
+                       # Every other step agent action is assumed to be 'hold'.
     )
 
     def __init__(self):
@@ -96,10 +98,14 @@ class BTgymStrategy(bt.Strategy):
         Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in
         define_datalines().
         """
-        return np.row_stack((self.data.open.get(size=self.p.state_shape[-1]),
-                             self.data.low.get(size=self.p.state_shape[-1]),
-                             self.data.high.get(size=self.p.state_shape[-1]),
-                             self.data.close.get(size=self.p.state_shape[-1]),))
+        return np.row_stack(
+            (
+                self.data.open.get(size=self.p.state_shape[-1]),
+                self.data.low.get(size=self.p.state_shape[-1]),
+                self.data.high.get(size=self.p.state_shape[-1]),
+                self.data.close.get(size=self.p.state_shape[-1]),
+            )
+        )
 
     def get_reward(self):
         """
@@ -119,13 +125,15 @@ class BTgymStrategy(bt.Strategy):
         INFO part of environment response will be a list of all skipped frame's info objects,
         i.e. [info[-9], info[-8], ..., info[0].
         """
-        return dict(step = self.iteration,
-                    time = self.data.datetime.datetime(),
-                    action = self.action,
-                    broker_message = self.broker_message,
-                    broker_value = self.stats.broker.value[0],
-                    drawdown = self.stats.drawdown.drawdown[0],
-                    max_drawdown = self.stats.drawdown.maxdrawdown[0],)
+        return dict(
+            step=self.iteration,
+            time=self.data.datetime.datetime(),
+            action=self.action,
+            broker_message=self.broker_message,
+            broker_value=self.stats.broker.value[0],
+            drawdown=self.stats.drawdown.drawdown[0],
+            max_drawdown=self.stats.drawdown.maxdrawdown[0],
+        )
 
     def get_done(self):
         """
@@ -165,7 +173,7 @@ class BTgymStrategy(bt.Strategy):
             (self.stats.drawdown.maxdrawdown[0] > self.p.drawdown_call, 'DRAWDOWN CALL!'),
         ]
         # Append get_done() results:
-        is_done_rules +=[self.get_done()]
+        is_done_rules += [self.get_done()]
 
         # Sweep through:
         for (condition, message) in is_done_rules:
@@ -173,7 +181,6 @@ class BTgymStrategy(bt.Strategy):
                 self.is_done = True
                 self.broker_message = message
         return self.is_done
-
 
     def notify_order(self, order):
         """

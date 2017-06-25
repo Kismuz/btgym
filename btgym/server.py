@@ -78,7 +78,7 @@ class _BTgymAnalyzer(bt.Analyzer):
             reward = self.strategy.get_reward()
 
             # Halt and wait to receive message from outer world:
-            self.message= self.socket.recv_pyobj()
+            self.message = self.socket.recv_pyobj()
             msg = 'COMM recieved: {}'.format(self.message)
             self.log.debug(msg)
 
@@ -107,6 +107,7 @@ class _BTgymAnalyzer(bt.Analyzer):
         self.strategy.broker_message = '-'
 
 ##############################  BTgym Server Main  ##############################
+
 
 class BTgymServer(multiprocessing.Process):
     """

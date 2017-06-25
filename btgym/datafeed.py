@@ -27,7 +27,8 @@ import os
 import backtrader.feeds as btfeeds
 import pandas as pd
 
-class BTgymDataset():
+
+class BTgymDataset:
     """
     Backtrader.feeds class wrapper.
     Currently pipes CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine.
@@ -63,7 +64,7 @@ class BTgymDataset():
             names=['open', 'high', 'low', 'close', 'volume'],
 
             # Pandas to BT.feeds params:
-            timeframe=1, # 1 minute.
+            timeframe=1,  # 1 minute.
             datetime=0,
             open=1,
             high=2,
@@ -82,7 +83,7 @@ class BTgymDataset():
             time_gap_hours=5,  # if set to be < 1 day, samples containing weekends and holidays gaps will be rejected.
 
             # Other:
-            log = None,
+            log=None,
         )
 
         self.data = None,  # Will hold actual data as pandas dataframe

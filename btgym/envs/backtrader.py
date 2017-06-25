@@ -30,8 +30,8 @@ from gym import error, spaces
 
 import backtrader as bt
 
-from btgym import BTgymServer, BTgymStrategy, BTgymDataset
-from btgym.rendering import     BTgymRendering
+from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering
+# from btgym.rendering import
 
 ############################## OpenAI Gym Environment  ##############################
 
@@ -48,14 +48,14 @@ class BTgymEnv(gym.Env):
 
         self.strategy = None  # base strategy to use if no <strategy> kwarg been passed.
 
-        self.plotter = None # Rendering support.
+        self.plotter = None  # Rendering support.
 
         # Default parameters:
         self.params = dict(
-            dataset = dict(
+            dataset=dict(
                 # Dataset parameters:
                 filename=None,  # Source CSV data file;
-                # Episode data params:
+                                # Episode data params:
                 start_weekdays=[0, 1, 2, ],  # Only weekdays from the list will be used for episode start.
                 start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
                 episode_len_days=1,  # Maximum episode time duration in d:h:m.
@@ -64,30 +64,33 @@ class BTgymEnv(gym.Env):
                 time_gap_days=0,  # Maximum data time gap allowed within sample in d:h.
                 time_gap_hours=5,  # If set < 1 day, samples containing weekends and holidays gaps will be rejected.
             ),
-            engine = dict(
+            engine=dict(
                 # Backtrader engine parameters:
                 start_cash=10.0,  # initial trading capital.
                 broker_commission=0.001,  # trade execution commission, default is 0.1% of operation value.
                 fixed_stake=10,  # single trade stake is fixed type by def.
             ),
-            strategy = dict(
+            strategy=dict(
                 # Strategy related parameters:
-                state_shape=(4, 10),  # observation state shape, by convention last dimension is time embedding;
-                # one can define any shape; match env.observation_space.shape.
+                state_shape=(4, 10),
+                    # observation state shape, by convention last dimension is time embedding;
+                    # one can define any shape; match env.observation_space.shape.
                 state_low=None,  # observation space state min/max values,
                 state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
                 drawdown_call=90,  # episode maximum drawdown threshold, default is 90% of initial value.
-                portfolio_actions=('hold', 'buy', 'sell', 'close'),  # environment/[strategy] arg/ agent actions,
+                portfolio_actions=('hold', 'buy', 'sell', 'close'),
+                    # environment/[strategy] arg/ agent actions,
                     # should consist with BTgymStrategy order execution logic;
                     # defaults are: 0 - 'do nothing', 1 - 'buy', 2 - 'sell', 3 - 'close position'.
-                skip_frame=1,  # Number of environment steps to skip before returning next response,
+                skip_frame=1,
+                    # Number of environment steps to skip before returning next response,
                     # e.g. if set to 10 -- agent will interact with environment every 10th episode step;
                     # Every other step agent action is assumed to be 'hold'.
                     # Note: INFO part of environment response is a list of all skipped frame's info's,
                     #       i.e. [info[-9], info[-8], ..., info[0].
 
             ),
-            other = dict(
+            other=dict(
                 # Other:
                 port=5500,  # network port to use.
                 network_address='tcp://127.0.0.1:',   # using localhost.
@@ -219,7 +222,7 @@ class BTgymEnv(gym.Env):
                 # If custom strategy has been passed:
                 self.strategy = kwargs['strategy']
                 # Add it along with kwargs (ignore defaults):
-                self.engine.addstrategy(self.strategy,**self.kwargs['strategy'])
+                self.engine.addstrategy(self.strategy, **self.kwargs['strategy'])
                 # Cleanup:
                 msg2 = 'Custom Strategy class used.'
                 self.params['startegy'] = dict(info=msg2)
@@ -242,7 +245,7 @@ class BTgymEnv(gym.Env):
 
         # Define observation space shape, minimum / maximum values and agent action space.
         # Retrieve values from configured engine:
-        for key in ['state_shape', 'state_low', 'state_high', 'portfolio_actions', 'skip_frame',]:
+        for key in ['state_shape', 'state_low', 'state_high', 'portfolio_actions', 'skip_frame', ]:
             try:
                 # Try to pull it from strategy 'passed params':
                 self.params['strategy'][key] = self.engine.strats[0][0][2][key]
@@ -255,8 +258,8 @@ class BTgymEnv(gym.Env):
 
         # For min/max, if not been set explicitly,
         # the only sensible way is to infer from raw Dataset price values:
-        if self.engine.strats[0][0][2]['state_low'] == None or \
-            self.engine.strats[0][0][2]['state_high'] == None:
+        if self.engine.strats[0][0][2]['state_low'] is None or \
+            self.engine.strats[0][0][2]['state_high'] is None:
 
             # Get dataset statistic:
             self.dataset_stat = self.dataset.describe()
@@ -268,7 +271,7 @@ class BTgymEnv(gym.Env):
             # Override with absolute price min and max values:
             self.params['strategy']['state_low'] =\
                 self.engine.strats[0][0][2]['state_low'] =\
-                self.dataset_stat.loc['min',data_columns].min()
+                self.dataset_stat.loc['min', data_columns].min()
 
             self.params['strategy']['state_high'] =\
                 self.engine.strats[0][0][2]['state_high'] =\
@@ -296,7 +299,7 @@ class BTgymEnv(gym.Env):
         # Finally:
         self.server_response = None
         self.env_response = None
-        #self._closed = True  # until reset()
+        # self._closed = True  # until reset()
 
         self.log.info('Environment is ready.')
 
@@ -330,7 +333,7 @@ class BTgymEnv(gym.Env):
         time.sleep(1)
 
         self.log.info('Server started, pinging {} ...'.format(self.params['other']['network_address']))
-        self.socket.send_pyobj({'action':'ping!'})
+        self.socket.send_pyobj({'action': 'ping!'})
         self.server_response = self.socket.recv_pyobj()
         self.log.info('Server seems ready with response: <{}>'.format(self.server_response))
 
@@ -344,7 +347,7 @@ class BTgymEnv(gym.Env):
 
             if self._force_control_mode():
                 # In case server is running and client side is ok:
-                self.socket.send_pyobj({'action':'_stop'})
+                self.socket.send_pyobj({'action': '_stop'})
                 self.server_response = self.socket.recv_pyobj()
 
             else:
@@ -379,8 +382,8 @@ class BTgymEnv(gym.Env):
             self.server_response = 'NONE'
             attempt = 0
 
-            while not 'CONTROL_MODE' in str(self.server_response):
-                self.socket.send_pyobj({'action':'_done'})
+            while 'CONTROL_MODE' not in str(self.server_response):
+                self.socket.send_pyobj({'action': '_done'})
                 self.server_response = self.socket.recv_pyobj()
                 attempt += 1
                 self.log.debug('FORCE CONTROL MODE attempt: {}.\nResponse: {}'.format(attempt, self.server_response))
@@ -403,13 +406,12 @@ class BTgymEnv(gym.Env):
         self.log.debug('Env response watcher received:\n{}\nas type: {}'.
                        format(response, type(response)))
 
-    def _reset(self, state_only=True): # By default, returns only initial state observation (Gym convention).
+    def _reset(self, state_only=True):  # By default, returns only initial state observation (Gym convention).
         """
         Implementation of OpenAI Gym env.reset method.
         'Rewinds' backtrader server and starts new episode
         within randomly selected time period.
         """
-
 
         # Server process check:
         if not self.server or not self.server.is_alive():
@@ -418,7 +420,7 @@ class BTgymEnv(gym.Env):
 
         try:
             assert self._force_control_mode()
-            self.socket.send_pyobj({'action':'_reset'})
+            self.socket.send_pyobj({'action': '_reset'})
             self.server_response = self.socket.recv_pyobj()
 
             # Get initial environment response:
@@ -458,7 +460,7 @@ class BTgymEnv(gym.Env):
         try:
             assert self.action_space.contains(action)
             assert not self._closed
-            assert  self.socket and not self.socket.closed
+            assert self.socket and not self.socket.closed
 
         except:
             msg = (
@@ -476,7 +478,7 @@ class BTgymEnv(gym.Env):
             raise AssertionError(msg)
 
         # Send action to backtrader engine, receive environment response
-        self.socket.send_pyobj({'action':self.server_actions[action]})
+        self.socket.send_pyobj({'action': self.server_actions[action]})
         self.env_response = self.socket.recv_pyobj()
 
         # Is it?
@@ -498,7 +500,7 @@ class BTgymEnv(gym.Env):
         Note: when invoked, forces running episode to terminate.
         """
         if self._force_control_mode():
-            self.socket.send_pyobj({'action':'_getstat'})
+            self.socket.send_pyobj({'action': '_getstat'})
             return self.socket.recv_pyobj()
 
         else:
@@ -515,7 +517,7 @@ class BTgymEnv(gym.Env):
         if close:
             return None
 
-        if self.env_response == None:
+        if self.env_response is None:
             self.log.warning('No steps has been made, nothing to render.')
 
         else:

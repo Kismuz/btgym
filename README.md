@@ -17,6 +17,8 @@ General purpose of this wrapper is to provide gym-integrated framework for
 running reinforcement learning experiments 
 in [close to] real world algorithmic trading environments.
 
+#### [See current state and update notes below.](#Update Notes)
+
 ```
 DISCLAIMER:
 This package is neither out-of-the-box-moneymaker, nor it provides ready-to-converge RL solutions.
@@ -24,41 +26,26 @@ Rather, it is framework for setting experiments with complex, non stationary, ti
 I have no idea what kind of algorithm and setup will solve it [if any]. Explore on your own!
 ```
 ###### This work is in early development stage. Any suggestions, feedback and contributions are welcome.
+****
+#### Contents
+- [Installation](#Installation)
+- [Quickstart](#Quickstart)
+- [Description](#General description)
+    - [Problem setting](#Problem setting)
+    - [Data sampling approaches](#Data selection options)
+    - [Environment engine description](#Environment engine)
+    - [General notes](#Notes)
+- [Reference](#Reference*) 
+- [Current issues and limitations,](#)
+- [Update news](#Update Notes)
 
-*****
-#### Upadte notes, current issues and limitations:
-- 23.06.17, alpha 0.0.4:
-  added skip-frame feature,
-  redefined parameters inheritance logic,
-  refined overall stability;
-- working alpha v0.0.2 as of 17.06.17;
-- by default, is configured to accept Forex 1 min. data from www.HistData.com;
-- only random data sampling is implemented;
-- no built-in dataset splitting to training/cv/testing subsets;
-- only one equity/currency pair can be traded;
-- ~~no 'skip-frames' implementation within environment;~~ done
-- env.get_stat() method is returning strategy analyzers results only. No observers yet.
-- no plotting features, except if using pycharm integration observer. Not sure if it is suited for intraday strategies.
-- ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ fixed 
+    
 
 ****
-#### TODO's and Road Map:
- - [x] refine logic for parameters applying priority (engine vs strategy vs kwargs vs defaults);
- - [ ] full reference docs;
- - [ ] examples;
- - [x] frame-skipping feature;
- - [ ] dataset tr/cv/t splitting feature;
- - [ ] retrieving results for observers and plotting features;
- - [ ] tensorboard integration;
- - [ ] multiply agents asynchronous operation feature (e.g for A3C):
-    -  [possibly] via dedicated data server;
- - [ ] sequential and sliding time-window sampling;
- - [ ] multiply instruments trading;
- 
-****
-#### Installation
-- Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`.
-- Examples requires: `scipy`, `matplotlib`.
+#### [Installation](#)
+- Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`; 
+  `matplotlib` required for `env.render()` method.
+- Examples requires: `scipy`, .
 - Clone or copy btgym repository to local disk, cd to it and run: `pip install -e . `
 to install package and dependencies e.g.:
 ``` 
@@ -66,10 +53,15 @@ got clone https://github.com/Kismuz/btgym.git
 cd btgym
 pip install -e .
 ```
-- Run `git pull` in `btgym` directory to update to latest version.
+- To update to latest version:
+```
+cd btgym
+git pull
+pip install --upgrade e .
+```
 
 ****
-#### Quickstart
+#### [Quickstart](#)
 Making gym environment with all parmeters set to defaults is as simple as:
 
 ```python
@@ -149,7 +141,8 @@ MyEnvironment = BTgymEnv(dataset=MyDataset,
 ```
 ###### See notebooks in `examples` directory.
 ****
-#### General description:
+#### [General description](#)
+#### Problem setting
 Consider reinforcement learning setup for equity/currency trading:
 - agent action space is discrete (`buy`, `sell`, `close` [position], `hold` [do nothing]);
 - environment is episodic: maximum  episode duration and episode termination conditions
@@ -176,7 +169,7 @@ Consider reinforcement learning setup for equity/currency trading:
   furthest to most recent training data. Should be less prone to overfitting than random sampling.
 - NOTE: only random sampling is currently implemented.
 
-#### Environment engine:
+#### Environment engine
   BTgym uses Backtrader framework for actual environment computations, for extensive documentation see:
 https://www.backtrader.com/docu/index.html.
 In brief:
@@ -187,7 +180,7 @@ In brief:
   queries like `env.reset()` and `env.step()` by repeatedly sampling episodes form given dataset and running
   backtesting `Cerebro` engine on it. See OpenAI Gym documentation for details: https://gym.openai.com/docs
 
-##### Data flow:
+##### Data flow
 ```
             BTgym Environment                                 RL Framework
                                            +-+
@@ -277,7 +270,7 @@ Repeat until received message '_stop':
 ```
 ****
  
-## Notes:
+### [Notes](#)
 
  1. There is a choice: where to place most of state observation/reward estimation and prepossessing such as
     featurization, normalization, frame skipping and all other -zation: either to hide it inside environment or to do it
@@ -333,7 +326,7 @@ Repeat until received message '_stop':
 ****
    
     
-## Reference*:
+## [Reference*](#)
 ###### *- very incomplete, refer to source files!
 
 ### class BTgymEnv(gym.Env, args):
@@ -502,7 +495,42 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
 - max value.
 ****
 
+****
+#### Current issues and limitations:
 
+- by default, is configured to accept Forex 1 min. data from www.HistData.com;
+- only random data sampling is implemented;
+- no built-in dataset splitting to training/cv/testing subsets;
+- only one equity/currency pair can be traded;
+- ~~no 'skip-frames' implementation within environment;~~ done
+- env.get_stat() method is returning strategy analyzers results only. No observers yet.
+- no plotting features, except if using pycharm integration observer. Not sure if it is suited for intraday strategies.
+- ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ fixed 
 
+****
+#### TODO's and Road Map:
+ - [x] refine logic for parameters applying priority (engine vs strategy vs kwargs vs defaults);
+ - [ ] full reference docs;
+ - [ ] examples;
+ - [x] frame-skipping feature;
+ - [ ] dataset tr/cv/t splitting feature;
+ - [x] state rendering;
+ - [ ] retrieving results for observers and plotting features - aka 'episode rendering';
+ - [ ] tensorboard integration;
+ - [ ] multiply agents asynchronous operation feature (e.g for A3C):
+    -  [possibly] via dedicated data server;
+ - [ ] sequential and sliding time-window sampling;
+ - [ ] multiply instruments trading;
+ 
+ 
+### [Update Notes](#)
+- 25.06.17:
+  Basic rendering implemented. 
 
+- 23.06.17:
+  alpha 0.0.4:
+  added skip-frame feature,
+  redefined parameters inheritance logic,
+  refined overall stability;
+- working alpha v0.0.2 as of 17.06.17;
 
