@@ -523,7 +523,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [ ] multiply instruments trading;
  
  
-### [Update Notes](#Update_Notes)
+### <a name="Update_Notes"></a>[Update Notes](#)
 - 25.06.17:
   Basic rendering implemented. 
 
