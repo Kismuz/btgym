@@ -1,4 +1,4 @@
-## Backtrader gym Environment
+## <a name="title"></a>Backtrader gym Environment
 **Implementation of OpenAI Gym environment for Backtrader backtesting/trading library.**
 ****
 Backtrader is open-source algorithmic trading library:  
@@ -497,7 +497,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
 ****
 
 ****
-### <a name="issues"></a> [Current issues and limitations:](#contents)
+### <a name="issues"></a> [Current issues and limitations:](#title)
 
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
@@ -509,7 +509,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
 - ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ fixed 
 
 ****
-### <a name="roadmap"></a> [TODO's and Road Map:](#contents)
+### <a name="roadmap"></a> [TODO's and Road Map:](#title)
  - [x] refine logic for parameters applying priority (engine vs strategy vs kwargs vs defaults);
  - [ ] full reference docs;
  - [ ] examples;
@@ -524,7 +524,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [ ] multiply instruments trading;
  
  
-### <a name="news"></a>[News and update notes](#outline)
+### <a name="news"></a>[News and update notes](#title)
 - 25.06.17:
   Basic rendering implemented. 
 
