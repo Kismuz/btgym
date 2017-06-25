@@ -12,7 +12,7 @@ GitHub: http://github.com/openai/gym
 Documentation and community:
 https://gym.openai.com/
 ****
-### Outline:
+### <a name="outline"></a>Outline:
 General purpose of this wrapper is to provide gym-integrated framework for
 running reinforcement learning experiments 
 in [close to] real world algorithmic trading environments.
@@ -35,7 +35,7 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
     - [Data sampling approaches](#data)
     - [Environment engine description](#engine)
     - [General notes](#notes)
-- [Reference](#reference*) 
+- [Reference](#reference) 
 - [Current issues and limitations](#issues)
 - [Roadmap](#roadmap)
 - [Update news](#news)
@@ -524,7 +524,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [ ] multiply instruments trading;
  
  
-### <a name="news"></a>[News and update notes](#contents)
+### <a name="news"></a>[News and update notes](#outline)
 - 25.06.17:
   Basic rendering implemented. 
 
