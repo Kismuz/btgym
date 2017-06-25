@@ -139,21 +139,22 @@ class BTgymEnv(gym.Env):
                 if key in subset:
                     self.kwargs[name][key] = value
 
-        # Set <other> env attributes:
+        # Unconditionally update <'other'> env attributes:
         self.params['other'].update(self.kwargs['other'])
 
         # Verbosity control:
         self.log = logging.getLogger('Env')
-        if self.params['other']['verbose']:
+        log_levels = [
+            (1, 'INFO'),
+            (2, 'DEBUG'),
+        ]
+        # Default is:
+        self.log.setLevel('WARNING')
 
-            if self.params['other']['verbose'] == 2:
-                logging.getLogger().setLevel(logging.DEBUG)
-
-            else:
-                logging.getLogger().setLevel(logging.INFO)
-
-        else:
-            logging.getLogger().setLevel(logging.WARNING)
+        # Change if needed:
+        for key, level in log_levels:
+            if key == self.params['other']['verbose']:
+                self.log.setLevel(level)
 
         # Server process/network parameters:
         self.server = None
@@ -207,8 +208,10 @@ class BTgymEnv(gym.Env):
 
         else:
             # Default configuration for Backtrader computational engine (Cerebro),
-            # if no bt.Cerebro() custom subclass has been passed:
+            # if no bt.Cerebro() custom subclass has been passed,
+            # get base class Cerebro(), using kwargs on top of defaults:
             self.engine = bt.Cerebro()
+            self.params['engine'].update(self.kwargs['engine'])
             msg = 'Base Cerebro engine used.'
 
             # First, set strategy configuration:
@@ -293,6 +296,7 @@ class BTgymEnv(gym.Env):
         # Finally:
         self.server_response = None
         self.env_response = None
+        #self._closed = True  # until reset()
 
         self.log.info('Environment is ready.')
 
@@ -330,14 +334,13 @@ class BTgymEnv(gym.Env):
         self.server_response = self.socket.recv_pyobj()
         self.log.info('Server seems ready with response: <{}>'.format(self.server_response))
 
+        self._closed = False
+
     def _stop_server(self):
         """
         Stops BT server process, releases network resources.
         """
-        if not self.server:
-            self.log.info('No server process found.')
-
-        else:
+        if self.server:
 
             if self._force_control_mode():
                 # In case server is running and client side is ok:
@@ -406,6 +409,8 @@ class BTgymEnv(gym.Env):
         'Rewinds' backtrader server and starts new episode
         within randomly selected time period.
         """
+
+
         # Server process check:
         if not self.server or not self.server.is_alive():
             self.log.info('No running server found, starting...')
@@ -449,17 +454,24 @@ class BTgymEnv(gym.Env):
         Implementation of OpenAI Gym env.step method.
         Relies on remote backtrader server for actual environment dynamics computing.
         """
-        # Are you in the list and ready to go?
+        # Are you in the list, ready to go and all that?
         try:
-            assert self.action_space.contains(action) and (self.socket and not self.socket.closed)
+            assert self.action_space.contains(action)
+            assert not self._closed
+            assert  self.socket and not self.socket.closed
 
         except:
-            msg = ('\nAt least one of these occurred:\n' +
-                   'Action error: space is {}, action sent is {}\nOR\n' +
-                   'Network error [socket doesnt exists or closed]: {}\n').\
-                       format(self.action_space,
-                              action,
-                              not self.socket or self.socket.closed,)
+            msg = (
+                '\nAt least one of these is true:\n' +
+                'Action error: (space is {}, action sent is {}): {}\n' +
+                'Environment closed: {}\n' +
+                'Network error [socket doesnt exists or closed]: {}\n' +
+                'Hint: forgot to call reset()?'
+            ).format(
+                self.action_space, action, not self.action_space.contains(action),
+                self._closed,
+                not self.socket or self.socket.closed,
+            )
             self.log.info(msg)
             raise AssertionError(msg)
 
@@ -474,11 +486,11 @@ class BTgymEnv(gym.Env):
 
     def _close(self):
         """
-        [kind of] Implementation of OpenAI Gym env.close method.
+        Implementation of OpenAI Gym env.close method.
         Puts BTgym server in Control Mode:
         """
-        _ = self._force_control_mode()
-        # maybe TODO something_more
+        self._stop_server()
+        self.log.debug('Environment closed.')
 
     def get_stat(self):
         """
@@ -492,13 +504,17 @@ class BTgymEnv(gym.Env):
         else:
             return self.server_response
 
-    def _render(self, mode=None, close=None):
+    def _render(self, mode=None, close=False):
         """
         Implementation of OpenAI Gym env.render method.
         Visualises current environment state.
         Requires matplotlib.
         """
-        self.log.warning('render mode: {}, close: {}'.format (mode, close))
+        self.log.debug('render() called, mode: {}, close: {}'.format(mode, close))
+
+        if close:
+            return None
+
         if self.env_response == None:
             self.log.warning('No steps has been made, nothing to render.')
 

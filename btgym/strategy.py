@@ -109,7 +109,7 @@ class BTgymStrategy(bt.Strategy):
         """
         # TODO: make it log-utility
         # Let it be 1-step portfolio value delta:
-        return (self.stats.broker.value[0] - self.stats.broker.value[-1]) * 1e2
+        return (self.stats.broker.value[0] - self.stats.broker.value[-1]) * 1e4
 
     def get_info(self):
         """
@@ -120,6 +120,7 @@ class BTgymStrategy(bt.Strategy):
         i.e. [info[-9], info[-8], ..., info[0].
         """
         return dict(step = self.iteration,
+                    time = self.data.datetime.datetime(),
                     action = self.action,
                     broker_message = self.broker_message,
                     broker_value = self.stats.broker.value[0],

@@ -32,20 +32,20 @@ class BTgymRendering():
     """
     Executes rendering of BTgym Environment.
     """
-    # Output elements:
+    # Rendering output elements:
     state = None  # values to plot,  type=np.array.
     title = ''  # figure title, type=str.
     box_text = ''  # inline text block, type=str.
 
     # Plotting controls, can be passed as kwargs:
-    plot_type = 'plot'
-    figsize = (9, 7)
-    plot_style = 'seaborn'
-    color_map = 'PRGn'
-    xlabel = 'Relative timestep'
-    ylabel = 'Value'
-    title_template = 'State observation min: {:.4f}, max: {:.4f}'
-    box_params = dict(
+    render_type = 'plot'
+    render_figsize = (9, 3)
+    render_plotstyle = 'seaborn'
+    render_cmap = 'PRGn'
+    render_xlabel = 'Relative timesteps'
+    render_ylabel = 'Value'
+    render_title = 'step: {}, state observation min: {:.4f}, max: {:.4f}'
+    render_boxtext = dict(
         fontsize=12,
         fontweight='bold',
         color='w',
@@ -83,7 +83,7 @@ class BTgymRendering():
         try:
             (state, reward, done, info) = env_response
             try:
-                # What we plot:
+                # State output:
                 self.state = np.asarray(state)
                 assert len(self.state.shape) == 2
 
@@ -93,7 +93,7 @@ class BTgymRendering():
         except:
             raise AssertionError('Cant render given environment response')
 
-        # Figure out how to deal with info field:
+        # Figure out how to deal with info output:
         try:
             assert type(info[-1]) == dict
             info_dict = info[-1]
@@ -113,11 +113,19 @@ class BTgymRendering():
         # Add records:
         info_dict.update(reward=reward, is_done=done)
 
-        # Convert:
+        # Try to pull step information:
+        try:
+            current_step = info_dict.pop('step')
+
+        except:
+            current_step = '--'
+
+        # Finally:
         self.box_text = self.to_string(info_dict)
 
-        # Make title:
-        self.title = self.title_template.format(self.state.min(), self.state.max())
+        # Make title output:
+        self.title = self.render_title.format(current_step, self.state.min(), self.state.max())
+
 
     def render_state(self, env_response):
         """
@@ -126,7 +134,7 @@ class BTgymRendering():
         self.parse_response(env_response)
 
         if self.matplotlib:
-            if self.plot_type == 'plot':
+            if self.render_type == 'plot':
                 self.as_plot()
 
             else:
@@ -146,9 +154,9 @@ class BTgymRendering():
         Visualises environment state as 2d line plot.
         """
 
-        plt.figure(figsize=self.figsize)
-        #plt.figure(figsize=(6,6))
-        plt.style.use(self.plot_style)
+        plt.figure(figsize=self.render_figsize)
+        #plt.figure(render_figsize=(6,6))
+        plt.style.use(self.render_plotstyle)
         plt.title(self.title)
 
         # Plot x axis as reversed time-step embedding:
@@ -159,12 +167,12 @@ class BTgymRendering():
         for tick in plt.xticks()[1][::5]:
            tick.set_visible(True)
 
-        plt.xlabel(self.xlabel)
-        plt.ylabel(self.ylabel)
+        plt.xlabel(self.render_xlabel)
+        plt.ylabel(self.render_ylabel)
         plt.grid(True)
 
         # Add Info box:
-        plt.text(1, self.state.T.min(), self.box_text, **self.box_params)
+        plt.text(0, self.state.T.min(), self.box_text, **self.render_boxtext)
 
         plt.plot(self.state.T)
         plt.show()
@@ -173,8 +181,8 @@ class BTgymRendering():
         """
         Visualises environment state as image.
         """
-        plt.figure(figsize=self.figsize)
-        #plt.style.use(self.plot_style)
+        plt.figure(figsize=self.render_figsize)
+        #plt.style.use(self.render_plotstyle)
         plt.title(self.title)
 
         # Plot x axis as reversed time-step embedding:
@@ -185,12 +193,12 @@ class BTgymRendering():
         for tick in plt.xticks()[1][::5]:
             tick.set_visible(True)
 
-        plt.xlabel(self.xlabel)
-        plt.ylabel(self.ylabel)
-        plt.grid(True)
+        plt.xlabel(self.render_xlabel)
+        plt.ylabel(self.render_ylabel)
+        plt.grid(False)
 
         # Add Info box:
-        plt.text(1, self.state.T.min(), self.box_text, **self.box_params)
+        plt.text(1, self.state.shape[0]-1, self.box_text, **self.render_boxtext)
 
-        plt.imshow(self.state, aspect='auto', cmap=self.color_map)
+        plt.imshow(self.state, aspect='auto', cmap=self.render_cmap)
         plt.show()
