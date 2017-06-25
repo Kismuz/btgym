@@ -12,12 +12,12 @@ GitHub: http://github.com/openai/gym
 Documentation and community:
 https://gym.openai.com/
 ****
-#### Outline:
+### Outline:
 General purpose of this wrapper is to provide gym-integrated framework for
 running reinforcement learning experiments 
 in [close to] real world algorithmic trading environments.
 
-#### [See current state and update notes below.](#Update_Notes)
+#### [See news and update notes below](#news)
 
 ```
 DISCLAIMER:
@@ -27,22 +27,23 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
 ```
 ###### This work is in early development stage. Any suggestions, feedback and contributions are welcome.
 ****
-#### Contents
-- [Installation](#Installation)
-- [Quickstart](#Quickstart)
-- [Description](#General description)
-    - [Problem setting](#Problem setting)
-    - [Data sampling approaches](#Data selection options)
-    - [Environment engine description](#Environment engine)
-    - [General notes](#Notes)
-- [Reference](#Reference*) 
-- [Current issues and limitations,](#)
-- [Update news](#Update Notes)
+### <a name="contents"></a>Contents
+- [Installation](#install)
+- [Quickstart](#start)
+- [Description](#description)
+    - [Problem setting](#problem)
+    - [Data sampling approaches](#data)
+    - [Environment engine description](#engine)
+    - [General notes](#notes)
+- [Reference](#reference*) 
+- [Current issues and limitations](#issues)
+- [Roadmap](#roadmap)
+- [Update news](#news)
 
     
 
 ****
-#### [Installation](#)
+### <a name="install"></a>[Installation](#contents)
 - Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`; 
   `matplotlib` required for `env.render()` method.
 - Examples requires: `scipy`, .
@@ -61,7 +62,7 @@ pip install --upgrade e .
 ```
 
 ****
-#### [Quickstart](#)
+### <a name="start"></a>[Quickstart](#contents)
 Making gym environment with all parmeters set to defaults is as simple as:
 
 ```python
@@ -141,8 +142,8 @@ MyEnvironment = BTgymEnv(dataset=MyDataset,
 ```
 ###### See notebooks in `examples` directory.
 ****
-#### [General description](#)
-#### Problem setting
+### <a name="description"></a> [General description](#contents)
+#### <a name="problem"></a> Problem setting
 Consider reinforcement learning setup for equity/currency trading:
 - agent action space is discrete (`buy`, `sell`, `close` [position], `hold` [do nothing]);
 - environment is episodic: maximum  episode duration and episode termination conditions
@@ -155,7 +156,7 @@ Consider reinforcement learning setup for equity/currency trading:
 - environment setup is set close to real trading conditions, including commissions, order execution delays,
   trading calendar etc.
 
-#### Data selection options for backtest agent training:
+#### <a name="data"></a> Data selection options for backtest agent training:
 - random sampling:
   historic price change dataset is divided to training, cross-validation and testing subsets.
   Since agent actions do not influence market, it is possible to randomly sample continuous subset
@@ -169,7 +170,7 @@ Consider reinforcement learning setup for equity/currency trading:
   furthest to most recent training data. Should be less prone to overfitting than random sampling.
 - NOTE: only random sampling is currently implemented.
 
-#### Environment engine
+### <a name="engine"></a> [Environment engine](#contents)
   BTgym uses Backtrader framework for actual environment computations, for extensive documentation see:
 https://www.backtrader.com/docu/index.html.
 In brief:
@@ -180,7 +181,7 @@ In brief:
   queries like `env.reset()` and `env.step()` by repeatedly sampling episodes form given dataset and running
   backtesting `Cerebro` engine on it. See OpenAI Gym documentation for details: https://gym.openai.com/docs
 
-##### Data flow
+#### Data flow
 ```
             BTgym Environment                                 RL Framework
                                            +-+
@@ -244,7 +245,7 @@ necessary `next()` computations (e.g. issues orders, computes broker values etc.
 composes environment response and sends it back to agent ( via `_BTgymAnalyzer`). Actually, since 'no market impact' is assumed, all state
 computations are performed one step ahead:
 
-##### Server loop:
+#### Server loop:
 ```pseudocode
 Initialize by receiving engine [bt.Cerebro()] and dataset [BTgymDataset()]
 Repeat until received message '_stop':
@@ -270,7 +271,7 @@ Repeat until received message '_stop':
 ```
 ****
  
-### [Notes](#)
+### <a name="notes"></a> [Notes](#contents)
 
  1. There is a choice: where to place most of state observation/reward estimation and prepossessing such as
     featurization, normalization, frame skipping and all other -zation: either to hide it inside environment or to do it
@@ -326,7 +327,7 @@ Repeat until received message '_stop':
 ****
    
     
-## [Reference*](#)
+### <a name="reference"></a> [Reference*](#contents)
 ###### *- very incomplete, refer to source files!
 
 ### class BTgymEnv(gym.Env, args):
@@ -496,7 +497,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
 ****
 
 ****
-#### Current issues and limitations:
+### <a name="issues"></a> [Current issues and limitations:](#contents)
 
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
@@ -508,7 +509,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
 - ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ fixed 
 
 ****
-#### TODO's and Road Map:
+### <a name="roadmap"></a> [TODO's and Road Map:](#contents)
  - [x] refine logic for parameters applying priority (engine vs strategy vs kwargs vs defaults);
  - [ ] full reference docs;
  - [ ] examples;
@@ -523,7 +524,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [ ] multiply instruments trading;
  
  
-### <a name="Update_Notes"></a>[Update Notes](#)
+### <a name="news"></a>[News and update notes](#contents)
 - 25.06.17:
   Basic rendering implemented. 
 
@@ -532,5 +533,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
   added skip-frame feature,
   redefined parameters inheritance logic,
   refined overall stability;
-- working alpha v0.0.2 as of 17.06.17;
+  
+- 17.06.17:
+  first working alpha v0.0.2.
 
