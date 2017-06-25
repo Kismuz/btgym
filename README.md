@@ -17,7 +17,7 @@ General purpose of this wrapper is to provide gym-integrated framework for
 running reinforcement learning experiments 
 in [close to] real world algorithmic trading environments.
 
-#### [See current state and update notes below.](#Update Notes)
+#### [See current state and update notes below.](#Update_Notes)
 
 ```
 DISCLAIMER:
@@ -523,7 +523,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [ ] multiply instruments trading;
  
  
-### [Update Notes](#)
+### [Update Notes](#Update_Notes)
 - 25.06.17:
   Basic rendering implemented. 
 
