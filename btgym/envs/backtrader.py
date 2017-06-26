@@ -30,8 +30,8 @@ from gym import error, spaces
 
 import backtrader as bt
 
-from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering
-# from btgym.rendering import
+from btgym import BTgymServer, BTgymStrategy, BTgymDataset #, BTgymRendering
+
 
 ############################## OpenAI Gym Environment  ##############################
 
@@ -39,14 +39,14 @@ class BTgymEnv(gym.Env):
     """
     OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
     """
-    metadata = {'render.modes': ['human']}
+    metadata = {'render.modes': ['human', 'episode','state','price',]}
 
     def __init__(self, **kwargs):
         self.dataset = None  # BTgymDataset instance,
 
         self.engine = None  # bt.Cerbro subclass for server to execute.
 
-        self.strategy = None  # base strategy to use if no <strategy> kwarg been passed.
+        self.strategy = None  # strategy to use if no <engine> kwarg been passed.
 
         self.plotter = None  # Rendering support.
 
@@ -294,10 +294,11 @@ class BTgymEnv(gym.Env):
 
         # Set action space and corresponding server messages:
         self.action_space = spaces.Discrete(len(self.params['strategy']['portfolio_actions']))
-        self.server_actions = self.params['strategy']['portfolio_actions'] + ('_done', '_reset', '_stop','_getstat')
+        self.server_actions = self.params['strategy']['portfolio_actions'] +\
+                              ('_done', '_reset', '_stop', '_getstat', '_render',)
 
         # Set rendering:
-        self.plotter = BTgymRendering(**self.kwargs['other'])
+        #self.plotter = BTgymRendering(**self.kwargs['other'])
 
         # Finally:
         self.server_response = None
@@ -509,19 +510,28 @@ class BTgymEnv(gym.Env):
         else:
             return self.server_response
 
-    def _render(self, mode=None, close=False):
+    def _render(self, mode='state', close=False):
         """
         Implementation of OpenAI Gym env.render method.
         Visualises current environment state.
         Requires matplotlib.
         """
-        self.log.debug('render() called, mode: {}, close: {}'.format(mode, close))
+        try:
+            assert not self._closed
+            assert self.socket and not self.socket.closed
 
-        if close:
-            return None
+        except:
+            msg = (
+                '\nAt least one of these is true:\n' +
+                'Environment closed: {}\n' +
+                'Network error [socket doesnt exists or closed]: {}\n' +
+                'Hint: forgot to call reset()?'
+            ).format(
+                self._closed,
+                not self.socket or self.socket.closed,
+            )
+            self.log.info(msg)
+            raise AssertionError(msg)
 
-        if self.env_response is None:
-            self.log.warning('No steps has been made, nothing to render.')
-
-        else:
-            self.plotter.render_state(self.env_response)
+        self.socket.send_pyobj({'action': '_render', 'mode': mode})
+        self.render_image = self.socket.recv_pyobj()

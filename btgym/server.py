@@ -30,6 +30,8 @@ from datetime import timedelta
 
 import backtrader as bt
 
+from btgym.rendering import BTgymRendering
+
 ###################### BT Server in-episode communocation method ##############
 
 
@@ -49,6 +51,7 @@ class _BTgymAnalyzer(bt.Analyzer):
         """
         self.log = self.strategy.env._log
         self.socket = self.strategy.env._socket
+        self.render = self.strategy.env._render
         self.message = None
         self.info_list = []
 
@@ -75,7 +78,10 @@ class _BTgymAnalyzer(bt.Analyzer):
 
             # Gather response:
             state = self.strategy.get_state()
+            # DUMMY:
+            raw_state = state
             reward = self.strategy.get_reward()
+
 
             # Halt and wait to receive message from outer world:
             self.message = self.socket.recv_pyobj()
@@ -89,6 +95,22 @@ class _BTgymAnalyzer(bt.Analyzer):
             except:
                 msg = 'No <action> key recieved:\n' + msg
                 raise AssertionError(msg)
+
+            # Stop for rendering:
+            while self.message['action'] == '_render':
+                self.socket.send_pyobj(
+                    self.render.step(
+                        raw_state,
+                        state,
+                        reward,
+                        is_done,
+                        self.info_list,
+                        self.message['mode']
+                    )
+                )
+                self.message = self.socket.recv_pyobj()
+                msg = 'COMM recieved: {}'.format(self.message)
+                self.log.debug(msg)
 
             # Send response as <o, r, d, i> tuple (Gym convention):
             self.socket.send_pyobj((state, reward, is_done, self.info_list))
@@ -152,6 +174,7 @@ class BTgymServer(multiprocessing.Process):
     def __init__(self,
                  dataset=None,
                  cerebro=None,
+                 render=None,
                  network_address=None,
                  log=None):
         """
@@ -159,25 +182,6 @@ class BTgymServer(multiprocessing.Process):
         """
 
         super(BTgymServer, self).__init__()
-
-        # Paranoid checks:
-        # Cerebro class to execute:
-        if not cerebro:
-            raise AssertionError('Server has not recieved any bt.cerebro() class. Nothing to run!')
-        else:
-            self.cerebro = cerebro
-
-        # Datafeed instance to load from:
-        if not dataset:
-            raise AssertionError('Server has not recieved any datafeed. Nothing to run!')
-        else:
-            self.dataset = dataset
-
-        # Net:
-        if not network_address:
-            raise AssertionError('Server has not recieved network address to bind to!')
-        else:
-            self.network_address = network_address
 
         # To log or not to log:
         if not log:
@@ -187,6 +191,11 @@ class BTgymServer(multiprocessing.Process):
         else:
             self.log = log
 
+        self.cerebro = cerebro
+        self.dataset = dataset
+        self.network_address = network_address
+        self.render = BTgymRendering()
+
     def run(self):
         """
         Server process runtime body. This method is invoked by env._start_server().
@@ -195,6 +204,7 @@ class BTgymServer(multiprocessing.Process):
         self.log.info('Server PID: {}'.format(self.process.pid))
 
         # Runtime Housekeeping:
+        cerebro = None
         episode_result = dict()
 
         # Set up a comm. channel for server as ZMQ socket
@@ -253,13 +263,18 @@ class BTgymServer(multiprocessing.Process):
 
                 elif service_input['action'] == '_getstat':
                     socket.send_pyobj(episode_result)
-                    self.log.info('Episode statistic sent.')
-                    cerebro.plot(savefig=True, width=9, height=6, use='Agg')
+                    self.log.debug('Episode statistic sent.')
+
+                elif service_input['action'] == '_render' and service_input['mode'] == 'episode':
+                    socket.send_pyobj(self.render.episode(cerebro))
+                    self.log.debug('Episode rendering sent.')
+                    ### cerebro.plot(savefig=True, width=9, height=6, use='Agg')
+
 
                 else:  # ignore any other input
                     # NOTE: response string must include 'CONTROL_MODE' exact substring
                     # for env.reset(), env.get_stat(), env.close() correct operation.
-                    message = 'CONTROL_MODE, send <_reset>, <_getstat> or <_stop>.'
+                    message = 'CONTROL_MODE, send <_reset>, <_getstat>, <_render> or <_stop>.'
                     self.log.debug('Server sent: ' + message)
                     socket.send_pyobj(message)  # pairs any other input
 
@@ -267,6 +282,7 @@ class BTgymServer(multiprocessing.Process):
             cerebro = copy.deepcopy(self.cerebro)
             cerebro._socket = socket
             cerebro._log = self.log
+            cerebro._render = self.render
 
             # Add DrawDown observer if not already:
             dd_added = False
