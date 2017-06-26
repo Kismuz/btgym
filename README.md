@@ -58,7 +58,7 @@ pip install -e .
 ```
 cd btgym
 git pull
-pip install --upgrade e .
+pip install --upgrade -e .
 ```
 
 ****
@@ -310,7 +310,7 @@ Repeat until received message '_stop':
     - Obviously environment is data/market agnostic. Backtesting dataset size is what matters.
     Deep Q-value algorithm, most sample efficient among deep RL, take about 1M steps just to lift off.
     1 year 1 minute FX data contains about 300K samples. Feeding dataset consisting of several years of data and
-    performing random sampling [hopefully]
+    performing random sampling [arguably]
     makes it realistic to expect algorithm to converge for intra-day or intra-week trading setting (~1500-5000 steps per episode).
     Besides, currency trading holds market liquidity and impact assumptions.
     - That's just preliminary assumption, not proved at all!
@@ -356,21 +356,15 @@ Returns:
     - `INFO` - auxiliary information.
 
 #### close():
-[Kind of] implementation of OpenAI Gym `env.close()` method.
-Forces BTgymServer to go in 'Control Mode'.
+Implementation of OpenAI Gym `env.close()` method.
+Stops BTgym server process. Environment instance can be 're-opened' by simply calling `env.reset()`
 
 #### get_stat():
 Returns last episode statistics.
 Currently, returns `dict` of results, obtained from calling all
 attached to `Cerebro()` analyzers by their `get_analysis()` methods.
 See backtrader docs for analyzers reference: https://www.backtrader.com/docu/analyzers/analyzers.html
-- Note:
-    - Drawdown Analyzer is get attached by default.
-    - When invoked, this method forces running episode to terminate.
-
-#### _stop_server():
-Stops BT server process.
-- Note: server will automatically restart upon calling `env.reset()`.
+- Note: when invoked, this method forces running episode to terminate.
 
 ### class BTgymStrategy():
 Controls Environment inner dynamics and backtesting logic.
