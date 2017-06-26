@@ -254,6 +254,7 @@ class BTgymServer(multiprocessing.Process):
                 elif service_input['action'] == '_getstat':
                     socket.send_pyobj(episode_result)
                     self.log.info('Episode statistic sent.')
+                    cerebro.plot(savefig=True, width=9, height=6, use='Agg')
 
                 else:  # ignore any other input
                     # NOTE: response string must include 'CONTROL_MODE' exact substring

@@ -138,11 +138,14 @@ class BTgymEnv(gym.Env):
         # Sort kwargs out:
         for name, subset in self.params.items():
             self.kwargs[name] = dict()
-            for key, value in kwargs.items():
-                if key in subset:
-                    self.kwargs[name][key] = value
+            for key, value in subset.items():
+                if key in kwargs:
+                    self.kwargs[name][key] = kwargs.pop(key)
 
-        # Unconditionally update <'other'> env attributes:
+        # All unsorted go to 'other':
+        self.kwargs['other'].update(kwargs)
+
+        # and unconditionally update <'other'> env attributes:
         self.params['other'].update(self.kwargs['other'])
 
         # Verbosity control:
@@ -294,7 +297,7 @@ class BTgymEnv(gym.Env):
         self.server_actions = self.params['strategy']['portfolio_actions'] + ('_done', '_reset', '_stop','_getstat')
 
         # Set rendering:
-        self.plotter = BTgymRendering(**kwargs)
+        self.plotter = BTgymRendering(**self.kwargs['other'])
 
         # Finally:
         self.server_response = None

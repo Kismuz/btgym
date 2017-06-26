@@ -21,6 +21,7 @@ import numpy as np
 
 try:
     import matplotlib
+    matplotlib.use('nbagg')
     import matplotlib.pyplot as plt
     _matplotlib = True
 
@@ -38,18 +39,20 @@ class BTgymRendering():
     box_text = ''  # inline text block, type=str.
 
     # Plotting controls, can be passed as kwargs:
-    render_type = 'plot'
-    render_figsize = (9, 3)
-    render_plotstyle = 'seaborn'
-    render_cmap = 'PRGn'
-    render_xlabel = 'Relative timesteps'
-    render_ylabel = 'Value'
-    render_title = 'step: {}, state observation min: {:.4f}, max: {:.4f}'
-    render_boxtext = dict(
-        fontsize=12,
-        fontweight='bold',
-        color='w',
-        bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
+    params = dict(
+        render_type='plot',
+        render_figsize=(9, 3),
+        render_plotstyle='seaborn',
+        render_cmap='PRGn',
+        render_xlabel='Relative timesteps',
+        render_ylabel='Value',
+        render_title='step: {}, state observation min: {:.4f}, max: {:.4f}',
+        render_boxtext=dict(
+            fontsize=12,
+            fontweight='bold',
+            color='w',
+            bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
+        ),
     )
 
     def __init__(self, **kwargs):
@@ -60,8 +63,10 @@ class BTgymRendering():
         if not self.matplotlib:
             self.log.warning('Matplotlib not loaded. Plotting features disabled.')
 
-        # Update, if any:
-        for key, value in kwargs.items():
+        # Update parameters, and set params as instance attributes:
+        for key, value in self.params.items():
+            if key in kwargs:
+                value = kwargs.pop(key)
             setattr(self, key, value)
 
     def to_string(self, dictionary):
