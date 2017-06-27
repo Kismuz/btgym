@@ -493,13 +493,16 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
 ****
 ### <a name="issues"></a> [Current issues and limitations:](#title)
 
+
+- not tested with Python < 3.5;
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
 - no built-in dataset splitting to training/cv/testing subsets;
 - only one equity/currency pair can be traded;
 - ~~no 'skip-frames' implementation within environment;~~ done
 - env.get_stat() method is returning strategy analyzers results only. No observers yet.
-- no plotting features, except if using pycharm integration observer. Not sure if it is suited for intraday strategies.
+- ~~no plotting features, except if using pycharm integration observer.~~
+    ~~Not sure if it is suited for intraday strategies.~~ [partially] done
 - ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ fixed 
 
 ****
@@ -510,7 +513,9 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [x] frame-skipping feature;
  - [ ] dataset tr/cv/t splitting feature;
  - [x] state rendering;
- - [ ] retrieving results for observers and plotting features - aka 'episode rendering';
+ - [x] retrieving results for observers and plotting features - aka 'episode rendering';
+ - [ ] still no observers statistic returned;
+ - [ ] rendering for entire episode is slow;
  - [ ] tensorboard integration;
  - [ ] multiply agents asynchronous operation feature (e.g for A3C):
     -  [possibly] via dedicated data server;
@@ -519,6 +524,14 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
  
 ### <a name="news"></a>[News and update notes](#title)
+- 27.06.17:
+    - rendering refined with modes: `state`, `price`, `episode`; drawing options enabled;
+    - rendering now performed by server and returned to environment as `rgb numpy array`.
+      Can be shown either via matplolib or Pillow.
+    - internal changes: env. state divided on `raw_state`  - price data,
+      and `state` - featurized representation. `_get_raw_state()` method added to strategy.
+  
+
 - 25.06.17:
   Basic rendering implemented. 
 

@@ -86,9 +86,10 @@ class _BTgymAnalyzer(bt.Analyzer):
         if self.strategy.iteration % self.strategy.p.skip_frame == 0 or is_done:
 
             # Gather response:
+            raw_state = self.strategy._get_raw_state()
             state = self.strategy.get_state()
             # DUMMY:
-            raw_state = state
+
             reward = self.strategy.get_reward()
 
             # Halt and wait to receive message from outer world:
@@ -194,7 +195,6 @@ class BTgymServer(multiprocessing.Process):
         """
         Configures BT server instance.
         """
-
         super(BTgymServer, self).__init__()
 
         # To log or not to log:
@@ -208,7 +208,6 @@ class BTgymServer(multiprocessing.Process):
         self.cerebro = cerebro
         self.dataset = dataset
         self.network_address = network_address
-        #self.render = BTgymRendering()
         self.render = render
 
     def run(self):
@@ -291,8 +290,9 @@ class BTgymServer(multiprocessing.Process):
                         socket.send_pyobj(message)  # pairs any other input
 
                 else:
-                    msg = 'No <CTRL> key recieved:\n' + msg
-                    raise AssertionError(msg)
+                    message = 'No <ctrl> key received:{}\nHint: forgot to call reset()?'.format(msg)
+                    self.log.warning(message)
+                    socket.send_pyobj(message)
 
             # Got '_reset' signal -> prepare Cerebro subclass and run episode:
             cerebro = copy.deepcopy(self.cerebro)

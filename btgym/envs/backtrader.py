@@ -47,7 +47,7 @@ class BTgymEnv(gym.Env):
         self.engine = None  # bt.Cerbro subclass for server to execute.
         self.strategy = None  # strategy to use if no <engine> kwarg been passed.
         self.renderer = None  # Rendering support.
-        self.rendered_image = {} # Will contain rendered images, keys as render modes
+        self.rendered_image = {} # Will contain rendered images, keys are equal to render modes
         self.kwargs = {}  # Here we'll sort and store our kwargs.
         self.server = None  # Server/network parameters:
         self.context = None
@@ -96,6 +96,7 @@ class BTgymEnv(gym.Env):
                 # Other:
                 port=5500,  # network port to use.
                 network_address='tcp://127.0.0.1:',   # using localhost.
+                ctrl_actions = ('_done', '_reset', '_stop', '_getstat', '_render'),  # server control messages.
                 verbose=0,  # verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
             ),
         )
@@ -292,8 +293,9 @@ class BTgymEnv(gym.Env):
 
         # Set action space and corresponding server messages:
         self.action_space = spaces.Discrete(len(self.params['strategy']['portfolio_actions']))
-        self.server_actions = self.params['strategy']['portfolio_actions'] +\
-                              ('_done', '_reset', '_stop', '_getstat', '_render',)
+        self.server_actions = self.params['strategy']['portfolio_actions']
+
+        self.server_ctrl_actions = self.params['other']['ctrl_actions']
 
         # Set rendering:
         self.renderer = BTgymRendering(**self.kwargs['other'])

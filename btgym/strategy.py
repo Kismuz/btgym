@@ -50,6 +50,7 @@ class BTgymStrategy(bt.Strategy):
     action = 'hold'
     order = None
     broker_message = '-'
+    raw_state = None
     params = dict(
         state_shape=(4, 10),  # observation state shape, by convention last dimension is time embedding one;
                               # one can define any shape; should match env.observation_space.shape.
@@ -72,33 +73,30 @@ class BTgymStrategy(bt.Strategy):
         # for proper time-embedded state composition:
         self.data.dim_sma = btind.SimpleMovingAverage(self.datas[0],
                                                       period=self.p.state_shape[-1])
+        self.data.dim_sma.plotinfo.plot = False
+
         # Add custom data Lines if any (just a convenience wrapper):
         self.set_datalines()
 
     def set_datalines(self):
         """
-        Default datalines are: Open, Low, High, Close.
+        Default datalines are: Open, Low, High, Close, Volume.
         Any other custom data lines, indicators, etc.
         should be explicitly defined by overriding this method [convention].
         Invoked once by Strategy.__init__().
         """
-        pass
+        #self.log.warning('Deprecated method. Will be removed in th future. Use _get_raw_state() instead.')
 
-    def get_state(self):
+    def _get_raw_state(self):
         """
         Default state observation composer.
-        Returns time-embedded environment state observation as [n,m] numpy matrix, where
-        n - number of signal features  == state_shape[0] == 4,
+        Returns time-embedded environment state observation as [4,m] numpy matrix, where
+        4 - number of signal features  == state_shape[0],
         m - time-embedding length  == state_shape[-1] == <set by user>.
-        One can override this method,
-        defining necessary calculations and return arbitrary shaped tensor.
-        It's possible either to compute entire featurized environment state
-        or just pass raw price data to RL algorithm featurizer module.
-        Note1: 'data' referes to bt.startegy datafeeds and should be treated as such.
-        Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in
-        define_datalines().
         """
-        return np.row_stack(
+
+        # TODO: raw_state time dimension differ from state: e.g. +1 id difference should be used (?!)
+        self.raw_state = np.row_stack(
             (
                 self.data.open.get(size=self.p.state_shape[-1]),
                 self.data.low.get(size=self.p.state_shape[-1]),
@@ -106,6 +104,22 @@ class BTgymStrategy(bt.Strategy):
                 self.data.close.get(size=self.p.state_shape[-1]),
             )
         )
+
+        return self.raw_state
+
+    def get_state(self):
+        """
+        One can override this method,
+        defining necessary calculations and return arbitrary shaped tensor.
+        It's possible either to compute entire featurized environment state
+        or just pass raw price data to RL algorithm featurizer module.
+        Note1: 'data' referes to bt.startegy datafeeds and should be treated as such.
+        Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in
+        define_datalines().
+        NOTE: while iterating, ._get_raw_state() method is called just before this one,
+        so variable `self.raw_state` is fresh and ready to use.
+        """
+        return self.raw_state
 
     def get_reward(self):
         """
