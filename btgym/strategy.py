@@ -167,12 +167,11 @@ class BTgymStrategy(bt.Strategy):
         is_done_rules = [
             # Will it be last step of the episode?:
             (self.iteration >= self.data.numrecords - self.p.state_shape[-1], 'END OF DATA!'),
-            # If agent/server forces episode termination?:
-            (self.action == '_done', '_DONE SIGNAL RECEIVED'),
             # Any money left?:
             (self.stats.drawdown.maxdrawdown[0] > self.p.drawdown_call, 'DRAWDOWN CALL!'),
         ]
-        # Append get_done() results:
+
+        # Append custom get_done() results, if any:
         is_done_rules += [self.get_done()]
 
         # Sweep through:

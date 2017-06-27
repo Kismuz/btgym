@@ -31,36 +31,34 @@ class BTgymRendering():
     title = ''  # figure title, type=str.
     box_text = ''  # inline text block, type=str.
 
-
     # Plotting controls, can be passed as kwargs:
-    params = dict(
-        render_type='plot',
-        render_figsize=(10, 6),
-        render_dpi=300,
-        render_plotstyle='seaborn',
-        render_cmap='PRGn',
-        render_xlabel='Relative timesteps',
-        render_ylabel='Value',
-        render_title='step: {}, state observation min: {:.4f}, max: {:.4f}',
-        render_boxtext=dict(
-            fontsize=12,
-            fontweight='bold',
-            color='w',
-            bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
-        ),
-        episode_picfilename='btgym_current_episde.png',
-        plt_backend='Agg',
+    render_type = 'plot'
+    render_figsize = (10, 6)
+    render_dpi=300
+    render_plotstyle = 'seaborn'
+    render_cmap = 'PRGn'
+    render_xlabel = 'Relative timesteps'
+    render_ylabel = 'Value'
+    render_title = 'step: {}, state observation min: {:.4f}, max: {:.4f}'
+    render_boxtext = dict(
+        fontsize=12,
+        fontweight='bold',
+        color='w',
+        bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
     )
+    episode_picfilename = 'btgym_current_episode.png'
+    plt_backend = 'Agg'
 
     def __init__(self, **kwargs):
+        """  """
         self.log = logging.getLogger('Plotter')
         logging.getLogger().setLevel(logging.WARNING)
 
-        # Update parameters, and set params as instance attributes:
-        for key, value in self.params.items():
-            if key in kwargs:
-                value = kwargs.pop(key)
-            setattr(self, key, value)
+        # Update parameters with kwargs:
+        self.kwargs = kwargs
+        for key, value in self.kwargs.items():
+            if key in dir(self):
+                setattr(self, key, value)
 
         # Backend:
         #matplotlib.use(self.plt_backend)
@@ -135,37 +133,13 @@ class BTgymRendering():
         """
         raise NotImplementedError('For python''s sake, install that Matplotlib!')
 
-    def as_image(self): #### STATE REPRESENTATION
-        """
-        Visualises environment state as image.
-        """
-        self.plt.figure(figsize=self.render_figsize)
-        #self.plt.style.use(self.render_plotstyle)
-        self.plt.title(self.title)
-
-        # Plot x axis as reversed time-step embedding:
-        xticks = np.linspace(self.state.shape[-1] - 1, 0, int(self.state.shape[-1]), dtype=int)
-        self.plt.xticks(xticks.tolist(), (- xticks[::-1]).tolist(), visible=False)
-
-        # Set every 5th tick label visible:
-        for tick in self.plt.xticks()[1][::5]:
-            tick.set_visible(True)
-
-        self.plt.xlabel(self.render_xlabel)
-        self.plt.ylabel(self.render_ylabel)
-        self.plt.grid(False)
-
-        # Add Info box:
-        self.plt.text(1, self.state.shape[0]-1, self.box_text, **self.render_boxtext)
-
-        self.plt.imshow(self.state, aspect='auto', cmap=self.render_cmap)
-        self.plt.show()
-
     def episode(self, cerebro):
         """
         Renders entire episode using built-in backtrader plotting feature.
-        Returns image as rgb_array.
+        Returns dict with image as rgb_array.
+        Slow: needs to save/reload image file.
         """
+        self.log.debug('render.EPISODE() call')
         try:
             assert cerebro is not None
 
@@ -181,7 +155,7 @@ class BTgymRendering():
             use=None,
             iplot=False,
             figfilename=self.episode_picfilename,
-            **self.params,
+            **self.kwargs,
         )
 
         # Reload and convert:
@@ -191,38 +165,42 @@ class BTgymRendering():
         except:
             raise FileNotFoundError('Rendered <{}> not found'.format(self.episode_picfilename))
 
-        return [episode_rgb_array]
+        return {'episode': episode_rgb_array}
 
-    def step(self, raw_state, state, reward, done, info, mode=('price')):
+    def step(self, step_to_render, mode='price'):
         """
         Renders current environment state.
-        Returns image as rgb_array.
+        Returns dict with image as rgb_array.
         """
-        rgb_list = []
+        rgb_dict = {}
+
+        raw_state, state, reward, done, info = step_to_render
 
         self.parse_response(raw_state, state, reward, info, done)
 
         if 'state' in mode:
             # Render featurized state
-            pass
+            self.log.warning('NotImplementedPlug')
+            # TODO: rgb_dict['state'] = self.draw_image(raw_state)
 
         if 'price' in mode:
             # Render price data
-            rgb_list.append(self.draw_plot(raw_state))
+            rgb_dict['price'] = self.draw_plot(raw_state)
 
         if 'episode' in mode:
             # Load saved file, if any:
             try:
-                rgb_list.append(np.array(Image.open(self.episode_picfilename)))
+                rgb_dict['episode'] = np.array(Image.open(self.episode_picfilename))
 
             except:
-                self.log.warning('Rendered <{}> not found'.format(self.episode_picfilename))
+                self.log.warning('No episode renderings ({}) found.'.format(self.episode_picfilename))
 
-        return rgb_list
+        return rgb_dict
 
     def draw_plot(self, data):
         """
         Visualises environment state as 2d line plot.
+        Retrurns image as rgb_array.
         """
         fig = self.plt.figure(figsize=self.render_figsize, dpi=self.render_dpi,)
         ax = fig.add_subplot(111)
@@ -257,3 +235,30 @@ class BTgymRendering():
         rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
 
         return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
+    # TODO:
+    def draw_image(self): #### STATE REPRESENTATION
+        """
+        Visualises environment state as image.
+        """
+        self.plt.figure(figsize=self.render_figsize)
+        #self.plt.style.use(self.render_plotstyle)
+        self.plt.title(self.title)
+
+        # Plot x axis as reversed time-step embedding:
+        xticks = np.linspace(self.state.shape[-1] - 1, 0, int(self.state.shape[-1]), dtype=int)
+        self.plt.xticks(xticks.tolist(), (- xticks[::-1]).tolist(), visible=False)
+
+        # Set every 5th tick label visible:
+        for tick in self.plt.xticks()[1][::5]:
+            tick.set_visible(True)
+
+        self.plt.xlabel(self.render_xlabel)
+        self.plt.ylabel(self.render_ylabel)
+        self.plt.grid(False)
+
+        # Add Info box:
+        self.plt.text(1, self.state.shape[0]-1, self.box_text, **self.render_boxtext)
+
+        self.plt.imshow(self.state, aspect='auto', cmap=self.render_cmap)
+        self.plt.show()

@@ -30,7 +30,7 @@ from datetime import timedelta
 
 import backtrader as bt
 
-from btgym.rendering import BTgymRendering
+#from btgym.rendering import BTgymRendering
 
 ###################### BT Server in-episode communocation method ##############
 
@@ -53,6 +53,7 @@ class _BTgymAnalyzer(bt.Analyzer):
         self.socket = self.strategy.env._socket
         self.render = self.strategy.env._render
         self.message = None
+        self.step_to_render = None # Due to reset(), this will get populated before first render() call.
         self.info_list = []
 
     def prenext(self):
@@ -60,6 +61,14 @@ class _BTgymAnalyzer(bt.Analyzer):
 
     def stop(self):
         pass
+
+    def early_stop(self):
+        """
+        Get out.
+        """
+        self.log.debug('RunStop() invoked with {}'.format(self.strategy.broker_message))
+        self.strategy.close()
+        self.strategy.env.runstop()
 
     def next(self):
         """
@@ -82,47 +91,52 @@ class _BTgymAnalyzer(bt.Analyzer):
             raw_state = state
             reward = self.strategy.get_reward()
 
-
             # Halt and wait to receive message from outer world:
             self.message = self.socket.recv_pyobj()
             msg = 'COMM recieved: {}'.format(self.message)
             self.log.debug(msg)
 
-            # Paraniod check:
-            try:
-                self.strategy.action = self.message['action']
+            # Control actions loop, ignoring 'action' key:
+            while 'ctrl' in self.message:
 
-            except:
-                msg = 'No <action> key recieved:\n' + msg
-                raise AssertionError(msg)
+                # Rendering requested:
+                if self.message['ctrl'] == '_render':
+                    self.socket.send_pyobj(self.render.step(self.step_to_render, self.message['mode']))
 
-            # Stop for rendering:
-            while self.message['action'] == '_render':
-                self.socket.send_pyobj(
-                    self.render.step(
-                        raw_state,
-                        state,
-                        reward,
-                        is_done,
-                        self.info_list,
-                        self.message['mode']
-                    )
-                )
+                # Episode ternmination requested:
+                if self.message['ctrl'] == '_done':
+                    is_done = True  # redundant
+                    self.socket.send_pyobj('_DONE SIGNAL RECEIVED')
+                    self.early_stop()
+                    return None
+
+                # Halt again:
                 self.message = self.socket.recv_pyobj()
                 msg = 'COMM recieved: {}'.format(self.message)
                 self.log.debug(msg)
 
+            # Store agent action:
+            if 'action' in self.message: # now it should!
+                self.strategy.action = self.message['action']
+
+            else:
+                msg = 'No <action> key recieved:\n' + msg
+                raise AssertionError(msg)
+
             # Send response as <o, r, d, i> tuple (Gym convention):
             self.socket.send_pyobj((state, reward, is_done, self.info_list))
+
+            # Back up step information for rendering.
+            # It pays when using skip-frames: will'll get future state otherwise.
+            self.step_to_render = (raw_state, state, reward, is_done, self.info_list)
 
             # Reset info:
             self.info_list = []
 
         # If done, initiate fallback to Control Mode:
         if is_done:
-            self.log.debug('RunStop() invoked with {}'.format(self.strategy.broker_message))
-            self.strategy.close()
-            self.strategy.env.runstop()
+            self.early_stop()
+
 
         # Strategy housekeeping:
         self.strategy.iteration += 1
@@ -194,7 +208,8 @@ class BTgymServer(multiprocessing.Process):
         self.cerebro = cerebro
         self.dataset = dataset
         self.network_address = network_address
-        self.render = BTgymRendering()
+        #self.render = BTgymRendering()
+        self.render = render
 
     def run(self):
         """
@@ -206,6 +221,7 @@ class BTgymServer(multiprocessing.Process):
         # Runtime Housekeeping:
         cerebro = None
         episode_result = dict()
+        episode_rendered = None
 
         # Set up a comm. channel for server as ZMQ socket
         # to carry both service and data signal
@@ -237,46 +253,46 @@ class BTgymServer(multiprocessing.Process):
                 msg = 'Server Control mode: recieved <{}>'.format(service_input)
                 self.log.debug(msg)
 
-                try:
-                    assert 'action' in service_input
+                if 'ctrl' in service_input:
 
-                except:
-                    msg = 'No <action> key recieved:\n' + msg
+                    # It's time to exit:
+                    if service_input['ctrl'] == '_stop':
+                        # Server shutdown logic:
+                        # send last run statistic, release comm channel and exit:
+                        message = 'Server is exiting.'
+                        self.log.info(message)
+                        socket.send_pyobj(message)
+                        socket.close()
+                        context.destroy()
+                        return None
+
+                    # Start episode:
+                    elif service_input['ctrl'] == '_reset':
+                        message = 'Starting episode.'
+                        self.log.info(message)
+                        socket.send_pyobj(message)  # pairs '_reset'
+                        break
+
+                    # Retrieve statisitc:
+                    elif service_input['ctrl'] == '_getstat':
+                        socket.send_pyobj(episode_result)
+                        self.log.debug('Episode statistic sent.')
+
+                    # Send episode rendering:
+                    elif service_input['ctrl'] == '_render' and service_input['mode'] == 'episode':
+                        socket.send_pyobj(episode_rendered)
+                        self.log.debug('Episode rendering sent.')
+
+                    else:  # ignore any other input
+                        # NOTE: response string must include 'ctrl' key
+                        # for env.reset(), env.get_stat(), env.close() correct operation.
+                        message = {'ctrl': 'send control keys: <_reset>, <_getstat>, <_render>, <_stop>.'}
+                        self.log.debug('Server sent: ' + str(message))
+                        socket.send_pyobj(message)  # pairs any other input
+
+                else:
+                    msg = 'No <CTRL> key recieved:\n' + msg
                     raise AssertionError(msg)
-
-                # Check if it's time to exit:
-                if service_input['action'] == '_stop':
-                    # Server shutdown logic:
-                    # send last run statistic, release comm channel and exit:
-                    message = 'Server is exiting.'
-                    self.log.info(message)
-                    socket.send_pyobj(message)
-                    socket.close()
-                    context.destroy()
-                    return None
-
-                elif service_input['action'] == '_reset':
-                    message = 'Starting episode.'
-                    self.log.info(message)
-                    socket.send_pyobj(message)  # pairs '_reset'
-                    break
-
-                elif service_input['action'] == '_getstat':
-                    socket.send_pyobj(episode_result)
-                    self.log.debug('Episode statistic sent.')
-
-                elif service_input['action'] == '_render' and service_input['mode'] == 'episode':
-                    socket.send_pyobj(self.render.episode(cerebro))
-                    self.log.debug('Episode rendering sent.')
-                    ### cerebro.plot(savefig=True, width=9, height=6, use='Agg')
-
-
-                else:  # ignore any other input
-                    # NOTE: response string must include 'CONTROL_MODE' exact substring
-                    # for env.reset(), env.get_stat(), env.close() correct operation.
-                    message = 'CONTROL_MODE, send <_reset>, <_getstat>, <_render> or <_stop>.'
-                    self.log.debug('Server sent: ' + message)
-                    socket.send_pyobj(message)  # pairs any other input
 
             # Got '_reset' signal -> prepare Cerebro subclass and run episode:
             cerebro = copy.deepcopy(self.cerebro)
@@ -314,6 +330,9 @@ class BTgymServer(multiprocessing.Process):
             elapsed_time = timedelta(seconds=time.time() - start_time)
             self.log.info('Episode elapsed time: {}.'.format(elapsed_time))
 
+            # Get episode rendering:
+            episode_rendered = self.render.episode(cerebro)
+
             # Recover that bloody analytics:
             analyzers_list = episode.analyzers.getnames()
             analyzers_list.remove('_env_analyzer')
@@ -323,6 +342,7 @@ class BTgymServer(multiprocessing.Process):
 
             for name in analyzers_list:
                 episode_result[name] = episode.analyzers.getbyname(name).get_analysis()
+
 
         # Just in case -- we actually shouldn't get there except by some error:
         return None

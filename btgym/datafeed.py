@@ -47,55 +47,53 @@ class BTgymDataset:
     """
     # TODO: implement sequential and time-window sampling.
 
+    #  Parameters and their default values:
+    filename = None  # Should be given either here  or when calling read_csv()
+
+    # Default parameters for source-specific CSV datafeed class,
+    # correctly parses 1 minute Forex generic ASCII
+    # data files from www.HistData.com:
+
+    # CSV to Pandas params.
+    sep = ';'
+    header = 0
+    index_col = 0
+    parse_dates = True
+    names = ['open', 'high', 'low', 'close', 'volume']
+
+    # Pandas to BT.feeds params:
+    timeframe = 1  # 1 minute.
+    datetime = 0
+    open = 1
+    high = 2
+    low = 3
+    close = 4
+    volume = -1
+    openinterest = -1
+
+    # Random-sampling params:
+    start_weekdays = [0, 1, 2, 3, ]  # Only weekdays from the list will be used for episode start.
+    start_00 = True,  # Episode start time will be set to first record of the day (usually 00:00).
+    episode_len_days = 1  # Maximum episode time duration in days, hours, minutes:
+    episode_len_hours = 23
+    episode_len_minutes = 55
+    time_gap_days = 0  # Maximum data time gap allowed within sample in days, hours. Thereby,
+    time_gap_hours = 5  # if set to be < 1 day, samples containing weekends and holidays gaps will be rejected.
+
+    # Other:
+    kwargs = {}  # will need this for child dataset instances
+    log = None
+    data = None  # Will hold actual data as pandas dataframe
+    data_stat = None  # Dataset descriptive statistic as pandas dataframe
+
     def __init__(self, **kwargs):
-        #  To-be attributes and their default values:
-        self.attrs = dict(
-            filename=None,  # Should be given either here  or when calling read_csv()
 
-            # Default parameters for source-specific CSV datafeed class,
-            # correctly parses 1 minute Forex generic ASCII
-            # data files from www.HistData.com:
+        self.kwargs = kwargs
 
-            # CSV to Pandas params.
-            sep=';',
-            header=0,
-            index_col=0,
-            parse_dates=True,
-            names=['open', 'high', 'low', 'close', 'volume'],
-
-            # Pandas to BT.feeds params:
-            timeframe=1,  # 1 minute.
-            datetime=0,
-            open=1,
-            high=2,
-            low=3,
-            close=4,
-            volume=-1,
-            openinterest=-1,
-
-            # Random-sampling params:
-            start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
-            start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
-            episode_len_days=1,  # Maximum episode time duration in days, hours, minutes:
-            episode_len_hours=23,
-            episode_len_minutes=55,
-            time_gap_days=0,  # Maximum data time gap allowed within sample in days, hours. Thereby,
-            time_gap_hours=5,  # if set to be < 1 day, samples containing weekends and holidays gaps will be rejected.
-
-            # Other:
-            log=None,
-        )
-
-        self.data = None,  # Will hold actual data as pandas dataframe
-        self.data_stat = None  # Dataset descriptive statistic as pandas dataframe
-
-        # Set instance attributes:
-        self.attrs.update(kwargs)
-        for key, value in self.attrs.items():
-            setattr(self, key, value)
-
-        # Exclude logger from kwargs:
-        _ = self.attrs.pop('log')
+        # Update parameters with kwargs:
+        for key, value in self.kwargs.items():
+            if key in dir(self):
+                setattr(self, key, value)
 
         # Maximum data time gap allowed within sample as pydatetimedelta obj:
         self.max_time_gap = datetime.timedelta(days=self.time_gap_days,
@@ -117,7 +115,8 @@ class BTgymDataset:
         """
         if filename:
             self.filename = filename  # override data source if one is given
-        if self.filename and os.path.isfile(self.filename):
+        try:
+            assert self.filename and os.path.isfile(self.filename)
             self.data = pd.read_csv(self.filename,
                                     sep=self.sep,
                                     header=self.header,
@@ -125,10 +124,17 @@ class BTgymDataset:
                                     parse_dates=self.parse_dates,
                                     names=self.names)
             self.log.info('Loaded {} records from <{}>.'.format(self.data.shape[0], self.filename))
-        else:
-            msg = 'Data file <{}> not specified / not found.'.format(str(self.filename))
-            self.log.info(msg)
-            raise FileNotFoundError(msg)
+
+        except:
+            try:
+                assert 'episode_dataset' in self.filename
+                self.log.warning('Attempt to load data into episode dataset: ignored.')
+                return None
+
+            except:
+                msg = 'Data file <{}> not specified / not found.'.format(str(self.filename))
+                self.log.error(msg)
+                raise FileNotFoundError(msg)
 
     def describe(self):
         """
@@ -242,7 +248,9 @@ class BTgymDataset:
             if episode_sample_len - self.max_episode_len < self.max_time_gap:
                 self.log.info('Sample accepted.')
                 # If sample OK - return episodic-dataset:
-                episode = BTgymDataset(**self.attrs)
+                episode = BTgymDataset(**self.kwargs)
+                episode.filename = '_episode_dataset_' + str(adj_timedate)
+                self.log.debug('Episode <filename>: {}'.format(episode.filename))
                 episode.data = episode_sample
                 return episode
 

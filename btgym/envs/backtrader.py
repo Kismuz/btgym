@@ -30,7 +30,7 @@ from gym import error, spaces
 
 import backtrader as bt
 
-from btgym import BTgymServer, BTgymStrategy, BTgymDataset #, BTgymRendering
+from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering
 
 
 ############################## OpenAI Gym Environment  ##############################
@@ -39,16 +39,19 @@ class BTgymEnv(gym.Env):
     """
     OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
     """
-    metadata = {'render.modes': ['human', 'episode','state','price',]}
+    metadata = {'render.modes': ['human', 'episode', 'state', 'price',]}
 
     def __init__(self, **kwargs):
+        #
         self.dataset = None  # BTgymDataset instance,
-
         self.engine = None  # bt.Cerbro subclass for server to execute.
-
         self.strategy = None  # strategy to use if no <engine> kwarg been passed.
-
-        self.plotter = None  # Rendering support.
+        self.renderer = None  # Rendering support.
+        self.rendered_image = {} # Will contain rendered images, keys as render modes
+        self.kwargs = {}  # Here we'll sort and store our kwargs.
+        self.server = None  # Server/network parameters:
+        self.context = None
+        self.socket = None
 
         # Default parameters:
         self.params = dict(
@@ -88,7 +91,6 @@ class BTgymEnv(gym.Env):
                     # Every other step agent action is assumed to be 'hold'.
                     # Note: INFO part of environment response is a list of all skipped frame's info's,
                     #       i.e. [info[-9], info[-8], ..., info[0].
-
             ),
             other=dict(
                 # Other:
@@ -97,10 +99,8 @@ class BTgymEnv(gym.Env):
                 verbose=0,  # verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
             ),
         )
-        # Here we'll sort and store our kwargs:
-        self.kwargs = dict()
 
-        '''
+        """
         Environment kwargs applying logic:
     
         if <engine> kwarg is given:
@@ -114,17 +114,17 @@ class BTgymEnv(gym.Env):
             
             if <strategy> is given:
                 do not use default strategy parameters;
-                if  any strategy related kwarg is given:
+                if any strategy related kwarg is given:
                     override corresponding strategy parameter;
                 
             else (no <strategy>):
                 use default strategy parameters;
-                if  any strategy related kwarg is given:
+                if any strategy related kwarg is given:
                     override corresponding strategy parameter;
         
         if <dataset> kwarg is given:
             do not use default dataset parameters;
-            if  any dataset related kwarg is given:
+            if any dataset related kwarg is given:
                     override corresponding dataset parameter;
                     
         else (no <dataset>):
@@ -134,7 +134,8 @@ class BTgymEnv(gym.Env):
         
         If any <other> kwarg is given:
             override corr. default parameter.
-        '''
+        """
+
         # Sort kwargs out:
         for name, subset in self.params.items():
             self.kwargs[name] = dict()
@@ -145,35 +146,32 @@ class BTgymEnv(gym.Env):
         # All unsorted go to 'other':
         self.kwargs['other'].update(kwargs)
 
-        # and unconditionally update <'other'> env attributes:
+        # Now ready to unconditionally update <'other'> env attributes:
         self.params['other'].update(self.kwargs['other'])
 
         # Verbosity control:
         self.log = logging.getLogger('Env')
-        log_levels = [
-            (1, 'INFO'),
-            (2, 'DEBUG'),
-        ]
-        # Default is:
-        self.log.setLevel('WARNING')
 
-        # Change if needed:
+        log_levels = [(0, 'WARNING'), (1, 'INFO'), (2, 'DEBUG'),]
+
         for key, level in log_levels:
             if key == self.params['other']['verbose']:
                 self.log.setLevel(level)
 
-        # Server process/network parameters:
-        self.server = None
-        self.context = None
-        self.socket = None
+        # In this level logging should be defined for dataset and renderer class instances.
+        # Server log will be passed when starting process:
+        self.kwargs['dataset']['log'] = self.log
+        self.kwargs['other']['log'] = self.log
+
+        # Network parameters:
         self.params['other']['network_address'] += str(self.params['other']['port'])
 
-        # Dataset preparation:
+        # DATASET preparation:
         #
         if 'dataset' in kwargs:
             # If BTgymDataset instance has been passed:
             self.dataset = kwargs['dataset']
-            # Update dataset parameters with kwargs:
+            # Update dataset parameters with kwargs (ignore defaults):
             for key, value in self.kwargs['dataset'].items():
                 if key in dir(self.dataset):
                     setattr(self.dataset, key, value)
@@ -195,11 +193,11 @@ class BTgymEnv(gym.Env):
             self.dataset = BTgymDataset(**self.params['dataset'])
             msg = 'Base Dataset class used.'
         # Append logging:
-        self.dataset.log = self.log
+        #self.dataset.log = self.log
 
         self.log.info(msg)
 
-        # Engine preparation:
+        # ENGINE preparation:
         if 'engine' in kwargs:
             # If full-blown bt.Cerebro() subclass has been passed:
             self.engine = kwargs['engine']
@@ -220,7 +218,7 @@ class BTgymEnv(gym.Env):
             self.params['engine'].update(self.kwargs['engine'])
             msg = 'Base Cerebro engine used.'
 
-            # First, set strategy configuration:
+            # First, set STRATEGY configuration:
             if 'strategy' in kwargs:
                 # If custom strategy has been passed:
                 self.strategy = kwargs['strategy']
@@ -298,13 +296,11 @@ class BTgymEnv(gym.Env):
                               ('_done', '_reset', '_stop', '_getstat', '_render',)
 
         # Set rendering:
-        #self.plotter = BTgymRendering(**self.kwargs['other'])
+        self.renderer = BTgymRendering(**self.kwargs['other'])
 
         # Finally:
         self.server_response = None
         self.env_response = None
-        # self._closed = True  # until reset()
-
         self.log.info('Environment is ready.')
 
     def _start_server(self):
@@ -329,6 +325,7 @@ class BTgymEnv(gym.Env):
         # Configure and start server:
         self.server = BTgymServer(dataset=self.dataset,
                                   cerebro=self.engine,
+                                  render=self.renderer,
                                   network_address=self.params['other']['network_address'],
                                   log=self.log)
         self.server.daemon = False
@@ -337,7 +334,7 @@ class BTgymEnv(gym.Env):
         time.sleep(1)
 
         self.log.info('Server started, pinging {} ...'.format(self.params['other']['network_address']))
-        self.socket.send_pyobj({'action': 'ping!'})
+        self.socket.send_pyobj({'ctrl': 'ping!'})
         self.server_response = self.socket.recv_pyobj()
         self.log.info('Server seems ready with response: <{}>'.format(self.server_response))
 
@@ -351,7 +348,7 @@ class BTgymEnv(gym.Env):
 
             if self._force_control_mode():
                 # In case server is running and client side is ok:
-                self.socket.send_pyobj({'action': '_stop'})
+                self.socket.send_pyobj({'ctrl': '_stop'})
                 self.server_response = self.socket.recv_pyobj()
 
             else:
@@ -372,7 +369,7 @@ class BTgymEnv(gym.Env):
         """
         # Check is there any faults with server process and connection?
         network_error = [
-            (not self.server or not self.server.is_alive(), 'No running server found, call reset() to start.'),
+            (not self.server or not self.server.is_alive(), 'No running server found. Hint: forgot to call reset()?'),
             (not self.context or self.context.closed, 'No network connection found.'),
         ]
         for (err, msg) in network_error:
@@ -381,13 +378,12 @@ class BTgymEnv(gym.Env):
                 self.server_response = msg
                 return False
 
-        else:
             # If everything works, insist to go 'control':
-            self.server_response = 'NONE'
+            self.server_response = {}
             attempt = 0
 
-            while 'CONTROL_MODE' not in str(self.server_response):
-                self.socket.send_pyobj({'action': '_done'})
+            while not 'ctrl' in self.server_response:
+                self.socket.send_pyobj({'ctrl': '_done'})
                 self.server_response = self.socket.recv_pyobj()
                 attempt += 1
                 self.log.debug('FORCE CONTROL MODE attempt: {}.\nResponse: {}'.format(attempt, self.server_response))
@@ -400,14 +396,14 @@ class BTgymEnv(gym.Env):
         roughly checks if we really talking to environment (== episode is running).
         Rises exception if response given is not as expected.
         """
-        try:
-            assert type(response) == tuple and len(response) == 4
+        if type(response) == tuple and len(response) == 4:
+            pass
 
-        except:
+        else:
             msg = 'Unexpected environment response: {}\nHint: Forgot to call reset()?'.format(response)
             raise AssertionError(msg)
 
-        self.log.debug('Env response watcher received:\n{}\nas type: {}'.
+        self.log.debug('Env response checker received:\n{}\nas type: {}'.
                        format(response, type(response)))
 
     def _reset(self, state_only=True):  # By default, returns only initial state observation (Gym convention).
@@ -422,19 +418,18 @@ class BTgymEnv(gym.Env):
             self.log.info('No running server found, starting...')
             self._start_server()
 
-        try:
-            assert self._force_control_mode()
-            self.socket.send_pyobj({'action': '_reset'})
+        if self._force_control_mode():
+            self.socket.send_pyobj({'ctrl': '_reset'})
             self.server_response = self.socket.recv_pyobj()
 
             # Get initial environment response:
             self.env_response = self._step(0)
 
             # Check (once) if state_space is as expected:
-            try:
-                assert self.env_response[0].shape == self.observation_space.shape
+            if self.env_response[0].shape == self.observation_space.shape:
+                pass
 
-            except:
+            else:
                 msg = (
                     '\nState observation shape mismatch!\n' +
                     'Shape set by env: {},\n' +
@@ -450,7 +445,7 @@ class BTgymEnv(gym.Env):
             else:
                 return self.env_response
 
-        except:
+        else:
             msg = 'Something went wrong. env.reset() can not get response from server.'
             self.log.info(msg)
             raise ChildProcessError(msg)
@@ -461,12 +456,13 @@ class BTgymEnv(gym.Env):
         Relies on remote backtrader server for actual environment dynamics computing.
         """
         # Are you in the list, ready to go and all that?
-        try:
-            assert self.action_space.contains(action)
-            assert not self._closed
-            assert self.socket and not self.socket.closed
+        if self.action_space.contains(action)\
+            and not self._closed\
+            and (self.socket is not None)\
+            and not self.socket.closed:
+            pass
 
-        except:
+        else:
             msg = (
                 '\nAt least one of these is true:\n' +
                 'Action error: (space is {}, action sent is {}): {}\n' +
@@ -504,7 +500,7 @@ class BTgymEnv(gym.Env):
         Note: when invoked, forces running episode to terminate.
         """
         if self._force_control_mode():
-            self.socket.send_pyobj({'action': '_getstat'})
+            self.socket.send_pyobj({'ctrl': '_getstat'})
             return self.socket.recv_pyobj()
 
         else:
@@ -516,12 +512,14 @@ class BTgymEnv(gym.Env):
         Visualises current environment state.
         Requires matplotlib.
         """
-        try:
-            assert not self._closed
-            assert self.socket and not self.socket.closed
+        if not self._closed\
+            and self.socket\
+            and not self.socket.closed:
+            pass
 
-        except:
+        else:
             msg = (
+                '\nCan not render.'
                 '\nAt least one of these is true:\n' +
                 'Environment closed: {}\n' +
                 'Network error [socket doesnt exists or closed]: {}\n' +
@@ -530,8 +528,13 @@ class BTgymEnv(gym.Env):
                 self._closed,
                 not self.socket or self.socket.closed,
             )
-            self.log.info(msg)
-            raise AssertionError(msg)
+            self.log.warning(msg)
+            return None
 
-        self.socket.send_pyobj({'action': '_render', 'mode': mode})
-        self.render_image = self.socket.recv_pyobj()
+        if mode == 'human':
+            return None
+
+        self.socket.send_pyobj({'ctrl': '_render', 'mode': mode})
+        self.rendered_image.update(self.socket.recv_pyobj())
+
+        # TODO: implement rendering rgb_array show-up: via matplotlib or PILLOW
