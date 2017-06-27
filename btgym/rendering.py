@@ -19,7 +19,7 @@
 import logging
 import numpy as np
 from PIL import Image
-import matplotlib
+
 
 class BTgymRendering():
     """
@@ -33,8 +33,9 @@ class BTgymRendering():
 
     # Plotting controls, can be passed as kwargs:
     render_type = 'plot'
-    render_figsize = (10, 6)
-    render_dpi=300
+    render_size_step = (10, 6)
+    render_size_episode = (15,10)
+    render_dpi=75
     render_plotstyle = 'seaborn'
     render_cmap = 'PRGn'
     render_xlabel = 'Relative timesteps'
@@ -65,6 +66,7 @@ class BTgymRendering():
         import matplotlib.pyplot as plt
         from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
         self.plt = plt
+        self.plt.style.use(self.render_plotstyle)
         self.FigureCanvas = FigureCanvas
 
     def to_string(self, dictionary, excluded=[]):
@@ -149,8 +151,8 @@ class BTgymRendering():
         # Save picture to file:
         cerebro.plot(
             savefig=True,
-            width=self.render_figsize[0],
-            height=self.render_figsize[1],
+            width=self.render_size_episode[0],
+            height=self.render_size_episode[1],
             dpi=self.render_dpi,
             use=None,
             iplot=False,
@@ -180,12 +182,11 @@ class BTgymRendering():
 
         if 'state' in mode:
             # Render featurized state
-            self.log.warning('NotImplementedPlug')
-            # TODO: rgb_dict['state'] = self.draw_image(raw_state)
+           rgb_dict['state'] = self.draw_image(raw_state)
 
         if 'price' in mode:
             # Render price data
-            rgb_dict['price'] = self.draw_plot(raw_state)
+            rgb_dict['price'] = self.draw_plot(state)
 
         if 'episode' in mode:
             # Load saved file, if any:
@@ -202,11 +203,10 @@ class BTgymRendering():
         Visualises environment state as 2d line plot.
         Retrurns image as rgb_array.
         """
-        fig = self.plt.figure(figsize=self.render_figsize, dpi=self.render_dpi,)
-        ax = fig.add_subplot(111)
+        fig = self.plt.figure(figsize=self.render_size_step, dpi=self.render_dpi, )
+        #ax = fig.add_subplot(111)
 
         self.plt.style.use(self.render_plotstyle)
-        self.plt.tight_layout(pad=3)
         self.plt.title(self.title)
 
         # Plot x axis as reversed time-step embedding:
@@ -229,6 +229,8 @@ class BTgymRendering():
         self.plt.text(0, data.T.min(), self.box_text, **self.render_boxtext)
 
         self.plt.plot(data.T)
+        self.plt.tight_layout()
+
         fig.canvas.draw()
 
         # Save it to a numpy array:
@@ -236,13 +238,14 @@ class BTgymRendering():
 
         return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
-    # TODO:
-    def draw_image(self): #### STATE REPRESENTATION
+    def draw_image(self, data):
         """
         Visualises environment state as image.
         """
-        self.plt.figure(figsize=self.render_figsize)
-        #self.plt.style.use(self.render_plotstyle)
+        fig = self.plt.figure(figsize=self.render_size_step, dpi=self.render_dpi, )
+        #ax = fig.add_subplot(111)
+
+        self.plt.style.use(self.render_plotstyle)
         self.plt.title(self.title)
 
         # Plot x axis as reversed time-step embedding:
@@ -253,12 +256,28 @@ class BTgymRendering():
         for tick in self.plt.xticks()[1][::5]:
             tick.set_visible(True)
 
+        #self.plt.yticks(visible=False)
+
         self.plt.xlabel(self.render_xlabel)
         self.plt.ylabel(self.render_ylabel)
         self.plt.grid(False)
 
-        # Add Info box:
-        self.plt.text(1, self.state.shape[0]-1, self.box_text, **self.render_boxtext)
+        # Switch off antialiasing:
+        # self.plt.setp([ax.get_xticklines() + ax.get_yticklines() + ax.get_xgridlines() + ax.get_ygridlines()],antialiased=False)
+        # self.plt.rcParams['text.antialiased']=False
 
-        self.plt.imshow(self.state, aspect='auto', cmap=self.render_cmap)
-        self.plt.show()
+        # Add Info box:
+        self.plt.text(0, data.shape[0] - 1, self.box_text, **self.render_boxtext)
+
+        im = self.plt.imshow(data, aspect='auto', cmap=self.render_cmap)
+        self.plt.colorbar(im, use_gridspec=True)
+
+        self.plt.tight_layout()
+
+        fig.canvas.draw()
+
+        # Save it to a numpy array:
+        rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+
+        return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
