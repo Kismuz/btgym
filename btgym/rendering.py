@@ -280,4 +280,3 @@ class BTgymRendering():
         rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
 
         return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-
