@@ -47,7 +47,7 @@ class BTgymRendering():
         color='w',
         bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
     )
-    episode_picfilename = 'btgym_current_episode.png'
+    episode_picfilename = 'btgym_current_episode.png' # TODO: potential mess-up!
     plt_backend = 'Agg'
 
     def __init__(self, **kwargs):
@@ -141,6 +141,7 @@ class BTgymRendering():
         Returns dict with image as rgb_array.
         Slow: needs to save/reload image file.
         """
+        # TODO: refine file write-read: possible mess-up with name
         self.log.debug('render.EPISODE() call')
         try:
             assert cerebro is not None

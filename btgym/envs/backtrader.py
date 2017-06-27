@@ -512,7 +512,10 @@ class BTgymEnv(gym.Env):
         """
         Implementation of OpenAI Gym env.render method.
         Visualises current environment state.
-        Requires matplotlib.
+        Takes `mode` key argument, returns image as rgb_array :
+        `state` - current state observation;
+        `price` - current raw_state observation (price datalines are plotted);
+        `episode` - plotted statistic of last completed episode.
         """
         if not self._closed\
             and self.socket\
@@ -537,6 +540,8 @@ class BTgymEnv(gym.Env):
             return None
 
         self.socket.send_pyobj({'ctrl': '_render', 'mode': mode})
-        self.rendered_image.update(self.socket.recv_pyobj())
+        rgb_array = self.socket.recv_pyobj()
+        self.rendered_image.update(rgb_array)
+        return rgb_array
 
         # TODO: implement rendering rgb_array show-up: via matplotlib or PILLOW
