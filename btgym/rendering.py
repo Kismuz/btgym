@@ -20,9 +20,6 @@ import logging
 import numpy as np
 
 from backtrader.plot import Plot_OldSync as Plotter
-import matplotlib
-
-
 
 class BTgymCerebroPlotter(Plotter):
     """
@@ -34,10 +31,9 @@ class BTgymCerebroPlotter(Plotter):
 
     def savefig(self, fig, filename, width=15, height=10, dpi=75, tight=True):
         """
-        Plugs default method. See BTgymRendering.episode().
+        Plugs default method. See BTgymRendering.render().
         """
         pass
-
 
 class BTgymRendering():
     """
@@ -49,7 +45,7 @@ class BTgymRendering():
     title = ''  # figure title, type=str.
     box_text = ''  # inline text block, type=str.
 
-    # Will contain las renderd image for each rendering mode:
+    # Will contain last renderd image for each rendering mode:
     rgb_dict = dict()
 
     # Plotting controls, can be passed as kwargs:
@@ -71,28 +67,31 @@ class BTgymRendering():
     plt_backend = 'Agg'
 
     def __init__(self, render_modes, **kwargs):
-        """  """
-        self.log = logging.getLogger('Plotter')
-        logging.getLogger().setLevel(logging.WARNING)
-
+        """___"""
         # Update parameters with kwargs:
         self.kwargs = kwargs
         for key, value in self.kwargs.items():
             if key in dir(self):
                 setattr(self, key, value)
 
+        # To log or not:
+        if 'log' not in dir(self):
+            self.log = logging.getLogger('dummy')
+            self.log.addHandler(logging.NullHandler())
+
         # Backend:
-        matplotlib.use(self.plt_backend)
+        #matplotlib.use(self.plt_backend)
         import matplotlib.pyplot as plt
-        from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+        #from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+        #self.FigureCanvas = FigureCanvas
 
         self.plt = plt
         self.plt.ioff()
         self.plt.style.use(self.render_plotstyle)
-        self.FigureCanvas = FigureCanvas
+
         self.plotter = BTgymCerebroPlotter()
 
-        # Plug entries for each render mode:
+        # initially plug entries for each render mode:
         for mode in render_modes:
             self.rgb_dict[mode] = self.rgb_empty()
 

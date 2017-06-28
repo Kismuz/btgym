@@ -298,7 +298,11 @@ class BTgymEnv(gym.Env):
         self.server_ctrl_actions = self.params['other']['ctrl_actions']
 
         # Set rendering:
-        self.renderer = BTgymRendering(self.metadata['render.modes'], **self.kwargs['other'])
+        self.renderer = dict(
+            render_class=BTgymRendering,
+            render_modes=self.metadata['render.modes'],
+            kwargs=self.kwargs['other'],
+        )
 
         # Finally:
         self.server_response = None
