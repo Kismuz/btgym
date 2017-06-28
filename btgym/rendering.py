@@ -19,38 +19,17 @@
 import logging
 import numpy as np
 
-from backtrader.plot import Plot_OldSync as Plotter
-
-class BTgymCerebroPlotter(Plotter):
-    """
-    Subclass of internal backtrader plotter class.
-    Enables saving figure as rgb_array instead of writing it to file.
-    """
-    def __init__(self, **kwargs):
-        super(BTgymCerebroPlotter, self).__init__(**kwargs)
-
-    def savefig(self, fig, filename, width=15, height=10, dpi=75, tight=True):
-        """
-        Plugs default method. See BTgymRendering.render().
-        """
-        pass
-
 class BTgymRendering():
     """
     Executes BTgym Environment rendering.
     """
-    # Rendering output elements:
-    state = None  # featurized state representation to plot,  type=np.array.
-    raw_state = None  # raw state as O,H,L,C,V price datalines, type=np.array.
-    title = ''  # figure title, type=str.
-    box_text = ''  # inline text block, type=str.
-
-    # Will contain last renderd image for each rendering mode:
+    # Here we'll keep last rendered image for each rendering mode:
     rgb_dict = dict()
 
     # Plotting controls, can be passed as kwargs:
-    render_type = 'plot'
-    render_size_step = (10, 6)
+    render_agent_as_image = True
+    render_size_human = (10, 4)
+    render_size_agent = (10, 4)
     render_size_episode = (15,10)
     render_dpi=75
     render_plotstyle = 'seaborn'
@@ -58,12 +37,11 @@ class BTgymRendering():
     render_xlabel = 'Relative timesteps'
     render_ylabel = 'Value'
     render_title = 'step: {}, state observation min: {:.4f}, max: {:.4f}'
-    render_boxtext = dict(
-        fontsize=12,
-        fontweight='bold',
-        color='w',
-        bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
-    )
+    render_boxtext = dict(fontsize=12,
+                          fontweight='bold',
+                          color='w',
+                          bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
+                          )
     plt_backend = 'Agg'
 
     def __init__(self, render_modes, **kwargs):
@@ -79,6 +57,8 @@ class BTgymRendering():
             self.log = logging.getLogger('dummy')
             self.log.addHandler(logging.NullHandler())
 
+        #self.plotter = BTgymCerebroPlotter()
+        #from backtrader.plot import Plot_OldSync as Plotter
         # Backend:
         #matplotlib.use(self.plt_backend)
         import matplotlib.pyplot as plt
@@ -86,16 +66,14 @@ class BTgymRendering():
         #self.FigureCanvas = FigureCanvas
 
         self.plt = plt
-        self.plt.ioff()
+        #self.plt.ioff()
         self.plt.style.use(self.render_plotstyle)
-
-        self.plotter = BTgymCerebroPlotter()
 
         # initially plug entries for each render mode:
         for mode in render_modes:
             self.rgb_dict[mode] = self.rgb_empty()
 
-        self.plt.ion()
+        #self.plt.ion()
 
     def to_string(self, dictionary, excluded=[]):
         """
@@ -113,43 +91,17 @@ class BTgymRendering():
         """
         Returns empty 'plug' image.
         """
-        render_boxtext = dict(
-            fontsize=48,
-            fontweight='bold',
-            color='w',
-            bbox={'facecolor': 'k', 'alpha': 0.0, 'pad': 3},
-        )
-        fig = self.plt.figure(figsize=(5, 2), dpi=75, )
+        return (np.random.rand(100, 200, 3) * 255).astype(dtype=np.uint8)
 
-        self.plt.style.use('seaborn')
-        self.plt.yticks(visible=False)
-        self.plt.xticks(visible=False)
-        self.plt.grid(False)
-        self.plt.text(20, 60, 'nothing', **render_boxtext)
-
-        im = self.plt.imshow((np.random.rand(100, 200, 3) * 255).astype(dtype=np.uint8))
-
-        self.plt.tight_layout()
-
-        fig.canvas.draw()
-
-        # Save it to a numpy array:
-        rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-
-        return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-
-
-    def parse_response(self, raw_state, state, reward, info, done,):
+    def parse_response(self, state, reward, info, done,):
         """
         Converts environment response to plotting attributes:
         state, title, text.
         """
         try:
             # State output:
-            self.state = np.asarray(state)
-            self.raw_state = np.asarray(raw_state)
-            assert len(self.state.shape) == 2
-            assert len(self.raw_state.shape) == 2
+            state = np.asarray(state)
+            assert len(state.shape) == 2
 
         except:
             raise NotImplementedError('Only 2D observation state rendering supported.')
@@ -181,19 +133,15 @@ class BTgymRendering():
         except:
             current_step = '--'
 
-        # Compose box text, excl. redundant fields:
-        self.box_text = self.to_string(info_dict, excluded=['step'])
+        # Set box text, excluding redundant fields:
+        box_text = self.to_string(info_dict, excluded=['step'])
 
-        # Make title output:
-        self.title = self.render_title.format(current_step, self.state.min(), self.state.max())
+        # Set title output:
+        title = self.render_title.format(current_step, state.min(), state.max())
 
-    def as_text(self):
-        """
-        Ascetic: just text output.
-        """
-        raise NotImplementedError('For python''s sake, install that Matplotlib!')
+        return state, title, box_text
 
-    def render(self, mode, cerebro=None, step_to_render= None, ):
+    def render(self, mode, cerebro=None, step_to_render=None, ):
         """
         Renders entire episode using built-in backtrader plotting feature,
         or just passes last already rendered step.
@@ -208,17 +156,16 @@ class BTgymRendering():
             # Try to render given episode:
             try:
                 # Get picture of entire episode:
-                fig = cerebro.plot(
-                    plotter=self.plotter,  # Modified plotter class, doesnt actually save anything to file.
-                    savefig=True,
-                    width=self.render_size_episode[0],
-                    height=self.render_size_episode[1],
-                    dpi=self.render_dpi,
-                    use=None,
-                    iplot=False,
-                    figfilename='null.nul',
-                    **self.kwargs,
-                )[0][0]
+                fig = cerebro.plot(#plotter=self.plotter,  # Modified plotter class, doesnt actually save anything.
+                                   savefig=True,
+                                   width=self.render_size_episode[0],
+                                   height=self.render_size_episode[1],
+                                   dpi=self.render_dpi,
+                                   use=self.plt_backend,
+                                   iplot=False,
+                                   figfilename='_tmp_btgym_render.png',
+                                   **self.kwargs,
+                                   )[0][0]
 
                 fig.canvas.draw()
 
@@ -232,17 +179,38 @@ class BTgymRendering():
 
         if step_to_render is not None:
             # Perform step rendering:
+
+            # Unpack:
             raw_state, state, reward, done, info = step_to_render
 
-            self.parse_response(raw_state, state, reward, info, done)
+            # Render `agent` state:
+            agent_state, title, box_text = self.parse_response(state, reward, info, done)
+            if self.render_agent_as_image:
+                self.rgb_dict['agent'] = self.draw_image(agent_state,
+                                                         figsize=self.render_size_agent,
+                                                         title=title,
+                                                         box_text=box_text,
+                                                         ylabel=self.render_ylabel,
+                                                         xlabel=self.render_xlabel,
+                                                         )
+            else:
+                self.rgb_dict['agent'] = self.draw_plot(agent_state,
+                                                        figsize=self.render_size_agent,
+                                                        title=title,
+                                                        box_text=box_text,
+                                                        ylabel=self.render_ylabel,
+                                                        xlabel=self.render_xlabel,
+                                                        )
 
-            if 'agent' in mode:
-                # Render featurized state
-                self.rgb_dict['agent'] = self.draw_image(raw_state)
-
-            if 'human' in mode:
-                # Render price data
-                self.rgb_dict['human'] = self.draw_plot(state)
+            # Render `human` state:
+            human_state, title, box_text = self.parse_response(raw_state, reward, info, done)
+            self.rgb_dict['human'] = self.draw_plot(human_state,
+                                                    figsize=self.render_size_human,
+                                                    title=title,
+                                                    box_text=box_text,
+                                                    ylabel='Price',
+                                                    xlabel=self.render_xlabel,
+                                                    )
 
         # Now return what requested by key image:
         if mode in self.rgb_dict.keys():
@@ -251,27 +219,27 @@ class BTgymRendering():
         else:
             return self.rgb_empty()
 
-    def draw_plot(self, data):
+    def draw_plot(self, data, figsize=(10,6), title='', box_text='', xlabel='X', ylabel='Y'):
         """
         Visualises environment state as 2d line plot.
         Retrurns image as rgb_array.
         """
-        fig = self.plt.figure(figsize=self.render_size_step, dpi=self.render_dpi, )
+        fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
         #ax = fig.add_subplot(111)
 
         self.plt.style.use(self.render_plotstyle)
-        self.plt.title(self.title)
+        self.plt.title(title)
 
         # Plot x axis as reversed time-step embedding:
-        xticks = np.linspace(self.state.shape[-1] - 1, 0, int(self.state.shape[-1]), dtype=int)
+        xticks = np.linspace(data.shape[-1] - 1, 0, int(data.shape[-1]), dtype=int)
         self.plt.xticks(xticks.tolist(), (- xticks[::-1]).tolist(), visible=False)
 
         # Set every 5th tick label visible:
         for tick in self.plt.xticks()[1][::5]:
-           tick.set_visible(True)
+            tick.set_visible(True)
 
-        self.plt.xlabel(self.render_xlabel)
-        self.plt.ylabel(self.render_ylabel)
+        self.plt.xlabel(xlabel)
+        self.plt.ylabel(ylabel)
         self.plt.grid(True)
 
         # Switch off antialiasing:
@@ -279,7 +247,7 @@ class BTgymRendering():
         #self.plt.rcParams['text.antialiased']=False
 
         # Add Info box:
-        self.plt.text(0, data.T.min(), self.box_text, **self.render_boxtext)
+        self.plt.text(0, data.T.min(), box_text, **self.render_boxtext)
 
         self.plt.plot(data.T)
         self.plt.tight_layout()
@@ -291,18 +259,19 @@ class BTgymRendering():
 
         return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
-    def draw_image(self, data):
+    def draw_image(self, data, figsize=(12,6), title='', box_text='', xlabel='X', ylabel='Y'):
         """
         Visualises environment state as image.
+        Returns rgb_array.
         """
-        fig = self.plt.figure(figsize=self.render_size_step, dpi=self.render_dpi, )
+        fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
         #ax = fig.add_subplot(111)
 
         self.plt.style.use(self.render_plotstyle)
-        self.plt.title(self.title)
+        self.plt.title(title)
 
         # Plot x axis as reversed time-step embedding:
-        xticks = np.linspace(self.state.shape[-1] - 1, 0, int(self.state.shape[-1]), dtype=int)
+        xticks = np.linspace(data.shape[-1] - 1, 0, int(data.shape[-1]), dtype=int)
         self.plt.xticks(xticks.tolist(), (- xticks[::-1]).tolist(), visible=False)
 
         # Set every 5th tick label visible:
@@ -311,8 +280,8 @@ class BTgymRendering():
 
         #self.plt.yticks(visible=False)
 
-        self.plt.xlabel(self.render_xlabel)
-        self.plt.ylabel(self.render_ylabel)
+        self.plt.xlabel(xlabel)
+        self.plt.ylabel(ylabel)
         self.plt.grid(False)
 
         # Switch off antialiasing:
@@ -320,7 +289,7 @@ class BTgymRendering():
         # self.plt.rcParams['text.antialiased']=False
 
         # Add Info box:
-        self.plt.text(0, data.shape[0] - 1, self.box_text, **self.render_boxtext)
+        self.plt.text(0, data.shape[0] - 1, box_text, **self.render_boxtext)
 
         im = self.plt.imshow(data, aspect='auto', cmap=self.render_cmap)
         self.plt.colorbar(im, use_gridspec=True)

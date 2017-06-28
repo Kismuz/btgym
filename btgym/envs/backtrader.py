@@ -47,6 +47,7 @@ class BTgymEnv(gym.Env):
         self.engine = None  # bt.Cerbro subclass for server to execute.
         self.strategy = None  # strategy to use if no <engine> kwarg been passed.
         self.renderer = None  # Rendering support.
+        self.rendered_rgb = dict()
 
         self.kwargs = dict()  # Here we'll sort and store our kwargs.
         self.server = None  # Server/network parameters:
@@ -297,17 +298,17 @@ class BTgymEnv(gym.Env):
 
         self.server_ctrl_actions = self.params['other']['ctrl_actions']
 
-        # Set rendering:
-        #self.renderer = dict(
-        #    render_class=BTgymRendering,
-        #    render_modes=self.metadata['render.modes'],
-        #    kwargs=self.kwargs['other'],
-        #)
+        import backtrader.plot as plotter
+
+        # Set server rendering:
         self.renderer = BTgymRendering(self.metadata['render.modes'], **self.kwargs['other'])
 
         # Finally:
         self.server_response = None
         self.env_response = None
+
+        #self._start_server()
+
         self.log.info('Environment is ready.')
 
     def _start_server(self):
@@ -513,7 +514,7 @@ class BTgymEnv(gym.Env):
         else:
             return self.server_response
 
-    def _render(self, mode='state', close=False):
+    def _render(self, mode='other_mode', close=False):
         """
         Implementation of OpenAI Gym env.render method.
         Visualises current environment state.
@@ -522,6 +523,9 @@ class BTgymEnv(gym.Env):
         `agent` - current processed observation state as RL agent sees it;
         `episode` - plotted results of last completed episode.
         """
+        if close:
+            return None
+
         if not self._closed\
             and self.socket\
             and not self.socket.closed:
@@ -543,5 +547,7 @@ class BTgymEnv(gym.Env):
 
         self.socket.send_pyobj({'ctrl': '_render', 'mode': mode})
         rgb_array = self.socket.recv_pyobj()
+
+        self.rendered_rgb[mode] = rgb_array
 
         return rgb_array

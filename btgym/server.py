@@ -30,8 +30,6 @@ from datetime import timedelta
 
 import backtrader as bt
 
-#from btgym.rendering import BTgymRendering
-
 ###################### BT Server in-episode communocation method ##############
 
 
@@ -222,13 +220,9 @@ class BTgymServer(multiprocessing.Process):
         self.process = multiprocessing.current_process()
         self.log.info('Server PID: {}'.format(self.process.pid))
 
-        # Instantiate renderer from dict:
-        #self.render = self.render['render_class'](self.render['render_modes'], **self.render['kwargs'])
-
         # Runtime Housekeeping:
         cerebro = None
         episode_result = dict()
-        episode_rendered = None
 
         # Set up a comm. channel for server as ZMQ socket
         # to carry both service and data signal
