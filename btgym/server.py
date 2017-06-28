@@ -223,7 +223,7 @@ class BTgymServer(multiprocessing.Process):
         self.log.info('Server PID: {}'.format(self.process.pid))
 
         # Instantiate renderer from dict:
-        self.render = self.render['render_class'](self.render['render_modes'], **self.render['kwargs'])
+        #self.render = self.render['render_class'](self.render['render_modes'], **self.render['kwargs'])
 
         # Runtime Housekeeping:
         cerebro = None

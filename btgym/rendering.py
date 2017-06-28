@@ -236,13 +236,13 @@ class BTgymRendering():
 
             self.parse_response(raw_state, state, reward, info, done)
 
-            if 'state' in mode:
+            if 'agent' in mode:
                 # Render featurized state
-                self.rgb_dict['state'] = self.draw_image(raw_state)
+                self.rgb_dict['agent'] = self.draw_image(raw_state)
 
-            if 'price' in mode:
+            if 'human' in mode:
                 # Render price data
-                self.rgb_dict['price'] = self.draw_plot(state)
+                self.rgb_dict['human'] = self.draw_plot(state)
 
         # Now return what requested by key image:
         if mode in self.rgb_dict.keys():

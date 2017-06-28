@@ -39,7 +39,7 @@ class BTgymEnv(gym.Env):
     """
     OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
     """
-    metadata = {'render.modes': ['human', 'episode', 'state', 'price',]}
+    metadata = {'render.modes': ['human', 'agent', 'episode',]}
 
     def __init__(self, **kwargs):
         #
@@ -298,11 +298,12 @@ class BTgymEnv(gym.Env):
         self.server_ctrl_actions = self.params['other']['ctrl_actions']
 
         # Set rendering:
-        self.renderer = dict(
-            render_class=BTgymRendering,
-            render_modes=self.metadata['render.modes'],
-            kwargs=self.kwargs['other'],
-        )
+        #self.renderer = dict(
+        #    render_class=BTgymRendering,
+        #    render_modes=self.metadata['render.modes'],
+        #    kwargs=self.kwargs['other'],
+        #)
+        self.renderer = BTgymRendering(self.metadata['render.modes'], **self.kwargs['other'])
 
         # Finally:
         self.server_response = None
@@ -517,9 +518,9 @@ class BTgymEnv(gym.Env):
         Implementation of OpenAI Gym env.render method.
         Visualises current environment state.
         Takes `mode` key argument, returns image as rgb_array :
-        `state` - current state observation;
-        `price` - current raw_state observation (price datalines are plotted);
-        `episode` - plotted statistic of last completed episode.
+        `human` - current state observation as price lines;
+        `agent` - current processed observation state as RL agent sees it;
+        `episode` - plotted results of last completed episode.
         """
         if not self._closed\
             and self.socket\
@@ -538,9 +539,6 @@ class BTgymEnv(gym.Env):
                 not self.socket or self.socket.closed,
             )
             self.log.warning(msg)
-            return None
-
-        if mode == 'human':
             return None
 
         self.socket.send_pyobj({'ctrl': '_render', 'mode': mode})
