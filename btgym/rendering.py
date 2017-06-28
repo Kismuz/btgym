@@ -18,18 +18,39 @@
 ###############################################################################
 import logging
 import numpy as np
-from PIL import Image
+
+from backtrader.plot import Plot_OldSync as Plotter
+import matplotlib
+
+
+
+class BTgymCerebroPlotter(Plotter):
+    """
+    Subclass of internal backtrader plotter class.
+    Enables saving figure as rgb_array instead of writing it to file.
+    """
+    def __init__(self, **kwargs):
+        super(BTgymCerebroPlotter, self).__init__(**kwargs)
+
+    def savefig(self, fig, filename, width=15, height=10, dpi=75, tight=True):
+        """
+        Plugs default method. See BTgymRendering.episode().
+        """
+        pass
 
 
 class BTgymRendering():
     """
-    Executes rendering of BTgym Environment.
+    Executes BTgym Environment rendering.
     """
     # Rendering output elements:
     state = None  # featurized state representation to plot,  type=np.array.
     raw_state = None  # raw state as O,H,L,C,V price datalines, type=np.array.
     title = ''  # figure title, type=str.
     box_text = ''  # inline text block, type=str.
+
+    # Will contain las renderd image for each rendering mode:
+    rgb_dict = dict()
 
     # Plotting controls, can be passed as kwargs:
     render_type = 'plot'
@@ -47,10 +68,9 @@ class BTgymRendering():
         color='w',
         bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
     )
-    episode_picfilename = 'btgym_current_episode.png' # TODO: potential mess-up!
     plt_backend = 'Agg'
 
-    def __init__(self, **kwargs):
+    def __init__(self, render_modes, **kwargs):
         """  """
         self.log = logging.getLogger('Plotter')
         logging.getLogger().setLevel(logging.WARNING)
@@ -62,16 +82,25 @@ class BTgymRendering():
                 setattr(self, key, value)
 
         # Backend:
-        #matplotlib.use(self.plt_backend)
+        matplotlib.use(self.plt_backend)
         import matplotlib.pyplot as plt
         from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+
         self.plt = plt
+        self.plt.ioff()
         self.plt.style.use(self.render_plotstyle)
         self.FigureCanvas = FigureCanvas
+        self.plotter = BTgymCerebroPlotter()
+
+        # Plug entries for each render mode:
+        for mode in render_modes:
+            self.rgb_dict[mode] = self.rgb_empty()
+
+        self.plt.ion()
 
     def to_string(self, dictionary, excluded=[]):
         """
-        Converts given dictionary to more-or-less good looking string.
+        Converts given dictionary to more-or-less good looking `text block` string.
         """
         text = ''
         for k, v in dictionary.items():
@@ -79,7 +108,37 @@ class BTgymRendering():
                 if type(v) in [float]:
                     v = '{:.4f}'.format(v)
                 text += '{}: {}\n'.format(k, v)
-        return text
+        return text[:-1]
+
+    def rgb_empty(self):
+        """
+        Returns empty 'plug' image.
+        """
+        render_boxtext = dict(
+            fontsize=48,
+            fontweight='bold',
+            color='w',
+            bbox={'facecolor': 'k', 'alpha': 0.0, 'pad': 3},
+        )
+        fig = self.plt.figure(figsize=(5, 2), dpi=75, )
+
+        self.plt.style.use('seaborn')
+        self.plt.yticks(visible=False)
+        self.plt.xticks(visible=False)
+        self.plt.grid(False)
+        self.plt.text(20, 60, 'nothing', **render_boxtext)
+
+        im = self.plt.imshow((np.random.rand(100, 200, 3) * 255).astype(dtype=np.uint8))
+
+        self.plt.tight_layout()
+
+        fig.canvas.draw()
+
+        # Save it to a numpy array:
+        rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+
+        return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
 
     def parse_response(self, raw_state, state, reward, info, done,):
         """
@@ -135,69 +194,63 @@ class BTgymRendering():
         """
         raise NotImplementedError('For python''s sake, install that Matplotlib!')
 
-    def episode(self, cerebro):
+    def render(self, mode, cerebro=None, step_to_render= None, ):
         """
-        Renders entire episode using built-in backtrader plotting feature.
+        Renders entire episode using built-in backtrader plotting feature,
+        or just passes last already rendered step.
         Returns dict with image as rgb_array.
-        Slow: needs to save/reload image file.
+        If cerebro arg is received - renders entire episode
+        using built-in backtrader plotting feature and stores to rgb_dict.
+        If 'step' arg is received - renders it according 'mode' recieved.
+        Returns rgb_dict entry with 'mode' arg key.
         """
-        # TODO: refine file write-read: possible mess-up with name
-        self.log.debug('render.EPISODE() call')
-        try:
-            assert cerebro is not None
 
-        except:  # nothing to render
-            return (np.random.rand(100,100, 3) * 255).astype(dtype=np.uint8)
-
-        # Save picture to file:
-        cerebro.plot(
-            savefig=True,
-            width=self.render_size_episode[0],
-            height=self.render_size_episode[1],
-            dpi=self.render_dpi,
-            use=None,
-            iplot=False,
-            figfilename=self.episode_picfilename,
-            **self.kwargs,
-        )
-
-        # Reload and convert:
-        try:
-            episode_rgb_array = np.array(Image.open(self.episode_picfilename))
-
-        except:
-            raise FileNotFoundError('Rendered <{}> not found'.format(self.episode_picfilename))
-
-        return {'episode': episode_rgb_array}
-
-    def step(self, step_to_render, mode='price'):
-        """
-        Renders current environment state.
-        Returns dict with image as rgb_array.
-        """
-        rgb_dict = {}
-
-        raw_state, state, reward, done, info = step_to_render
-
-        self.parse_response(raw_state, state, reward, info, done)
-
-        if 'state' in mode:
-            # Render featurized state
-           rgb_dict['state'] = self.draw_image(raw_state)
-
-        if 'price' in mode:
-            # Render price data
-            rgb_dict['price'] = self.draw_plot(state)
-
-        if 'episode' in mode:
-            # Load saved file, if any:
+        if cerebro is not None:
+            # Try to render given episode:
             try:
-                rgb_dict['episode'] = np.array(Image.open(self.episode_picfilename))
+                # Get picture of entire episode:
+                fig = cerebro.plot(
+                    plotter=self.plotter,  # Modified plotter class, doesnt actually save anything to file.
+                    savefig=True,
+                    width=self.render_size_episode[0],
+                    height=self.render_size_episode[1],
+                    dpi=self.render_dpi,
+                    use=None,
+                    iplot=False,
+                    figfilename='null.nul',
+                    **self.kwargs,
+                )[0][0]
+
+                fig.canvas.draw()
+
+                rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+
+                self.rgb_dict['episode'] = rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
             except:
-                self.log.warning('No episode renderings ({}) found.'.format(self.episode_picfilename))
+                # Just keep previous rendering
+                pass
 
-        return rgb_dict
+        if step_to_render is not None:
+            # Perform step rendering:
+            raw_state, state, reward, done, info = step_to_render
+
+            self.parse_response(raw_state, state, reward, info, done)
+
+            if 'state' in mode:
+                # Render featurized state
+                self.rgb_dict['state'] = self.draw_image(raw_state)
+
+            if 'price' in mode:
+                # Render price data
+                self.rgb_dict['price'] = self.draw_plot(state)
+
+        # Now return what requested by key image:
+        if mode in self.rgb_dict.keys():
+            return self.rgb_dict[mode]
+
+        else:
+            return self.rgb_empty()
 
     def draw_plot(self, data):
         """

@@ -524,13 +524,13 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
  
 ### <a name="news"></a>[News and update notes](#title)
-- 27.06.17:
-    - rendering refined with modes: `state`, `price`, `episode`; drawing options enabled;
-    - rendering now performed by server and returned to environment as `rgb numpy array`.
-      Can be shown either via matplolib or Pillow.
+- 28.06.17: UPGRADE: be shure to run `pip install --upgrade -e.` 
+    - rendering rebuilded: updated with modes: `state`, `price`, `episode`; drawing options enabled;
+      render process now performed by server and returned to environment as `rgb numpy array`.
+      Can be shown either via matplolib or as pillow.Image(preferred).
     - internal changes: env. state divided on `raw_state`  - price data,
       and `state` - featurized representation. `_get_raw_state()` method added to strategy.
-  
+    - new packages requirements: `matplotlib` and `pillow`.
 
 - 25.06.17:
   Basic rendering implemented. 

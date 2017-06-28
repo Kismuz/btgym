@@ -47,8 +47,8 @@ class BTgymEnv(gym.Env):
         self.engine = None  # bt.Cerbro subclass for server to execute.
         self.strategy = None  # strategy to use if no <engine> kwarg been passed.
         self.renderer = None  # Rendering support.
-        self.rendered_image = {} # Will contain rendered images, keys are equal to render modes
-        self.kwargs = {}  # Here we'll sort and store our kwargs.
+
+        self.kwargs = dict()  # Here we'll sort and store our kwargs.
         self.server = None  # Server/network parameters:
         self.context = None
         self.socket = None
@@ -298,7 +298,7 @@ class BTgymEnv(gym.Env):
         self.server_ctrl_actions = self.params['other']['ctrl_actions']
 
         # Set rendering:
-        self.renderer = BTgymRendering(**self.kwargs['other'])
+        self.renderer = BTgymRendering(self.metadata['render.modes'], **self.kwargs['other'])
 
         # Finally:
         self.server_response = None
@@ -541,7 +541,5 @@ class BTgymEnv(gym.Env):
 
         self.socket.send_pyobj({'ctrl': '_render', 'mode': mode})
         rgb_array = self.socket.recv_pyobj()
-        self.rendered_image.update(rgb_array)
-        return rgb_array
 
-        # TODO: implement rendering rgb_array show-up: via matplotlib or PILLOW
+        return rgb_array

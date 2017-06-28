@@ -102,7 +102,12 @@ class _BTgymAnalyzer(bt.Analyzer):
 
                 # Rendering requested:
                 if self.message['ctrl'] == '_render':
-                    self.socket.send_pyobj(self.render.step(self.step_to_render, self.message['mode']))
+                    self.socket.send_pyobj(
+                        self.render.render(
+                            self.message['mode'],
+                            step_to_render=self.step_to_render,
+                        )
+                    )
 
                 # Episode ternmination requested:
                 if self.message['ctrl'] == '_done':
@@ -278,9 +283,11 @@ class BTgymServer(multiprocessing.Process):
                         self.log.debug('Episode statistic sent.')
 
                     # Send episode rendering:
-                    elif service_input['ctrl'] == '_render' and service_input['mode'] == 'episode':
-                        socket.send_pyobj(episode_rendered)
-                        self.log.debug('Episode rendering sent.')
+                    elif service_input['ctrl'] == '_render' and 'mode' in service_input.keys():
+                        # Just send what we got:
+                        socket.send_pyobj(self.render.render(service_input['mode']))
+                        self.log.debug('Episode rendering for [{}] sent.'.format(service_input['mode']))
+
 
                     else:  # ignore any other input
                         # NOTE: response string must include 'ctrl' key
@@ -325,13 +332,13 @@ class BTgymServer(multiprocessing.Process):
 
             # Finally:
             start_time = time.time()
-            episode = cerebro.run(stdstats=True, preload=False)[0]
+            episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True)[0]
 
             elapsed_time = timedelta(seconds=time.time() - start_time)
             self.log.info('Episode elapsed time: {}.'.format(elapsed_time))
 
-            # Get episode rendering:
-            episode_rendered = self.render.episode(cerebro)
+            # Update episode rendering:
+            _ = self.render.render('just_render', cerebro=cerebro)
 
             # Recover that bloody analytics:
             analyzers_list = episode.analyzers.getnames()
