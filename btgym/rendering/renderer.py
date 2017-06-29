@@ -19,9 +19,11 @@
 import logging
 import numpy as np
 
+from .plotter import BTgymPlotter
+
 class BTgymRendering():
     """
-    Executes BTgym Environment rendering.
+    Handles BTgym Environment rendering.
     """
     # Here we'll keep last rendered image for each rendering mode:
     rgb_dict = dict()
@@ -42,10 +44,12 @@ class BTgymRendering():
                           color='w',
                           bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
                           )
-    plt_backend = 'Agg'
+    plt_backend = 'Agg'  # Not used.
 
     def __init__(self, render_modes, **kwargs):
-        """___"""
+        """
+        pass
+        """
         # Update parameters with kwargs:
         self.kwargs = kwargs
         for key, value in self.kwargs.items():
@@ -57,23 +61,16 @@ class BTgymRendering():
             self.log = logging.getLogger('dummy')
             self.log.addHandler(logging.NullHandler())
 
-        #self.plotter = BTgymCerebroPlotter()
-        #from backtrader.plot import Plot_OldSync as Plotter
-        # Backend:
-        #matplotlib.use(self.plt_backend)
-        import matplotlib.pyplot as plt
         #from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
         #self.FigureCanvas = FigureCanvas
 
-        self.plt = plt
-        #self.plt.ioff()
-        self.plt.style.use(self.render_plotstyle)
+        self.plt = None  # Will set it inside server process when calling render() for first time.
 
-        # initially plug entries for each render mode:
+        self.plotter = BTgymPlotter() # Modified bt.Cerebro() plotter, to get episode renderings.
+
+        # Set empty plugs for each render mode:
         for mode in render_modes:
             self.rgb_dict[mode] = self.rgb_empty()
-
-        #self.plt.ion()
 
     def to_string(self, dictionary, excluded=[]):
         """
@@ -124,7 +121,7 @@ class BTgymRendering():
                     info_dict = {}
 
         # Add records:
-        info_dict.update(reward=reward, is_done=done)
+        info_dict.update(reward=reward, is_done=done,)
 
         # Try to get step information:
         try:
@@ -143,39 +140,53 @@ class BTgymRendering():
 
     def render(self, mode, cerebro=None, step_to_render=None, ):
         """
-        Renders entire episode using built-in backtrader plotting feature,
-        or just passes last already rendered step.
-        Returns dict with image as rgb_array.
-        If cerebro arg is received - renders entire episode
-        using built-in backtrader plotting feature and stores to rgb_dict.
-        If 'step' arg is received - renders it according 'mode' recieved.
-        Returns rgb_dict entry with 'mode' arg key.
+        Renders given mode if possible, else
+        just passes last already rendered image.
+        Returns rgb image as numpy array.
+        Logic:
+            If `cerebro` arg is received:
+                render entire episode, using built-in backtrader plotting feature,
+                update stored `episode` image.
+
+            If `step_to_render' arg is received:
+                if mode = 'human':
+                    render current state observation in conventional 'price' format,
+                    update stored `human` image;
+                if mode = 'agent':
+                    visualise observation as 'seen' by agent,
+                    update stored 'agent' image.
+
+            Return `mode` image.
         """
+        # First call (supposed to be done inside server process):
+        if self.plt is None:
+            import matplotlib.pyplot as plt
+            self.plt = plt
 
         if cerebro is not None:
             # Try to render given episode:
-            try:
+            #try:
                 # Get picture of entire episode:
-                fig = cerebro.plot(#plotter=self.plotter,  # Modified plotter class, doesnt actually save anything.
-                                   savefig=True,
-                                   width=self.render_size_episode[0],
-                                   height=self.render_size_episode[1],
-                                   dpi=self.render_dpi,
-                                   use=self.plt_backend,
-                                   iplot=False,
-                                   figfilename='_tmp_btgym_render.png',
-                                   **self.kwargs,
-                                   )[0][0]
+            fig = cerebro.plot(plotter=self.plotter,  # Modified plotter class, doesnt actually save anything.
+                               savefig=True,
+                               width=self.render_size_episode[0],
+                               height=self.render_size_episode[1],
+                               dpi=self.render_dpi,
+                               use=None,
+                               iplot=False,
+                               figfilename='_tmp_btgym_render.png',
+                               **self.kwargs,
+                               )[0][0]
 
-                fig.canvas.draw()
+            fig.canvas.draw()
 
-                rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+            rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
 
-                self.rgb_dict['episode'] = rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            self.rgb_dict['episode'] = rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
-            except:
+            #except:
                 # Just keep previous rendering
-                pass
+             #   pass
 
         if step_to_render is not None:
             # Perform step rendering:
@@ -183,36 +194,39 @@ class BTgymRendering():
             # Unpack:
             raw_state, state, reward, done, info = step_to_render
 
-            # Render `agent` state:
-            agent_state, title, box_text = self.parse_response(state, reward, info, done)
-            if self.render_agent_as_image:
-                self.rgb_dict['agent'] = self.draw_image(agent_state,
-                                                         figsize=self.render_size_agent,
-                                                         title=title,
-                                                         box_text=box_text,
-                                                         ylabel=self.render_ylabel,
-                                                         xlabel=self.render_xlabel,
-                                                         )
-            else:
-                self.rgb_dict['agent'] = self.draw_plot(agent_state,
-                                                        figsize=self.render_size_agent,
+            if 'agent' in mode:
+                # Render `agent` state:
+                agent_state, title, box_text = self.parse_response(state, reward, info, done)
+                if self.render_agent_as_image:
+                    self.rgb_dict['agent'] = self.draw_image(agent_state,
+                                                             figsize=self.render_size_agent,
+                                                             title=title,
+                                                             box_text=box_text,
+                                                             ylabel=self.render_ylabel,
+                                                             xlabel=self.render_xlabel,
+                                                             )
+                else:
+                    self.rgb_dict['agent'] = self.draw_plot(agent_state,
+                                                            figsize=self.render_size_agent,
+                                                            title=title,
+                                                            box_text=box_text,
+                                                            ylabel=self.render_ylabel,
+                                                            xlabel=self.render_xlabel,
+                                                            )
+
+            if 'human' in mode:
+                # Render `human` state:
+                human_state, title, box_text = self.parse_response(raw_state, reward, info, done)
+                self.rgb_dict['human'] = self.draw_plot(human_state,
+                                                        figsize=self.render_size_human,
                                                         title=title,
                                                         box_text=box_text,
-                                                        ylabel=self.render_ylabel,
+                                                        ylabel='Price',
                                                         xlabel=self.render_xlabel,
                                                         )
 
-            # Render `human` state:
-            human_state, title, box_text = self.parse_response(raw_state, reward, info, done)
-            self.rgb_dict['human'] = self.draw_plot(human_state,
-                                                    figsize=self.render_size_human,
-                                                    title=title,
-                                                    box_text=box_text,
-                                                    ylabel='Price',
-                                                    xlabel=self.render_xlabel,
-                                                    )
-
-        # Now return what requested by key image:
+        # Now return what requested by `mode` key:
+        # TODO: can actually return several modes in a dict. Prevented by Gym modes convention. Maybe 'ALL' mode.
         if mode in self.rgb_dict.keys():
             return self.rgb_dict[mode]
 

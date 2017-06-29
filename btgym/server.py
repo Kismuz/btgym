@@ -146,6 +146,9 @@ class _BTgymAnalyzer(bt.Analyzer):
         self.strategy.iteration += 1
         self.strategy.broker_message = '-'
 
+######### Cerebro Subclass
+
+
 ##############################  BTgym Server Main  ##############################
 
 

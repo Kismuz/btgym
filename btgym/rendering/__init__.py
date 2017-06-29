@@ -17,15 +17,9 @@
 #
 ###############################################################################
 
-from gym.envs.registration import register
+#from backtrader.plot import Plot_OldSync as DefaultPlotter
 
-from .datafeed import BTgymDataset
-from .server import BTgymServer
-from .strategy import BTgymStrategy
-from .rendering import BTgymRendering
-from .envs.backtrader import BTgymEnv
+from .plotter import BTgymPlotter
 
-register(
-    id='backtrader-v0000',
-    entry_point='btgym.envs:BTgymEnv',
-)
+from .renderer import BTgymRendering
+

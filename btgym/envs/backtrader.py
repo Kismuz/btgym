@@ -32,27 +32,32 @@ import backtrader as bt
 
 from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering
 
-
 ############################## OpenAI Gym Environment  ##############################
+
 
 class BTgymEnv(gym.Env):
     """
     OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
     """
     metadata = {'render.modes': ['human', 'agent', 'episode',]}
+    # `episode` - plotted episode results.
+    # `human` - state observation in conventional human-readable format.
+    # `agent` - state observation as seen by agent.
 
     def __init__(self, **kwargs):
-        #
-        self.dataset = None  # BTgymDataset instance,
+        """
+        pass
+        """
+        self.dataset = None  # BTgymDataset instance.
         self.engine = None  # bt.Cerbro subclass for server to execute.
         self.strategy = None  # strategy to use if no <engine> kwarg been passed.
         self.renderer = None  # Rendering support.
-        self.rendered_rgb = dict()
+        self.rendered_rgb = dict()  # Keep last rendered images for each mode.
 
         self.kwargs = dict()  # Here we'll sort and store our kwargs.
-        self.server = None  # Server/network parameters:
-        self.context = None
-        self.socket = None
+        self.server = None  # Server process.
+        self.context = None  # ZMQ context.
+        self.socket = None  # ZMQ socket, client side.
 
         # Default parameters:
         self.params = dict(
@@ -62,7 +67,7 @@ class BTgymEnv(gym.Env):
                                 # Episode data params:
                 start_weekdays=[0, 1, 2, ],  # Only weekdays from the list will be used for episode start.
                 start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
-                episode_len_days=1,  # Maximum episode time duration in d:h:m.
+                episode_len_days=1,  # Maximum episode time duration in d:h:m:
                 episode_len_hours=23,
                 episode_len_minutes=55,
                 time_gap_days=0,  # Maximum data time gap allowed within sample in d:h.
@@ -83,22 +88,22 @@ class BTgymEnv(gym.Env):
                 state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
                 drawdown_call=90,  # episode maximum drawdown threshold, default is 90% of initial value.
                 portfolio_actions=('hold', 'buy', 'sell', 'close'),
-                    # environment/[strategy] arg/ agent actions,
+                    # agent actions,
                     # should consist with BTgymStrategy order execution logic;
                     # defaults are: 0 - 'do nothing', 1 - 'buy', 2 - 'sell', 3 - 'close position'.
                 skip_frame=1,
                     # Number of environment steps to skip before returning next response,
                     # e.g. if set to 10 -- agent will interact with environment every 10th episode step;
-                    # Every other step agent action is assumed to be 'hold'.
+                    # Every other step agent's action is assumed to be 'hold'.
                     # Note: INFO part of environment response is a list of all skipped frame's info's,
                     #       i.e. [info[-9], info[-8], ..., info[0].
             ),
             other=dict(
                 # Other:
                 port=5500,  # network port to use.
-                network_address='tcp://127.0.0.1:',   # using localhost.
+                network_address='tcp://127.0.0.1:',  # using localhost.
                 ctrl_actions = ('_done', '_reset', '_stop', '_getstat', '_render'),  # server control messages.
-                verbose=0,  # verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
+                verbose=0,  # verbosity mode: 0 - silent, 1 - info level, 2 - debugging level (lot of traffic!).
             ),
         )
 
@@ -297,8 +302,6 @@ class BTgymEnv(gym.Env):
         self.server_actions = self.params['strategy']['portfolio_actions']
 
         self.server_ctrl_actions = self.params['other']['ctrl_actions']
-
-        import backtrader.plot as plotter
 
         # Set server rendering:
         self.renderer = BTgymRendering(self.metadata['render.modes'], **self.kwargs['other'])
@@ -533,7 +536,7 @@ class BTgymEnv(gym.Env):
 
         else:
             msg = (
-                '\nCan not render.'
+                '\nCan''t get renderings.'
                 '\nAt least one of these is true:\n' +
                 'Environment closed: {}\n' +
                 'Network error [socket doesnt exists or closed]: {}\n' +

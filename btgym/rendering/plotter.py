@@ -17,15 +17,26 @@
 #
 ###############################################################################
 
-from gym.envs.registration import register
+from backtrader.plot import Plot_OldSync
 
-from .datafeed import BTgymDataset
-from .server import BTgymServer
-from .strategy import BTgymStrategy
-from .rendering import BTgymRendering
-from .envs.backtrader import BTgymEnv
 
-register(
-    id='backtrader-v0000',
-    entry_point='btgym.envs:BTgymEnv',
-)
+class BTgymPlotter(Plot_OldSync):
+    """
+    Hacky way to get cerebro.plot() renderings.
+    Overrides default backtrader plotter behaviour.
+    """
+
+    def __init__(self):
+        """
+        pass
+        """
+        super(BTgymPlotter, self).__init__()
+
+    def savefig(self, fig, filename, width=16, height=9, dpi=300, tight=True):
+        """
+        We neither need picture to appear in <stdout> nor file to be written (slow).
+        Just set params and return `fig` to converted to rgb array.
+        """
+        fig.set_size_inches(width, height)
+        fig.set_dpi(dpi)
+        fig.set_tight_layout(tight)
