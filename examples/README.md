@@ -2,9 +2,11 @@
 ****
 ###### UNDER CONSTRUCTION
 ****
-- **Setting up environment [basic]**: Making environment using basic built-in parameters.
+- **Setting up environment [basic]**: making environment using basic built-in parameters.
  
-- **Setting up environment [full]**: Coming soon.
+- **Rendering explained**: get cool pictures.
+
+- **Setting up environment [full]**: coming soon.
 
  
   

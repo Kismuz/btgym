@@ -526,7 +526,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
     - major rendering rebuild: updated with modes: `human`, `agent`, `episode`;
       render process now performed by server and returned to environment as `rgb numpy array`.
       Pictures can be shown either via matplolib or as pillow.Image(preferred).
-      'Basic settings' example updated.
+    - 'Rendering HowTo' added, 'Basic Settings' example updated.
     - internal changes: env. state divided on `raw_state`  - price data,
       and `state` - featurized representation. `_get_raw_state()` method added to strategy.
     - new packages requirements: `matplotlib` and `pillow`.
