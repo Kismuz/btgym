@@ -44,11 +44,10 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
 
 ****
 ### <a name="install"></a>[Installation](#contents)
-- Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`; 
-  `matplotlib` required for `env.render()` method.
-- Examples requires: `scipy`, .
+- Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`, `matplotlib`,`pillow`, `ipython`.
+- Examples requires: `scipy`.
 - Clone or copy btgym repository to local disk, cd to it and run: `pip install -e . `
-to install package and dependencies e.g.:
+to install package and all dependencies:
 ``` 
 got clone https://github.com/Kismuz/btgym.git
 cd btgym
@@ -513,9 +512,8 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [x] frame-skipping feature;
  - [ ] dataset tr/cv/t splitting feature;
  - [x] state rendering;
- - [x] retrieving results for observers and plotting features - aka 'episode rendering';
- - [ ] still no observers statistic returned;
- - [ ] rendering for entire episode is slow;
+ - [ ] retrieving results for observers;
+ - [x] proper rendering for entire episode;
  - [ ] tensorboard integration;
  - [ ] multiply agents asynchronous operation feature (e.g for A3C):
     -  [possibly] via dedicated data server;
@@ -524,10 +522,11 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
  
 ### <a name="news"></a>[News and update notes](#title)
-- 28.06.17: UPGRADE: be shure to run `pip install --upgrade -e.` 
-    - rendering rebuilded: updated with modes: `state`, `price`, `episode`; drawing options enabled;
+- 29.06.17: UPGRADE: be sure to run `pip install --upgrade -e.` 
+    - major rendering rebuild: updated with modes: `human`, `agent`, `episode`;
       render process now performed by server and returned to environment as `rgb numpy array`.
-      Can be shown either via matplolib or as pillow.Image(preferred).
+      Pictures can be shown either via matplolib or as pillow.Image(preferred).
+      'Basic settings' example updated.
     - internal changes: env. state divided on `raw_state`  - price data,
       and `state` - featurized representation. `_get_raw_state()` method added to strategy.
     - new packages requirements: `matplotlib` and `pillow`.

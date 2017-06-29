@@ -65,6 +65,10 @@ class _BTgymAnalyzer(bt.Analyzer):
         Get out.
         """
         self.log.debug('RunStop() invoked with {}'.format(self.strategy.broker_message))
+
+        # Do final renderings, it will be kept by renderer class, not sending anywhere:
+        _ = self.render.render(['human', 'agent'], step_to_render=self.step_to_render,)
+
         self.strategy.close()
         self.strategy.env.runstop()
 

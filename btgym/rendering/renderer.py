@@ -30,9 +30,9 @@ class BTgymRendering():
 
     # Plotting controls, can be passed as kwargs:
     render_agent_as_image = True
-    render_size_human = (10, 4)
-    render_size_agent = (10, 4)
-    render_size_episode = (15,10)
+    render_size_human = (6, 3.5)
+    render_size_agent = (7, 3.5)
+    render_size_episode = (12,8)
     render_dpi=75
     render_plotstyle = 'seaborn'
     render_cmap = 'PRGn'
@@ -157,6 +157,11 @@ class BTgymRendering():
                     update stored 'agent' image.
 
             Return `mode` image.
+
+        Note:
+            It can actually return several modes in a single dict.
+            It prevented by Gym modes convention, but done internally at the end of the episode.
+            TODO: implement 'all' render mode.
         """
         # First call (supposed to be done inside server process):
         if self.plt is None:
@@ -226,12 +231,29 @@ class BTgymRendering():
                                                         )
 
         # Now return what requested by `mode` key:
-        # TODO: can actually return several modes in a dict. Prevented by Gym modes convention. Maybe 'ALL' mode.
-        if mode in self.rgb_dict.keys():
-            return self.rgb_dict[mode]
+        if type(mode) is str:
+            # If `mode` is a single str value:
+            if mode in self.rgb_dict.keys():
+                # If it is legal - let it go:
+                return self.rgb_dict[mode]
+
+            else:
+                return self.rgb_empty()
 
         else:
-            return self.rgb_empty()
+            # this case is for internal use only;
+            # now `mode` supposed to contain several modes, let's return dictionary of arrays:
+            return_dict = dict()
+            for entry in mode:
+                if entry in self.rgb_dict.keys():
+                    # ...and it is legal:
+                    return_dict[entry] = self.rgb_dict[entry]
+
+                else:
+                    return_dict[entry] = self.rgb_empty()
+
+            return return_dict
+
 
     def draw_plot(self, data, figsize=(10,6), title='', box_text='', xlabel='X', ylabel='Y'):
         """
