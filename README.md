@@ -49,7 +49,7 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
 - Clone or copy btgym repository to local disk, cd to it and run: `pip install -e . `
 to install package and all dependencies:
 ``` 
-got clone https://github.com/Kismuz/btgym.git
+git clone https://github.com/Kismuz/btgym.git
 cd btgym
 pip install -e .
 ```
