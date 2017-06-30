@@ -39,9 +39,8 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
 - [Current issues and limitations](#issues)
 - [Roadmap](#roadmap)
 - [Update news](#news)
-
-    
-
+   
+   
 ****
 ### <a name="install"></a>[Installation](#contents)
 - Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`, `matplotlib`,`pillow`, `ipython`.
@@ -522,6 +521,9 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
  
 ### <a name="news"></a>[News and update notes](#title)
+
+- 30.06.17: EXAMPLES updated with 'Setting up: full throttle' howto. 
+
 - 29.06.17: UPGRADE: be sure to run `pip install --upgrade -e.` 
     - major rendering rebuild: updated with modes: `human`, `agent`, `episode`;
       render process now performed by server and returned to environment as `rgb numpy array`.

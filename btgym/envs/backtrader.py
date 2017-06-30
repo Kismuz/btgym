@@ -59,7 +59,7 @@ class BTgymEnv(gym.Env):
         self.context = None  # ZMQ context.
         self.socket = None  # ZMQ socket, client side.
 
-        # Default parameters:
+        # Parameters structure and default values:
         self.params = dict(
             dataset=dict(
                 # Dataset parameters:
@@ -111,8 +111,8 @@ class BTgymEnv(gym.Env):
         Environment kwargs applying logic:
     
         if <engine> kwarg is given:
-            do not use default enfine and startegy parameters;
-            ignore <startegy> kwarg and all startegy and engine-related kwargs.
+            do not use default engine and strategy parameters;
+            ignore <strategy> kwarg and all strategy and engine-related kwargs.
         
         else (no <engine>):
             use default engine parameters;
@@ -131,8 +131,7 @@ class BTgymEnv(gym.Env):
         
         if <dataset> kwarg is given:
             do not use default dataset parameters;
-            if any dataset related kwarg is given:
-                    override corresponding dataset parameter;
+            ignore dataset related kwargs;
                     
         else (no <dataset>):
             use default dataset parameters;
@@ -149,6 +148,11 @@ class BTgymEnv(gym.Env):
             for key, value in subset.items():
                 if key in kwargs:
                     self.kwargs[name][key] = kwargs.pop(key)
+
+        # Update self attributes with what left (supposed to be dataset, strategy, engine):
+        for key in dir(self):
+            if key in kwargs:
+                setattr(self, key, kwargs.pop(key))
 
         # All unsorted go to 'other':
         self.kwargs['other'].update(kwargs)
@@ -175,13 +179,12 @@ class BTgymEnv(gym.Env):
 
         # DATASET preparation:
         #
-        if 'dataset' in kwargs:
+        if self.dataset is not None:
             # If BTgymDataset instance has been passed:
-            self.dataset = kwargs['dataset']
             # Update dataset parameters with kwargs (ignore defaults):
-            for key, value in self.kwargs['dataset'].items():
-                if key in dir(self.dataset):
-                    setattr(self.dataset, key, value)
+            #for key, value in self.kwargs['dataset'].items():
+            #    if key in dir(self.dataset):
+            #        setattr(self.dataset, key, value)
             # Cleanup:
             msg = 'Custom Dataset class used.'
             self.params['dataset'] = dict(info=msg)
@@ -199,17 +202,17 @@ class BTgymEnv(gym.Env):
             self.params['dataset'].update(self.kwargs['dataset'])
             self.dataset = BTgymDataset(**self.params['dataset'])
             msg = 'Base Dataset class used.'
+
         # Append logging:
-        #self.dataset.log = self.log
+        self.dataset.log = self.log
 
         self.log.info(msg)
 
         # ENGINE preparation:
-        if 'engine' in kwargs:
+        if self.engine is not None:
             # If full-blown bt.Cerebro() subclass has been passed:
-            self.engine = kwargs['engine']
             # Cleanup:
-            msg = 'Custom Cerebro engine used.'
+            msg = 'Custom Cerebro class used.'
             self.params['engine'] = dict(info=msg)
             self.params['strategy'] = dict(info=msg)
             # ...and it's done.
@@ -223,17 +226,16 @@ class BTgymEnv(gym.Env):
             # get base class Cerebro(), using kwargs on top of defaults:
             self.engine = bt.Cerebro()
             self.params['engine'].update(self.kwargs['engine'])
-            msg = 'Base Cerebro engine used.'
+            msg = 'Base Cerebro class used.'
 
             # First, set STRATEGY configuration:
-            if 'strategy' in kwargs:
+            if self.strategy is not None:
                 # If custom strategy has been passed:
-                self.strategy = kwargs['strategy']
                 # Add it along with kwargs (ignore defaults):
                 self.engine.addstrategy(self.strategy, **self.kwargs['strategy'])
                 # Cleanup:
                 msg2 = 'Custom Strategy class used.'
-                self.params['startegy'] = dict(info=msg2)
+                self.params['strategy'] = dict(info=msg2)
 
             else:
                 # Base class strategy, using kwargs on top of defaults:
@@ -310,7 +312,7 @@ class BTgymEnv(gym.Env):
         self.server_response = None
         self.env_response = None
 
-        #self._start_server()
+        #self._start_server()  # mmmm... not shure
 
         self.log.info('Environment is ready.')
 
