@@ -524,7 +524,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
 
 - 30.06.17: EXAMPLES updated with 'Setting up: full throttle' howto. 
 
-- 29.06.17: UPGRADE: be sure to run `pip install --upgrade -e.` 
+- 29.06.17: UPGRADE: be sure to run `pip install --upgrade -e .` 
     - major rendering rebuild: updated with modes: `human`, `agent`, `episode`;
       render process now performed by server and returned to environment as `rgb numpy array`.
       Pictures can be shown either via matplolib or as pillow.Image(preferred).

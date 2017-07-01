@@ -556,3 +556,18 @@ class BTgymEnv(gym.Env):
         self.rendered_rgb[mode] = rgb_array
 
         return rgb_array
+
+    def stop(self):
+        """
+        Finishes current episode if any, does nothing otherwise.
+        Leaves server running.
+        """
+        if self._force_control_mode():
+            self.log.info('Episode stop forced.')
+
+    def _restart_server(self):
+        """
+        Restarts server.
+        """
+        self._stop_server()
+        self._start_server()
