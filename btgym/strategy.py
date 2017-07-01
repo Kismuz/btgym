@@ -65,7 +65,7 @@ class BTgymStrategy(bt.Strategy):
                        # Every other step agent action is assumed to be 'hold'.
     )
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         # Inherit logger from cerebro:
         self.log = self.env._log
 
@@ -77,6 +77,7 @@ class BTgymStrategy(bt.Strategy):
 
         # Add custom data Lines if any (just a convenience wrapper):
         self.set_datalines()
+        self.log.debug('Kwargs:\n{}\n'.format(str(kwargs)))
 
     def set_datalines(self):
         """

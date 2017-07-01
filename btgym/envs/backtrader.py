@@ -44,67 +44,70 @@ class BTgymEnv(gym.Env):
     # `human` - state observation in conventional human-readable format.
     # `agent` - state observation as seen by agent.
 
-    def __init__(self, **kwargs):
+    # Dataset:
+    dataset = None  # BTgymDataset instance.
+
+    # Backtrader engine:
+    engine = None  # bt.Cerbro subclass for server to execute.
+
+    # Strategy:
+    strategy = None  # strategy to use if no <engine> class been passed.
+
+    # Server and network:
+    server = None  # Server process.
+    context = None  # ZMQ context.
+    socket = None  # ZMQ socket, client side.
+    port = 5500  # network port to use.
+    network_address = 'tcp://127.0.0.1:'  # using localhost.
+    ctrl_actions = ('_done', '_reset', '_stop', '_getstat', '_render')  # server control messages.
+
+    # Rendering:
+    renderer = None  # Rendering support.
+    rendered_rgb = dict()  # Keep last rendered images for each mode.
+
+    # Logging:
+    log = None
+    verbose = 0  # verbosity mode: 0 - silent, 1 - info, 2 - debugging level (lot of traffic!).
+
+    def __init__(self, *args, **kwargs):
         """
         pass
         """
-        self.dataset = None  # BTgymDataset instance.
-        self.engine = None  # bt.Cerbro subclass for server to execute.
-        self.strategy = None  # strategy to use if no <engine> kwarg been passed.
-        self.renderer = None  # Rendering support.
-        self.rendered_rgb = dict()  # Keep last rendered images for each mode.
 
-        self.kwargs = dict()  # Here we'll sort and store our kwargs.
-        self.server = None  # Server process.
-        self.context = None  # ZMQ context.
-        self.socket = None  # ZMQ socket, client side.
-
-        # Parameters structure and default values:
+        # Parameters and default values:
         self.params = dict(
-            dataset=dict(
-                # Dataset parameters:
-                filename=None,  # Source CSV data file;
-                                # Episode data params:
-                start_weekdays=[0, 1, 2, ],  # Only weekdays from the list will be used for episode start.
-                start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
-                episode_len_days=1,  # Maximum episode time duration in d:h:m:
-                episode_len_hours=23,
-                episode_len_minutes=55,
-                time_gap_days=0,  # Maximum data time gap allowed within sample in d:h.
-                time_gap_hours=5,  # If set < 1 day, samples containing weekends and holidays gaps will be rejected.
-            ),
+
+            # Backtrader engine mandatory parameters:
             engine=dict(
-                # Backtrader engine parameters:
                 start_cash=10.0,  # initial trading capital.
                 broker_commission=0.001,  # trade execution commission, default is 0.1% of operation value.
                 fixed_stake=10,  # single trade stake is fixed type by def.
             ),
-            strategy=dict(
-                # Strategy related parameters:
-                state_shape=(4, 10),
-                    # observation state shape, by convention last dimension is time embedding;
-                    # one can define any shape; match env.observation_space.shape.
-                state_low=None,  # observation space state min/max values,
-                state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
-                drawdown_call=90,  # episode maximum drawdown threshold, default is 90% of initial value.
-                portfolio_actions=('hold', 'buy', 'sell', 'close'),
-                    # agent actions,
-                    # should consist with BTgymStrategy order execution logic;
-                    # defaults are: 0 - 'do nothing', 1 - 'buy', 2 - 'sell', 3 - 'close position'.
-                skip_frame=1,
-                    # Number of environment steps to skip before returning next response,
-                    # e.g. if set to 10 -- agent will interact with environment every 10th episode step;
-                    # Every other step agent's action is assumed to be 'hold'.
-                    # Note: INFO part of environment response is a list of all skipped frame's info's,
-                    #       i.e. [info[-9], info[-8], ..., info[0].
+            # Dataset mandatory parameters:
+            dataset = dict(
+                filename=None,
             ),
-            other=dict(
-                # Other:
-                port=5500,  # network port to use.
-                network_address='tcp://127.0.0.1:',  # using localhost.
-                ctrl_actions = ('_done', '_reset', '_stop', '_getstat', '_render'),  # server control messages.
-                verbose=0,  # verbosity mode: 0 - silent, 1 - info level, 2 - debugging level (lot of traffic!).
-            ),
+            strategy = dict(),
+            render = dict(),
+        )
+        p2 = dict(
+            # Strategy related parameters:
+            state_shape=None,
+                # observation state shape, by convention last dimension is time embedding;
+                # one can define any shape; match env.observation_space.shape.
+            state_low=None,  # observation space state min/max values,
+            state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
+            drawdown_call=None,  # episode maximum drawdown threshold, default is 90% of initial value.
+            portfolio_actions=None,
+                # agent actions,
+                # should consist with BTgymStrategy order execution logic;
+                # defaults are: 0 - 'do nothing', 1 - 'buy', 2 - 'sell', 3 - 'close position'.
+            skip_frame=None,
+                # Number of environment steps to skip before returning next response,
+                # e.g. if set to 10 -- agent will interact with environment every 10th episode step;
+                # Every other step agent's action is assumed to be 'hold'.
+                # Note: INFO part of environment response is a list of all skipped frame's info's,
+                #       i.e. [info[-9], info[-8], ..., info[0].
         )
 
         """
@@ -142,23 +145,10 @@ class BTgymEnv(gym.Env):
             override corr. default parameter.
         """
 
-        # Sort kwargs out:
-        for name, subset in self.params.items():
-            self.kwargs[name] = dict()
-            for key, value in subset.items():
-                if key in kwargs:
-                    self.kwargs[name][key] = kwargs.pop(key)
-
-        # Update self attributes with what left (supposed to be dataset, strategy, engine):
+        # Update self attributes, remove used kwargs:
         for key in dir(self):
-            if key in kwargs:
+            if key in kwargs.keys():
                 setattr(self, key, kwargs.pop(key))
-
-        # All unsorted go to 'other':
-        self.kwargs['other'].update(kwargs)
-
-        # Now ready to unconditionally update <'other'> env attributes:
-        self.params['other'].update(self.kwargs['other'])
 
         # Verbosity control:
         self.log = logging.getLogger('Env')
@@ -166,56 +156,69 @@ class BTgymEnv(gym.Env):
         log_levels = [(0, 'WARNING'), (1, 'INFO'), (2, 'DEBUG'),]
 
         for key, level in log_levels:
-            if key == self.params['other']['verbose']:
+            if key == self.verbose:
                 self.log.setLevel(level)
 
-        # In this level logging should be defined for dataset and renderer class instances.
-        # Server log will be passed when starting process:
-        self.kwargs['dataset']['log'] = self.log
-        self.kwargs['other']['log'] = self.log
-
         # Network parameters:
-        self.params['other']['network_address'] += str(self.params['other']['port'])
+        self.network_address += str(self.port)
+
+        # Set server rendering:
+        self.renderer = BTgymRendering(self.metadata['render.modes'], **kwargs)
+
+        # Append logging:
+        self.renderer.log = self.log
+
+        # Update params -1: pull from renderer, remove used kwargs:
+        self.params['render'].update(self.renderer.params)
+        for key in self.params['render'].keys():
+            if key in kwargs.keys():
+                _ = kwargs.pop(key)
 
         # DATASET preparation:
         #
         if self.dataset is not None:
             # If BTgymDataset instance has been passed:
-            # Update dataset parameters with kwargs (ignore defaults):
-            #for key, value in self.kwargs['dataset'].items():
-            #    if key in dir(self.dataset):
-            #        setattr(self.dataset, key, value)
-            # Cleanup:
+            # do nothing.
             msg = 'Custom Dataset class used.'
-            self.params['dataset'] = dict(info=msg)
 
         else:
             # If no BTgymDataset has been passed,
             # Make default dataset with given CSV file:
             try:
-                os.path.isfile(str(self.kwargs['dataset']['filename']))
+                os.path.isfile(str(self.params['dataset']['filename']))
 
             except:
-                raise FileNotFoundError('Dataset source data file not specified/found')
+                raise FileNotFoundError('Dataset source data file not specified/not found')
 
-            # Use kwargs on top of defaults:
-            self.params['dataset'].update(self.kwargs['dataset'])
-            self.dataset = BTgymDataset(**self.params['dataset'])
+            # Use kwargs to instantiate dataset:
+            self.dataset = BTgymDataset(**kwargs)
             msg = 'Base Dataset class used.'
 
         # Append logging:
         self.dataset.log = self.log
 
+        # Update params -2: pull from dataset, remove used kwargs:
+        self.params['dataset'].update(self.dataset.params)
+        for key in self.params['dataset'].keys():
+            if key in kwargs.keys():
+                _ = kwargs.pop(key)
+
         self.log.info(msg)
 
         # ENGINE preparation:
+
+        # Update params -3: pull engine-related kwargs, remove used:
+        for key in self.params['engine'].keys():
+            if key in kwargs.keys():
+                self.params['engine'][key] = kwargs.pop(key)
+
         if self.engine is not None:
             # If full-blown bt.Cerebro() subclass has been passed:
-            # Cleanup:
+            # Update info:
             msg = 'Custom Cerebro class used.'
-            self.params['engine'] = dict(info=msg)
-            self.params['strategy'] = dict(info=msg)
-            # ...and it's done.
+            self.strategy = msg
+            for key in self.params['engine'].keys():
+                self.params['engine'][key] = msg
 
         # Note: either way, bt.observers.DrawDown observer [and logger] will be added to any BTgymStrategy instance
         # by BTgymServer process at runtime.
@@ -225,51 +228,45 @@ class BTgymEnv(gym.Env):
             # if no bt.Cerebro() custom subclass has been passed,
             # get base class Cerebro(), using kwargs on top of defaults:
             self.engine = bt.Cerebro()
-            self.params['engine'].update(self.kwargs['engine'])
             msg = 'Base Cerebro class used.'
 
             # First, set STRATEGY configuration:
             if self.strategy is not None:
                 # If custom strategy has been passed:
-                # Add it along with kwargs (ignore defaults):
-                self.engine.addstrategy(self.strategy, **self.kwargs['strategy'])
-                # Cleanup:
                 msg2 = 'Custom Strategy class used.'
-                self.params['strategy'] = dict(info=msg2)
 
             else:
-                # Base class strategy, using kwargs on top of defaults:
+                # Base class strategy :
                 self.strategy = BTgymStrategy
-                self.params['strategy'].update(self.kwargs['strategy'])
-                self.engine.addstrategy(self.strategy, **self.params['strategy'])
                 msg2 = 'Base Strategy class used.'
+
+            # Add, using kwargs on top of defaults:
+            strat_idx = self.engine.addstrategy(self.strategy, **kwargs)
 
             msg += ' ' + msg2
 
             # Second, set Cerebro-level configuration:
             self.engine.broker.setcash(self.params['engine']['start_cash'])
             self.engine.broker.setcommission(self.params['engine']['broker_commission'])
-            self.engine.addsizer(bt.sizers.SizerFix, stake=self.params['engine']['fixed_stake'],)
+            self.engine.addsizer(bt.sizers.SizerFix, stake=self.params['engine']['fixed_stake'])
 
         self.log.info(msg)
 
         # Define observation space shape, minimum / maximum values and agent action space.
-        # Retrieve values from configured engine:
-        for key in ['state_shape', 'state_low', 'state_high', 'portfolio_actions', 'skip_frame', ]:
-            try:
-                # Try to pull it from strategy 'passed params':
-                self.params['strategy'][key] = self.engine.strats[0][0][2][key]
+        # Retrieve values from configured engine or...
 
-            except:
-                # Or else dig it from strategy defaults:
-                for t_key, t_value in self.engine.strats[0][0][0].params._gettuple():
-                    if t_key == key:
-                        self.params['strategy'][t_key] = t_value
+        # ...Update params -4:
+        # Pull strategy defaults to environment params dict :
+        for t_key, t_value in self.engine.strats[0][0][0].params._gettuple():
+            self.params['strategy'][t_key] =  t_value
+
+        # Update it with values from strategy 'passed-to params':
+        for key, value in self.engine.strats[0][0][2].items():
+            self.params['strategy'][key] = value
 
         # For min/max, if not been set explicitly,
         # the only sensible way is to infer from raw Dataset price values:
-        if self.engine.strats[0][0][2]['state_low'] is None or \
-            self.engine.strats[0][0][2]['state_high'] is None:
+        if self.params['strategy']['state_low'] is None or self.params['strategy']['state_high'] is None:
 
             # Get dataset statistic:
             self.dataset_stat = self.dataset.describe()
@@ -280,21 +277,21 @@ class BTgymEnv(gym.Env):
 
             # Override with absolute price min and max values:
             self.params['strategy']['state_low'] =\
-                self.engine.strats[0][0][2]['state_low'] =\
+            self.engine.strats[0][0][2]['state_low'] =\
                 self.dataset_stat.loc['min', data_columns].min()
 
             self.params['strategy']['state_high'] =\
-                self.engine.strats[0][0][2]['state_high'] =\
+            self.engine.strats[0][0][2]['state_high'] =\
                 self.dataset_stat.loc['max', data_columns].max()
 
             self.log.info('Inferring obs. space high/low form dataset: {:.6f} / {:.6f}.'.
-                          format(self.params['strategy']['state_low'],
-                                 self.params['strategy']['state_high']))
+                          format(self.params['strategy']['state_low'] , self.params['strategy']['state_high']))
 
         # Set observation space shape from engine/strategy parameters:
         self.observation_space = spaces.Box(low=self.params['strategy']['state_low'],
                                             high=self.params['strategy']['state_high'],
-                                            shape=self.params['strategy']['state_shape'],)
+                                            shape=self.params['strategy']['state_shape'],
+                                            )
 
         self.log.debug('Obs. shape: {}'.format(self.observation_space.shape))
         self.log.debug('Obs. min:\n{}\nmax:\n{}'.format(self.observation_space.low, self.observation_space.high))
@@ -303,16 +300,11 @@ class BTgymEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self.params['strategy']['portfolio_actions']))
         self.server_actions = self.params['strategy']['portfolio_actions']
 
-        self.server_ctrl_actions = self.params['other']['ctrl_actions']
-
-        # Set server rendering:
-        self.renderer = BTgymRendering(self.metadata['render.modes'], **self.kwargs['other'])
-
         # Finally:
         self.server_response = None
         self.env_response = None
 
-        #self._start_server()  # mmmm... not shure
+        #self._start_server()  # ... not shure
 
         self.log.info('Environment is ready.')
 
@@ -327,26 +319,26 @@ class BTgymEnv(gym.Env):
             self.socket = None
 
         # 2. Kill any process using server port:
-        cmd = "kill $( lsof -i:{} -t ) > /dev/null 2>&1".format(self.params['other']['port'])
+        cmd = "kill $( lsof -i:{} -t ) > /dev/null 2>&1".format(self.port)
         os.system(cmd)
 
         # Set up client channel:
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REQ)
-        self.socket.connect(self.params['other']['network_address'])
+        self.socket.connect(self.network_address)
 
         # Configure and start server:
         self.server = BTgymServer(dataset=self.dataset,
                                   cerebro=self.engine,
                                   render=self.renderer,
-                                  network_address=self.params['other']['network_address'],
+                                  network_address=self.network_address,
                                   log=self.log)
         self.server.daemon = False
         self.server.start()
         # Wait for server to startup
         time.sleep(1)
 
-        self.log.info('Server started, pinging {} ...'.format(self.params['other']['network_address']))
+        self.log.info('Server started, pinging {} ...'.format(self.network_address))
         self.socket.send_pyobj({'ctrl': 'ping!'})
         self.server_response = self.socket.recv_pyobj()
         self.log.info('Server seems ready with response: <{}>'.format(self.server_response))
