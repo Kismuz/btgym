@@ -192,6 +192,9 @@ class BTgymRendering():
 
             self.rgb_dict['episode'] = rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
+            # Clean up:
+            self.plt.close(fig)
+
             #except:
                 # Just keep previous rendering
              #   pass
@@ -296,6 +299,9 @@ class BTgymRendering():
         # Save it to a numpy array:
         rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
 
+        # Clean up:
+        self.plt.close(fig)
+
         return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
     def draw_image(self, data, figsize=(12,6), title='', box_text='', xlabel='X', ylabel='Y'):
@@ -336,6 +342,9 @@ class BTgymRendering():
         self.plt.tight_layout()
 
         fig.canvas.draw()
+
+        # Clean up:
+        self.plt.close(fig)
 
         # Save it to a numpy array:
         rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')

@@ -138,7 +138,7 @@ MyEnvironment = BTgymEnv(dataset=MyDataset,
                          verbose=1,
                          )
 ```
-###### See notebooks in `examples` directory.
+###### See how-to's in [`examples`](https://github.com/Kismuz/btgym/tree/master/examples) directory.
 ****
 ### <a name="description"></a> [General description](#contents)
 #### <a name="problem"></a> Problem setting
@@ -520,9 +520,9 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [ ] multiply instruments trading;
  
  
-### <a name="news"></a>[News and update notes](#title)
+### <a name="news"></a>[News and updates:](#title)
 
-- 30.06.17: EXAMPLES updated with 'Setting up: full throttle' howto. 
+- 30.06.17: EXAMPLES updated with 'Setting up: full throttle' how-to. 
 
 - 29.06.17: UPGRADE: be sure to run `pip install --upgrade -e .` 
     - major rendering rebuild: updated with modes: `human`, `agent`, `episode`;

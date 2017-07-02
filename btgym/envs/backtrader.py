@@ -71,7 +71,38 @@ class BTgymEnv(gym.Env):
 
     def __init__(self, *args, **kwargs):
         """
-        pass
+        Environment kwargs applying logic:
+
+        if <engine> kwarg is given:
+            do not use default engine and strategy parameters;
+            ignore <strategy> kwarg and all strategy and engine-related kwargs.
+
+        else (no <engine>):
+            use default engine parameters;
+            if any engine-related kwarg is given:
+                override corresponding default parameter;
+
+            if <strategy> is given:
+                do not use default strategy parameters;
+                if any strategy related kwarg is given:
+                    override corresponding strategy parameter;
+
+            else (no <strategy>):
+                use default strategy parameters;
+                if any strategy related kwarg is given:
+                    override corresponding strategy parameter;
+
+        if <dataset> kwarg is given:
+            do not use default dataset parameters;
+            ignore dataset related kwargs;
+
+        else (no <dataset>):
+            use default dataset parameters;
+                if  any dataset related kwarg is given:
+                    override corresponding dataset parameter;
+
+        If any <other> kwarg is given:
+            override corr. default parameter.
         """
 
         # Parameters and default values:
@@ -109,41 +140,6 @@ class BTgymEnv(gym.Env):
                 # Note: INFO part of environment response is a list of all skipped frame's info's,
                 #       i.e. [info[-9], info[-8], ..., info[0].
         )
-
-        """
-        Environment kwargs applying logic:
-    
-        if <engine> kwarg is given:
-            do not use default engine and strategy parameters;
-            ignore <strategy> kwarg and all strategy and engine-related kwargs.
-        
-        else (no <engine>):
-            use default engine parameters;
-            if any engine-related kwarg is given:
-                override corresponding default parameter;
-            
-            if <strategy> is given:
-                do not use default strategy parameters;
-                if any strategy related kwarg is given:
-                    override corresponding strategy parameter;
-                
-            else (no <strategy>):
-                use default strategy parameters;
-                if any strategy related kwarg is given:
-                    override corresponding strategy parameter;
-        
-        if <dataset> kwarg is given:
-            do not use default dataset parameters;
-            ignore dataset related kwargs;
-                    
-        else (no <dataset>):
-            use default dataset parameters;
-                if  any dataset related kwarg is given:
-                    override corresponding dataset parameter;
-        
-        If any <other> kwarg is given:
-            override corr. default parameter.
-        """
 
         # Update self attributes, remove used kwargs:
         for key in dir(self):
@@ -304,7 +300,7 @@ class BTgymEnv(gym.Env):
         self.server_response = None
         self.env_response = None
 
-        #self._start_server()  # ... not shure
+        # self._start_server()  # ... not shure
 
         self.log.info('Environment is ready.')
 
