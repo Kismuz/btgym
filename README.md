@@ -138,7 +138,7 @@ MyEnvironment = BTgymEnv(dataset=MyDataset,
                          verbose=1,
                          )
 ```
-###### See how-to's in [`examples`](https://github.com/Kismuz/btgym/tree/master/examples) directory.
+###### See how-to's in [`examples`](./examples) directory.
 ****
 ### <a name="description"></a> [General description](#contents)
 #### <a name="problem"></a> Problem setting

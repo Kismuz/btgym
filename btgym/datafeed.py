@@ -48,47 +48,45 @@ class BTgymDataset:
     # TODO: implement sequential and time-window sampling.
     #  Parameters and their default values:
     params = dict(
-        filename = None,  # Should be given either here  or when calling read_csv()
+        filename=None,  # Should be given either here  or when calling read_csv()
 
         # Default parameters for source-specific CSV datafeed class,
         # correctly parses 1 minute Forex generic ASCII
         # data files from www.HistData.com:
 
         # CSV to Pandas params.
-        sep = ';',
-        header = 0,
-        index_col = 0,
-        parse_dates = True,
-        names = ['open', 'high', 'low', 'close', 'volume'],
+        sep=';',
+        header=0,
+        index_col=0,
+        parse_dates=True,
+        names=['open', 'high', 'low', 'close', 'volume'],
 
         # Pandas to BT.feeds params:
-        timeframe = 1,  # 1 minute.
-        datetime = 0,
-        open = 1,
-        high = 2,
-        low = 3,
-        close = 4,
-        volume = -1,
-        openinterest = -1,
+        timeframe=1,  # 1 minute.
+        datetime=0,
+        open=1,
+        high=2,
+        low=3,
+        close=4,
+        volume=-1,
+        openinterest=-1,
 
         # Random-sampling params:
-        start_weekdays = [0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
-        start_00 = True,  # Episode start time will be set to first record of the day (usually 00:00).
-        episode_len_days = 1,  # Maximum episode time duration in days, hours, minutes:
-        episode_len_hours = 23,
-        episode_len_minutes = 55,
-        time_gap_days = 0,  # Maximum data time gap allowed within sample in days, hours. Thereby,
-        time_gap_hours = 5,  # if set to be < 1 day, samples containing weekends and holidays gaps will be rejected.
+        start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
+        start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
+        episode_len_days=1,  # Maximum episode time duration in days, hours, minutes:
+        episode_len_hours=23,
+        episode_len_minutes=55,
+        time_gap_days=0,  # Maximum data time gap allowed within sample in days, hours. Thereby,
+        time_gap_hours=5,  # if set to be < 1 day, samples containing weekends and holidays gaps will be rejected.
     )
     # Other:
     log = None
     data = None  # Will hold actual data as pandas dataframe
     data_stat = None  # Dataset descriptive statistic as pandas dataframe
 
-
     def __init__(self, **kwargs):
         """ _____"""
-
         # Update parameters with relevant kwargs:
         for key, value in kwargs.items():
             if key in self.params.keys():

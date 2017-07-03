@@ -28,23 +28,23 @@ class BTgymRendering():
     # Here we'll keep last rendered image for each rendering mode:
     rgb_dict = dict()
     params = dict(
-    # Plotting controls, can be passed as kwargs:
-    render_agent_as_image = True,
-    render_size_human = (6, 3.5),
-    render_size_agent = (7, 3.5),
-    render_size_episode = (12,8),
-    render_dpi=75,
-    render_plotstyle = 'seaborn',
-    render_cmap = 'PRGn',
-    render_xlabel = 'Relative timesteps',
-    render_ylabel = 'Value',
-    render_title = 'step: {}, state observation min: {:.4f}, max: {:.4f}',
-    render_boxtext = dict(fontsize=12,
-                          fontweight='bold',
-                          color='w',
-                          bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
-                          ),
-    #plt_backend = 'Agg',  # Not used.
+        # Plotting controls, can be passed as kwargs:
+        render_agent_as_image=True,
+        render_size_human=(6, 3.5),
+        render_size_agent=(7, 3.5),
+        render_size_episode=(12,8),
+        render_dpi=75,
+        render_plotstyle='seaborn',
+        render_cmap='PRGn',
+        render_xlabel='Relative timesteps',
+        render_ylabel='Value',
+        render_title='local step: {}, state observation min: {:.4f}, max: {:.4f}',
+        render_boxtext=dict(fontsize=12,
+                            fontweight='bold',
+                            color='w',
+                            bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
+                            ),
+        # plt_backend = 'Agg',  # Not used.
     )
 
     def __init__(self, render_modes, **kwargs):
