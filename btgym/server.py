@@ -292,7 +292,6 @@ class BTgymServer(multiprocessing.Process):
                         socket.send_pyobj(self.render.render(service_input['mode']))
                         self.log.debug('Episode rendering for [{}] sent.'.format(service_input['mode']))
 
-
                     else:  # ignore any other input
                         # NOTE: response string must include 'ctrl' key
                         # for env.reset(), env.get_stat(), env.close() correct operation.

@@ -124,13 +124,13 @@ class BTgymStrategy(bt.Strategy):
 
     def get_reward(self):
         """
-        Default reward estimator. Returns scalar <reward, type=float>.
+        Default reward estimator.
+        Computes reward as log utility of current to initial portfolio value ratio.
+        Returns scalar <reward, type=float>.
         Same principles as for state composer apply. Can return raw portfolio
         performance statistics or enclose entire reward estimation algorithm.
         """
-        # TODO: make it log-utility
-        # Let it be 1-step portfolio value delta:
-        return (self.stats.broker.value[0] - self.stats.broker.value[-1]) * 1e4
+        return float(np.log(self.stats.broker.value[0] / self.env.broker.startingcash))
 
     def get_info(self):
         """

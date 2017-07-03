@@ -17,16 +17,6 @@
 #
 ###############################################################################
 
-from gym.envs.registration import register
+from .tensorboard import BTgymMonitor
 
-from .datafeed import BTgymDataset
-from .server import BTgymServer
-from .strategy import BTgymStrategy
-from .rendering import BTgymRendering
-from .utils import BTgymMonitor
-from .envs.backtrader import BTgymEnv
 
-register(
-    id='backtrader-v0000',
-    entry_point='btgym.envs:BTgymEnv',
-)
