@@ -24,6 +24,7 @@ from .plotter import BTgymPlotter
 class BTgymRendering():
     """
     Handles BTgym Environment rendering.
+    Important: Call `initialize_pyplot()` method before first use!
     """
     # Here we'll keep last rendered image for each rendering mode:
     rgb_dict = dict()
@@ -44,7 +45,7 @@ class BTgymRendering():
                             color='w',
                             bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
                             ),
-        # plt_backend = 'Agg',  # Not used.
+        plt_backend='Agg',  # Not used.
     )
 
     def __init__(self, render_modes, **kwargs):
@@ -68,13 +69,26 @@ class BTgymRendering():
         #from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
         #self.FigureCanvas = FigureCanvas
 
-        self.plt = None  # Will set it inside server process when calling render() for first time.
+        self.plt = None  # Will set it inside server process when calling initialize_pyplot().
 
         self.plotter = BTgymPlotter() # Modified bt.Cerebro() plotter, to get episode renderings.
 
         # Set empty plugs for each render mode:
         for mode in render_modes:
             self.rgb_dict[mode] = self.rgb_empty()
+
+    def initialize_pyplot(self):
+        """
+        Call me before use!
+        [Supposed to be done inside already running server process]
+        """
+        if self.plt is None:
+            import matplotlib
+            matplotlib.use(self.plt_backend, force=True)
+            import matplotlib.pyplot as plt
+            self.plt = plt
+
+        self.fig = self.plt.figure(figsize=self.render_size_human, dpi=self.render_dpi, )
 
     def to_string(self, dictionary, excluded=[]):
         """
@@ -165,13 +179,7 @@ class BTgymRendering():
         Note:
             It can actually return several modes in a single dict.
             It prevented by Gym modes convention, but done internally at the end of the episode.
-            TODO: implement 'all' render mode.
         """
-        # First call (supposed to be done inside server process):
-        if self.plt is None:
-            import matplotlib.pyplot as plt
-            self.plt = plt
-
         if cerebro is not None:
             # Try to render given episode:
             #try:
@@ -181,7 +189,7 @@ class BTgymRendering():
                                width=self.render_size_episode[0],
                                height=self.render_size_episode[1],
                                dpi=self.render_dpi,
-                               use=None,
+                               use=self.plt_backend,
                                iplot=False,
                                figfilename='_tmp_btgym_render.png',
                                )[0][0]
@@ -194,6 +202,7 @@ class BTgymRendering():
 
             # Clean up:
             self.plt.close(fig)
+            #self.plt.gcf().clear()
 
             #except:
                 # Just keep previous rendering
@@ -266,7 +275,7 @@ class BTgymRendering():
         Visualises environment state as 2d line plot.
         Retrurns image as rgb_array.
         """
-        fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
+        self.fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
         #ax = fig.add_subplot(111)
 
         self.plt.style.use(self.render_plotstyle)
@@ -294,22 +303,23 @@ class BTgymRendering():
         self.plt.plot(data.T)
         self.plt.tight_layout()
 
-        fig.canvas.draw()
+        self.fig.canvas.draw()
 
         # Save it to a numpy array:
-        rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        rgb_array = np.fromstring(self.fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
 
         # Clean up:
-        self.plt.close(fig)
+        self.plt.close(self.fig)
+        #self.plt.gcf().clear()
 
-        return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        return rgb_array.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
 
     def draw_image(self, data, figsize=(12,6), title='', box_text='', xlabel='X', ylabel='Y'):
         """
         Visualises environment state as image.
         Returns rgb_array.
         """
-        fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
+        self.fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
         #ax = fig.add_subplot(111)
 
         self.plt.style.use(self.render_plotstyle)
@@ -341,12 +351,14 @@ class BTgymRendering():
 
         self.plt.tight_layout()
 
-        fig.canvas.draw()
-
-        # Clean up:
-        self.plt.close(fig)
+        self.fig.canvas.draw()
 
         # Save it to a numpy array:
-        rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        rgb_array = np.fromstring(self.fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
 
-        return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        # Clean up:
+        self.plt.close(self.fig)
+        #self.plt.gcf().clear()
+
+        #ax.cla()
+        return rgb_array.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))

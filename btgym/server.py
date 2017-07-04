@@ -20,6 +20,7 @@
 import logging
 #logging.basicConfig(format='%(name)s: %(message)s')
 import multiprocessing
+import gc
 
 import itertools
 import zmq
@@ -68,6 +69,7 @@ class _BTgymAnalyzer(bt.Analyzer):
 
         # Do final renderings, it will be kept by renderer class, not sending anywhere:
         _ = self.render.render(['human', 'agent'], step_to_render=self.step_to_render,)
+        _ = None
 
         self.strategy.close()
         self.strategy.env.runstop()
@@ -248,8 +250,10 @@ class BTgymServer(multiprocessing.Process):
 
         except:
             _ = self.dataset.describe()
-
         self.cerebro.strats[0][0][2]['dataset_stat'] = self.dataset.data_stat
+
+        # Init renderer:
+        self.render.initialize_pyplot()
 
         # Server 'Control Mode' loop:
         for episode_number in itertools.count(1):
@@ -339,6 +343,7 @@ class BTgymServer(multiprocessing.Process):
 
             # Update episode rendering:
             _ = self.render.render('just_render', cerebro=cerebro)
+            _ = None
 
             # Recover that bloody analytics:
             analyzers_list = episode.analyzers.getnames()
@@ -353,6 +358,7 @@ class BTgymServer(multiprocessing.Process):
             for name in analyzers_list:
                 episode_result[name] = episode.analyzers.getbyname(name).get_analysis()
 
+            gc.collect()
 
         # Just in case -- we actually shouldn't get there except by some error:
         return None
