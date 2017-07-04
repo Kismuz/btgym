@@ -17,6 +17,7 @@
 #
 ###############################################################################
 from subprocess import Popen, PIPE
+import psutil
 import glob
 
 
@@ -51,7 +52,7 @@ class BTgymMonitor():
         # Remove previous log files if opted:
         if self.purge_previous:
             files = glob.glob(self.logdir + '/*')
-            p = Popen(['rm', '-R', ] + files, )  # , stdout=PIPE, stderr=PIPE)
+            p = psutil.Popen(['rm', '-R', ] + files, )  # , stdout=PIPE, stderr=PIPE)
 
         # Prepare writer:
         self.tf.reset_default_graph()
@@ -139,6 +140,7 @@ class tensorboard():
         self.port = port
         self.logdir = logdir
         self.process = None
+        self.pid = ''
 
         # Compose start command:
         self.start_string = ['tensorboard']
@@ -158,14 +160,14 @@ class tensorboard():
         """Launches Tensorboard app."""
 
         # Kill everything on port-to-use:
-        p = Popen(['lsof', '-i:{}'.format(self.port), '-t'], stdout=PIPE, stderr=PIPE)
-        pid = p.communicate()[0].decode()[:-1]  # retrieving PID
+        p = psutil.Popen(['lsof', '-i:{}'.format(self.port), '-t'], stdout=PIPE, stderr=PIPE)
+        self.pid = p.communicate()[0].decode()[:-1]  # retrieving PID
 
-        if pid is not '':
-            p = Popen(['kill', pid])  # , stdout=PIPE, stderr=PIPE)
+        if self.pid is not '':
+            p = psutil.Popen(['kill', self.pid])  # , stdout=PIPE, stderr=PIPE)
 
         # Start:
-        self.process = Popen(self.start_string)  # , stdout=PIPE, stderr=PIPE)
+        self.process = psutil.Popen(self.start_string)  # , stdout=PIPE, stderr=PIPE)
 
     def close(self):
         """Closes tensorboard app."""

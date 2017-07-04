@@ -43,7 +43,7 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
    
 ****
 ### <a name="install"></a>[Installation](#contents)
-- Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`, `matplotlib`,`pillow`, `ipython`.
+- Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`, `matplotlib`,`pillow`, `ipython`, `psutil`.
 - Examples requires: `scipy`.
 - Clone or copy btgym repository to local disk, cd to it and run: `pip install -e . `
 to install package and all dependencies:

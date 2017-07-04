@@ -305,6 +305,7 @@ class BTgymServer(multiprocessing.Process):
                     socket.send_pyobj(message)
 
             # Got '_reset' signal -> prepare Cerebro subclass and run episode:
+            start_time = time.time()
             cerebro = copy.deepcopy(self.cerebro)
             cerebro._socket = socket
             cerebro._log = self.log
@@ -334,11 +335,7 @@ class BTgymServer(multiprocessing.Process):
             cerebro.adddata(episode_dataset.to_btfeed())
 
             # Finally:
-            start_time = time.time()
             episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True)[0]
-
-            elapsed_time = timedelta(seconds=time.time() - start_time)
-            self.log.info('Episode elapsed time: {}.'.format(elapsed_time))
 
             # Update episode rendering:
             _ = self.render.render('just_render', cerebro=cerebro)
@@ -346,6 +343,9 @@ class BTgymServer(multiprocessing.Process):
             # Recover that bloody analytics:
             analyzers_list = episode.analyzers.getnames()
             analyzers_list.remove('_env_analyzer')
+
+            elapsed_time = timedelta(seconds=time.time() - start_time)
+            self.log.info('Episode elapsed time: {}.'.format(elapsed_time))
 
             episode_result['episode'] = episode_number
             episode_result['runtime'] = elapsed_time
