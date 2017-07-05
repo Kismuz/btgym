@@ -17,9 +17,7 @@
 #
 ###############################################################################
 
-#from backtrader.plot import Plot_OldSync as DefaultPlotter
-
-from .plotter import BTgymPlotter
+from .plotter import DrawCerebro
 
 from .renderer import BTgymRendering
 

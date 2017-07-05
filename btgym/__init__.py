@@ -23,7 +23,7 @@ from .datafeed import BTgymDataset
 from .server import BTgymServer
 from .strategy import BTgymStrategy
 from .rendering import BTgymRendering
-from .utils import BTgymMonitor
+#from .monitor import BTgymMonitor
 from .envs.backtrader import BTgymEnv
 
 register(
