@@ -31,5 +31,6 @@ setup(name='btgym',
       classifiers=['Development Status :: 3 - Alpha',],
       version='0.0.45',
       install_requires=['gym', 'backtrader', 'pyzmq', 'matplotlib', 'pillow', 'numpy', 'pandas', 'ipython','psutil'],
+      extras_require={'monitor':  ['tensorflow'],},
       include_package_data=True,
 )

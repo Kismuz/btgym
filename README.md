@@ -44,6 +44,7 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
 ****
 ### <a name="install"></a>[Installation](#contents)
 - Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`, `matplotlib`,`pillow`, `ipython`, `psutil`.
+- Optional Tensorboard monitoring requires `tensorflow`. 
 - Examples requires: `scipy`.
 - Clone or copy btgym repository to local disk, cd to it and run: `pip install -e . `
 to install package and all dependencies:
@@ -513,7 +514,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [x] state rendering;
  - [ ] retrieving results for observers;
  - [x] proper rendering for entire episode;
- - [ ] tensorboard integration;
+ - [x] tensorboard integration;
  - [ ] multiply agents asynchronous operation feature (e.g for A3C):
     -  [possibly] via dedicated data server;
  - [ ] sequential and sliding time-window sampling;
@@ -521,6 +522,8 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
  
 ### <a name="news"></a>[News and updates:](#title)
+
+- 5.07.17:  Tensorboard monitoring wrapper added; pyplot memory leak fixed.
 
 - 30.06.17: EXAMPLES updated with 'Setting up: full throttle' how-to. 
 
