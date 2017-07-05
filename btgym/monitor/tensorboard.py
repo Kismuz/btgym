@@ -65,7 +65,7 @@ class BTgymMonitor():
         # Remove previous log files if opted:
         if self.purge_previous:
             files = glob.glob(self.logdir + '/*')
-            p = psutil.Popen(['rm', '-R', ] + files, )  # , stdout=PIPE, stderr=PIPE)
+            p = psutil.Popen(['rm', '-R', ] + files, stdout=PIPE, stderr=PIPE)
 
         # Prepare writer:
         self.tf.reset_default_graph()

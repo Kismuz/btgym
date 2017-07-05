@@ -8,6 +8,8 @@
  
 - **Rendering howto**: get cool pictures.
 
+- **Tensorboard monitor**: using it to track environment dynamics.
+
 ****
 
  
