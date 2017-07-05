@@ -16,7 +16,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ###############################################################################
-
+import bisect
+import datetime
+import multiprocessing
 from backtrader.plot import Plot_OldSync
 
 
@@ -26,17 +28,54 @@ class BTgymPlotter(Plot_OldSync):
     Overrides default backtrader plotter behaviour.
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         """
         pass
         """
-        super(BTgymPlotter, self).__init__()
+        super(BTgymPlotter, self).__init__(**kwargs)
 
-    def savefig(self, fig, filename, width=16, height=9, dpi=300, tight=True):
+    def savefig(self, fig, filename, width=16, height=9, dpi=300, tight=True,):
         """
-        We neither need picture to appear in <stdout> nor file to be written (slow).
-        Just set params and return `fig` to converted to rgb array.
+        We neither need picture to appear in <stdout> nor file to be written to disk (slow).
+        Just set params and return `fig` to be converted to rgb array.
         """
         fig.set_size_inches(width, height)
         fig.set_dpi(dpi)
         fig.set_tight_layout(tight)
+        fig.canvas.draw()
+
+class DrawCerebro(multiprocessing.Process):
+    """
+    That's the way we plot it...
+    """
+    def __init__(self, cerebro, width, height, dpi, result_queue, use=None,):
+        super(DrawCerebro, self).__init__()
+        self.result_queue = result_queue
+        self.cerebro = cerebro
+        self.plotter = BTgymPlotter()
+        self.width = width
+        self.height = height
+        self.dpi = dpi
+        self.use = use
+
+    def run(self):
+        """
+        Returns tuple: rgb_string, rgb_shape.
+        """
+        fig = self.cerebro.plot(plotter=self.plotter,  # Modified above plotter class, doesnt actually saves anything.
+                                savefig=True,
+                                width=self.width,
+                                height=self.height,
+                                dpi=self.dpi,
+                                use=self.use,
+                                iplot=False,
+                                figfilename='_tmp_btgym_render.png',
+                               )[0][0]
+
+        rgb_string = fig.canvas.tostring_rgb()
+        rgb_shape = fig.canvas.get_width_height()[::-1] + (3,)
+
+        self.result_queue.put((rgb_string, rgb_shape))
+        self.result_queue.task_done()
+        return None
+

@@ -19,7 +19,8 @@
 import logging
 import numpy as np
 
-from .plotter import BTgymPlotter
+#from .plotter import BTgymPlotter
+from .plotter import DrawCerebro
 
 class BTgymRendering():
     """
@@ -71,7 +72,7 @@ class BTgymRendering():
 
         self.plt = None  # Will set it inside server process when calling initialize_pyplot().
 
-        self.plotter = BTgymPlotter() # Modified bt.Cerebro() plotter, to get episode renderings.
+        #self.plotter = BTgymPlotter() # Modified bt.Cerebro() plotter, to get episode renderings.
 
         # Set empty plugs for each render mode:
         for mode in render_modes:
@@ -82,13 +83,17 @@ class BTgymRendering():
         Call me before use!
         [Supposed to be done inside already running server process]
         """
+        from multiprocessing import Queue
+        self.queue = Queue()
+
         if self.plt is None:
             import matplotlib
             matplotlib.use(self.plt_backend, force=True)
             import matplotlib.pyplot as plt
-            self.plt = plt
 
-        self.fig = self.plt.figure(figsize=self.render_size_human, dpi=self.render_dpi, )
+        self.plt = plt
+
+        #self.fig = self.plt.figure(figsize=self.render_size_human, dpi=self.render_dpi, )
 
     def to_string(self, dictionary, excluded=[]):
         """
@@ -181,28 +186,29 @@ class BTgymRendering():
             It prevented by Gym modes convention, but done internally at the end of the episode.
         """
         if cerebro is not None:
+            self.rgb_dict['episode'] = self.draw_episode(cerebro)
             # Try to render given episode:
             #try:
                 # Get picture of entire episode:
-            fig = cerebro.plot(plotter=self.plotter,  # Modified plotter class, doesnt actually save anything.
-                               savefig=True,
-                               width=self.render_size_episode[0],
-                               height=self.render_size_episode[1],
-                               dpi=self.render_dpi,
-                               use=self.plt_backend,
-                               iplot=False,
-                               figfilename='_tmp_btgym_render.png',
-                               )[0][0]
+            #fig = cerebro.plot(plotter=self.plotter,  # Modified plotter class, doesnt actually save anything.
+            #                   savefig=True,
+            #                   width=self.render_size_episode[0],
+            #                   height=self.render_size_episode[1],
+            #                   dpi=self.render_dpi,
+            #                   use=None, #self.plt_backend,
+            #                   iplot=False,
+            #                   figfilename='_tmp_btgym_render.png',
+            #                   )[0][0]
 
-            fig.canvas.draw()
+            #fig.canvas.draw()
+            #rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+            #self.rgb_dict['episode'] = rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
-            rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
 
-            self.rgb_dict['episode'] = rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
             # Clean up:
-            self.plt.close(fig)
             #self.plt.gcf().clear()
+            #self.plt.close(fig)
 
             #except:
                 # Just keep previous rendering
@@ -275,7 +281,7 @@ class BTgymRendering():
         Visualises environment state as 2d line plot.
         Retrurns image as rgb_array.
         """
-        self.fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
+        fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
         #ax = fig.add_subplot(111)
 
         self.plt.style.use(self.render_plotstyle)
@@ -303,23 +309,23 @@ class BTgymRendering():
         self.plt.plot(data.T)
         self.plt.tight_layout()
 
-        self.fig.canvas.draw()
+        fig.canvas.draw()
 
         # Save it to a numpy array:
-        rgb_array = np.fromstring(self.fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
 
         # Clean up:
-        self.plt.close(self.fig)
+        self.plt.close(fig)
         #self.plt.gcf().clear()
 
-        return rgb_array.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
+        return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
     def draw_image(self, data, figsize=(12,6), title='', box_text='', xlabel='X', ylabel='Y'):
         """
         Visualises environment state as image.
         Returns rgb_array.
         """
-        self.fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
+        fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
         #ax = fig.add_subplot(111)
 
         self.plt.style.use(self.render_plotstyle)
@@ -351,14 +357,42 @@ class BTgymRendering():
 
         self.plt.tight_layout()
 
-        self.fig.canvas.draw()
+        fig.canvas.draw()
 
         # Save it to a numpy array:
-        rgb_array = np.fromstring(self.fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
 
         # Clean up:
-        self.plt.close(self.fig)
+        self.plt.close(fig)
         #self.plt.gcf().clear()
 
         #ax.cla()
-        return rgb_array.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
+        return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
+
+    def draw_episode(self, cerebro):
+        """
+        Monstrous way to render episode.
+        Due to memory leaks have to encapsulate it in separate process.
+        Strange but reliable. PID's are driving crazy.
+        Takes cerebro instance, returns rgb array.
+        """
+        draw_process = DrawCerebro(cerebro=cerebro,
+                                   width=self.render_size_episode[0],
+                                   height=self.render_size_episode[1],
+                                   dpi=self.render_dpi,
+                                   result_queue=self.queue,
+                                   )
+
+        draw_process.start()
+        #print('Plotter PID: {}'.format(draw_process.pid))
+
+        (rgb_string, rgb_shape) = self.queue.get()
+
+        draw_process.terminate()
+        draw_process.join()
+
+        rgb_array = np.fromstring(rgb_string, dtype=np.uint8, sep='')
+
+        return rgb_array.reshape(rgb_shape)
+

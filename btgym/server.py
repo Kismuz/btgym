@@ -293,7 +293,7 @@ class BTgymServer(multiprocessing.Process):
                     # Send episode rendering:
                     elif service_input['ctrl'] == '_render' and 'mode' in service_input.keys():
                         # Just send what we got:
-                        socket.send_pyobj(self.render.render(service_input['mode']))
+                        socket.send_pyobj(self.render.render(service_input['mode'],))
                         self.log.debug('Episode rendering for [{}] sent.'.format(service_input['mode']))
 
                     else:  # ignore any other input
