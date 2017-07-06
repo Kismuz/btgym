@@ -11,7 +11,7 @@
 - **[Tensorboard monitor](./tensorboard_monitor.ipynb)**: using it to track environment dynamics.
  After running the script and opening http://localhost:6006/ you should see something like this:
 
-[<img src="./img/tb_1_2017-07-06.png " width="200">](./img/tb_1_2017-07-06.png) [<img src="./img/tb_2_2017-07-06.png " width="200">](./img/tb_2_2017-07-06.png)
+[<img src="./img/tb_1_2017-07-06.png " width="400">](./img/tb_1_2017-07-06.png) [<img src="./img/tb_2_2017-07-06.png " width="400">](./img/tb_2_2017-07-06.png)
 
 
 ****
