@@ -492,7 +492,9 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
 ****
 ### <a name="issues"></a> [Current issues and limitations:](#title)
 
-
+- matplotlib backend warning: appears when importing pyplot and using `%matplotlib inline` magic
+  before btgym import. It's recommended to import btacktrader and btgym first to ensure proper backend
+  choice.
 - not tested with Python < 3.5;
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
