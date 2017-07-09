@@ -31,6 +31,8 @@ except:
     class BTgymMonitor():
         pass
 
+    quit(1)
+
 
 class BTgymMonitor():
     """
