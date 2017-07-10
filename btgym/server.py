@@ -342,6 +342,7 @@ class BTgymServer(multiprocessing.Process):
             episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True)[0]
 
             # Update episode rendering:
+            # TODO: temporarily disabled
             #_ = self.render.render('just_render', cerebro=cerebro)
             #_ = None
 
