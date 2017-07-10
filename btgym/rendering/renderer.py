@@ -83,8 +83,8 @@ class BTgymRendering():
         Call me before use!
         [Supposed to be done inside already running server process]
         """
-        from multiprocessing import Queue
-        self.queue = Queue()
+        from multiprocessing import Pipe
+        self.out_pipe, self.in_pipe = Pipe()
 
         if self.plt is None:
             import matplotlib
@@ -381,18 +381,22 @@ class BTgymRendering():
                                    width=self.render_size_episode[0],
                                    height=self.render_size_episode[1],
                                    dpi=self.render_dpi,
-                                   result_queue=self.queue,
+                                   result_pipe=self.in_pipe,
                                    )
 
         draw_process.start()
         #print('Plotter PID: {}'.format(draw_process.pid))
+        try:
+            rgb_array = self.out_pipe.recv()
 
-        (rgb_string, rgb_shape) = self.queue.get()
+            draw_process.terminate()
+            draw_process.join()
 
-        draw_process.terminate()
-        draw_process.join()
+            return rgb_array
 
-        rgb_array = np.fromstring(rgb_string, dtype=np.uint8, sep='')
+        except:
+            return self.rgb_empty()
 
-        return rgb_array.reshape(rgb_shape)
+
+
 

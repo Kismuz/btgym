@@ -19,6 +19,7 @@
 import bisect
 import datetime
 import multiprocessing
+import numpy as np
 from backtrader.plot import Plot_OldSync
 
 
@@ -48,9 +49,9 @@ class DrawCerebro(multiprocessing.Process):
     """
     That's the way we plot it...
     """
-    def __init__(self, cerebro, width, height, dpi, result_queue, use=None,):
+    def __init__(self, cerebro, width, height, dpi, result_pipe, use=None, ):
         super(DrawCerebro, self).__init__()
-        self.result_queue = result_queue
+        self.result_pipe = result_pipe
         self.cerebro = cerebro
         self.plotter = BTgymPlotter()
         self.width = width
@@ -60,7 +61,7 @@ class DrawCerebro(multiprocessing.Process):
 
     def run(self):
         """
-        Returns tuple: rgb_string, rgb_shape.
+        Returns rgb_array.
         """
         fig = self.cerebro.plot(plotter=self.plotter,  # Modified above plotter class, doesnt actually saves anything.
                                 savefig=True,
@@ -74,8 +75,9 @@ class DrawCerebro(multiprocessing.Process):
 
         rgb_string = fig.canvas.tostring_rgb()
         rgb_shape = fig.canvas.get_width_height()[::-1] + (3,)
-
-        self.result_queue.put((rgb_string, rgb_shape))
-        self.result_queue.task_done()
+        rgb_array = np.fromstring(rgb_string, dtype=np.uint8, sep='')
+        rgb_array = rgb_array.reshape(rgb_shape)
+        self.result_pipe.send(rgb_array)
+        self.result_pipe.close()
         return None
 
