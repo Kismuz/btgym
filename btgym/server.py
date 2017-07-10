@@ -342,8 +342,8 @@ class BTgymServer(multiprocessing.Process):
             episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True)[0]
 
             # Update episode rendering:
-            _ = self.render.render('just_render', cerebro=cerebro)
-            _ = None
+            #_ = self.render.render('just_render', cerebro=cerebro)
+            #_ = None
 
             # Recover that bloody analytics:
             analyzers_list = episode.analyzers.getnames()

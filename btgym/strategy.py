@@ -46,6 +46,7 @@ class BTgymStrategy(bt.Strategy):
     # and attributes one can need at runtime:
     log = None
     iteration = 1
+    inner_embedding = 1
     is_done = False
     action = 'hold'
     order = None
@@ -79,6 +80,10 @@ class BTgymStrategy(bt.Strategy):
         self.set_datalines()
         self.log.debug('Kwargs:\n{}\n'.format(str(kwargs)))
 
+    def nextstart(self):
+        self.inner_embedding = self.data.close.buflen()
+        self.log.debug('Inner time embedding: {}'.format(self.inner_embedding))
+
     def set_datalines(self):
         """
         Default datalines are: Open, Low, High, Close, Volume.
@@ -86,7 +91,7 @@ class BTgymStrategy(bt.Strategy):
         should be explicitly defined by overriding this method [convention].
         Invoked once by Strategy.__init__().
         """
-        #self.log.warning('Deprecated method. Will be removed in th future. Use _get_raw_state() instead.')
+        #self.log.warning('Deprecated method. Will be removed in the future. Use _get_raw_state() instead.')
 
     def _get_raw_state(self):
         """
@@ -181,7 +186,7 @@ class BTgymStrategy(bt.Strategy):
         # Base episode termination rules:
         is_done_rules = [
             # Will it be last step of the episode?:
-            (self.iteration >= self.data.numrecords - self.p.state_shape[-1], 'END OF DATA!'),
+            (self.iteration >= self.data.numrecords - self.inner_embedding, 'END OF DATA!'),
             # Any money left?:
             (self.stats.drawdown.maxdrawdown[0] > self.p.drawdown_call, 'DRAWDOWN CALL!'),
         ]
