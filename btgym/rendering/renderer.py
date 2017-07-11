@@ -25,7 +25,7 @@ from .plotter import DrawCerebro
 class BTgymRendering():
     """
     Handles BTgym Environment rendering.
-    Important: Call `initialize_pyplot()` method before first use!
+    Important: Call `initialize_pyplot()` method before first render() call!
     """
     # Here we'll keep last rendered image for each rendering mode:
     rgb_dict = dict()
@@ -92,8 +92,6 @@ class BTgymRendering():
             import matplotlib.pyplot as plt
 
         self.plt = plt
-
-        #self.fig = self.plt.figure(figsize=self.render_size_human, dpi=self.render_dpi, )
 
     def to_string(self, dictionary, excluded=[]):
         """
@@ -398,5 +396,17 @@ class BTgymRendering():
             return self.rgb_empty()
 
 
+class BTgymNullRendering():
+    """
+    Empty renderer to use when resources are concern.
+    """
 
+    def __init__(self, *args, **kwargs):
+        self.plug = (np.random.rand(100, 200, 3) * 255).astype(dtype=np.uint8)
+        self.params = {'rendering': 'disabled'}
 
+    def initialize_pyplot(self):
+        pass
+
+    def render(self, *args, **kwargs):
+        return self.plug

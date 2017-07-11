@@ -19,5 +19,5 @@
 
 from .plotter import DrawCerebro
 
-from .renderer import BTgymRendering
+from .renderer import BTgymRendering, BTgymNullRendering
 

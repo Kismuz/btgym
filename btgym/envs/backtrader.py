@@ -32,6 +32,8 @@ import backtrader as bt
 
 from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering
 
+from btgym.rendering import BTgymNullRendering
+
 ############################## OpenAI Gym Environment  ##############################
 
 
@@ -62,6 +64,7 @@ class BTgymEnv(gym.Env):
     ctrl_actions = ('_done', '_reset', '_stop', '_getstat', '_render')  # server control messages.
 
     # Rendering:
+    render_enabled = True
     renderer = None  # Rendering support.
     rendered_rgb = dict()  # Keep last rendered images for each mode.
 
@@ -159,7 +162,12 @@ class BTgymEnv(gym.Env):
         self.network_address += str(self.port)
 
         # Set server rendering:
-        self.renderer = BTgymRendering(self.metadata['render.modes'], **kwargs)
+        if self.render_enabled:
+            self.renderer = BTgymRendering(self.metadata['render.modes'], **kwargs)
+
+        else:
+            self.renderer = BTgymNullRendering()
+            self.log.info('Rendering disabled. Call to render() will return null-plug image.')
 
         # Append logging:
         self.renderer.log = self.log

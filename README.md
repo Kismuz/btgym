@@ -525,6 +525,10 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
 ### <a name="news"></a>[News and updates:](#title)
 
+- 11.07.17: Rendering battle continues: improved stability while low in memory,
+            added environment kwarg `render_enabled=True`; when set to `False`
+             - all renderings are disabled. Can help with performance.
+
 - 5.07.17:  Tensorboard monitoring wrapper added; pyplot memory leak fixed.
 
 - 30.06.17: EXAMPLES updated with 'Setting up: full throttle' how-to. 

@@ -77,7 +77,13 @@ class DrawCerebro(multiprocessing.Process):
         rgb_shape = fig.canvas.get_width_height()[::-1] + (3,)
         rgb_array = np.fromstring(rgb_string, dtype=np.uint8, sep='')
         rgb_array = rgb_array.reshape(rgb_shape)
-        self.result_pipe.send(rgb_array)
-        self.result_pipe.close()
+
+        try:
+            self.result_pipe.send(rgb_array)
+            self.result_pipe.close()
+
+        except:
+            raise RuntimeError('Can not perform episode rendering.\n' +
+                               'Hint: check memory consumption or use: render_enabled=False')
         return None
 

@@ -343,8 +343,8 @@ class BTgymServer(multiprocessing.Process):
 
             # Update episode rendering:
             # TODO: temporarily disabled
-            #_ = self.render.render('just_render', cerebro=cerebro)
-            #_ = None
+            _ = self.render.render('just_render', cerebro=cerebro)
+            _ = None
 
             # Recover that bloody analytics:
             analyzers_list = episode.analyzers.getnames()
