@@ -90,7 +90,7 @@ class BTgymMonitor():
 
         for entry in histograms:
             assert type(entry) == str
-            self.feed_holder[entry] = self.tf.placeholder(self.tf.float32,[None,None,None],)
+            self.feed_holder[entry] = self.tf.placeholder(self.tf.float32,[None, None],)
             summaries += [self.tf.summary.histogram(entry, self.feed_holder[entry], )]
 
         for entry in text:
