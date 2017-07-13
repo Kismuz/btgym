@@ -335,6 +335,9 @@ class BTgymServer(multiprocessing.Process):
             # Get episode data statistic and pass it to strategy params:
             cerebro.strats[0][0][2]['episode_stat'] = episode_dataset.describe()
 
+            # Set nice broker cash plotting:
+            cerebro.broker.set_shortcash(False)
+
             # Add data to engine:
             cerebro.adddata(episode_dataset.to_btfeed())
 
@@ -342,7 +345,6 @@ class BTgymServer(multiprocessing.Process):
             episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True)[0]
 
             # Update episode rendering:
-            # TODO: temporarily disabled
             _ = self.render.render('just_render', cerebro=cerebro)
             _ = None
 
@@ -355,6 +357,7 @@ class BTgymServer(multiprocessing.Process):
 
             episode_result['episode'] = episode_number
             episode_result['runtime'] = elapsed_time
+            episode_result['length'] = len(episode.data.close)
 
             for name in analyzers_list:
                 episode_result[name] = episode.analyzers.getbyname(name).get_analysis()

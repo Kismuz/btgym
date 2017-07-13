@@ -57,7 +57,8 @@ class BTgymStrategy(bt.Strategy):
                               # one can define any shape; should match env.observation_space.shape.
         state_low=None,  # observation space state min/max values,
         state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
-        drawdown_call=90,  # simplest condition to finish episode.
+        drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.
+        target_call=10,  # finish episode when reaching profit target, in percent.
         dataset_stat=None,  # Summary descriptive statistics for entire dataset and
         episode_stat=None,  # current episode. Got updated by server.
         portfolio_actions=('hold', 'buy', 'sell', 'close'),  # possible agent actions.
@@ -75,6 +76,7 @@ class BTgymStrategy(bt.Strategy):
         self.data.dim_sma = btind.SimpleMovingAverage(self.datas[0],
                                                       period=self.p.state_shape[-1])
         self.data.dim_sma.plotinfo.plot = False
+        self.target_value = self.env.broker.startingcash * (1 + self.p.target_call)
 
         # Add custom data Lines if any (just a convenience wrapper):
         self.set_datalines()
@@ -150,9 +152,10 @@ class BTgymStrategy(bt.Strategy):
             time=self.data.datetime.datetime(),
             action=self.action,
             broker_message=self.broker_message,
+            broker_cash=self.stats.broker.cash[0],
             broker_value=self.stats.broker.value[0],
             drawdown=self.stats.drawdown.drawdown[0],
-            max_drawdown=self.stats.drawdown.maxdrawdown[0],
+            #max_drawdown=self.stats.drawdown.maxdrawdown[0],
         )
 
     def get_done(self):
@@ -174,6 +177,7 @@ class BTgymStrategy(bt.Strategy):
            is sent as part of environment response.
         2. Got '_done' signal from outside. E.g. via env.reset() method invoked by outer RL algorithm.
         3. Hit drawdown threshold.
+        4. Hit target profit treshhold.
 
         This method shouldn't be overridden or called explicitly.
 
@@ -188,17 +192,20 @@ class BTgymStrategy(bt.Strategy):
             # Will it be last step of the episode?:
             (self.iteration >= self.data.numrecords - self.inner_embedding, 'END OF DATA!'),
             # Any money left?:
-            (self.stats.drawdown.maxdrawdown[0] > self.p.drawdown_call, 'DRAWDOWN CALL!'),
+            (self.stats.drawdown.maxdrawdown[0] >= self.p.drawdown_call, 'DRAWDOWN CALL!'),
+            # Party time?
+            (self.env.broker.get_value() > self.target_value, 'TARGET REACHED!'),
         ]
 
         # Append custom get_done() results, if any:
         is_done_rules += [self.get_done()]
 
-        # Sweep through:
+        # Sweep through rules:
         for (condition, message) in is_done_rules:
             if condition:
                 self.is_done = True
                 self.broker_message = message
+                self.order = self.close()
         return self.is_done
 
     def notify_order(self, order):
@@ -218,16 +225,16 @@ class BTgymStrategy(bt.Strategy):
                            order.executed.comm)
                 self.buyprice = order.executed.price
                 self.buycomm = order.executed.comm
+
             else:  # Sell
                 self.broker_message = 'SELL executed,\nPrice: {:.5f}, Cost: {:.4f}, Comm: {:.4f}'. \
                     format(order.executed.price,
                            order.executed.value,
                            order.executed.comm)
             self.bar_executed = len(self)
-        elif order.status in [order.Canceled]:
-            self.broker_message = 'Order Canceled'
-        elif order.status in [order.Margin, order.Rejected]:
-            self.broker_message = 'Order Margin/Rejected'
+
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            self.broker_message = 'ORDER FAILED with status: ' + str(order.getstatusname())
         self.order = None
 
     def next(self):
