@@ -94,7 +94,7 @@ env_params = dict(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
                   episode_len_hours=23,
                   episode_len_minutes=55,
                   drawdown_call=50,
-                  state_shape=(4,20),
+                  state_shape=(20,4),
                   port=5555,
                   verbose=1,
                   )
@@ -111,7 +111,7 @@ from btgym import BTgymDataset, BTgymStrategy, BTgymEnv
  
 MyCerebro = bt.Cerebro()
 MyCerebro.addstrategy(BTgymStrategy,
-                      state_shape=(4,20),
+                      state_shape=(20,4),
                       skip_frame=5,
                       state_low=None,
                       state_high=None,
@@ -285,8 +285,8 @@ Repeat until received message '_stop':
     - To mention, it seems reasonable to pass all preprocessing work to server, since it can be done asynchronously
     with agent own computations and thus somehow speed up training.
 
- 2. [state matrix], returned by Environment by default is 2d [m,n] numpy array of floats,
-    where m - number of Backtrader Datafeed values: v[-n], v[-n+1], v[-n+2],...,v[0],
+ 2. [state matrix], returned by Environment by default is 2d [n,m] numpy array of floats,
+    where n - number of Backtrader Datafeed values: v[-n], v[-n+1], v[-n+2],...,v[0],
     i.e. from n steps back to present step, and every v[i] is itself a vector of m features
     (open, close,...,volume,..., mov.avg., etc.).
     - in case of n=1 process is obviously POMDP. Ensure Markov property by 'frame stacking' or/and
@@ -347,8 +347,8 @@ Accepts:
 Returns:
 - response - `tuple (O, R, D, I)`:
     - `OBSERVATION` - observation of the current environment state, could be any tensor;
-        default is [4,m] array of < fl32 >, where:
-        - m - num. of last datafeed values,
+        default is [n,4] array of < fl32 >, where:
+        - n - num. of last datafeed values,
         - 4 - num. of data features (O, H, L, C  price values).
     - `REWARD` - current portfolio statistics for environment reward estimation;
     - `DONE` - episode termination flag;
@@ -393,8 +393,8 @@ Invoked once by Strategy `init()`.
 #### get_state():
 Default state observation composer.
 - Returns time-embedded environment state observation as [n,m] numpy matrix, where
-    - n - number of signal features [ == `env.state_dim_0`, default is 4 ],
-    - m - time-embedding length.
+    - m - number of signal features [ == `env.state_dim_1`, default is 4 ],
+    - n - time-embedding length.
 - One can override this method,
 defining necessary calculations and returning arbitrary shaped tensor.
 It's possible either to compute entire featurized environment state
@@ -405,7 +405,8 @@ Data Lines that are not default to `BTgymStrategy` should be explicitly defined 
 
 #### get_reward():
 Default reward estimator.
-- Default implementation: returns amplified one-step portfolio value difference.
+- Default implementation: Computes reward as log utility of current to initial portfolio value ratio.
+- Returns scalar <reward, type=float>.
 - Same as for state composer applies. Can return raw portfolio
 performance statictics or enclose entire reward estimation module.
 
@@ -421,7 +422,6 @@ defines any trading logic conditions episode stop is called upon.
   e.g.: `(True, 'OMG! Stop it, we became too rich!')`
 - Default method is empty.
 
-
 #### _get_done():
 Default episode termination method,
 checks base conditions episode stop is called upon:
@@ -429,6 +429,7 @@ checks base conditions episode stop is called upon:
    is sent as part of environment response.
 2. Got `_done` signal from outside. E.g. via `env.reset()` method invoked by outer RL algorithm.
 3. Hit drawdown threshold.
+4. Reached profit target. 
  
 This method shouldn't be overridden or called explicitly.
 ```
@@ -525,12 +526,14 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
 ### <a name="news"></a>[News and updates:](#title)
 
-- 15.07.17: UPDATE: now state observation can be tensor of any rank.
-            Consequently, dim. ordering convention has changed to ensure compatibility with 
+- 15.07.17: UPDATE, BACKWARD INCOMPATIBILITY: now state observation can be tensor of any rank.
+     - Consequently, dim. ordering convention has changed to ensure compatibility with 
             existing tf models: time embedding is first dimension from now on, e.g. state
-            with shape (30, 20, 4) is 30x time embedded with 4 'channels'. For sake of 2d
-            visualisation only one 'cannel' can be rendered;
-            this is controlled by env kwarg `render_agent_channel=0`;
+            with shape (30, 20, 4) is 30x steps time embedded with 20 features and 4 'channels'.
+            For the sake of 2d visualisation only one 'cannel' can be rendered, can be
+            chosen by setting env. kwarg `render_agent_channel=0`;
+     - examples are updated;
+     - better now than later.
 
 - 11.07.17: Rendering battle continues: improved stability while low in memory,
             added environment kwarg `render_enabled=True`; when set to `False`

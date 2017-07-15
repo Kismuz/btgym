@@ -52,6 +52,7 @@ class BTgymStrategy(bt.Strategy):
     order = None
     broker_message = '-'
     raw_state = None
+    state = None
     params = dict(
         state_shape=(10, 4),  # observation state shape, by convention first dimension is time embedding one;
                               # one can define any shape; should match env.observation_space.shape.
@@ -81,6 +82,7 @@ class BTgymStrategy(bt.Strategy):
         # Add custom data Lines if any (just a convenience wrapper):
         self.set_datalines()
         self.log.debug('Kwargs:\n{}\n'.format(str(kwargs)))
+        self.state = np.zeros(self.p.state_shape)
 
     def nextstart(self):
         self.inner_embedding = self.data.close.buflen()
