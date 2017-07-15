@@ -32,6 +32,7 @@ class BTgymRendering():
     params = dict(
         # Plotting controls, can be passed as kwargs:
         render_agent_as_image=True,
+        render_agent_channel=0,
         render_size_human=(6, 3.5),
         render_size_agent=(7, 3.5),
         render_size_episode=(12,8),
@@ -116,13 +117,16 @@ class BTgymRendering():
         Converts environment response to plotting attributes:
         state, title, text.
         """
-        try:
-            # State output:
+        if len(state.shape) <= 2:
             state = np.asarray(state)
-            assert len(state.shape) == 2
 
-        except:
-            raise NotImplementedError('Only 2D observation state rendering supported.')
+        elif len(state.shape) == 3:
+            state = np.asarray(state[:, :, self.render_agent_channel])
+
+        else:
+            raise NotImplementedError(
+                '2D rendering can be done for obs. state tensor with rank <= 3; ' +\
+                'state shape received: {}'.format(np.asarray(state).shape))
 
         # Figure out how to deal with info output:
         try:
@@ -273,7 +277,6 @@ class BTgymRendering():
 
             return return_dict
 
-
     def draw_plot(self, data, figsize=(10,6), title='', box_text='', xlabel='X', ylabel='Y'):
         """
         Visualises environment state as 2d line plot.
@@ -302,9 +305,9 @@ class BTgymRendering():
         #self.plt.rcParams['text.antialiased']=False
 
         # Add Info box:
-        self.plt.text(0, data.T.min(), box_text, **self.render_boxtext)
+        self.plt.text(0, data.min(), box_text, **self.render_boxtext)
 
-        self.plt.plot(data.T)
+        self.plt.plot(data)
         self.plt.tight_layout()
 
         fig.canvas.draw()
@@ -330,7 +333,7 @@ class BTgymRendering():
         self.plt.title(title)
 
         # Plot x axis as reversed time-step embedding:
-        xticks = np.linspace(data.shape[-1] - 1, 0, int(data.shape[-1]), dtype=int)
+        xticks = np.linspace(data.shape[0] - 1, 0, int(data.shape[-1]), dtype=int)
         self.plt.xticks(xticks.tolist(), (- xticks[::-1]).tolist(), visible=False)
 
         # Set every 5th tick label visible:
@@ -348,9 +351,9 @@ class BTgymRendering():
         # self.plt.rcParams['text.antialiased']=False
 
         # Add Info box:
-        self.plt.text(0, data.shape[0] - 1, box_text, **self.render_boxtext)
+        self.plt.text(0, data.shape[1] - 1, box_text, **self.render_boxtext)
 
-        im = self.plt.imshow(data, aspect='auto', cmap=self.render_cmap)
+        im = self.plt.imshow(data.T, aspect='auto', cmap=self.render_cmap)
         self.plt.colorbar(im, use_gridspec=True)
 
         self.plt.tight_layout()

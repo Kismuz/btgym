@@ -525,6 +525,13 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
 ### <a name="news"></a>[News and updates:](#title)
 
+- 15.07.17: UPDATE: now state observation can be tensor of any rank.
+            Consequently, dim. ordering convention has changed to ensure compatibility with 
+            existing tf models: time embedding is first dimension from now on, e.g. state
+            with shape (30, 20, 4) is 30x time embedded with 4 'channels'. For sake of 2d
+            visualisation only one 'cannel' can be rendered;
+            this is controlled by env kwarg `render_agent_channel=0`;
+
 - 11.07.17: Rendering battle continues: improved stability while low in memory,
             added environment kwarg `render_enabled=True`; when set to `False`
              - all renderings are disabled. Can help with performance.

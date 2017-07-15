@@ -53,7 +53,7 @@ class BTgymStrategy(bt.Strategy):
     broker_message = '-'
     raw_state = None
     params = dict(
-        state_shape=(4, 10),  # observation state shape, by convention last dimension is time embedding one;
+        state_shape=(10, 4),  # observation state shape, by convention first dimension is time embedding one;
                               # one can define any shape; should match env.observation_space.shape.
         state_low=None,  # observation space state min/max values,
         state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
@@ -74,7 +74,7 @@ class BTgymStrategy(bt.Strategy):
         # A wacky way to define strategy 'minimum period'
         # for proper time-embedded state composition:
         self.data.dim_sma = btind.SimpleMovingAverage(self.datas[0],
-                                                      period=self.p.state_shape[-1])
+                                                      period=self.p.state_shape[0])
         self.data.dim_sma.plotinfo.plot = False
         self.target_value = self.env.broker.startingcash * (1 + self.p.target_call)
 
@@ -98,20 +98,18 @@ class BTgymStrategy(bt.Strategy):
     def _get_raw_state(self):
         """
         Default state observation composer.
-        Returns time-embedded environment state observation as [4,m] numpy matrix, where
-        4 - number of signal features  == state_shape[0],
-        m - time-embedding length  == state_shape[-1] == <set by user>.
+        Returns time-embedded environment state observation as [n,4] numpy matrix, where
+        4 - number of signal features  == state_shape[1],
+        n - time-embedding length  == state_shape[0] == <set by user>.
         """
-
-        # TODO: raw_state time dimension differ from state: e.g. +1 id difference should be used (?!)
         self.raw_state = np.row_stack(
             (
-                self.data.open.get(size=self.p.state_shape[-1]),
-                self.data.low.get(size=self.p.state_shape[-1]),
-                self.data.high.get(size=self.p.state_shape[-1]),
-                self.data.close.get(size=self.p.state_shape[-1]),
+                np.frombuffer(self.data.open.get(size=self.p.state_shape[0])),
+                np.frombuffer(self.data.low.get(size=self.p.state_shape[0])),
+                np.frombuffer(self.data.high.get(size=self.p.state_shape[0])),
+                np.frombuffer(self.data.close.get(size=self.p.state_shape[0])),
             )
-        )
+        ).T
 
         return self.raw_state
 
