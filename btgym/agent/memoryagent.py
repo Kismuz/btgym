@@ -120,7 +120,7 @@ class BTgymMemoryAgent():
                                               scope='target_q')
 
         # Make e-greedy policy function for estimator:
-        self.ploicy = self.make_epsilon_greedy_policy(self.q_estimator, self.num_actions)
+        self.policy = self.make_epsilon_greedy_policy(self.q_estimator, self.num_actions)
 
     def save(self, sess):
         """
