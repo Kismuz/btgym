@@ -110,7 +110,7 @@ class BTgymMemoryAgent():
         with tf.variable_scope(scope):
             # Mandatory:
             self._build_memory()
-            self._build_model_updater(self.q_estimator, self.target_estimator, self.tau)
+            #self._build_model_updater(self.q_estimator, self.target_estimator, self.tau)
             self._build_global_step()
 
             # May or may not be here:

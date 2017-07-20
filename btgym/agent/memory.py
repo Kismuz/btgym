@@ -35,7 +35,7 @@ class BTgymReplayMemory():
     state_shape = dict(external=(N1,N2, ..., Nk),
                        internal=(M1, M2, ..., Ml),)
 
-    Shape of single experience therefore defined by memory fields(=keys):
+    Therefore, shape of single experience memory record is:
     experience_shape = dict(state_external=state_shape['external'],
                             state_internal=state_shape['internal'],
                             action=(),
@@ -278,9 +278,8 @@ class BTgymReplayMemory():
                 op = var[self._mem_pointer1_pl, self._mem_pointer2_pl, ...]
                 self._get_experience_op.append(op)
 
-        # Get batch of random experiences:
+        # Get batch of random experiences (bigger one):
         self._sample_batch_indices_op = []
-
         # Sample episode numbers:
         self._sample_batch_indices_op.append(
             self._batch_indices[:, 0].assign(
@@ -297,7 +296,6 @@ class BTgymReplayMemory():
             self.memory['episode_length'],
             self._batch_indices[:, 0],
         )[:, 0] - 1
-
         # Now can sample experiences indices:
         self._sample_batch_indices_op.append(
             self._batch_indices[:, 1].assign(
@@ -346,7 +344,7 @@ class BTgymReplayMemory():
                     self.memory[key],
                     self._batch_indices,
                 )
-
+        # Finally:
         self._get_experience_batch_op['state_external_next'] = tf.gather_nd(
             self.memory['state_external'],
             batch_indices_next,
@@ -361,7 +359,7 @@ class BTgymReplayMemory():
             content.append(sess.run(var))
         return  content
 
-    def _get_memory_size(self, sess):
+    def _get_current_size(self, sess):
         """
         Returns current used memory size
         in number of stored episodes, in range [0, max_mem_size].
@@ -369,7 +367,7 @@ class BTgymReplayMemory():
         # TODO: use .eval(sess)?
         return sess.run(self._mem_current_size)
 
-    def _set_memory_size(self, sess, value):
+    def _set_current_size(self, sess, value):
         """
         Sets current used memory size in number of episodes.
         """
@@ -397,7 +395,20 @@ class BTgymReplayMemory():
                      feed_dict={self._mem_cyclic_pointer_pl: value},
                      )
 
-    def add_experience(self, sess, experience):
+    def update(self, sess, state, action, reward, state_next):
+        """
+        Convenience s,a,r,s' wrapper for adding single experience to memory.
+        """
+        experience = dict(
+            state_external=state['external'],
+            state_internal=state['internal'],
+            action=action,
+            reward=reward,
+            state_internal_next=state_next['internal'],
+        )
+        self._add_experience(sess, experience)
+
+    def _add_experience(self, sess, experience):
         """
         Writes single experience to episode memory buffer,
         calls add_episode() method if experience['done']=True.
@@ -423,10 +434,10 @@ class BTgymReplayMemory():
         self.local_step += 1
 
         if experience['done'] or self.local_step >= self.memory_shape[1]:
-            # If over, write episode to replay memory:
-            self.add_episode(sess)
+            # If over, store episode in replay memory:
+            self._add_episode(sess)
 
-    def add_episode(self, sess):
+    def _add_episode(self, sess):
         """
         Writes episode to replay memory.
         """
@@ -436,20 +447,21 @@ class BTgymReplayMemory():
         # print('Saved episode with:')
         # print('mem_size:', self.get_memory_size(sess))
         # print('cyclic_pointer:', self.get_cyclic_pointer(sess))
+
         # Reset local_step, increment episode count:
         self.local_step = 0
         self.episode += 1
 
         # Increment memory size and move cycle_pointer to next episode:
         # Get actual size and pointer:
-        self.current_mem_size = self._get_memory_size(sess)
+        self.current_mem_size = self._get_current_size(sess)
         self.current_mem_pointer = self._get_cyclic_pointer(sess)
 
         if self.current_mem_size < self.memory_shape[0] - 1:
             # If memory is not full - increase used size by 1,
             # else - leave it along:
             self.current_mem_size += 1
-            self._set_memory_size(sess, self.current_mem_size)
+            self._set_current_size(sess, self.current_mem_size)
 
         if self.current_mem_pointer >= self.current_mem_size:
             # Rewind cyclic pointer, if reached memory upper bound:
@@ -471,11 +483,11 @@ class BTgymReplayMemory():
           - episode_length scalar.
         """
         try:
-            assert episode_number <= self._get_memory_size(sess)
+            assert episode_number <= self._get_current_size(sess)
 
         except:
             raise ValueError('Episode index <{}> is out of memory bounds <{}>.'.
-                             format(episode_number, self._get_memory_size(sess)))
+                             format(episode_number, self._get_current_size(sess)))
 
         episode = dict()
         (episode['state_external'],
@@ -492,12 +504,12 @@ class BTgymReplayMemory():
 
     def _sample_random_experience(self, sess, batch_size=None):
         """
-        DEPRECATED.
+        DEPRECATED. New implementation see below.
         Samples batch of random experiences from replay memory,
         returns:
             dictionary of O, A, R, O-next, each is np array [batch_size, own_dimension].
         """
-        self.current_mem_size = self._get_memory_size(sess)
+        self.current_mem_size = self._get_current_size(sess)
         if batch_size is None:
             batch_size = self.batch_size
 
@@ -575,7 +587,7 @@ class BTgymReplayMemory():
             O, A, R, O-next, each one is np.array of shape [batch_size, field_own_dimension].
         """
         # TODO: can return dict of tensors itself, for direct connection with estimator input
-        self.current_mem_size = self._get_memory_size(sess)
+        self.current_mem_size = self._get_current_size(sess)
 
         try:
             assert self.batch_size <= self.current_mem_size
