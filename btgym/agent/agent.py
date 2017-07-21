@@ -39,8 +39,7 @@ class BTgymDqnAgent():
                             state_internal=state_shape['internal'],
                             action=(),
                             reward=(),
-                            state_internal_next=state_shape['internal'],
-                            state_external_next=state_shape['internal'],)
+                            done=(),)
     """
     state_shape = dict(
         external=(None, None),
@@ -56,16 +55,14 @@ class BTgymDqnAgent():
         state_internal=state_shape['internal'],
         action=(),
         reward=(),
-        state_external_next=state_shape['external'],
-        state_internal_next=state_shape['internal'],
+        done=(),
     )
     experience = dict(
         state_external=None,
         state_internal=None,
         action=None,
         reward=None,
-        state_external_next=None,
-        state_internal_next=None,
+        done=None,
     )
     action = None
     reward = None
@@ -113,7 +110,7 @@ class BTgymDqnAgent():
                 self.valid_actions,
                 **kwargs
             )
-            self._estimator_update_constructor(
+            self._update_estimator_constructor(
                 self.q_estimator,
                 self.t_estimator,
             )
@@ -203,7 +200,7 @@ class BTgymDqnAgent():
         else:
             raise RuntimeError('Saver for <{}> is not defined.'.format(self.scope))
 
-    def _estimator_update_constructor(self, estimator1, estimator2):
+    def _update_estimator_constructor(self, estimator1, estimator2):
         """
         Defines copy-work operation graph.
         Args:
@@ -267,9 +264,8 @@ class BTgymDqnAgent():
                 )
                 action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
                 state_next, reward, done, info = env.step(action)
-                self.memory.update(state, action, reward, state_next)
-                # Do or don't? Rather don't - or else part of epsilons just get waisted:
-                #self.global_step_up(sess)
+                self.memory.update(state, action, reward, done)
+                #Do NOT increment self.global_step
                 if done:
                     state = env.reset()
 

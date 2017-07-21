@@ -34,14 +34,18 @@ class BTgymReplayMemory():
     as dictionary of two arbitrary shaped tensors:
     state_shape = dict(external=(N1,N2, ..., Nk),
                        internal=(M1, M2, ..., Ml),)
-
-    Therefore, shape of single experience memory record is:
+    Internal shape of single experience is {State, Action, Reward}:
     experience_shape = dict(state_external=state_shape['external'],
                             state_internal=state_shape['internal'],
                             action=(),
-                            reward=(),
-                            state_internal_next=state_shape['internal'],
-                            state_external_next=state_shape['internal'],)
+                            reward=(),)
+    One memory record is logical construction,
+    representing entire single episode as ordered sequence of experiences and
+    organized as dictionary of tf.variables with keys in consistence with single experience,
+    and key 'episode_length' holding scalar integer value.
+
+    Due to fact episode is ordered sequence, it is possible
+    to extract agent experience in form of [S, A, R, S'], for every but terminal episode step.
     """
 
     def __init__(self,
@@ -58,8 +62,6 @@ class BTgymReplayMemory():
             action=(),
             reward=(),
             done=(),
-            state_external_next=state_shape['external'],
-            state_internal_next=state_shape['internal'],
         )
         self.max_episode_length = max_episode_length
         self.batch_size = batch_size
@@ -106,10 +108,6 @@ class BTgymReplayMemory():
                     dtype=tf.float32,
                     shape=self.experience_shape['reward'],
                 ),
-                state_internal_next=tf.placeholder(
-                    dtype=tf.float32,
-                    shape=self.experience_shape['state_internal_next'],
-                ),
                 episode_length=tf.placeholder(
                     dtype=tf.int32,
                     shape=(1,),
@@ -138,107 +136,96 @@ class BTgymReplayMemory():
                 dtype=tf.int32,
             )
 
-            with tf.variable_scope('buffer'):
-                # Memory buffer accumulates experiences of single episode.
-                self.buffer = dict(
-                    state_external=tf.Variable(
-                        tf.zeros((self.max_episode_length,) + self.experience_shape['state_external']),
-                        trainable=False,
-                        name='state_external',
-                        dtype=tf.float32,
-                    ),
-                    state_internal=tf.Variable(
-                        tf.zeros((self.max_episode_length,) + self.experience_shape['state_internal']),
-                        trainable=False,
-                        name='state_internal',
-                        dtype=tf.float32,
-                    ),
-                    action=tf.Variable(
-                        tf.zeros((self.max_episode_length,) + self.experience_shape['action'], dtype=tf.int32),
-                        trainable=False,
-                        name='action',
-                        dtype=tf.int32,
-                    ),
-                    reward=tf.Variable(
-                        tf.zeros((self.max_episode_length,) + self.experience_shape['reward']),
-                        trainable=False,
-                        name='reward',
-                        dtype=tf.float32,
-                    ),
-                    state_internal_next=tf.Variable(
-                        tf.zeros((self.max_episode_length,) + self.experience_shape['state_internal_next']),
-                        trainable=False,
-                        name='state_internal_next',
-                        dtype=tf.float32,
-                    ),
-                    episode_length=tf.Variable(
-                        tf.zeros((1,), dtype=tf.int32),
-                        trainable=False,
-                        name='episode_length',
-                        dtype=tf.int32,
-                    ),
-                )
+        with tf.variable_scope('buffer'):
+            # Memory input buffer accumulates experiences of single episode.
+            self.buffer = dict(
+                state_external=tf.Variable(
+                    tf.zeros((self.max_episode_length,) + self.experience_shape['state_external']),
+                    trainable=False,
+                    name='state_external',
+                    dtype=tf.float32,
+                ),
+                state_internal=tf.Variable(
+                    tf.zeros((self.max_episode_length,) + self.experience_shape['state_internal']),
+                    trainable=False,
+                    name='state_internal',
+                    dtype=tf.float32,
+                ),
+                action=tf.Variable(
+                    tf.zeros((self.max_episode_length,) + self.experience_shape['action'], dtype=tf.int32),
+                    trainable=False,
+                    name='action',
+                    dtype=tf.int32,
+                ),
+                reward=tf.Variable(
+                    tf.zeros((self.max_episode_length,) + self.experience_shape['reward']),
+                    trainable=False,
+                    name='reward',
+                    dtype=tf.float32,
+                ),
+                episode_length=tf.Variable(
+                    tf.zeros((1,), dtype=tf.int32),
+                    trainable=False,
+                    name='episode_length',
+                    dtype=tf.int32,
+                ),
+            )
 
-            with tf.variable_scope('memory_variable'):
-                # Stateful memory variables:
-                self._mem_current_size = tf.Variable(  # in number of episodes
-                    0,
+        with tf.variable_scope('service'):
+            # Stateful memory variables:
+            self._mem_current_size = tf.Variable(  # in number of episodes
+                0,
+                trainable=False,
+                name='current_size',
+                dtype=tf.int32,
+            )
+            self._mem_cyclic_pointer = tf.Variable(
+                0,
+                trainable=False,
+                name='cyclic_pointer',
+                dtype=tf.int32,
+            )
+            # Indices for retrieving batch of experiences:
+            self._batch_indices = tf.Variable(
+                tf.zeros(shape=(self.batch_size, 2), dtype=tf.int32),
+                trainable=False,
+                name='batch_experience_indices',
+                dtype=tf.int32,
+            )
+        with tf.variable_scope('field_record'):
+            # Memory  itself  (as dictionary of tensors):
+            self.memory = dict(
+                state_external=tf.Variable(
+                    tf.zeros(self.memory_shape + self.experience_shape['state_external']),
                     trainable=False,
-                    name='current_size',
-                    dtype=tf.int32,
-                )
-                self._mem_cyclic_pointer = tf.Variable(
-                    0,
+                    name='state_external',
+                    dtype=tf.float32,
+                ),
+                state_internal=tf.Variable(
+                    tf.zeros(self.memory_shape + self.experience_shape['state_internal']),
                     trainable=False,
-                    name='cyclic_pointer',
-                    dtype=tf.int32,
-                )
-                # Indices for retrieving batch of experiences:
-                self._batch_indices = tf.Variable(
-                    tf.zeros(shape=(self.batch_size, 2), dtype=tf.int32),
+                    name='state_internal',
+                    dtype=tf.float32,
+                ),
+                action=tf.Variable(
+                    tf.zeros(self.memory_shape + self.experience_shape['action'], dtype=tf.int32),
                     trainable=False,
-                    name='batch_experience_indices',
+                    name='action',
                     dtype=tf.int32,
-                )
-                # Memory  itself  (as dictionary of tensors):
-                self.memory = dict(
-                    state_external=tf.Variable(
-                        tf.zeros(self.memory_shape + self.experience_shape['state_external']),
-                        trainable=False,
-                        name='state_external',
-                        dtype=tf.float32,
-                    ),
-                    state_internal=tf.Variable(
-                        tf.zeros(self.memory_shape + self.experience_shape['state_internal']),
-                        trainable=False,
-                        name='state_internal',
-                        dtype=tf.float32,
-                    ),
-                    action=tf.Variable(
-                        tf.zeros(self.memory_shape + self.experience_shape['action'], dtype=tf.int32),
-                        trainable=False,
-                        name='action',
-                        dtype=tf.int32,
-                    ),
-                    reward=tf.Variable(
-                        tf.zeros(self.memory_shape + self.experience_shape['reward']),
-                        trainable=False,
-                        name='reward',
-                        dtype=tf.float32,
-                    ),
-                    state_internal_next=tf.Variable(
-                        tf.zeros(self.memory_shape + self.experience_shape['state_internal_next']),
-                        trainable=False,
-                        name='state_internal_next',
-                        dtype=tf.float32,
-                    ),
-                    episode_length=tf.Variable(
-                        tf.zeros((self.memory_shape[0], 1), dtype=tf.int32),
-                        trainable=False,
-                        name='episode_length',
-                        dtype=tf.int32,
-                    ),
-                )
+                ),
+                reward=tf.Variable(
+                    tf.zeros(self.memory_shape + self.experience_shape['reward']),
+                    trainable=False,
+                    name='reward',
+                    dtype=tf.float32,
+                ),
+                episode_length=tf.Variable(
+                    tf.zeros((self.memory_shape[0], 1), dtype=tf.int32),
+                    trainable=False,
+                    name='episode_length',
+                    dtype=tf.int32,
+                ),
+            )
 
     def _tf_graph_constructor(self):
         """
@@ -249,36 +236,34 @@ class BTgymReplayMemory():
         self._set_mem_current_size_op = self._mem_current_size.assign(self._mem_current_size_pl),
 
         # Add single experience to buffer:
-        self._add_experience_op = [self.buffer['episode_length'].assign(self.buff_feeder['episode_length'])]
+        self._add_experience_op = dict()
+        self._add_experience_op['episode_length'] = \
+            self.buffer['episode_length'].assign(self.buff_feeder['episode_length'])
         for key, var in self.buffer.items():
             if key != 'episode_length':
-                op = var[self._local_step_pl, ...].assign(self.buff_feeder[key])
-                self._add_experience_op.append(op)
+                self._add_experience_op[key] = var[self._local_step_pl, ...].assign(self.buff_feeder[key])
 
         # Store single episode in memory:
-        self._save_episode_op = []
+        self._save_episode_op = dict()
         for key, var in self.memory.items():
-            op = var[self._mem_cyclic_pointer, ...].assign(self.buffer[key])
-            self._save_episode_op.append(op)
+            self._save_episode_op[key] = var[self._mem_cyclic_pointer, ...].assign(self.buffer[key])
 
         # Get single episode from memory:
-        self._get_episode_op = []
+        self._get_episode_op = dict()
         episode_length = self.memory['episode_length'][self._mem_pointer1_pl]
         for key, var in self.memory.items():
-            op = var[self._mem_pointer1_pl, 0: episode_length[0], ...]
-            self._get_episode_op.append(op)
+            self._get_episode_op[key] = var[self._mem_pointer1_pl, 0: episode_length[0], ...]
 
         # Gather episode's length values by its numbers:
         self._get_episodes_length_op = tf.gather(self.memory['episode_length'], self._indices1_pl)
 
         # Get single experience from memory:
-        self._get_experience_op = []
+        self._get_experience_op = dict()
         for key, var in self.memory.items():
             if key != 'episode_length':
-                op = var[self._mem_pointer1_pl, self._mem_pointer2_pl, ...]
-                self._get_experience_op.append(op)
+                self._get_experience_op[key] = var[self._mem_pointer1_pl, self._mem_pointer2_pl, ...]
 
-        # Get batch of random experiences (bigger one):
+        # Sample batch of random experiences indices :
         self._sample_batch_indices_op = []
         # Sample episode numbers:
         self._sample_batch_indices_op.append(
@@ -316,7 +301,7 @@ class BTgymReplayMemory():
                 )
             )
         )
-        # Get indices for 'state_external_next' field:
+        # Get indices for S' field:
         next_mask = tf.stack(
             [
                 tf.zeros(shape=(self.batch_size,), dtype=tf.int32),
@@ -328,25 +313,24 @@ class BTgymReplayMemory():
             self._batch_indices,
             next_mask
         )
-        # Dictionary of tensors containing batch of experiences for every memory field:
-        self._get_experience_batch_op = dict(
-            state_external=None,
-            state_internal=None,
-            action=None,
-            reward=None,
-            state_external_next=None,
-            state_internal_next=None,
-        )
-        # Define 'memory read' operations:
+        # Read batch of experiences from memory in S,A,R,S' form.
+        # Uses current values of self._batch indices -->
+        # self._sample_batch_indices_op should be run before this one.
+        self._get_experience_batch_op = dict()
+
         for key, memory in self.memory.items():
             if key != 'episode_length':
                 self._get_experience_batch_op[key] = tf.gather_nd(
                     self.memory[key],
                     self._batch_indices,
                 )
-        # Finally:
+        # Finally, get those S'es:
         self._get_experience_batch_op['state_external_next'] = tf.gather_nd(
             self.memory['state_external'],
+            batch_indices_next,
+        )
+        self._get_experience_batch_op['state_internal_next'] = tf.gather_nd(
+            self.memory['state_internal'],
             batch_indices_next,
         )
 
@@ -354,9 +338,9 @@ class BTgymReplayMemory():
         """
         Handy if something goes wrong.
         """
-        content = []
+        content = dict()
         for key, var in self.buffer.items():
-            content.append(sess.run(var))
+            content[key] = sess.run(var)
         return  content
 
     def _get_current_size(self, sess):
@@ -395,28 +379,32 @@ class BTgymReplayMemory():
                      feed_dict={self._mem_cyclic_pointer_pl: value},
                      )
 
-    def update(self, sess, state, action, reward, state_next):
+    def update(self, sess, state, action, reward, done):
         """
-        Convenience s,a,r,s' wrapper for adding single experience to memory.
+        Convenience wrapper for adding single experience to memory.
         """
         experience = dict(
             state_external=state['external'],
             state_internal=state['internal'],
             action=action,
             reward=reward,
-            state_internal_next=state_next['internal'],
+            done=done,
         )
         self._add_experience(sess, experience)
 
     def _add_experience(self, sess, experience):
         """
         Writes single experience to episode memory buffer,
-        calls add_episode() method if experience['done']=True.
+        calls add_episode() method if experience['done']=True
+        or maximum memory episode length exceeded.
         Receives:
             sess:       tf.Session object,
             experience: dictionary containing agent experience,
                         shaped according to self.experience_shape.
         """
+        # Extract 'done' flag:
+        done = experience.pop('done')
+
         # Prepare feeder dict:
         feeder = {self._local_step_pl: self.local_step}
         experience['episode_length'] = np.asarray([self.local_step]).astype(int)
@@ -433,7 +421,7 @@ class BTgymReplayMemory():
         )
         self.local_step += 1
 
-        if experience['done'] or self.local_step >= self.memory_shape[1]:
+        if done or self.local_step >= self.memory_shape[1]:
             # If over, store episode in replay memory:
             self._add_episode(sess)
 
@@ -442,7 +430,7 @@ class BTgymReplayMemory():
         Writes episode to replay memory.
         """
         # Save:
-        sess.run(self._save_episode_op, )
+        _ = sess.run(self._save_episode_op)
 
         # print('Saved episode with:')
         # print('mem_size:', self.get_memory_size(sess))
@@ -477,10 +465,8 @@ class BTgymReplayMemory():
         """
         Retrieves single episode from memory.
         Returns:
-          tuple:
-          - dictionary with keys defined by `experience_shape`,
+            dictionary with keys defined by `experience_shape`,
             containing episode records,
-          - episode_length scalar.
         """
         try:
             assert episode_number <= self._get_current_size(sess)
@@ -489,102 +475,24 @@ class BTgymReplayMemory():
             raise ValueError('Episode index <{}> is out of memory bounds <{}>.'.
                              format(episode_number, self._get_current_size(sess)))
 
-        episode = dict()
-        (episode['state_external'],
-        episode['state_internal'],
-        episode['action'],
-        episode['reward'],
-        episode['state_internal_next'],
-        episode_length) =\
-            sess.run(
+        episode_dict = sess.run(
                 self._get_episode_op,
-                feed_dict={self._mem_pointer1_pl: episode_number, })
-
-        return episode, episode_length
-
-    def _sample_random_experience(self, sess, batch_size=None):
-        """
-        DEPRECATED. New implementation see below.
-        Samples batch of random experiences from replay memory,
-        returns:
-            dictionary of O, A, R, O-next, each is np array [batch_size, own_dimension].
-        """
-        self.current_mem_size = self._get_current_size(sess)
-        if batch_size is None:
-            batch_size = self.batch_size
-
-        try:
-            assert batch_size <= self.current_mem_size
-
-        except:
-            raise AssertionError(
-                'Requested memory batch of size {} can not be sampled from current memory size: {} episodes.'.
-                format(batch_size, self.current_mem_size)
-            )
-        # Sample episodes:
-        episode_indices = (np.random.random_sample(batch_size) * self.current_mem_size).astype(int)
-
-        ###print('episode_indices:', episode_indices, episode_indices.shape)
-
-        # Get length for each:
-        real_length = sess.run(self._get_episodes_length_op,
-                               feed_dict={
-                                   self._indices1_pl: episode_indices,
-                               },
-                               )[:, 0]
-
-        ###print('episode_length:', real_length, real_length.shape)
-
-        # Sample one experience per episode, from 0 to len -1 to ensure `state_next` exists:
-        rnd_multiplier = np.random.random_sample(batch_size)
-        experience_indices = (real_length  * rnd_multiplier).astype(int)  # [:,0]
-
-        ###print('experience_indices:', experience_indices, experience_indices.shape)
-
-        output_batch = dict(
-            state_external=np.zeros((batch_size,) + self.experience_shape['state_external']),
-            state_internal=np.zeros((batch_size,) + self.experience_shape['state_internal']),
-            action=np.zeros((batch_size,) + self.experience_shape['action']),
-            reward=np.zeros((batch_size,) + self.experience_shape['reward']),
-            state_external_next=np.zeros((batch_size,) + self.experience_shape['state_external']),
-            state_internal_next=np.zeros((batch_size,) + self.experience_shape['state_internal']),
+                feed_dict={
+                    self._mem_pointer1_pl: episode_number,
+                }
         )
 
-        for i in range(batch_size):  # yes, it's a loop and yes, it is slooooow... Any other ideas?
-            (
-                output_batch['state_external'][i, ...],
-                output_batch['state_internal'][i, ...],
-                output_batch['action'][i, ...],
-                output_batch['reward'][i, ...],
-                output_batch['state_internal_next'][i, ...],
-            ) = \
-                sess.run(
-                    self._get_experience_op,
-                    feed_dict={
-                        self._mem_pointer1_pl: episode_indices[i],
-                        self._mem_pointer2_pl: experience_indices[i],
-                    },
-                )
+        return episode_dict
 
-            (output_batch['state_external_next'][i, ...], _1, _2, _3, _4,) = \
-                sess.run(
-                    self._get_experience_op,
-                    feed_dict={
-                        self._mem_pointer1_pl: episode_indices[i],
-                        self._mem_pointer2_pl: experience_indices[i] + 1,
-                    }
-                )
-        return output_batch
-
-    def sample_random_trace(self, sess, batch_size):
+    def sample_trace_batch(self, sess, batch_size):
         raise NotImplementedError
 
-    def sample_random_experience(self, sess, as_tensors=False):
+    def sample_random_batch(self, sess, as_tensors=False):
         """
         Samples batch of random experiences from replay memory,
         returns:
             dictionary, every key holds  batch of corresponding memory field experiences:
-            O, A, R, O-next, each one is np.array of shape [batch_size, field_own_dimension].
+            S, A, R, S-next, each one is np.array of shape [batch_size, field_own_dimension].
         """
         # TODO: can return dict of tensors itself, for direct connection with estimator input
         self.current_mem_size = self._get_current_size(sess)
@@ -602,10 +510,8 @@ class BTgymReplayMemory():
 
         # Retrieve values :
         output_feeder = dict()
-        for key, tensor in self._get_experience_batch_op.items():
-            output_feeder.update(
-                {key: sess.run(tensor)}
-            )
+        for key, op in self._get_experience_batch_op.items():
+            output_feeder[key] = sess.run(op)
 
         return output_feeder
 
