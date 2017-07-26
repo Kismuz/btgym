@@ -17,6 +17,9 @@
 #
 ###############################################################################
 import os
+from types import MethodType
+import  itertools
+import copy
 import numpy as np
 import tensorflow as tf
 from .memory import BTgymReplayMemory
@@ -24,57 +27,64 @@ from .memory import BTgymReplayMemory
 
 class BTgymDqnAgent():
     """
-    Base Double Q-Network agent with replay memory
-    class for episodic tasks with
-    bi-modal state space and
-    discrete action space.
+    Base deep Q-network agent with replay memory
+    class for episodic tasks with nested
+    multi-modal state observation and experience shape.
 
-    Bi-modal observation state shape is defined
-    as dictionary of two arbitrary shaped tensors:
-    state_shape = dict(external=(N1,N2, ..., Nk),
-                       internal=(M1, M2, ..., Ml),)
+    Experience is unit to store in replay memory,
+    defined by `experience_shape` dictionary and
+    can be [nested] dictionary of any structure
+    with at least these keys presented at top-level:
+        `action`,
+        `reward`,
+        `done`,
+        `state_next`;
+    every end-level record is tuple describing variable shape and dtype.
 
-    Shape of single experience therefore is:
-    experience_shape = dict(state_external=state_shape['external'],
-                            state_internal=state_shape['internal'],
-                            action=(),
-                            reward=(),
-                            done=(),)
+    Shape is arbitrary, dtype can be any of valid numpy compatible tf.Dtype's.
+    If dtype arg is omitted,
+    float32 will be set by default.
+
+    When constructing self.experience variable, serving as buffer when receiving experience from
+    environment, tf.Dtype will be substituted with compatible numpy dtype.
+
+    Example:
+        robo_experience_shape = dict(
+            action=(4,tf.uint8),  # unsigned 8bit integer vector
+            reward=(),  # float32 by default, scalar
+            done=(tf.bool,),   # boolean, scalar
+            state_next=dict(
+                internal=dict(
+                    hardware=dict(
+                        battery=(),  # float32, scalar
+                        oil_pressure=(3,),  # got 3 pumps, float32, vector
+                        tyre_pressure=(4,),  # for each one, float32, vector
+                        checks_passed=(tf.bool,)  # boolean, scalar
+                    ),
+                    psyche=dict(
+                        optimism=(tf.int32,),  # can be high, 32bit int, scalar
+                        sincerity=(),  # float32 by default, scalar
+                        message=(4,tf.string,),  # knows four phrases
+                    )
+                ),
+                external=dict(
+                    camera=(2,180,180,3,tf.uint8),  # binocular rgb 180x180 image, unsigned 8bit integers
+                    audio_sensor=(2,320,)  # stereo audio sample buffer, float32
+                ),
+            ),
+            global_training_day=(uint16,)  # just curious how long it took to get to this state.
+        )
+        Note:
+            using of tensorflow tf.Dtypes.
     """
-    state_shape = dict(
-        external=(None, None),
-        internal=(None, None),
-    )
-    state = dict(
-        external=(None, None),
-        internal=(None, None),
-    )
-    # TODO: remove as it is internal replay memory representation:
-    experience_shape = dict(
-        state_external=state_shape['external'],
-        state_internal=state_shape['internal'],
-        action=(),
-        reward=(),
-        done=(),
-    )
-    experience = dict(
-        state_external=None,
-        state_internal=None,
-        action=None,
-        reward=None,
-        done=None,
-    )
-    action = None
-    reward = None
-
     replay_memory_size = 100000
     replay_memory_init_size = 50000
+    batch_size = 32
     epsilon_start = 0.99
     epsilon_end = 0.1
     epsilon_decay_steps = 500000
     gamma = 0.99
     tau = 0.001
-    batch_size = 32
 
     saver = None
     load_latest_checkpoint = True,
@@ -82,13 +92,15 @@ class BTgymDqnAgent():
     scope = 'btgym_base_q_agent'
 
     def __init__(self,
-                 state_shape,  # dictionary of external and internal shapes
+                 experience_shape,  # dictionary of external and internal shapes and tf.Dtype's
                  valid_actions,  # list of intergers representing valid actions
                  max_episode_length,  # in number of experiences
                  estimator_class,  # class of estimator to use
                  **kwargs):
         """____"""
-        self.state_shape = state_shape
+        self.experience_shape = experience_shape
+        self.experience = self._experience_numpy_constructor(experience_shape)
+        self.init_experience = self._experience_numpy_constructor(experience_shape) #copy.deepcopy(self.experience)
         self.estimator_class = estimator_class
         self.max_episode_length = max_episode_length
         self.valid_actions = valid_actions
@@ -99,40 +111,37 @@ class BTgymDqnAgent():
                 setattr(self, key, value)
 
         with tf.variable_scope(self.scope):
-            # Make estimators and updater:
+            # Make estimators and update method:
             self.q_estimator = self.estimator_class(
-                self.state_shape,
+                self.experience_shape,
                 self.valid_actions,
-                **kwargs
+                scope='q_estimator',
             )
             self.t_estimator = self.estimator_class(
-                self.state_shape,
+                self.experience_shape,
                 self.valid_actions,
-                **kwargs
+                scope='t_estimator',
             )
-            self._update_estimator_constructor(
+            self.update_t_estimator = self._update_estimator_constructor(
                 self.q_estimator,
                 self.t_estimator,
             )
             # Make replay memory:
             self.memory = self.replay_memory_class(
-                state_shape=self.state_shape,
+                experience_shape=self.experience_shape,
                 max_episode_length=self.max_episode_length,
                 max_size=self.replay_memory_size,
                 batch_size=self.batch_size,
                 scope='replay_memory',
-                **kwargs
             )
-            # Make global step:
-            self._global_step_constructor()
+            # Make global step methods:
+            self.get_global_step, self.global_step_up = self._global_step_constructor()
 
-            # Make e-greedy policy function for chosen estimator:
-            # TODO: possibly should be part of estimator
+            # Make e-greedy policy method for chosen estimator:
             self.policy = self._epsilon_greedy_policy_constructor(self.q_estimator)
 
             # Call logic graph constructor:
             ##self._logic_constructor(self):
-
 
         # Create linear epsilon decay function: epsilon =  a * x + b
         self.epsilon = lambda x: self.epsilon_end if x > self.epsilon_decay_steps else\
@@ -142,9 +151,9 @@ class BTgymDqnAgent():
         if self.saver is not None:
             self.saver = tf.train.Saver()
             # Create directories for checkpoints and summaries:
-            self.home_dir = './{}/'.format(self.scope)
+            self.home_dir = './{}_home/'.format(self.scope)
             self.checkpoint_dir = os.path.join(self.home_dir, "checkpoints")
-            self.checkpoint_path = os.path.join(self.home_dir, "model")
+            self.checkpoint_path = os.path.join(self.checkpoint_dir, "model")
             self.monitor_path = os.path.join(self.home_dir, "monitor")
 
             if not os.path.exists(self.checkpoint_dir):
@@ -152,37 +161,87 @@ class BTgymDqnAgent():
             if not os.path.exists(self.monitor_path):
                 os.makedirs(self.monitor_path)
 
+
+    def _experience_numpy_constructor(self, shape_dict):
+        """
+        Defines experience-holding dictionary according to self.experience_shape.
+        Takes:
+            nested dictionary of shapes as tuples:
+                shape = (dim_0,....,dim_N, [tf.Dtype]).
+        Returns:
+            nested dictionary of np.dtype arrays.
+        Note:
+            using of tf.Dtype in experience_shape.
+        """
+        exp_dict = dict()
+        for key, record in shape_dict.items():
+            if type(record) == dict:
+                exp_dict[key] = self._experience_numpy_constructor(record)
+            else:
+                # If dtype is not present - set it to np.float32,
+                # else - convert from tf.dtype:
+                dtype = np.float32
+                if len(record) > 0 and type(record[-1]) != int:
+                    dtype = record[-1].as_numpy_dtype
+                    record = record[0:-1]
+                exp_dict[key] = np.zeros(
+                    shape=record,
+                    dtype=dtype,
+                )
+        return exp_dict
+
     def _global_step_constructor(self):
         """
         Savable global_step constructor.
+        Returns:
+            instance methods:
+                _get_global_step(sess);
+                    Receives:
+                        tf.Session() object.
+                    Returns:
+                        current step value.
+                _global_step_up(sess):
+                    Increments global step count by 1.
+                    Receives:
+                        tf.Session() object.
+                    Returns:
+                        New step value.
         """
-        self._global_step = tf.Variable(
+        self._global_step_var = tf.Variable(
             0,
             name='global_step',
             trainable=False,
             dtype=tf.int32,
         )
-        self._increment_global_step_op = tf.assign_add(self._global_step, 1)
+        self._global_step_increment_op = tf.assign_add(self._global_step_var, 1)
 
-    def get_global_step(self, sess):
-        """
-        Returns current step value.
-        """
-        return sess.run(self._global_step)
+        def _get_global_step(self, sess):
+            """
+            Receives:
+                tf.Session() object.
+            Returns:
+                current step value.
+            """
+            return sess.run(self._global_step_var)
 
-    def global_step_up(self, sess):
-        """
-        Increments global step count by 1.
-        """
-        sess.run(self._increment_global_step_op)
+        def _global_step_up(self, sess):
+            """
+            Increments global step count by 1.
+            Receives:
+                tf.Session() object.
+            Returns:
+                New  step value.
+            """
+            return sess.run(self._global_step_increment_op)
+
+        return MethodType(_get_global_step, self), MethodType(_global_step_up, self)
 
     def save(self, sess):
         """
         Saves current agent state.
         """
         if self.saver is not None:
-            with sess.as_default():
-                self.saver.save(self.checkpoint_path)
+            self.saver.save(tf.get_default_session(), self.checkpoint_path)
 
         else:
             raise RuntimeError('Saver for <{}> is not defined.'.format(self.scope))
@@ -194,7 +253,6 @@ class BTgymDqnAgent():
         if self.saver is not None:
             latest_checkpoint = tf.train.latest_checkpoint(self.checkpoint_dir)
             if latest_checkpoint and self.load_latest_checkpoint:
-                print("Loading model checkpoint {}...\n".format(latest_checkpoint))
                 self.saver.restore(sess, latest_checkpoint)
 
         else:
@@ -203,14 +261,20 @@ class BTgymDqnAgent():
     def _update_estimator_constructor(self, estimator1, estimator2):
         """
         Defines copy-work operation graph.
-        Args:
-          estimator1: instance to update from;
-          estimator2: instance to be updated.
-          tau: update intensity parameter, <<1.
+        Recieves:
+            estimator1: instance to update from;
+            estimator2: instance to be updated.
+            tau: update intensity parameter, <<1.
+        Returns:
+            instance method:
+                _update_estimator(sess):
+                Softly updates model parameters of one estimator towards ones of another.
+                Receives:
+                    tf.Session() object.
         """
-        self.e1_params = [t for t in tf.trainable_variables() if t.name.startswith(estimator1.scope)]
+        self.e1_params = [t for t in tf.trainable_variables() if estimator1.scope in t.name]
         self.e1_params = sorted(self.e1_params, key=lambda v: v.name)
-        self.e2_params = [t for t in tf.trainable_variables() if t.name.startswith(estimator2.scope)]
+        self.e2_params = [t for t in tf.trainable_variables() if estimator2.scope in t.name]
         self.e2_params = sorted(self.e2_params, key=lambda v: v.name)
 
         self._update_estimator_op = []
@@ -218,59 +282,73 @@ class BTgymDqnAgent():
             op = e2_p.assign(e1_p.value() * self.tau + e2_p.value() * (1 - self.tau))
             self._update_estimator_op.append(op)
 
-    def update_estimator(self, sess):
-        """
-        Softly updates model parameters of one estimator towards ones of another.
-        sess: tensorflow session instance.
-        """
-        sess.run(self._update_estimator_op)
+        def _update_estimator(self, sess):
+            """
+            Softly updates model parameters of one estimator towards ones of another.
+            sess: tensorflow session instance.
+            """
+            sess.run(self._update_estimator_op)
+
+        return MethodType(_update_estimator, self)
 
     def _epsilon_greedy_policy_constructor(self, estimator):
         """
         Creates an epsilon-greedy policy based on a given function approximator and epsilon.
-        Args:
-            estimator: An estimator that returns q values for a given state
-            nA: Number of actions in the environment.
+        Recieves:
+            estimator: an estimator instance that returns q values for a given state;
         Returns:
-            A function that takes the (sess, observation, epsilon) as an argument and returns
-            the probabilities for each action in the form of a numpy array of length nA.
+            instance method:
+                _policy_fn(sess, observation, epsilon):
+                Returns probabilities for each action in the form of a numpy array of length nA.
         """
         nA = len(self.valid_actions)
 
-        def policy_fn(sess, observation, epsilon):
+        def _policy(self, sess, observation, epsilon):
             A = np.ones(nA, dtype=float) * epsilon / nA
             q_values = estimator.predict(sess, np.expand_dims(observation, 0))[0]
             best_action = np.argmax(q_values)
             A[best_action] += (1.0 - epsilon)
             return A
 
-        return policy_fn
+        return MethodType(_policy, self)
 
-    def populate_mempory(self,sess, env):
+    def populate_memory(self,sess, env, init_size=None):
         """
         Populates initial replay memory following e-greedy policy.
         """
-        # Get current memory state (approximately):
-        mem_size_steps = self.memory._get_current_size(sess) * self.max_episode_length
+        if init_size is None:
+            init_size = self.replay_memory_init_size
+        # How much episodes to add:
+        episodes_to_add = int(init_size / self.max_episode_length) - self.memory._get_current_size(sess)
 
-        # How much to add:
-        need_to_add = self.replay_memory_init_size - mem_size_steps
+        if episodes_to_add > 0:
+            for episode in range(episodes_to_add):
+                self.experience = copy.deepcopy(self.init_experience)
+                self.experience['state_next'] = env.reset()
+                self.memory.update(sess, self.experience)
 
-        if need_to_add > self.max_episode_length:
-            state = env.reset()
-            for i in range(need_to_add):
-                action_probs = self.policy(
-                    sess, state, self.epsilon(self.get_global_step(sess))
-                )
-                action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
-                state_next, reward, done, info = env.step(action)
-                self.memory.update(state, action, reward, done)
-                #Do NOT increment self.global_step
-                if done:
-                    state = env.reset()
+                for i in itertools.count():
+                    action_probs = self.policy(
+                        sess,
+                        # TODO: fix this!!
+                        self.experience['state_next']['external'],
+                        self.epsilon(self.get_global_step(sess)),
+                    )
+                    self.experience['action'] = np.random.choice(
+                        np.arange(len(action_probs)),
+                        p=action_probs,
+                    )
+                    (
+                        self.experience['state_next'],
+                        self.experience['reward'],
+                        self.experience['done'],
+                        info,
+                    ) = env.step(self.experience['action'])
+                    self.memory.update(sess, self.experience)
+                    # Do NOT increment self.global_step
+                    if self.experience['done']:
+                        break
 
-                else:
-                    state = state_next
 
     def _logic_constructor(self):
         """

@@ -99,7 +99,6 @@ class BTgymMonitor():
             summaries += [self.tf.summary.histogram(entry, self.feed_holder[entry], )]
 
         self.summary = self.tf.summary.merge(summaries)
-        # self.sess.run(self.tf.global_variables_initializer())
 
     def write(self, feed_dict, global_step):
         """

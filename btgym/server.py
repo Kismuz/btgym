@@ -257,16 +257,13 @@ class BTgymServer(multiprocessing.Process):
 
         # Server 'Control Mode' loop:
         for episode_number in itertools.count(1):
-
-            # Stuck here until '_reset' or '_stop':
             while True:
-
+                # Stuck here until '_reset' or '_stop':
                 service_input = socket.recv_pyobj()
                 msg = 'Server Control mode: recieved <{}>'.format(service_input)
                 self.log.debug(msg)
 
                 if 'ctrl' in service_input:
-
                     # It's time to exit:
                     if service_input['ctrl'] == '_stop':
                         # Server shutdown logic:

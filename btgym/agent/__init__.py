@@ -17,7 +17,9 @@
 #
 ###############################################################################
 
-from .memoryagent import BTgymMemoryAgent
+#from .memoryagent import BTgymMemoryAgent
+
+from .agent import BTgymDqnAgent
 
 from .memory import BTgymReplayMemory
 

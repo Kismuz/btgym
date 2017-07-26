@@ -44,7 +44,7 @@ class BTgymReplayMemory():
             `done`,
             `state_next`;
         every end-level record is tuple describing tf.variable shape and dtype.
-        Shape is arbitrary, dtype can be any of valid tf.Dtype's. I dtype arg is omitted,
+        Shape is arbitrary, dtype can be any of valid numpy-compatible tf.Dtype's. I dtype arg is omitted,
         tf.float32 will be set by default.
 
     Example:
@@ -80,7 +80,8 @@ class BTgymReplayMemory():
                  max_episode_length,  # in number of steps
                  max_size=100000,  # in number of experiences
                  batch_size=32,  # sampling batch size
-                 scope='replay_memory',):
+                 scope='replay_memory',
+                 **kwargs):
         """______"""
         self.experience_shape = experience_shape
         self.max_episode_length = max_episode_length
@@ -106,7 +107,7 @@ class BTgymReplayMemory():
                 format(max_size, self.max_episode_length))
 
         self.local_step = 0  # step within current episode
-        self.episode = 0  # keep track of episode numbers within current tf.Session()
+        self.local_episode = 0  # keep track of episode numbers within current tf.Session()
         self.current_mem_size = 0  # [points to] stateful tf.variable
         self.current_mem_pointer = -1  # [points to] stateful tf.variable
 
@@ -131,6 +132,18 @@ class BTgymReplayMemory():
                 0,
                 trainable=False,
                 name='cyclic_pointer',
+                dtype=tf.int32,
+            )
+            self._local_step_sync = tf.Variable(
+                0,
+                trainable=False,
+                name='local_step_sync',
+                dtype=tf.int32,
+            )
+            self._local_episode_sync = tf.Variable(
+                0,
+                trainable=False,
+                name='local_episode_sync',
                 dtype=tf.int32,
             )
             # Indices for retrieving batch of experiences:
@@ -172,9 +185,6 @@ class BTgymReplayMemory():
             self._mem_cyclic_pointer_pl = tf.placeholder(
                 dtype=tf.int32,
             )
-            self._local_step_pl = tf.placeholder(
-                dtype=tf.int32,
-            )
             self._mem_pointer1_pl = tf.placeholder(
                 dtype=tf.int32,
             )
@@ -182,6 +192,9 @@ class BTgymReplayMemory():
                 dtype=tf.int32,
             )
             self._local_step_pl = tf.placeholder(
+                dtype=tf.int32,
+            )
+            self._local_episode_pl = tf.placeholder(
                 dtype=tf.int32,
             )
             self._indices1_pl = tf.placeholder(
@@ -539,6 +552,10 @@ class BTgymReplayMemory():
         self._set_mem_cyclic_pointer_op = self._mem_cyclic_pointer.assign(self._mem_cyclic_pointer_pl),
         self._set_mem_current_size_op = self._mem_current_size.assign(self._mem_current_size_pl),
 
+        # Set sync variables:
+        self._set_local_step_sync_op = self._local_step_sync.assign(self._local_step_pl)
+        self._set_local_episode_sync_op = self._local_episode_sync.assign(self._local_episode_pl)
+
         # Add single experience to buffer:
         self._add_experience_op = self._feed_buffer_op_constructor(
             self.buffer,
@@ -643,9 +660,46 @@ class BTgymReplayMemory():
                      feed_dict={self._mem_cyclic_pointer_pl: value},
                      )
 
+    def _get_local_step_sync(self, sess):
+        """
+        Returns current counter value.
+        """
+        return sess.run(self._local_step_sync)
+
+    def _set_local_step_sync(self, sess, value):
+        """
+        Sets one.
+        """
+        _ = sess.run(
+            self._set_local_step_sync_op,
+            feed_dict={
+                self._local_step_pl: value
+            }
+        )
+
+    def _get_local_episode_sync(self, sess):
+        """
+        Returns current counter value.
+        """
+        return sess.run(self._local_episode_sync)
+
+    def _set_local_episode_sync(self, sess, value):
+        """
+        Sets one.
+        """
+        _ = sess.run(
+            self._set_local_episode_sync_op,
+            feed_dict={
+                self._local_episode_pl: value
+            }
+        )
+
     def update(self, sess, experience):
         """
-        Sintax shugar for adding single experience to memory.
+        Shugar method for adding single experience to memory. Is here fo future edit.
+        Note: it's essential to pass correct experience[`done`] value
+        in order to ensure correct episode storage in memory,
+        e.g. when forcefully terminating episode before `done` is sent by environment.
         """
         self._add_experience(sess, experience)
 
@@ -659,27 +713,49 @@ class BTgymReplayMemory():
             experience: dictionary containing agent experience,
                         shaped according to self.experience_shape.
         """
+        # Check local and stateful steps for consistency. If not in sync -> tf model
+        # possibly been reloaded.
+        if self.local_step != self._get_local_step_sync(sess)\
+            or self.local_episode != self._get_local_episode_sync(sess):
+            # Huston... we've lost somewhere. Better rewind.
+            print('Memory buffer unsync found:\nLocal: step_{}, episode_{}.\nModel: step_{}, episode_{}.\nCorrected.'.
+                  format(self.local_step,
+                         self.local_episode,
+                         self._get_local_step_sync(sess),
+                         self._get_local_episode_sync(sess)
+                         )
+                  )
+            self.local_step = 0
+            self._set_local_step_sync(sess, self.local_step)
+            self.local_episode = self._get_local_episode_sync(sess)
+
         # Get 'done' flag:
         done = experience['done']
 
-        # Prepare feeder dict:
-        feeder = self._make_feeder(
-            pl_dict=self.buffer_pl,
-            value_dict=experience,
-        )
-        # Add local step:
-        feeder.update({self._local_step_pl: self.local_step})
+        # If we haven't run out of memory:
+        if self.local_step < self.memory_shape[1]:
+            # Prepare feeder dict:
+            feeder = self._make_feeder(
+                pl_dict=self.buffer_pl,
+                value_dict=experience,
+            )
+            # Add local step:
+            feeder.update({self._local_step_pl: self.local_step})
 
-        # Save it:
-        _ = sess.run(
-            self._add_experience_op,
-            feed_dict=feeder,
-        )
-        if done or self.local_step >= self.memory_shape[1]:
+            # Save it:
+            _ = sess.run(
+                self._add_experience_op,
+                feed_dict=feeder,
+            )
+        else:
+            done = True
+
+        if done:
             # If over, store episode in replay memory:
             self._add_episode(sess)
         else:
             self.local_step += 1
+            self._set_local_step_sync(sess, self.local_step)
 
     def _add_episode(self, sess):
         """
@@ -694,7 +770,9 @@ class BTgymReplayMemory():
         )
         # Reset local_step, increment episode count:
         self.local_step = 0
-        self.episode += 1
+        self._set_local_step_sync(sess, self.local_step)
+        self.local_episode += 1
+        self._set_local_episode_sync(sess, self.local_episode)
 
         # Increment memory size and move cycle_pointer to next episode:
         # Get actual size and pointer:
