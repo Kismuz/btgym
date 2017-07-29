@@ -431,7 +431,7 @@ class BTgymReplayMemory():
         Defines operations to retrieve batch of experiences from memory.
         Takes:
             memory_dict:
-                nested dictionary of tf.variables;
+                [nested] dictionary of tf.variables;
             batch_indices:
                 rank2 tensor of indices as: [batch_size] x [episode_number, episode_step].
         Returns:
@@ -520,9 +520,9 @@ class BTgymReplayMemory():
         )
         # Get S,- part:
         sars_batch['state'] = self._get_experience_batch_op_constructor(
-            self.memory['state_next'],
+            {'fake_key': self.memory['state_next']},
             batch_indices_previous,
-        )
+        )['fake_key']
         return sars_batch
 
     def _make_feeder(self, pl_dict, value_dict):
@@ -696,7 +696,7 @@ class BTgymReplayMemory():
 
     def update(self, sess, experience):
         """
-        Shugar method for adding single experience to memory. Is here fo future edit.
+        Wrapper method for adding single experience to memory. Is here fo future edit.
         Note: it's essential to pass correct experience[`done`] value
         in order to ensure correct episode storage in memory,
         e.g. when forcefully terminating episode before `done` is sent by environment.

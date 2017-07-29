@@ -38,7 +38,6 @@ class BTgymMonitor():
     """
     Light tensorflow 'summaries' wrapper for convenient tensorboard logging.
     """
-
     def __init__(self,
                  scalars={},
                  images={},

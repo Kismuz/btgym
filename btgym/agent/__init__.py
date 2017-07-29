@@ -23,3 +23,8 @@ from .agent import BTgymDqnAgent
 
 from .memory import BTgymReplayMemory
 
+from .network import BTgymNeuralNetwork
+
+from .model import BTgymModel
+
+
