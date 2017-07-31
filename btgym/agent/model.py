@@ -58,7 +58,7 @@ class BTgymModel():
                  experience_shape,
                  valid_actions,
                  max_episode_length,
-                 memory_class,  # memory class
+                 memory_class,  # storage class
                  network_class,  # network class
                  **kwargs):
         """
@@ -68,7 +68,7 @@ class BTgymModel():
             max_episode_length: integer scalar.
             valid_actions: list of actions (integers).
             network: neural network class.
-            memory: replay memory class.
+            storage: replay storage class.
             Optional:
                 memory_params:
                 network_params:
@@ -96,7 +96,7 @@ class BTgymModel():
         self.memory_params['max_episode_length'] = max_episode_length # TODO: get rid of it
 
         with tf.variable_scope(self.scope):  # TODO: move inside specific _logic_constructor()
-            # Make memory:
+            # Make storage:
             self.memory = self.memory_class(**self.memory_params)
 
             # Optimizer:

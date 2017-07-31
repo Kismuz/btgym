@@ -374,7 +374,7 @@ class BTgymRendering():
     def draw_episode(self, cerebro):
         """
         Monstrous way to render episode.
-        Due to memory leaks have to encapsulate it in separate process.
+        Due to storage leaks have to encapsulate it in separate process.
         Strange but reliable. PID's are driving crazy.
         Takes cerebro instance, returns rgb array.
         """

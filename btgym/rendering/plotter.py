@@ -84,6 +84,6 @@ class DrawCerebro(multiprocessing.Process):
 
         except:
             raise RuntimeError('Can not perform episode rendering.\n' +
-                               'Hint: check memory consumption or use: render_enabled=False')
+                               'Hint: check storage consumption or use: render_enabled=False')
         return None
 

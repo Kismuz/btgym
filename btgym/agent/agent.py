@@ -26,11 +26,11 @@ import tensorflow as tf
 
 class BTgymDqnAgent():
     """
-    Base deep Q-network agent with replay memory
+    Base deep Q-network agent with replay storage
     class for episodic tasks with nested
     multi-modal state observation and experience shape.
 
-    Experience is unit to store in replay memory,
+    Experience is unit to store in replay storage,
     defined by `experience_shape` dictionary and
     can be [nested] dictionary of any structure
     with at least these keys presented at top-level:
@@ -280,7 +280,7 @@ class BTgymDqnAgent():
     def populate_memory(self,sess, env, init_size=None):
         # TODO: REWRITE!
         """
-        Populates initial replay memory following e-greedy policy.
+        Populates initial replay storage following e-greedy policy.
         """
         if init_size is None:
             init_size = self.model.memory.replay_memory_init_size
@@ -344,7 +344,7 @@ class BTgymDqnAgent():
         """
         Reflect on what we've done.
         """
-        # Store experience in replay memory:
+        # Store experience in replay storage:
         self.model.memory.update(self.session, experience)
         # Perform model update:
         self.model.update(self.get_global_step())
