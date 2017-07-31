@@ -77,6 +77,7 @@ class BTgymReplayMemory():
     capacity = 100000  # in number of experiences
     batch_size = 32  # sampling batch size
     trace_size = 1  # length of continuous experiences trace to sample
+    stack_depth = None # stacked observations depth  - alias for sample_stack()
     scope = 'replay_memory'
 
     def __init__(self,
@@ -119,6 +120,13 @@ class BTgymReplayMemory():
         except:
             raise ValueError('Sample trace size <{}> is bigger than maximum single episode length <{}>.'.
                              format(self.trace_size, self.max_episode_length))
+
+        # Sync:
+        if self.stack_depth is not None and self.trace_size != self.stack_depth:
+            self.trace_size = self.stack_depth
+
+        else:
+            self.stack_depth = self.trace_size
 
         self.local_step = 0  # step within current episode
         self.local_episode = 0  # keep track of episode numbers within current tf.Session()
@@ -166,8 +174,13 @@ class BTgymReplayMemory():
                 self.trace_size
             )
 
-            # Get batch of sampled S,A,R,S` experiences(i.e. stored in `self._batch_indices` variable):
-            self._get_sampled_sars_batch_op = self._get_sars_batch_op_constructor(self.indices_batch_pl)
+            # Get batch of sampled S,A,R,S` experiences traces:
+            self._get_sampled_sars_trace_batch_op = self._get_sars_trace_batch_op_constructor(self.indices_batch_pl)
+
+            # Get batch of sampled S,A,R,S` experiences with stacked observations:
+            self._get_sars_stack_batch_op = self._get_sars_stack_batch_op_constructor(
+                self._get_sampled_sars_trace_batch_op
+            )
 
     def _global_variable_constructor(self):
         """
@@ -453,15 +466,6 @@ class BTgymReplayMemory():
                     '{}/{}'.format(scope, str(key)),
                 )
             else:
-                end_idx = tf.add(
-                    position_memory_pl,
-                    length_pl,
-                )
-                print('position_buffer_pl:', position_buffer_pl.dtype, position_buffer_pl.shape)
-                print('position_memory_pl:', position_memory_pl.dtype, position_memory_pl.shape)
-                print('end_idx:', end_idx.dtype, end_idx.shape)
-                print(var.dtype)
-                print(buffer_dict[key].dtype)
                 op_dict[key] = tf.assign(
                     var[position_memory_pl: position_memory_pl + length_pl, ...],
                     buffer_dict[key][position_buffer_pl: position_buffer_pl + length_pl, ...],
@@ -551,9 +555,6 @@ class BTgymReplayMemory():
                 )
             )
         )
-
-        print('idx_trace:', idx_trace.shape)
-
         # Expand sampled indices:
         rnd_idx_expanded = tf.multiply(
             tf.ones(
@@ -561,18 +562,13 @@ class BTgymReplayMemory():
                 dtype=tf.int32
             ),
             rnd_idx,
-        ),
-
-        #print('rnd_idx_expanded:', rnd_idx_expanded.shape)
+        ),  # <-- !!! it makes tuple, and it works. WTF?
 
         # Trace-back sampled indices:
         rnd_idx_traced = tf.subtract(
             rnd_idx_expanded,
             idx_trace,
         )
-
-        print('rnd_idx_traced:', rnd_idx_traced.shape)
-
         # Accept continuous traces only, e.g. from same episode:
         accept_trace_condition = tf.equal(
             tf.gather_nd(
@@ -588,8 +584,6 @@ class BTgymReplayMemory():
             accept_trace_condition,
             axis=1
         )
-        print('accept_trace_all:', accept_trace_all.shape)
-
         # Get accepted samples indices in-batch:
         accepted_idx_in_batch = tf.boolean_mask(
             tf.cast(
@@ -603,10 +597,9 @@ class BTgymReplayMemory():
             tf.transpose(rnd_idx_traced),
             accepted_idx_in_batch,
         )
-        print('accepted_global_indices:', accepted_global_indices.shape)
         return tf.reverse(accepted_global_indices[:, :-1, :], axis=[1])  # trim zero-values and reverse
 
-    def _get_sars_batch_op_constructor(self, batch_indices):
+    def _get_sars_trace_batch_op_constructor(self, batch_indices):
         """
         Defines operations for getting batch of experiences in S,A,R,S` form.
         Returns:
@@ -620,9 +613,6 @@ class BTgymReplayMemory():
             batch_indices,
             previous_mask,
         )
-
-        print('batch_indices_previous:', batch_indices_previous.shape)
-
         # Get >-A,R,S` part:
         sars_batch = self._get_experience_batch_op_constructor(
             self.storage,
@@ -634,6 +624,31 @@ class BTgymReplayMemory():
             batch_indices_previous,
         )['fake_key']
         return sars_batch
+
+    def _get_sars_stack_batch_op_constructor(self, input_batch):
+        """
+        Defines operations for converting batch of traces in S,A,R,S` in random batch with
+        'state' and 'state_next' records stacked atari-style.
+        # Args:
+            input_batch:  batch of S,A,R,S` traces.
+        # Returns:
+            dictionary of operations.
+        """
+        op_dict = dict()
+        for key, record in input_batch.items():
+            if type(record) == dict:
+                op_dict[key] = self._get_sars_stack_batch_op_constructor(record)
+
+            else:
+                if key not in ['state', 'state_next']:
+                    op_dict[key] = record[:, -1, ...]
+
+                else:
+                    op_dict[key] = tf.stack(
+                        [record[:, i, ...] for i in range(self.stack_depth)],
+                        axis=-1
+                    )
+        return  op_dict
 
     def _make_feeder(self, pl_dict, value_dict):
         """
@@ -798,7 +813,6 @@ class BTgymReplayMemory():
             feeder.update({self._local_step_pl: self.local_step})
             # TODO: Where is episode id?
 
-
             # Save it:
             _ = self.session.run(
                 self._add_experience_op,
@@ -806,7 +820,7 @@ class BTgymReplayMemory():
             )
         else:
             done = True
-
+            self.local_step -= 1
         if done:
             # If over, store episode in replay storage:
             self._add_episode()
@@ -823,7 +837,8 @@ class BTgymReplayMemory():
         self.current_mem_pointer = self._get_cyclic_pointer()
         # Save:
         # If we need to split episode or not:
-        if self.current_mem_pointer + self.local_step <= self.capacity:
+        if self.current_mem_pointer + self.local_step < self.capacity:
+            print('-->', self.current_mem_pointer, self.local_step)
             # Do not split, write entire episode:
             _ = self.session.run(
                 self._save_episode_op,
@@ -834,13 +849,14 @@ class BTgymReplayMemory():
             )
             # Update pointers:
             if self.current_mem_size < self.capacity:
-                self.current_mem_size += self.local_step # + 1 ???????
+                self.current_mem_size += self.local_step  + 1 #???????
                 self._set_current_size(self.current_mem_size)
 
             self.current_mem_pointer += self.local_step + 1
             self._set_cyclic_pointer(self.current_mem_pointer)
 
         else:
+            print('SPLIT-->', self.current_mem_pointer, self.local_step)
             # Split episode, write tail to storage beginning:
             body = self.capacity - self.current_mem_pointer
             tail = self.local_step - body
@@ -874,6 +890,8 @@ class BTgymReplayMemory():
         self.local_step = 0
         self._set_local_step_sync(self.local_step)
         self.local_episode += 1
+        if self.local_episode == 2147483647:
+            self.local_episode = 0
         self._set_local_episode_sync(self.local_episode)
 
     def get_episode(self, episode_number):
@@ -891,7 +909,7 @@ class BTgymReplayMemory():
                              format(episode_number, self._get_current_size()))
         raise NotImplementedError
 
-    def write(self, experience):
+    def update(self, experience):
         """
         Wrapper method for adding single experience to storage. Is here fo future edit.
         Note: it's essential to pass correct experience[`done`] value
@@ -924,14 +942,14 @@ class BTgymReplayMemory():
         )
         batch_shortage = batch_size - indices_batch.shape[0]
         if batch_shortage > 0:
-            print('batch_shortage:', batch_shortage)
+            #print('batch_shortage:', batch_shortage)
             indices_batch_2 = self._sample_batch_indices(batch_shortage, trace_size, depth+1)
-            print('batch2: ',indices_batch_2.shape)
+            #print('batch2: ',indices_batch_2.shape)
             indices_batch = np.concatenate((indices_batch, indices_batch_2), axis=0)
 
         return indices_batch
 
-    def read_random_batch(self):
+    def sample(self):
         """
         Samples batch of random experiences traces from replay storage.
             - method is stateful: every call will return new sample.
@@ -950,22 +968,40 @@ class BTgymReplayMemory():
 
         except:
             raise AssertionError(
-                'Requested storage batch of size {} can not be sampled: storage contains {} episodes.'.
+                'Requested storage batch of size {} can not be sampled: storage contains {} records.'.
                 format(self.batch_size, self.current_mem_size)
             )
-        # Sample:
-        idx = self._sample_batch_indices(self.batch_size, self.trace_size)
-        print('idx: ', type(idx), idx.shape)
-        # Retrieve:
-
-
+        # Sample & retrieve:
         output_dict = self.session.run(
-            self._get_sampled_sars_batch_op,
+            self._get_sampled_sars_trace_batch_op,
             feed_dict={
-                self.indices_batch_pl: idx
+                self.indices_batch_pl: self._sample_batch_indices(self.batch_size, self.trace_size)
             }
         )
+        return output_dict
 
+    def sample_stack(self):
+        """
+        Samples SARS` batch with stacked observations, atari-style:
+        # Returns:
+            nested dictionary, holding batches of random (S, A, R, S-next) experiences
+            with 'state' and 'state_next' observations stacked along last dimension:
+            (output_batch_size, field_own_dimension, stck_depth).
+        """
+        try:
+            assert self.batch_size <= self.current_mem_size
 
-        return idx, output_dict
+        except:
+            raise AssertionError(
+                'Requested storage batch of size {} can not be sampled: storage contains {} records.'.
+                format(self.batch_size, self.current_mem_size)
+            )
+        batch_dict = self.session.run(
+            self._get_sars_stack_batch_op,
+            feed_dict={
+                self.indices_batch_pl: self._sample_batch_indices(self.batch_size, self.trace_size)
+            }
+        )
+        return batch_dict
+
 
