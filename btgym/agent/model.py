@@ -93,7 +93,8 @@ class BTgymModel():
         self.network_class = network_class
 
         self.memory_params['experience_shape'] = self.experience_shape
-        self.memory_params['max_episode_length'] = max_episode_length # TODO: get rid of it
+        self.memory_params['max_episode_length'] = max_episode_length
+        self.memory_params['session'] = self.session
 
         with tf.variable_scope(self.scope):  # TODO: move inside specific _logic_constructor()
             # Make storage:

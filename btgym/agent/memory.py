@@ -841,7 +841,6 @@ class BTgymReplayMemory():
             )
             # Add local step:
             feeder.update({self._local_step_pl: self.local_step})
-            # TODO: Where is episode id?
 
             # Save it:
             _ = self.session.run(
