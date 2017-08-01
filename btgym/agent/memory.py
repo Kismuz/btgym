@@ -30,11 +30,11 @@ class BTgymReplayMemory():
     can be saved and restored as part of the model.
 
     One storage record is `experience` dictionary, defined by `experience_shape`.
-    Memory itself consists up to `REMOVE_ME_memory_shape[0]` number of episodes,
-    and an episode is just an ordered sequence of experiences
-    with maximum length defined by `REMOVE_ME_memory_shape[1]` value.
+    Memory itself consists up to `memory.capacity` number of experiences,
+    identified by episodes, with maximum single episode length defined
+    by `memory.max_episode_length` value.
     Due to this fact it is possible to extract agent experience in form of [S, A, R, S']
-    for every but initial episode step, as well as in traces.
+    for every but initial episode step, as well as traces of experiences.
 
     Experience_shape format:
         can be [nested] dictionary of any structure
@@ -181,6 +181,12 @@ class BTgymReplayMemory():
             self._get_sars_stack_batch_op = self._get_sars_stack_batch_op_constructor(
                 self._get_sampled_sars_trace_batch_op
             )
+
+            # Get batch of singles S,A,R,S` experiences:
+            if self.trace_size == 1:
+                self._get_sars_random_batch_op = self._get_sars_random_batch_op_constructor(
+                    self._get_sampled_sars_trace_batch_op
+                )
 
     def _global_variable_constructor(self):
         """
@@ -625,10 +631,10 @@ class BTgymReplayMemory():
         )['fake_key']
         return sars_batch
 
-    def _get_sars_stack_batch_op_constructor(self, input_batch):
+    def _get_sars_stack_batch_op_constructor(self, input_batch, stack=False):
         """
-        Defines operations for converting batch of traces in S,A,R,S` in random batch with
-        'state' and 'state_next' records stacked atari-style.
+        Defines operations for converting batch of traces in S,A,R,S` to random batch with
+        'state' and 'state_next' records stacked along last dimension (atari-style).
         # Args:
             input_batch:  batch of S,A,R,S` traces.
         # Returns:
@@ -637,18 +643,42 @@ class BTgymReplayMemory():
         op_dict = dict()
         for key, record in input_batch.items():
             if type(record) == dict:
-                op_dict[key] = self._get_sars_stack_batch_op_constructor(record)
-
-            else:
-                if key not in ['state', 'state_next']:
-                    op_dict[key] = record[:, -1, ...]
+                if key in ['state', 'state_next']:
+                    stacked = True
 
                 else:
+                    stacked = stack
+
+                op_dict[key] = self._get_sars_stack_batch_op_constructor(record, stacked)
+
+            else:
+                if stack:
                     op_dict[key] = tf.stack(
-                        [record[:, i, ...] for i in range(self.stack_depth)],
+                        [record[:, i, ...] for i in range(self.trace_size)],
                         axis=-1
                     )
-        return  op_dict
+                else:
+                    op_dict[key] = record[:, -1, ...]
+
+        return op_dict
+
+    def _get_sars_random_batch_op_constructor(self, input_batch):
+        """
+        Defines operations for removing redundant [second] dimension when trace_size = 1.
+        # Returns:
+            dictionary of operations.
+        """
+        op_dict = dict()
+        for key, record in input_batch.items():
+            if type(record) == dict:
+                op_dict[key] = self._get_sars_random_batch_op_constructor(record)
+
+            else:
+                op_dict[key] = tf.squeeze(
+                    record,
+                    axis=1
+                )
+        return op_dict
 
     def _make_feeder(self, pl_dict, value_dict):
         """
@@ -949,17 +979,19 @@ class BTgymReplayMemory():
 
         return indices_batch
 
-    def sample(self):
+    def sample_trace(self):
         """
         Samples batch of random experiences traces from replay storage.
             - method is stateful: every call will return new sample.
             - initial experiences are excluded from sampling range.
-            - trace is defined as continuous sequence of experiences of same episode.
-        # Note:
-            trace_size: when self.trace_size = 1  -> sample is simply batch of random experiences.
+            - trace is defined as continuous sequence of (S,A,R,S`)'es of same episode.
         # Returns:
             nested dictionary, holding batches of traces of corresponding storage experience fields:
             (S, A, R, S-next), each one is np.array of shape (output_batch_size, trace_size, field_own_dimension).
+        # Note:
+            - when self.trace_size = 1 [default] --> sample is  batch of random experiences
+              with second output dimension == 1.
+            - `temporal` dimension of the output is second one (keras.TimeDistributed-style).
         """
         # TODO: can return dict of tensors itself, for direct connection with estimator input.
         self.current_mem_size = self._get_current_size()
@@ -982,11 +1014,14 @@ class BTgymReplayMemory():
 
     def sample_stack(self):
         """
-        Samples SARS` batch with stacked observations, atari-style:
+        Samples batch of single experiences with stacked observations (atari-style time embedding):
         # Returns:
             nested dictionary, holding batches of random (S, A, R, S-next) experiences
             with 'state' and 'state_next' observations stacked along last dimension:
-            (output_batch_size, field_own_dimension, stck_depth).
+            (output_batch_size, field_own_dimension, stack_depth).
+        # Note:
+            - S_stacked = (S_-n, S_-n+1, ..., S_0), n = stack_depth.
+            - 'temporal' dimension of the output is last one (image_channel-style).
         """
         try:
             assert self.batch_size <= self.current_mem_size
@@ -1004,4 +1039,34 @@ class BTgymReplayMemory():
         )
         return batch_dict
 
+    def sample_random(self):
+        """
+        Samples batch of single (S, A, R, S-next) experiences from memory.
+        # Returns:
+            nested dictionary, holding batches of random (S, A, R, S-next) experiences:
+            for every record field dimension is (output_batch_size, field_own_dimension).
+        # Note:
+             - assert memory.trace_size or memory.stack_depth are set to 1.
+             - this method is equivalent to sample_trace() with redundant second dimension removed from output.
+         """
+        try:
+            assert self.trace_size == 1
 
+        except:
+            raise AssertionError('Method `sample_random()` requires trace_size OR stack_depth == 1, got: {}'.
+                                 format(self.trace_size))
+        try:
+            assert self.batch_size <= self.current_mem_size
+
+        except:
+            raise AssertionError(
+                'Requested storage batch of size {} can not be sampled: storage contains {} records.'.
+                format(self.batch_size, self.current_mem_size)
+            )
+        batch_dict = self.session.run(
+            self._get_sars_random_batch_op,
+            feed_dict={
+                self.indices_batch_pl: self._sample_batch_indices(self.batch_size, self.trace_size)
+            }
+        )
+        return batch_dict
