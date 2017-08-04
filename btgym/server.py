@@ -21,6 +21,7 @@ import logging
 #logging.basicConfig(format='%(name)s: %(message)s')
 import multiprocessing
 import gc
+import psutil
 
 import itertools
 import zmq
@@ -199,10 +200,11 @@ class BTgymServer(multiprocessing.Process):
     """
 
     def __init__(self,
-                 dataset=None,
                  cerebro=None,
                  render=None,
                  network_address=None,
+                 data_network_address=None,
+                 data_server_pid=None,
                  log=None):
         """
         Configures BT server instance.
@@ -218,9 +220,10 @@ class BTgymServer(multiprocessing.Process):
             self.log = log
 
         self.cerebro = cerebro
-        self.dataset = dataset
         self.network_address = network_address
         self.render = render
+        self.data_network_address = data_network_address
+        self.data_server_pid = data_server_pid
 
     def run(self):
         """
@@ -240,17 +243,14 @@ class BTgymServer(multiprocessing.Process):
         socket = context.socket(zmq.REP)
         socket.bind(self.network_address)
 
-        # Actually load data to BTgymDataset instance:
-        self.dataset.read_csv()
+        assert psutil.pid_exists(self.data_server_pid)
+        data_server_process = psutil.Process(self.data_server_pid)
 
-        # Describe dataset if not already and pass it to strategy params:
-        try:
-            assert not self.dataset.data_stat.empty
-            pass
+        assert data_server_process.status() in 'running'
 
-        except:
-            _ = self.dataset.describe()
-        self.cerebro.strats[0][0][2]['dataset_stat'] = self.dataset.data_stat
+        data_context = zmq.Context()
+        data_socket = data_context.socket(zmq.REQ)
+        data_socket.connect(self.data_network_address)
 
         # Init renderer:
         self.render.initialize_pyplot()
@@ -260,7 +260,7 @@ class BTgymServer(multiprocessing.Process):
             while True:
                 # Stuck here until '_reset' or '_stop':
                 service_input = socket.recv_pyobj()
-                msg = 'Server Control mode: recieved <{}>'.format(service_input)
+                msg = 'Server Control mode: received <{}>'.format(service_input)
                 self.log.debug(msg)
 
                 if 'ctrl' in service_input:
@@ -327,16 +327,22 @@ class BTgymServer(multiprocessing.Process):
                                 _name='_env_analyzer',)
 
             # Get random episode dataset:
-            episode_dataset = self.dataset.sample_random()
+            assert data_server_process.status() in 'running'
+            
+            data_socket.send_pyobj({'ctrl': '_get_data'})
+            data_server_response = data_socket.recv_pyobj()
+
+            episode_datafeed = data_server_response['datafeed']
 
             # Get episode data statistic and pass it to strategy params:
-            cerebro.strats[0][0][2]['episode_stat'] = episode_dataset.describe()
+            self.cerebro.strats[0][0][2]['dataset_stat'] = data_server_response['dataset_stat']
+            cerebro.strats[0][0][2]['episode_stat'] = data_server_response['episode_stat']
 
             # Set nice broker cash plotting:
             cerebro.broker.set_shortcash(False)
 
             # Add data to engine:
-            cerebro.adddata(episode_dataset.to_btfeed())
+            cerebro.adddata(episode_datafeed)
 
             # Finally:
             episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True)[0]

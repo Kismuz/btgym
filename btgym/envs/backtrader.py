@@ -22,6 +22,7 @@ import logging
 import time
 import zmq
 import os
+import psutil
 
 import gym
 from gym import error, spaces
@@ -30,7 +31,7 @@ from gym import error, spaces
 
 import backtrader as bt
 
-from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering
+from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering, BTgymDataFeedServer
 
 from btgym.rendering import BTgymNullRendering
 
@@ -46,8 +47,17 @@ class BTgymEnv(gym.Env):
     # `human` - state observation in conventional human-readable format.
     # `agent` - state observation as seen by agent.
 
+    # Datafeed Server management:
+    data_master = True
+    data_network_address = 'tcp://127.0.0.1:'  # using localhost.
+    data_port = 5050
+    data_server_pid = None
+    data_context = None
+    data_socket = None
+
     # Dataset:
     dataset = None  # BTgymDataset instance.
+    dataset_stat = None
 
     # Backtrader engine:
     engine = None  # bt.Cerbro subclass for server to execute.
@@ -160,6 +170,7 @@ class BTgymEnv(gym.Env):
 
         # Network parameters:
         self.network_address += str(self.port)
+        self.data_network_address += str(self.data_port)
 
         # Set server rendering:
         if self.render_enabled:
@@ -178,36 +189,43 @@ class BTgymEnv(gym.Env):
             if key in kwargs.keys():
                 _ = kwargs.pop(key)
 
-        # DATASET preparation:
-        #
-        if self.dataset is not None:
-            # If BTgymDataset instance has been passed:
-            # do nothing.
-            msg = 'Custom Dataset class used.'
+        if self.data_master:
+            # DATASET preparation:
+            #
+            if self.dataset is not None:
+                # If BTgymDataset instance has been passed:
+                # do nothing.
+                msg = 'Custom Dataset class used.'
 
-        else:
-            # If no BTgymDataset has been passed,
-            # Make default dataset with given CSV file:
-            try:
-                os.path.isfile(str(self.params['dataset']['filename']))
+            else:
+                # If no BTgymDataset has been passed,
+                # Make default dataset with given CSV file:
+                try:
+                    os.path.isfile(str(self.params['dataset']['filename']))
 
-            except:
-                raise FileNotFoundError('Dataset source data file not specified/not found')
+                except:
+                    raise FileNotFoundError('Dataset source data file not specified/not found')
 
-            # Use kwargs to instantiate dataset:
-            self.dataset = BTgymDataset(**kwargs)
-            msg = 'Base Dataset class used.'
+                # Use kwargs to instantiate dataset:
+                self.dataset = BTgymDataset(**kwargs)
+                msg = 'Base Dataset class used.'
 
-        # Append logging:
-        self.dataset.log = self.log
+            # Append logging:
+            self.dataset.log = self.log
 
-        # Update params -2: pull from dataset, remove used kwargs:
-        self.params['dataset'].update(self.dataset.params)
-        for key in self.params['dataset'].keys():
-            if key in kwargs.keys():
-                _ = kwargs.pop(key)
+            # Update params -2: pull from dataset, remove used kwargs:
+            self.params['dataset'].update(self.dataset.params)
+            for key in self.params['dataset'].keys():
+                if key in kwargs.keys():
+                    _ = kwargs.pop(key)
 
-        self.log.info(msg)
+            self.log.info(msg)
+
+        # Connect/Start data server:
+        self._start_data_server()
+
+        # Get dataset statistic:
+        self.dataset_stat, self.dataset_columns, self.data_server_pid = self.get_dataset_info()
 
         # ENGINE preparation:
 
@@ -272,21 +290,17 @@ class BTgymEnv(gym.Env):
         # the only sensible way is to infer from raw Dataset price values:
         if self.params['strategy']['state_low'] is None or self.params['strategy']['state_high'] is None:
 
-            # Get dataset statistic:
-            self.dataset_stat = self.dataset.describe()
-
             # Exclude 'volume' from columns we count:
-            data_columns = list(self.dataset.names)
-            data_columns.remove('volume')
+            self.dataset_columns.remove('volume')
 
             # Override with absolute price min and max values:
             self.params['strategy']['state_low'] =\
             self.engine.strats[0][0][2]['state_low'] =\
-                self.dataset_stat.loc['min', data_columns].min()
+                self.dataset_stat.loc['min', self.dataset_columns].min()
 
             self.params['strategy']['state_high'] =\
             self.engine.strats[0][0][2]['state_high'] =\
-                self.dataset_stat.loc['max', data_columns].max()
+                self.dataset_stat.loc['max', self.dataset_columns].max()
 
             self.log.info('Inferring obs. space high/low form dataset: {:.6f} / {:.6f}.'.
                           format(self.params['strategy']['state_low'] , self.params['strategy']['state_high']))
@@ -332,10 +346,11 @@ class BTgymEnv(gym.Env):
         self.socket.connect(self.network_address)
 
         # Configure and start server:
-        self.server = BTgymServer(dataset=self.dataset,
-                                  cerebro=self.engine,
+        self.server = BTgymServer(cerebro=self.engine,
                                   render=self.renderer,
                                   network_address=self.network_address,
+                                  data_network_address=self.data_network_address,
+                                  data_server_pid=self.data_server_pid,
                                   log=self.log)
         self.server.daemon = False
         self.server.start()
@@ -567,3 +582,73 @@ class BTgymEnv(gym.Env):
         """
         self._stop_server()
         self._start_server()
+
+
+
+    def _start_data_server(self):
+        """
+        Configures backtrader REQ/REP server instance and starts server process.
+        """
+        # Ensure network resources:
+        # 1. Release client-side, if any:
+        if self.data_context:
+            self.data_context.destroy()
+            self.data_socket = None
+
+        if self.data_master:
+            #
+            # Kill any process using server port:
+            cmd = "kill $( lsof -i:{} -t ) > /dev/null 2>&1".format(self.data_port)
+            os.system(cmd)
+
+            # Configure and start server:
+            self.data_server = BTgymDataFeedServer(
+                dataset=self.dataset,
+                network_address=self.data_network_address,
+                log=self.log,
+            )
+            self.data_server.daemon = True
+            self.data_server.start()
+            # Wait for server to startup
+            time.sleep(1)
+
+        # Set up client channel:
+        self.data_context = zmq.Context()
+        self.data_socket = self.data_context.socket(zmq.REQ)
+        self.data_socket.connect(self.data_network_address)
+
+        self.log.info(' Pinging DataServer at: {} ...'.format(self.data_network_address))
+        self.data_socket.send_pyobj({'ctrl': 'ping!'})
+        self.data_server_response = self.data_socket.recv_pyobj()
+        self.log.info('DataServer seems ready with response: <{}>'.format(self.data_server_response))
+
+    def _stop_data_server(self):
+        """
+        Stops BT server process, releases network resources.
+        """
+        if self.data_server and self.data_server.is_alive():
+            # In case server is running and is ok:
+            self.data_socket.send_pyobj({'ctrl': '_stop'})
+            self.data_server_response = self.data_socket.recv_pyobj()
+
+        else:
+            self.data_server.terminate()
+            self.data_server.join()
+            self.data_server_response = 'DataServer process terminated.'
+
+        self.log.info('{} Exit code: {}'.format(self.data_server_response, self.data_server.exitcode))
+
+        # Release client-side, if any:
+        if self.data_context:
+            self.data_context.destroy()
+
+    def get_dataset_info(self):
+        """
+        Get information.
+        """
+        self.data_socket.send_pyobj({'ctrl': '_get_info'})
+        self.data_server_response = self.data_socket.recv_pyobj()
+
+        return self.data_server_response['dataset_stat'],\
+               self.data_server_response['dataset_columns'],\
+               self.data_server_response['pid']

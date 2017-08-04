@@ -21,6 +21,7 @@ from gym.envs.registration import register
 
 from .datafeed import BTgymDataset
 from .server import BTgymServer
+from .dataserver import BTgymDataFeedServer
 from .strategy import BTgymStrategy
 from .rendering import BTgymRendering
 #from .monitor import BTgymMonitor
