@@ -128,8 +128,8 @@ class BTgymDataFeedServer(multiprocessing.Process):
 
 
                 else:  # ignore any other input
-                    # NOTE: response string must include 'ctrl' key
-                    message = {'ctrl': 'send control keys:  <_get_data>, <_stop>.'}
+                    # NOTE: response dictionary must include 'ctrl' key
+                    message = {'ctrl': 'send control keys:  <_get_data>, <_get_info>, <_stop>.'}
                     self.log.debug('DataServer sent: ' + str(message))
                     socket.send_pyobj(message)  # pairs any other input
 

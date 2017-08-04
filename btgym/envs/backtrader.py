@@ -330,6 +330,7 @@ class BTgymEnv(gym.Env):
         """
         Configures backtrader REQ/REP server instance and starts server process.
         """
+
         # Ensure network resources:
         # 1. Release client-side, if any:
         if self.context:
@@ -436,6 +437,22 @@ class BTgymEnv(gym.Env):
         'Rewinds' backtrader server and starts new episode
         within randomly selected time period.
         """
+        # Data Server check:
+        try:
+            assert psutil.pid_exists(self.data_server_pid) and \
+                   psutil.Process(self.data_server_pid).status() in 'running'
+        except:
+            self.log.info('No running data_server found...')
+
+            if self.data_master:
+                self.log.info('...starting as data_master...')
+                # Start data server:
+                self._start_data_server()
+                # Get onfo:
+                self.dataset_stat, self.dataset_columns, self.data_server_pid = self.get_dataset_info()
+
+            else:
+                raise RuntimeError('Not data_master, can not start/reconnect data_server.')
 
         # Server process check:
         if not self.server or not self.server.is_alive():
@@ -516,6 +533,7 @@ class BTgymEnv(gym.Env):
         Puts BTgym server in Control Mode:
         """
         self._stop_server()
+        self._stop_data_server()
         self.log.debug('Environment closed.')
 
     def get_stat(self):

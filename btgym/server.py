@@ -328,7 +328,7 @@ class BTgymServer(multiprocessing.Process):
 
             # Get random episode dataset:
             assert data_server_process.status() in 'running'
-            
+
             data_socket.send_pyobj({'ctrl': '_get_data'})
             data_server_response = data_socket.recv_pyobj()
 
