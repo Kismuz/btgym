@@ -226,7 +226,7 @@ class BTgymReplayMemory():
             )
             # Indices for retrieving batch of experiences:
             self._batch_indices = tf.Variable(
-                tf.zeros(shape=(self.batch_size,), dtype=tf.int32),
+                tf.zeros(shape=(self.batch_size, self.trace_size, 1), dtype=tf.int32),
                 trainable=False,
                 name='batch_experience_indices',
                 dtype=tf.int32,
@@ -305,6 +305,7 @@ class BTgymReplayMemory():
             self.indices_batch_pl = tf.placeholder(
                 shape=(self.batch_size, self.trace_size, 1),
                 dtype=tf.int32,
+                name='sampled_indices_batch_pl'
             )
 
     def _var_constructor(self, shape_dict, memory_capacity, scope='record'):
@@ -642,19 +643,18 @@ class BTgymReplayMemory():
         """
         op_dict = dict()
         for key, record in input_batch.items():
+            if key in ['state', 'state_next']:
+                stacked = True
+
+            else:
+                stacked = stack
             if type(record) == dict:
-                if key in ['state', 'state_next']:
-                    stacked = True
-
-                else:
-                    stacked = stack
-
                 op_dict[key] = self._get_sars_stack_batch_op_constructor(record, stacked)
 
             else:
-                if stack:
+                if stacked:
                     op_dict[key] = tf.stack(
-                        [record[:, i, ...] for i in range(self.trace_size)],
+                        [record[:, i, ..., 0] for i in range(self.trace_size)],
                         axis=-1
                     )
                 else:
@@ -733,7 +733,7 @@ class BTgymReplayMemory():
     def _get_current_size(self):
         """
         Returns current used storage size
-        in number of stored episodes, in range: [0, max_mem_size).
+        in number of stored experiences, in range: [0, capacity).
         """
         return self.session.run(self._mem_current_size)
 
@@ -815,7 +815,7 @@ class BTgymReplayMemory():
         if self.local_step != self._get_local_step_sync()\
             or self.local_episode != self._get_local_episode_sync():
             # Huston... we've lost somewhere. Better rewind:
-            print('Memory buffer unsync found:\nLocal: step_{}, episode_{}.\nModel: step_{}, episode_{}.\nCorrected.'.
+            print('Memory buffer unsync found:\nLocal: step_{}, episode_{}.\nModel: step_{}, episode_{}.\n...corrected.'.
                   format(self.local_step,
                          self.local_episode,
                          self._get_local_step_sync(),
@@ -867,7 +867,7 @@ class BTgymReplayMemory():
         # Save:
         # If we need to split episode or not:
         if self.current_mem_pointer + self.local_step < self.capacity:
-            print('-->', self.current_mem_pointer, self.local_step)
+            #print('-->', self.current_mem_pointer, self.local_step)
             # Do not split, write entire episode:
             _ = self.session.run(
                 self._save_episode_op,
@@ -885,7 +885,7 @@ class BTgymReplayMemory():
             self._set_cyclic_pointer(self.current_mem_pointer)
 
         else:
-            print('SPLIT-->', self.current_mem_pointer, self.local_step)
+            #print('SPLIT-->', self.current_mem_pointer, self.local_step)
             # Split episode, write tail to storage beginning:
             body = self.capacity - self.current_mem_pointer
             tail = self.local_step - body

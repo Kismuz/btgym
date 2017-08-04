@@ -236,7 +236,7 @@ class BTgymDqnAgent():
 
         return MethodType(_get_global_step, self), MethodType(_global_step_up, self)
 
-    def save(self, sess):
+    def save(self):
         """
         Saves current agent state.
         """
@@ -246,14 +246,14 @@ class BTgymDqnAgent():
         else:
             raise RuntimeError('Saver for <{}> is not defined.'.format(self.scope))
 
-    def restore(self, sess):
+    def restore(self):
         """
         Restores agent state from latest saved checkpoint if it exists.
         """
         if self.saver is not None:
             latest_checkpoint = tf.train.latest_checkpoint(self.checkpoint_dir)
             if latest_checkpoint and self.load_latest_checkpoint:
-                self.saver.restore(sess, latest_checkpoint)
+                self.saver.restore(self.session, latest_checkpoint)
 
         else:
             raise RuntimeError('Saver for <{}> is not defined.'.format(self.scope))
@@ -327,7 +327,7 @@ class BTgymDqnAgent():
         det_action = self.model.predict(state)
 
         if deterministic:
-            return det_action
+            return det_action[0]
 
         else:
             return np.random.choice(
@@ -345,8 +345,10 @@ class BTgymDqnAgent():
         Reflect on what we've done.
         """
         # Store experience in replay storage:
-        self.model.memory.update(self.session, experience)
+        self.model.memory.update(experience)
         # Perform model update:
-        self.model.update(self.get_global_step())
+        loss = self.model.update(self.get_global_step())
         # Advance global step:
         self.global_step_up()
+
+        return loss

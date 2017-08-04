@@ -49,7 +49,7 @@ class BTgymModel():
     )
     gamma = .97
     tau = 0.001
-    t_update_rate = 5
+    t_update_freq = 5
 
     loss_on_batch = None
 
@@ -87,7 +87,6 @@ class BTgymModel():
         self.session = session
         self.experience_shape = experience_shape
         self.state_shape = experience_shape['state_next']
-        self.input_shape = (None,) + self.state_shape
         self.valid_actions = valid_actions
         self.memory_class = memory_class
         self.network_class = network_class
@@ -110,12 +109,49 @@ class BTgymModel():
             self.update_t_network = self._update_estimator_constructor(
                 self.q_network,
                 self.t_network,
+            )
+            self.soft_update_t_network = self._soft_update_estimator_constructor(
+                self.q_network,
+                self.t_network,
                 self.tau
             )
 
+    def _soft_update_estimator_constructor(self, estimator1, estimator2, tau):
+        """
+        Defines copy-work operation graph for double-network algorithms.
+        Receives:
+            estimator1: instance to update from;
+            estimator2: instance to be updated.
+            tau: update intensity parameter, <<1.
+        Returns:
+            instance method:
+                _update_estimator(sess):
+                    Softly updates model parameters
+                    of one estimator towards ones of another.
+                    Receives:
+                        tf.Session() object.
+        """
+        e1_params = [t for t in tf.trainable_variables() if estimator1.scope in t.name]
+        e1_params = sorted(e1_params, key=lambda v: v.name)
+        e2_params = [t for t in tf.trainable_variables() if estimator2.scope in t.name]
+        e2_params = sorted(e2_params, key=lambda v: v.name)
 
+        self._update_estimator_op = []
+        with tf.variable_scope('update_estimator'):
+            for e1_p, e2_p in zip(e1_params, e2_params):
+                op = e2_p.assign(e1_p.value() * tau + e2_p.value() * (1 - tau))
+                self._update_estimator_op.append(op)
 
-    def _update_estimator_constructor(self, estimator1, estimator2, tau):
+        def _update_estimator(self):
+            """
+            Softly updates model parameters of one estimator towards ones of another.
+            sess: tensorflow session instance.
+            """
+            self.session.run(self._update_estimator_op)
+
+        return MethodType(_update_estimator, self)
+
+    def _update_estimator_constructor(self, estimator1, estimator2):
         """
         Defines copy-work operation graph for double-network algorithms.
         Recieves:
@@ -130,15 +166,16 @@ class BTgymModel():
                     Receives:
                         tf.Session() object.
         """
-        self.e1_params = [t for t in tf.trainable_variables() if estimator1.scope in t.name]
-        self.e1_params = sorted(self.e1_params, key=lambda v: v.name)
-        self.e2_params = [t for t in tf.trainable_variables() if estimator2.scope in t.name]
-        self.e2_params = sorted(self.e2_params, key=lambda v: v.name)
+        e1_params = [t for t in tf.trainable_variables() if estimator1.scope in t.name]
+        e1_params = sorted(e1_params, key=lambda v: v.name)
+        e2_params = [t for t in tf.trainable_variables() if estimator2.scope in t.name]
+        e2_params = sorted(e2_params, key=lambda v: v.name)
 
         self._update_estimator_op = []
-        for e1_p, e2_p in zip(self.e1_params, self.e2_params):
-            op = e2_p.assign(e1_p.value() * tau + e2_p.value() * (1 - tau))
-            self._update_estimator_op.append(op)
+        with tf.variable_scope('update_estimator'):
+            for e1_p, e2_p in zip(e1_params, e2_params):
+                op = e2_p.assign(e1_p)
+                self._update_estimator_op.append(op)
 
         def _update_estimator(self):
             """
@@ -161,6 +198,7 @@ class BTgymModel():
             - tensor holding predicted q_values for given batch state input;
             - tensor holding single step algorithm update operation.
         """
+        self.input_shape = (None,) + self.state_shape
         self.q_network = None
         self.t_network = None
         self.q_loss_op = None

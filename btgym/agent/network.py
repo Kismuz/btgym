@@ -28,7 +28,7 @@ class BTgymNeuralNetwork():
     input = None
     output = None
 
-    def __init__(self, input_ts, valid_actions, scope='n_network'):
+    def __init__(self, input_pl, valid_actions, scope='n_network'):
         """
         Creates neural network with inputs and outputs accepted by BTgymModel class
         # Sets
@@ -41,8 +41,9 @@ class BTgymNeuralNetwork():
         self.valid_actions = valid_actions
         self.scope = scope
         with tf.variable_scope(scope):
+            self.input_pl = input_pl
             self.input = tf.identity(
-                input_ts,
+                self.input_pl,
                 name='input_tensor'
             )
             self.output = self._network_constructor()
