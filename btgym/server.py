@@ -114,7 +114,7 @@ class _BTgymAnalyzer(bt.Analyzer):
                         )
                     )
 
-                # Episode ternmination requested:
+                # Episode termination requested:
                 if self.message['ctrl'] == '_done':
                     is_done = True  # redundant
                     self.socket.send_pyobj('_DONE SIGNAL RECEIVED')
@@ -193,18 +193,19 @@ class BTgymServer(multiprocessing.Process):
                        info, <list> - auxiliary information.
 
     Parameters:
-    datafeed  - class BTgymDataset instance;
+    ;
     cerebro -  bt.Cerebro engine subclass;
     network_address - <str>, network address to bind to;
     verbose - verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
     """
+    data_server_response = None
 
     def __init__(self,
                  cerebro=None,
                  render=None,
                  network_address=None,
                  data_network_address=None,
-                 data_server_pid=None,
+                 connect_timeout=60,
                  log=None):
         """
         Configures BT server instance.
@@ -223,7 +224,8 @@ class BTgymServer(multiprocessing.Process):
         self.network_address = network_address
         self.render = render
         self.data_network_address = data_network_address
-        self.data_server_pid = data_server_pid
+        self.connect_timeout = connect_timeout # server connection timeout in seconds.
+        self.connect_timeout_step = 0.01
 
     def run(self):
         """
@@ -243,14 +245,25 @@ class BTgymServer(multiprocessing.Process):
         socket = context.socket(zmq.REP)
         socket.bind(self.network_address)
 
-        assert psutil.pid_exists(self.data_server_pid)
-        data_server_process = psutil.Process(self.data_server_pid)
-
-        assert data_server_process.status() in 'running'
-
         data_context = zmq.Context()
         data_socket = data_context.socket(zmq.REQ)
         data_socket.connect(self.data_network_address)
+
+        data_socket.send_pyobj({'ctrl': 'ping!'})
+        self.log.debug('BtgymServer: pinging data_server at: {} ...'.format(self.data_network_address))
+
+        # Data_server check:
+        for i in itertools.count():
+            try:
+                data_server_response = data_socket.recv_pyobj(flags=zmq.NOBLOCK)
+                break
+
+            except:
+                time.sleep(self.connect_timeout_step)
+                if i >= self.connect_timeout / self.connect_timeout_step:
+                    raise ConnectionError('BTgymServer: data_server unreachable.')
+
+        self.log.debug('BtgymServer: data_server seems ready with response: {}.'.format(data_server_response))
 
         # Init renderer:
         self.render.initialize_pyplot()
@@ -282,7 +295,7 @@ class BTgymServer(multiprocessing.Process):
                         socket.send_pyobj(message)  # pairs '_reset'
                         break
 
-                    # Retrieve statisitc:
+                    # Retrieve statistic:
                     elif service_input['ctrl'] == '_getstat':
                         socket.send_pyobj(episode_result)
                         self.log.debug('Episode statistic sent.')
@@ -311,7 +324,6 @@ class BTgymServer(multiprocessing.Process):
             cerebro._socket = socket
             cerebro._log = self.log
             cerebro._render = self.render
-
             # Add DrawDown observer if not already:
             dd_added = False
             for observer in cerebro.observers:
@@ -327,10 +339,18 @@ class BTgymServer(multiprocessing.Process):
                                 _name='_env_analyzer',)
 
             # Get random episode dataset:
-            assert data_server_process.status() in 'running'
-
             data_socket.send_pyobj({'ctrl': '_get_data'})
-            data_server_response = data_socket.recv_pyobj()
+            for i in itertools.count():
+                try:
+                    data_server_response = data_socket.recv_pyobj(flags=zmq.NOBLOCK)
+                    self.log.debug('Data_server responded with datafeed in {} seconds.'.
+                                   format(self.connect_timeout_step * i))
+                    break
+
+                except:
+                    time.sleep(self.connect_timeout_step)
+                    if i > self.connect_timeout / self.connect_timeout_step:
+                        raise ConnectionError('BTgymServer: data_server connection timeout.')
 
             episode_datafeed = data_server_response['datafeed']
 

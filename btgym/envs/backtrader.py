@@ -22,7 +22,8 @@ import logging
 import time
 import zmq
 import os
-import psutil
+import itertools
+#import psutil
 
 import gym
 from gym import error, spaces
@@ -50,10 +51,12 @@ class BTgymEnv(gym.Env):
     # Datafeed Server management:
     data_master = True
     data_network_address = 'tcp://127.0.0.1:'  # using localhost.
-    data_port = 5050
+    data_port = 4999
+    data_server = None
     data_server_pid = None
     data_context = None
     data_socket = None
+    data_server_response = None
 
     # Dataset:
     dataset = None  # BTgymDataset instance.
@@ -72,6 +75,11 @@ class BTgymEnv(gym.Env):
     port = 5500  # network port to use.
     network_address = 'tcp://127.0.0.1:'  # using localhost.
     ctrl_actions = ('_done', '_reset', '_stop', '_getstat', '_render')  # server control messages.
+    server_response = None
+
+    # Connection timeout:
+    connect_timeout = 60  # server connection timeout in seconds.
+    connect_timeout_step = 0.01 # in seconds
 
     # Rendering:
     render_enabled = True
@@ -81,6 +89,8 @@ class BTgymEnv(gym.Env):
     # Logging:
     log = None
     verbose = 0  # verbosity mode: 0 - silent, 1 - info, 2 - debugging level (lot of traffic!).
+
+    closed = True
 
     def __init__(self, *args, **kwargs):
         """
@@ -221,11 +231,8 @@ class BTgymEnv(gym.Env):
 
             self.log.info(msg)
 
-        # Connect/Start data server:
+        # Connect/Start data server (and get dataset statistic):
         self._start_data_server()
-
-        # Get dataset statistic:
-        self.dataset_stat, self.dataset_columns, self.data_server_pid = self.get_dataset_info()
 
         # ENGINE preparation:
 
@@ -287,7 +294,7 @@ class BTgymEnv(gym.Env):
             self.params['strategy'][key] = value
 
         # For min/max, if not been set explicitly,
-        # the only sensible way is to infer from raw Dataset price values:
+        # the only sensible way is to infer from raw Dataset price values (we already got those from data_server):
         if self.params['strategy']['state_low'] is None or self.params['strategy']['state_high'] is None:
 
             # Exclude 'volume' from columns we count:
@@ -351,16 +358,28 @@ class BTgymEnv(gym.Env):
                                   render=self.renderer,
                                   network_address=self.network_address,
                                   data_network_address=self.data_network_address,
-                                  data_server_pid=self.data_server_pid,
+                                  connect_timeout=self.connect_timeout,
                                   log=self.log)
         self.server.daemon = False
         self.server.start()
         # Wait for server to startup
         time.sleep(1)
 
-        self.log.info('Server started, pinging {} ...'.format(self.network_address))
         self.socket.send_pyobj({'ctrl': 'ping!'})
-        self.server_response = self.socket.recv_pyobj()
+        self.log.info('Server started, pinging {} ...'.format(self.network_address))
+
+        for i in itertools.count():
+            try:
+                self.server_response = self.socket.recv_pyobj(flags=zmq.NOBLOCK)
+                break
+
+            except:
+                time.sleep(self.connect_timeout_step)
+                if i >= self.connect_timeout / self.connect_timeout_step:
+                    msg = 'Server unreachable.'
+                    self.log.error(msg)
+                    raise ConnectionError(msg)
+
         self.log.info('Server seems ready with response: <{}>'.format(self.server_response))
 
         self._closed = False
@@ -438,21 +457,10 @@ class BTgymEnv(gym.Env):
         within randomly selected time period.
         """
         # Data Server check:
-        try:
-            assert psutil.pid_exists(self.data_server_pid) and \
-                   psutil.Process(self.data_server_pid).status() in 'running'
-        except:
-            self.log.info('No running data_server found...')
-
-            if self.data_master:
-                self.log.info('...starting as data_master...')
-                # Start data server:
+        if self.data_master:
+            if not self.data_server or not self.data_server.is_alive():
+                self.log.info('No running data_server found, starting...')
                 self._start_data_server()
-                # Get onfo:
-                self.dataset_stat, self.dataset_columns, self.data_server_pid = self.get_dataset_info()
-
-            else:
-                raise RuntimeError('Not data_master, can not start/reconnect data_server.')
 
         # Server process check:
         if not self.server or not self.server.is_alive():
@@ -601,20 +609,17 @@ class BTgymEnv(gym.Env):
         self._stop_server()
         self._start_server()
 
-
+        self._stop_data_server()
+        self._start_data_server()
 
     def _start_data_server(self):
         """
         Configures backtrader REQ/REP server instance and starts server process.
         """
-        # Ensure network resources:
-        # 1. Release client-side, if any:
-        if self.data_context:
-            self.data_context.destroy()
-            self.data_socket = None
+        self.data_server = None
 
+        # Only data_master launches/stops data_server process:
         if self.data_master:
-            #
             # Kill any process using server port:
             cmd = "kill $( lsof -i:{} -t ) > /dev/null 2>&1".format(self.data_port)
             os.system(cmd)
@@ -625,7 +630,7 @@ class BTgymEnv(gym.Env):
                 network_address=self.data_network_address,
                 log=self.log,
             )
-            self.data_server.daemon = True
+            self.data_server.daemon = False
             self.data_server.start()
             # Wait for server to startup
             time.sleep(1)
@@ -635,34 +640,48 @@ class BTgymEnv(gym.Env):
         self.data_socket = self.data_context.socket(zmq.REQ)
         self.data_socket.connect(self.data_network_address)
 
-        self.log.info(' Pinging DataServer at: {} ...'.format(self.data_network_address))
+        # Check:
         self.data_socket.send_pyobj({'ctrl': 'ping!'})
-        self.data_server_response = self.data_socket.recv_pyobj()
-        self.log.info('DataServer seems ready with response: <{}>'.format(self.data_server_response))
+        self.log.info('Pinging data_server at: {} ...'.format(self.data_network_address))
+
+        for i in itertools.count():
+            try:
+                self.data_server_response = self.data_socket.recv_pyobj(flags=zmq.NOBLOCK)
+                break
+
+            except:
+                time.sleep(self.connect_timeout_step)
+                if i >= self.connect_timeout / self.connect_timeout_step:
+                    msg = 'Data_server unreachable. Hint: forgot to launch data_master environment?'
+                    self.log.error(msg)
+                    raise ConnectionError(msg)
+
+        self.log.info('Data_server seems ready with response: <{}>'.format(self.data_server_response))
+
+        # Get info:
+        self.dataset_stat, self.dataset_columns, self.data_server_pid = self.get_dataset_info()
 
     def _stop_data_server(self):
         """
         Stops BT server process, releases network resources.
         """
-        if self.data_server and self.data_server.is_alive():
-            # In case server is running and is ok:
-            self.data_socket.send_pyobj({'ctrl': '_stop'})
-            self.data_server_response = self.data_socket.recv_pyobj()
+        if self.data_master:
+            if self.data_server is not None and self.data_server.is_alive():
+                # In case server is running and is ok:
+                self.data_socket.send_pyobj({'ctrl': '_stop'})
+                self.data_server_response = self.data_socket.recv_pyobj()
 
-        else:
-            self.data_server.terminate()
-            self.data_server.join()
-            self.data_server_response = 'DataServer process terminated.'
+            else:
+                self.data_server.terminate()
+                self.data_server.join()
+                self.data_server_response = 'DataServer process terminated.'
 
-        self.log.info('{} Exit code: {}'.format(self.data_server_response, self.data_server.exitcode))
+            self.log.info('{} Exit code: {}'.format(self.data_server_response, self.data_server.exitcode))
 
-        # Release client-side, if any:
-        if self.data_context:
-            self.data_context.destroy()
 
     def get_dataset_info(self):
         """
-        Get information.
+        Get dataset descriptive statistic'.
         """
         self.data_socket.send_pyobj({'ctrl': '_get_info'})
         self.data_server_response = self.data_socket.recv_pyobj()

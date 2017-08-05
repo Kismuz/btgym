@@ -119,6 +119,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
                 elif service_input['ctrl'] == '_get_info':
                     message = 'Sending info.'.format(local_step)
                     self.log.info(message)
+                    # Compose response:
                     info_dict = dict(
                         dataset_stat=self.dataset_stat,
                         dataset_columns=list(self.dataset.names),
