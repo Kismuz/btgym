@@ -79,7 +79,7 @@ class BTgymEnv(gym.Env):
 
     # Connection timeout:
     connect_timeout = 60  # server connection timeout in seconds.
-    connect_timeout_step = 0.01 # in seconds
+    connect_timeout_step = 0.01  # time between retries in seconds.
 
     # Rendering:
     render_enabled = True
@@ -200,7 +200,7 @@ class BTgymEnv(gym.Env):
                 _ = kwargs.pop(key)
 
         if self.data_master:
-            # DATASET preparation:
+            # DATASET preparation, only data_master executes this:
             #
             if self.dataset is not None:
                 # If BTgymDataset instance has been passed:
@@ -329,9 +329,49 @@ class BTgymEnv(gym.Env):
         self.server_response = None
         self.env_response = None
 
-        # self._start_server()  # ... not shure
+        self._start_server()  # ... not sure yet
+        self.closed = False
 
         self.log.info('Environment is ready.')
+
+    def _comm_with_timeout(self, socket, message, timeout, connect_timeout_step=0.01,):
+        """
+        Exchanges messages via socket, timeout sensitive.
+        # Args:
+            socket: zmq connected socket to communicate via;
+            message: message to send;
+            timeout: max time to wait for response;
+            connect_timeout_step:
+        # Returns:
+            dictionary:
+                status: communication result;
+                message: recieved message if status == `ok` or None;
+                time: remote response time.
+        """
+        response=dict(
+            status='ok',
+            message=None,
+        )
+        try:
+            socket.send_pyobj(message)
+
+        except:
+            response['status'] = 'send_failed'
+            return response
+
+        for i in itertools.count():
+            try:
+                response['message'] = socket.recv_pyobj(flags=zmq.NOBLOCK)
+                response['time'] = i * connect_timeout_step
+                break
+
+            except:
+                time.sleep(connect_timeout_step)
+                if i >= timeout / connect_timeout_step:
+                    response['status'] = 'receive_failed'
+                    return response
+
+        return response
 
     def _start_server(self):
         """
@@ -365,22 +405,22 @@ class BTgymEnv(gym.Env):
         # Wait for server to startup
         time.sleep(1)
 
-        self.socket.send_pyobj({'ctrl': 'ping!'})
-        self.log.info('Server started, pinging {} ...'.format(self.network_address))
+        # Check connection:
+        self.log.debug('Server started, pinging {} ...'.format(self.network_address))
 
-        for i in itertools.count():
-            try:
-                self.server_response = self.socket.recv_pyobj(flags=zmq.NOBLOCK)
-                break
+        self.server_response = self._comm_with_timeout(
+            socket=self.socket,
+            message={'ctrl': 'ping!'},
+            timeout=self.connect_timeout,
+        )
+        if self.server_response['status'] in 'ok':
+            self.log.debug('Server seems ready with response: <{}>'.
+                           format(self.server_response['message']))
 
-            except:
-                time.sleep(self.connect_timeout_step)
-                if i >= self.connect_timeout / self.connect_timeout_step:
-                    msg = 'Server unreachable.'
-                    self.log.error(msg)
-                    raise ConnectionError(msg)
-
-        self.log.info('Server seems ready with response: <{}>'.format(self.server_response))
+        else:
+            msg = 'Server unreachable with status: <{}>.'.format(self.server_response['status'])
+            self.log.error(msg)
+            raise ConnectionError(msg)
 
         self._closed = False
 
@@ -474,6 +514,9 @@ class BTgymEnv(gym.Env):
             # Get initial environment response:
             self.env_response = self._step(0)
 
+            # Check (once) if it is really (o,r,d,i) tuple:
+            self._assert_response(self.env_response)
+
             # Check (once) if state_space is as expected:
             if self.env_response[0].shape == self.observation_space.shape:
                 pass
@@ -485,7 +528,7 @@ class BTgymEnv(gym.Env):
                     'Shape returned by server: {}.\n' +
                     'Hint: Wrong Strategy.get_state() parameters?'
                 ).format(self.observation_space.shape, self.env_response[0].shape)
-                self.log.info(msg)
+                self.log.error(msg)
                 self._stop_server()
                 raise AssertionError(msg)
 
@@ -496,7 +539,7 @@ class BTgymEnv(gym.Env):
 
         else:
             msg = 'Something went wrong. env.reset() can not get response from server.'
-            self.log.info(msg)
+            self.log.error(msg)
             raise ChildProcessError(msg)
 
     def _step(self, action):
@@ -527,11 +570,17 @@ class BTgymEnv(gym.Env):
             raise AssertionError(msg)
 
         # Send action to backtrader engine, receive environment response
-        self.socket.send_pyobj({'action': self.server_actions[action]})
-        self.env_response = self.socket.recv_pyobj()
+        env_response = self._comm_with_timeout(
+            socket=self.socket,
+            message={'action': self.server_actions[action]},
+            timeout=self.connect_timeout,
+        )
+        if not env_response['status'] in 'ok':
+            msg = 'Env.step: server unreachable with status: <{}>.'.format(env_response['status'])
+            self.log.error(msg)
+            raise ConnectionError(msg)
 
-        # Is it?
-        self._assert_response(self.env_response)
+        self.env_response = env_response ['message']
 
         return self.env_response
 
@@ -542,7 +591,7 @@ class BTgymEnv(gym.Env):
         """
         self._stop_server()
         self._stop_data_server()
-        self.log.debug('Environment closed.')
+        self.log.info('Environment closed.')
 
     def get_stat(self):
         """
@@ -608,19 +657,26 @@ class BTgymEnv(gym.Env):
         """
         self._stop_server()
         self._start_server()
-
-        self._stop_data_server()
-        self._start_data_server()
+        self.log.info('Server restarted.')
 
     def _start_data_server(self):
         """
-        Configures backtrader REQ/REP server instance and starts server process.
+        For data_master environment:
+            - configures backtrader REQ/REP server instance and starts server process.
+        For others:
+            - establishes network connection to existing data_server.
         """
         self.data_server = None
 
+        # Ensure network resources:
+        # 1. Release client-side, if any:
+        if self.data_context:
+            self.data_context.destroy()
+            self.data_socket = None
+
         # Only data_master launches/stops data_server process:
         if self.data_master:
-            # Kill any process using server port:
+            # 2. Kill any process using server port:
             cmd = "kill $( lsof -i:{} -t ) > /dev/null 2>&1".format(self.data_port)
             os.system(cmd)
 
@@ -640,30 +696,31 @@ class BTgymEnv(gym.Env):
         self.data_socket = self.data_context.socket(zmq.REQ)
         self.data_socket.connect(self.data_network_address)
 
-        # Check:
-        self.data_socket.send_pyobj({'ctrl': 'ping!'})
-        self.log.info('Pinging data_server at: {} ...'.format(self.data_network_address))
+        # Check connection:
+        self.log.debug('Pinging data_server at: {} ...'.format(self.data_network_address))
 
-        for i in itertools.count():
-            try:
-                self.data_server_response = self.data_socket.recv_pyobj(flags=zmq.NOBLOCK)
-                break
+        self.data_server_response = self._comm_with_timeout(
+            socket=self.data_socket,
+            message={'ctrl': 'ping!'},
+            timeout=self.connect_timeout,
+        )
+        if self.data_server_response['status'] in 'ok':
+            self.log.debug('Data_server seems ready with response: <{}>'.
+                          format(self.data_server_response['message']))
 
-            except:
-                time.sleep(self.connect_timeout_step)
-                if i >= self.connect_timeout / self.connect_timeout_step:
-                    msg = 'Data_server unreachable. Hint: forgot to launch data_master environment?'
-                    self.log.error(msg)
-                    raise ConnectionError(msg)
+        else:
+            msg = 'Data_server unreachable with status: <{}>. Hint: forgot to launch/open data_master environment?'.\
+                format(self.data_server_response['status'])
+            self.log.error(msg)
+            raise ConnectionError(msg)
 
-        self.log.info('Data_server seems ready with response: <{}>'.format(self.data_server_response))
-
-        # Get info:
-        self.dataset_stat, self.dataset_columns, self.data_server_pid = self.get_dataset_info()
+        # Get info and statistic:
+        self.dataset_stat, self.dataset_columns, self.data_server_pid = self._get_dataset_info()
 
     def _stop_data_server(self):
         """
-        Stops BT server process, releases network resources.
+        For data_master:
+            - stops BT server process, releases network resources.
         """
         if self.data_master:
             if self.data_server is not None and self.data_server.is_alive():
@@ -674,14 +731,24 @@ class BTgymEnv(gym.Env):
             else:
                 self.data_server.terminate()
                 self.data_server.join()
-                self.data_server_response = 'DataServer process terminated.'
+                self.data_server_response = 'Data_server process terminated.'
 
             self.log.info('{} Exit code: {}'.format(self.data_server_response, self.data_server.exitcode))
 
+        if self.data_context:
+            self.data_context.destroy()
+            self.data_socket = None
 
-    def get_dataset_info(self):
+    def _restart_data_server(self):
         """
-        Get dataset descriptive statistic'.
+        Restarts data_server.
+        """
+        self._stop_data_server()
+        self._start_data_server()
+
+    def _get_dataset_info(self):
+        """
+        Retrieves dataset descriptive statistic'.
         """
         self.data_socket.send_pyobj({'ctrl': '_get_info'})
         self.data_server_response = self.data_socket.recv_pyobj()

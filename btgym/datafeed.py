@@ -192,7 +192,7 @@ class BTgymDataset:
 
         except:
             msg = 'BTgymDataset instance holds no data. Hint: forgot to call .read_csv()?'
-            self.log.info(msg)
+            self.log.error(msg)
             raise AssertionError(msg)
 
     def sample_random(self):
@@ -204,9 +204,9 @@ class BTgymDataset:
         # Maximum possible number of data records (rows) within episode:
         self.episode_num_records = int(self.max_episode_len.total_seconds() / (60 * self.timeframe))
 
-        self.log.info('Maximum episode time duration set to: {}.'.format(self.max_episode_len))
-        self.log.info('Respective number of steps: {}.'.format(self.episode_num_records))
-        self.log.info('Maximum allowed data time gap set to: {}.\n'.format(self.max_time_gap))
+        self.log.debug('Maximum episode time duration set to: {}.'.format(self.max_episode_len))
+        self.log.debug('Respective number of steps: {}.'.format(self.episode_num_records))
+        self.log.debug('Maximum allowed data time gap set to: {}.\n'.format(self.max_time_gap))
 
         # Sanity check param:
         max_attempts = 100
@@ -218,20 +218,20 @@ class BTgymDataset:
             # Randomly sample record (row) from entire datafeed:
             first_row = int((self.data.shape[0] - self.episode_num_records - 1) * random.random())
             episode_first_day = self.data[first_row:first_row + 1].index[0]
-            self.log.info('Episode start: {}, weekday: {}.'.format(episode_first_day, episode_first_day.weekday()))
+            self.log.debug('Episode start: {}, weekday: {}.'.format(episode_first_day, episode_first_day.weekday()))
 
             # Keep sampling until good day:
             while not episode_first_day.weekday() in self.start_weekdays:
-                self.log.info('Not a good day to start, resampling...')
+                self.log.debug('Not a good day to start, resampling...')
                 first_row = int((self.data.shape[0] - self.episode_num_records - 1) * random.random())
                 episode_first_day = self.data[first_row:first_row + 1].index[0]
-                self.log.info('Episode start: {}, weekday: {}.'.format(episode_first_day, episode_first_day.weekday()))
+                self.log.debug('Episode start: {}, weekday: {}.'.format(episode_first_day, episode_first_day.weekday()))
                 attempts +=1
 
             # If 00 option set, get index of first record of that day:
             if self.start_00:
                 adj_timedate = episode_first_day.date()
-                self.log.info('Start time adjusted to <00:00>')
+                self.log.debug('Start time adjusted to <00:00>')
 
             else:
                 adj_timedate = episode_first_day
@@ -242,25 +242,25 @@ class BTgymDataset:
             last_row = first_row + self.episode_num_records  # + 1
             episode_sample = self.data[first_row: last_row]
             episode_sample_len = (episode_sample.index[-1] - episode_sample.index[0]).to_pytimedelta()
-            self.log.info('Episode duration: {}.'.format(episode_sample_len, ))
-            self.log.info('Total episode time gap: {}.'.format(episode_sample_len - self.max_episode_len))
+            self.log.debug('Episode duration: {}.'.format(episode_sample_len, ))
+            self.log.debug('Total episode time gap: {}.'.format(episode_sample_len - self.max_episode_len))
 
             # Perform data gap check:
             if episode_sample_len - self.max_episode_len < self.max_time_gap:
-                self.log.info('Sample accepted.')
+                self.log.debug('Sample accepted.')
                 # If sample OK - return episodic-dataset:
                 episode = BTgymDataset(**self.params)
                 episode.filename = '_episode_dataset_' + str(adj_timedate)
-                self.log.debug('Episode <filename>: {}'.format(episode.filename))
+                self.log.debug('Episode filename: <{}>.'.format(episode.filename))
                 episode.data = episode_sample
                 return episode
 
             else:
-                self.log.info('Duration too big, resampling...\n')
+                self.log.debug('Duration too big, resampling...\n')
                 attempts += 1
 
         # Got here -> sanity check failed:
         msg = ('Quitting after {} sampling attempts.' +
                'Hint: check sampling params / dataset consistency.').format(attempts)
-        self.log.info(msg)
+        self.log.error(msg)
         raise RuntimeError(msg)

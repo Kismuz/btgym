@@ -111,14 +111,14 @@ class BTgymDataFeedServer(multiprocessing.Process):
                 # Send episode datafeed:
                 elif service_input['ctrl'] == '_get_data':
                     message = 'Sending episode #{} data.'.format(local_step)
-                    self.log.info(message)
+                    self.log.debug(message)
                     socket.send_pyobj(data_dict)
                     local_step += 1
 
                     # Send dataset statisitc:
                 elif service_input['ctrl'] == '_get_info':
                     message = 'Sending info.'.format(local_step)
-                    self.log.info(message)
+                    self.log.debug(message)
                     # Compose response:
                     info_dict = dict(
                         dataset_stat=self.dataset_stat,
@@ -136,5 +136,5 @@ class BTgymDataFeedServer(multiprocessing.Process):
 
             else:
                 message = 'No <ctrl> key received:{}\n'.format(msg)
-                self.log.warning(message)
+                self.log.debug(message)
                 socket.send_pyobj(message) # pairs input

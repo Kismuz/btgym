@@ -227,12 +227,44 @@ class BTgymServer(multiprocessing.Process):
         self.connect_timeout = connect_timeout # server connection timeout in seconds.
         self.connect_timeout_step = 0.01
 
+    def _comm_with_timeout(self, socket, message, timeout, connect_timeout_step=0.01,):
+        """
+        Exchanges messages via socket with timeout.
+        # Returns:
+            dictionary:
+                status: communication result;
+                message: received message, if any.
+        """
+        response=dict(
+            status='ok',
+            message=None,
+        )
+        try:
+            socket.send_pyobj(message)
+        except:
+            response['status'] = 'send_failed'
+            return response
+
+        for i in itertools.count():
+            try:
+                response['message'] = socket.recv_pyobj(flags=zmq.NOBLOCK)
+                response['time'] = i * connect_timeout_step
+                break
+
+            except:
+                time.sleep(connect_timeout_step)
+                if i >= timeout / connect_timeout_step:
+                    response['status'] = 'receive_failed'
+                    return response
+
+        return response
+
     def run(self):
         """
         Server process runtime body. This method is invoked by env._start_server().
         """
         self.process = multiprocessing.current_process()
-        self.log.info('Server PID: {}'.format(self.process.pid))
+        self.log.info('BTgymServer PID: {}'.format(self.process.pid))
 
         # Runtime Housekeeping:
         cerebro = None
@@ -249,21 +281,24 @@ class BTgymServer(multiprocessing.Process):
         data_socket = data_context.socket(zmq.REQ)
         data_socket.connect(self.data_network_address)
 
-        data_socket.send_pyobj({'ctrl': 'ping!'})
+        # Check connection:
         self.log.debug('BtgymServer: pinging data_server at: {} ...'.format(self.data_network_address))
 
-        # Data_server check:
-        for i in itertools.count():
-            try:
-                data_server_response = data_socket.recv_pyobj(flags=zmq.NOBLOCK)
-                break
+        data_server_response = self._comm_with_timeout(
+            socket=data_socket,
+            message={'ctrl': 'ping!'},
+            timeout=self.connect_timeout,
+        )
+        if data_server_response['status'] in 'ok':
+            self.log.debug('BTgymServer: Data_server seems ready with response: <{}>'.
+                          format(data_server_response['message']))
 
-            except:
-                time.sleep(self.connect_timeout_step)
-                if i >= self.connect_timeout / self.connect_timeout_step:
-                    raise ConnectionError('BTgymServer: data_server unreachable.')
+        else:
+            msg = 'BtgymServer: data_server unreachable with status: <{}>.'.\
+                format(data_server_response['status'])
+            self.log.error(msg)
+            raise ConnectionError(msg)
 
-        self.log.debug('BtgymServer: data_server seems ready with response: {}.'.format(data_server_response))
 
         # Init renderer:
         self.render.initialize_pyplot()
@@ -291,7 +326,7 @@ class BTgymServer(multiprocessing.Process):
                     # Start episode:
                     elif service_input['ctrl'] == '_reset':
                         message = 'Starting episode.'
-                        self.log.info(message)
+                        self.log.debug(message)
                         socket.send_pyobj(message)  # pairs '_reset'
                         break
 
@@ -315,7 +350,7 @@ class BTgymServer(multiprocessing.Process):
 
                 else:
                     message = 'No <ctrl> key received:{}\nHint: forgot to call reset()?'.format(msg)
-                    self.log.warning(message)
+                    self.log.debug(message)
                     socket.send_pyobj(message)
 
             # Got '_reset' signal -> prepare Cerebro subclass and run episode:
@@ -339,24 +374,26 @@ class BTgymServer(multiprocessing.Process):
                                 _name='_env_analyzer',)
 
             # Get random episode dataset:
-            data_socket.send_pyobj({'ctrl': '_get_data'})
-            for i in itertools.count():
-                try:
-                    data_server_response = data_socket.recv_pyobj(flags=zmq.NOBLOCK)
-                    self.log.debug('Data_server responded with datafeed in {} seconds.'.
-                                   format(self.connect_timeout_step * i))
-                    break
+            data_server_response = self._comm_with_timeout(
+                socket=data_socket,
+                message={'ctrl': '_get_data'},
+                timeout=self.connect_timeout,
+            )
+            if data_server_response['status'] in 'ok':
+                self.log.debug('Data_server responded with datafeed in about {} seconds.'.
+                               format(data_server_response['time']))
 
-                except:
-                    time.sleep(self.connect_timeout_step)
-                    if i > self.connect_timeout / self.connect_timeout_step:
-                        raise ConnectionError('BTgymServer: data_server connection timeout.')
+            else:
+                msg = 'BtgymServer: data_server unreachable with status: <{}>.'. \
+                    format(data_server_response['status'])
+                self.log.error(msg)
+                raise ConnectionError(msg)
 
-            episode_datafeed = data_server_response['datafeed']
+            episode_datafeed = data_server_response['message']['datafeed']
 
             # Get episode data statistic and pass it to strategy params:
-            self.cerebro.strats[0][0][2]['dataset_stat'] = data_server_response['dataset_stat']
-            cerebro.strats[0][0][2]['episode_stat'] = data_server_response['episode_stat']
+            self.cerebro.strats[0][0][2]['dataset_stat'] = data_server_response['message']['dataset_stat']
+            cerebro.strats[0][0][2]['episode_stat'] = data_server_response['message']['episode_stat']
 
             # Set nice broker cash plotting:
             cerebro.broker.set_shortcash(False)
