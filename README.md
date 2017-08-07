@@ -518,13 +518,19 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [ ] retrieving results for observers;
  - [x] proper rendering for entire episode;
  - [x] tensorboard integration;
- - [ ] multiply agents asynchronous operation feature (e.g for A3C):
+ - [x] multiply agents asynchronous operation feature (e.g for A3C):
     -  [possibly] via dedicated data server;
+ - [ ] multi-modal observation space feature;
  - [ ] sequential and sliding time-window sampling;
  - [ ] multiply instruments trading;
  
  
 ### <a name="news"></a>[News and updates:](#title)
+
+- 07.08.17: BTgym is now optimized for asynchronous operation with multiply environment instances.
+     - dedicated data_server is used for dataset management;
+     - improved overall internal network connection stability and error handling;
+     - see example `async_btgym_workers.ipynb` in [`examples`](./examples) directory.
 
 - 15.07.17: UPDATE, BACKWARD INCOMPATIBILITY: now state observation can be tensor of any rank.
      - Consequently, dim. ordering convention has changed to ensure compatibility with 

@@ -16,6 +16,8 @@
 [<img src="./img/tb_1_2017-07-06.png " width="400">](./img/tb_1_2017-07-06.png) [<img src="./img/tb_2_2017-07-06.png " width="400">](./img/tb_2_2017-07-06.png)
 
 
+- **[BTgym setup for asynchronous training.](./async_btgym_workers.ipynb)**: getting ready for A3C.
+
 ****
 
  

@@ -304,7 +304,7 @@ class BTgymServer(multiprocessing.Process):
         self.render.initialize_pyplot()
 
         # Server 'Control Mode' loop:
-        for episode_number in itertools.count(1):
+        for episode_number in itertools.count(0):
             while True:
                 # Stuck here until '_reset' or '_stop':
                 service_input = socket.recv_pyobj()

@@ -31,6 +31,7 @@ import zmq
 class BTgymDataFeedServer(multiprocessing.Process):
     """
     Data provider server class.
+    Enables efficient data sampling for asynchronous multiply BTgym environments execution.
     """
     process = None
     dataset_stat = None
@@ -38,6 +39,10 @@ class BTgymDataFeedServer(multiprocessing.Process):
     def __init__(self, dataset=None, network_address=None, log=None):
         """
         Configures data server instance.
+        # Args:
+            dataset: BTgymDataset instance;
+            network_address: ...to bind to.
+            log: parent logger.
         """
         super(BTgymDataFeedServer, self).__init__()
 
@@ -59,7 +64,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
         self.process = multiprocessing.current_process()
         self.log.info('DataServer PID: {}'.format(self.process.pid))
 
-        # Set up a comm. channel for server as ZMQ socket
+        # Set up a comm. channel for server as ZMQ socket:
         context = zmq.Context()
         socket = context.socket(zmq.REP)
         socket.bind(self.network_address)
@@ -126,7 +131,6 @@ class BTgymDataFeedServer(multiprocessing.Process):
                         pid=self.process.pid,
                     )
                     socket.send_pyobj(info_dict)
-
 
                 else:  # ignore any other input
                     # NOTE: response dictionary must include 'ctrl' key

@@ -329,7 +329,10 @@ class BTgymEnv(gym.Env):
         self.server_response = None
         self.env_response = None
 
-        self._start_server()  # ... not sure yet
+        # If instance is datamaster - it may or may not want to launch self BTgymServer (can do it later via reset);
+        # else it always need to launch it:
+        #if not self.data_master:
+        self._start_server()
         self.closed = False
 
         self.log.info('Environment is ready.')
@@ -341,12 +344,12 @@ class BTgymEnv(gym.Env):
             socket: zmq connected socket to communicate via;
             message: message to send;
             timeout: max time to wait for response;
-            connect_timeout_step:
+            connect_timeout_step: time increments between retries.
         # Returns:
             dictionary:
                 status: communication result;
-                message: recieved message if status == `ok` or None;
-                time: remote response time.
+                message: received message if status == `ok` or None;
+                time: remote side response time.
         """
         response=dict(
             status='ok',
@@ -402,7 +405,7 @@ class BTgymEnv(gym.Env):
                                   log=self.log)
         self.server.daemon = False
         self.server.start()
-        # Wait for server to startup
+        # Wait for server to startup:
         time.sleep(1)
 
         # Check connection:
@@ -466,7 +469,7 @@ class BTgymEnv(gym.Env):
             self.server_response = {}
             attempt = 0
 
-            while not 'ctrl' in self.server_response:
+            while 'ctrl' not in self.server_response:
                 self.socket.send_pyobj({'ctrl': '_done'})
                 self.server_response = self.socket.recv_pyobj()
                 attempt += 1
@@ -756,3 +759,4 @@ class BTgymEnv(gym.Env):
         return self.data_server_response['dataset_stat'],\
                self.data_server_response['dataset_columns'],\
                self.data_server_response['pid']
+# asynchronous
