@@ -18,12 +18,12 @@
 ###############################################################################
 
 import logging
-#logging.basicConfig(format='%(name)s: %(message)s')
+# logging.basicConfig(format='%(name)s: %(message)s')
 import time
 import zmq
 import os
 import itertools
-#import psutil
+# import psutil
 
 import gym
 from gym import error, spaces
@@ -759,4 +759,4 @@ class BTgymEnv(gym.Env):
         return self.data_server_response['dataset_stat'],\
                self.data_server_response['dataset_columns'],\
                self.data_server_response['pid']
-# asynchronous
+# asynchronous...

@@ -520,7 +520,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [x] tensorboard integration;
  - [x] multiply agents asynchronous operation feature (e.g for A3C):
     -  [possibly] via dedicated data server;
- - [ ] multi-modal observation space feature;
+ - [ ] multi-modal observation space shape;
  - [ ] sequential and sliding time-window sampling;
  - [ ] multiply instruments trading;
  

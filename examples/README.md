@@ -3,7 +3,7 @@
 ###### UNDER CONSTRUCTION
 ****
 
-- **[BTgym setup for asynchronous training.](./async_btgym_workers.ipynb)**: getting ready for A3C.
+- **[BTgym setup for asynchronous training](./async_btgym_workers.ipynb)**: getting ready for A3C.
 
 - **[Rendering howto](./rendering_howto.ipynb)**: get cool pictures.
     
