@@ -232,8 +232,9 @@ class BTgymEnv(gym.Env):
             self.log.info(msg)
 
         # Connect/Start data server (and get dataset statistic):
+        self.log.info('Connecting data_server...')
         self._start_data_server()
-
+        self.log.info('...done.')
         # ENGINE preparation:
 
         # Update params -3: pull engine-related kwargs, remove used:
@@ -712,10 +713,10 @@ class BTgymEnv(gym.Env):
                           format(self.data_server_response['message']))
 
         else:
-            msg = 'Data_server unreachable with status: <{}>. Hint: forgot to launch/open data_master environment?'.\
+            msg = 'Data_server unreachable with status: <{}>.'.\
                 format(self.data_server_response['status'])
             self.log.error(msg)
-            raise ConnectionError(msg)
+            raise SystemExit(msg)
 
         # Get info and statistic:
         self.dataset_stat, self.dataset_columns, self.data_server_pid = self._get_dataset_info()
@@ -738,9 +739,9 @@ class BTgymEnv(gym.Env):
 
             self.log.info('{} Exit code: {}'.format(self.data_server_response, self.data_server.exitcode))
 
-        if self.data_context:
-            self.data_context.destroy()
-            self.data_socket = None
+        #if self.data_context:
+        #    self.data_context.destroy()
+        #    self.data_socket = None
 
     def _restart_data_server(self):
         """
