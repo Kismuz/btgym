@@ -250,8 +250,8 @@ class BTgymDataset:
                 self.log.debug('Sample accepted.')
                 # If sample OK - return episodic-dataset:
                 episode = BTgymDataset(**self.params)
-                episode.filename = '_episode_dataset_' + str(adj_timedate)
-                self.log.debug('Episode filename: <{}>.'.format(episode.filename))
+                episode.filename = '_btgym_episode_' + str(adj_timedate)
+                self.log.info('Episode id: <{}>.'.format(episode.filename))
                 episode.data = episode_sample
                 return episode
 

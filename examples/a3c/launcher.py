@@ -89,12 +89,47 @@ class Launcher():
             self.log.info('{} created.'.format(self.cluster_config['log_dir']))
 
         if not self.test_mode:
+            # We should have theese to proceed with BTgym env.:
             assert 'port' in self.env_config.keys()
             assert 'data_port' in self.env_config.keys()
             assert self.env_class is not None
 
         # Make cluster specification dict:
         self.cluster_spec = self.make_cluster_spec(self.cluster_config)
+
+        # Configure workers:
+        self.workers_config_list = []
+
+        for key, spec_list in self.cluster_spec.items():
+            task_index = 0
+            for worker_id in spec_list:
+                env_config = dict()
+                worker_config = dict()
+                worker_config.update(self.kwargs)
+                env_config.update(self.env_config)
+                if key in 'worker':
+                    # Configure  worker BTgym environment:
+                    if task_index == 0:
+                        env_config['data_master'] = True  # set worker_0 as chief and data_master
+                    else:
+                        env_config['data_master'] = False
+                        env_config['port'] += task_index  # increment connection port
+                        env_config['render_enabled'] = False  # disable rendering for all but chief
+
+                worker_config.update(
+                    {
+                        'env_class': self.env_class,
+                        'env_config': env_config,
+                        'cluster_spec': self.cluster_spec,
+                        'job_name': key,
+                        'task': task_index,
+                        'log_dir': self.cluster_config['log_dir'],
+                        'max_steps': self.train_steps,
+                        'log': self.log
+                    }
+                )
+                self.workers_config_list.append(worker_config)
+                task_index += 1
 
         self.log.debug('Launcher ready.')
 
@@ -135,53 +170,32 @@ class Launcher():
     def run(self):
         """
         Launches processes:
-            data_master;
-            tf.workers;
-            tf.parameter_server
-            TODO: tf.tester;
+            tf distributed workers;
+            tf parameter_server
         """
         workers_list = []
         p_servers_list = []
 
-        for key, spec_list in self.cluster_spec.items():
-            task_index = 0
-            for worker_id in spec_list:
-                if key in 'worker':
-                    # Configure  worker BTgym environment:
-                    if task_index == 0:
-                        self.env_config['data_master'] = True  # set worker_0 as chief and data_master
-                    else:
-                        self.env_config['data_master'] = False
-                        self.env_config['port'] += 1  # increment connection port
-                        self.env_config['render_enabled'] = False  # disable rendering for all but chief
+        # Start workers:
+        for worker_config in self.workers_config_list:
+            # Make:
+            worker = Worker(**worker_config)
+            # Launch:
+            worker.daemon = False
+            worker.start()
 
-                worker_config = dict(
-                    env_class=self.env_class,
-                    env_config=self.env_config,
-                    cluster_spec=self.cluster_spec,
-                    job_name=key,
-                    task=task_index,
-                    log_dir=self.cluster_config['log_dir'],
-                    max_steps=self.train_steps,
-                    log=self.log,
-                )
-                worker_config.update(self.kwargs)
-                # TODO: add tester_worker
-                # Make:
-                worker = Worker(**worker_config)
-                # Launch:
-                worker.daemon = False
-                worker.start()
+            if worker.job_name in 'worker':
+                # Allow data-master to launch datafeed_server:
+                if worker_config['env_config']['data_master']:
+                    time.sleep(5)
+                    chief_worker = worker
 
-                if worker.job_name in 'worker':
+                else:
                     workers_list.append(worker)
 
-                    # Allow data-master to launch datafeed_server:
-                    if self.env_config['data_master']:
-                        time.sleep(5)
-                else:
-                    p_servers_list.append(worker)
-                task_index += 1
+            else:
+                p_servers_list.append(worker)
+
 
         # TODO: launch tensorboard
 
@@ -189,6 +203,9 @@ class Launcher():
         for worker in workers_list:
             worker.join()
             self.log.info('worker_{} has joined.'.format(worker.task))
+
+        chief_worker.join()
+        self.log.info('chief_worker_{} has joined.'.format(chief_worker.task))
 
         # Kill param_servers:
         for ps in p_servers_list:

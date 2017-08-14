@@ -410,7 +410,7 @@ class BTgymEnv(gym.Env):
         time.sleep(1)
 
         # Check connection:
-        self.log.debug('Server started, pinging {} ...'.format(self.network_address))
+        self.log.info('Server started, pinging {} ...'.format(self.network_address))
 
         self.server_response = self._comm_with_timeout(
             socket=self.socket,
@@ -701,7 +701,7 @@ class BTgymEnv(gym.Env):
         self.data_socket.connect(self.data_network_address)
 
         # Check connection:
-        self.log.debug('Pinging data_server at: {} ...'.format(self.data_network_address))
+        self.log.info('Pinging data_server at: {} ...'.format(self.data_network_address))
 
         self.data_server_response = self._comm_with_timeout(
             socket=self.data_socket,

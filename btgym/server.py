@@ -392,7 +392,7 @@ class BTgymServer(multiprocessing.Process):
             episode_datafeed = data_server_response['message']['datafeed']
 
             # Get episode data statistic and pass it to strategy params:
-            self.cerebro.strats[0][0][2]['dataset_stat'] = data_server_response['message']['dataset_stat']
+            cerebro.strats[0][0][2]['dataset_stat'] = data_server_response['message']['dataset_stat']
             cerebro.strats[0][0][2]['episode_stat'] = data_server_response['message']['episode_stat']
 
             # Set nice broker cash plotting:
