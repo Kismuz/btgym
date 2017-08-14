@@ -147,7 +147,7 @@ class BTgymEnv(gym.Env):
         p2 = dict(
             # Strategy related parameters:
             state_shape=None,
-                # observation state shape, by convention last dimension is time embedding;
+                # observation state shape, by convention first dimension is time embedding;
                 # one can define any shape; match env.observation_space.shape.
             state_low=None,  # observation space state min/max values,
             state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
