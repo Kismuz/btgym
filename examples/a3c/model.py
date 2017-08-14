@@ -1,3 +1,6 @@
+# Original code is taken from OpenAI repository under MIT licence:
+# https://github.com/openai/universe-starter-agent
+
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.rnn as rnn

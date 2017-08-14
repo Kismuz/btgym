@@ -17,6 +17,6 @@
 #
 ###############################################################################
 
-from .tensorboard import BTgymMonitor #  'cause we dont want excessive warnings about Tensorflow requrement
+from .tensorboard import BTgymMonitor  # 'cause we dont want excessive warnings about Tensorflow requrement
 
-
+from .tensorboard2 import BTgymMonitor2

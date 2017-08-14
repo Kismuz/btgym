@@ -1,38 +1,46 @@
-###############################################################################
-#
-# Copyright (C) 2017 Andrew Muzikin
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-###############################################################################
+# This code borrows heavily from OpenAI universal_starter_agent:
+# https://github.com/openai/universe-starter-agent
+# Under MIT licence.
+
+import cv2
+import go_vncdriver
 
 import sys
 sys.path.insert(0,'..')
 
 import os
 import logging
-import time
-#import psutil
-#from subprocess import PIPE
 import multiprocessing
+
+import IPython.display as Display
+import PIL.Image as Image
 
 import tensorflow as tf
 
+from a3c import A3C
+from envs import create_env
+
+class FastSaver(tf.train.Saver):
+    """
+    Disables write_meta_graph argument,
+    which freezes entire process and is mostly useless.
+    """
+    def save(self,
+             sess,
+             save_path,
+             global_step=None,
+             latest_filename=None,
+             meta_graph_suffix="meta",
+             write_meta_graph=True):
+        super(FastSaver, self).save(sess,
+                                    save_path,
+                                    global_step,
+                                    latest_filename,
+                                    meta_graph_suffix,
+                                    False)
 
 class Worker(multiprocessing.Process):
     """___"""
-    global_step = 0
 
     def __init__(self,
                  env_class,
@@ -41,8 +49,10 @@ class Worker(multiprocessing.Process):
                  job_name,
                  task,
                  log_dir,
-                 max_steps,
-                 log):
+                 log,
+                 max_steps=100000000,
+                 test_mode=False,
+                 **kwargs):
         """___"""
         super(Worker, self).__init__()
         self.env_class = env_class
@@ -55,7 +65,25 @@ class Worker(multiprocessing.Process):
         self.log = log
         logging.basicConfig()
         self.log = logging.getLogger('{}_{}'.format(self.job_name, self.task))
-        self.log.setLevel('INFO')
+        self.log.setLevel('DEBUG')
+        self.kwargs = kwargs
+        self.test_mode = test_mode
+
+    def show_rendered_image(self, rgb_array):
+        """
+        Convert numpy array to RGB image using PILLOW and
+        show it inline using IPykernel.
+        """
+        Display.display(Image.fromarray(rgb_array))
+
+    def render_all_modes(self):
+        """
+        Retrieve and show environment renderings
+        for all supported modes.
+        """
+        for mode in self.env.metadata['render.modes']:
+            print('[{}] mode:'.format(mode))
+            self.show_rendered_image(self.env.render(mode))
 
     def run(self):
         """
@@ -87,22 +115,45 @@ class Worker(multiprocessing.Process):
                     inter_op_parallelism_threads=2
                 )
             )
-            self.log.info('tf.server started.')
+            self.log.debug('tf.server started.')
 
-            self.log.info('making environment.')
-            if self.env_class is not None:
-                # Assume BTgym:
-                self.log.debug('data_master: {}'.format(self.env_config['data_master']))
+            self.log.debug('making environment.')
+            if not self.test_mode:
+                # Assume BTgym env. class:
+                self.log.debug('worker_{} is data_master: {}'.format(self.task, self.env_config['data_master']))
                 try:
-                    env = self.env_class(**self.env_config)
+                    self.env = self.env_class(**self.env_config)
 
                 except:
-                    raise SystemExit(' Worker_{} failed to make environment'.format(self.task))
+                    raise SystemExit(' Worker_{} failed to make BTgym environment'.format(self.task))
+
+            else:
+                # Assume atari testing:
+                try:
+                    self.env = create_env(self.env_config['gym_id'])
+
+                except:
+                    raise SystemExit(' Worker_{} failed to make Atari Gym environment'.format(self.task))
 
             # Define trainer:
-            trainer = TestTrainer(self.task)
+            trainer = A3C(env=self.env, task=self.task, test_mode=self.test_mode, **self.kwargs)
 
-            train_op = lambda x: print('worker_{}: train_step: {}'.format(self.task, x))
+            # Saver-related:
+            variables_to_save = [v for v in tf.global_variables() if not v.name.startswith("local")]
+            init_op = tf.variables_initializer(variables_to_save)
+            init_all_op = tf.global_variables_initializer()
+
+            saver = FastSaver(variables_to_save)
+
+            var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
+
+            #self.log.debug('worker-{}: trainable vars:'.format(self.task))
+            #for v in var_list:
+            #    self.log.debug('{}: {}'.format(v.name, v.get_shape()))
+
+            def init_fn(ses):
+                self.log.debug("Initializing all parameters.")
+                ses.run(init_all_op)
 
             config = tf.ConfigProto(device_filters=["/job:ps", "/job:worker/task:{}/cpu:0".format(self.task)])
             logdir = os.path.join(self.log_dir, 'train')
@@ -113,35 +164,45 @@ class Worker(multiprocessing.Process):
             sv = tf.train.Supervisor(
                 is_chief=(self.task == 0),
                 logdir=logdir,
-                # saver=saver,
+                saver=saver,
                 summary_op=None,
-                # init_op=init_op,
-                # init_fn=init_fn,
-                summary_writer=summary_writer,
-                # ready_op=tf.report_uninitialized_variables(variables_to_save),
-                # global_step=trainer.global_step,
-                save_model_secs=60,
-                save_summaries_secs=60,
+                init_op=init_op,
+                init_fn=init_fn,
+                #summary_writer=summary_writer,  # TODO do we need it here?
+                ready_op=tf.report_uninitialized_variables(variables_to_save),
+                global_step=trainer.global_step,
+                save_model_secs=300,
             )
-
             self.log.debug("connecting to the parameter server... ")
 
             with sv.managed_session(server.target, config=config) as sess, sess.as_default():
-                trainer.sync()
-                trainer.start()
-                global_step = trainer.global_step
-                self.log.info("Starting training at step=%d", global_step)
+                sess.run(trainer.sync)
+                self.log.debug('worker_{}: trainer synch`ed'.format(self.task))
+                trainer.start(sess, summary_writer)
+                self.log.debug('worker_{}: trainer started'.format(self.task))
+                global_step = sess.run(trainer.global_step)
+                self.log.info("worker_{}: starting training at step: {}".format(self.task, global_step))
                 while not sv.should_stop() and global_step < self.max_steps:
-                    trainer.process()
-                    global_step = trainer.global_step
+                    trainer.process(sess)
+                    global_step = sess.run(trainer.global_step)
+
+                    # TEST:
+
+                    if False:
+                        print('RENDER ATTEMPT at {}...'.format(global_step))
+                        self.render_all_modes()
+                        print('RENDERED')
 
             # Ask for all the services to stop:
             sv.stop()
-            env.close()
-            self.log.info('reached {} steps, exiting.'.format(global_step))
+            self.env.close()
+            self.log.info('worker_{}: reached {} steps, exiting.'.format(self.task, global_step))
+
+
 
 
 class TestTrainer():
+    """Dummy trainer class."""
     global_step = 0
 
     def __init__(self, worker_id):
