@@ -37,9 +37,9 @@ Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
 
 class PartialRollout(object):
     """
-a piece of a complete rollout.  We run our agent, and process its experience
-once it has processed enough steps.
-"""
+    a piece of a complete rollout.  We run our agent, and process its experience
+    once it has processed enough steps.
+    """
     def __init__(self):
         self.states = []
         self.actions = []
@@ -70,6 +70,7 @@ once it has processed enough steps.
 
 class RunnerThread(threading.Thread):
     """
+    Despite BTgym is not real-time environment [yet], thread-runner approach is still here:
     One of the key distinctions between a normal environment and a universe environment
     is that a universe environment is _real time_.  This means that there should be a thread
     that would constantly interact with the environment and tell it what to do.  This thread is here.
@@ -140,7 +141,6 @@ def env_runner(sess,
     length = 0
     local_episode = 0
     rewards = 0
-    #print('SESS CHECK ATTEMPT:', sess.run(policy.global_step))
 
     while True:
         terminal_end = False
@@ -150,7 +150,6 @@ def env_runner(sess,
             fetched = policy.act(last_state, *last_features)
             action, value_, features = fetched[0], fetched[1], fetched[2:]
             # argmax to convert from one-hot:
-            # TODO: why det.policy?!
             state, reward, terminal, info = env.step(action.argmax())
 
             # collect the experience
@@ -181,7 +180,7 @@ def env_runner(sess,
                                 ep_summary['total_r_pl']: rewards,
                                 ep_summary['cpu_time_pl']: episode_stat['runtime'].total_seconds(),
                                 ep_summary['final_value_pl']: last_i['broker_value'],
-                                ep_summary['steps_pl']: episode_stat['drawdown']['len']
+                                ep_summary['steps_pl']: episode_stat['length']
                             }
                         )
                     else:
@@ -196,17 +195,28 @@ def env_runner(sess,
                     summary_writer.add_summary(fetched_episode_stat, sess.run(policy.global_episode))
                     summary_writer.flush()
 
-                if not test and task == 0 and local_episode % env_render_freq == 0 :
-                    # Render environment (chief worker only, not in atari test mode):
-                    #print('runner_{}: render attempt'.format(task))
-                    renderings = sess.run(
-                        ep_summary['render_op'],
-                        feed_dict={
-                            ep_summary['render_human_pl']: env.render('human')[None,:],
-                            ep_summary['render_agent_pl']: env.render('agent')[None,:],
-                            ep_summary['render_episode_pl']: env.render('episode')[None,:],
-                        }
-                    )
+                if task == 0 and local_episode % env_render_freq == 0 :
+                    if not test:
+                        # Render environment (chief worker only, not in atari test mode):
+                        #print('runner_{}: render attempt'.format(task))
+                        renderings = sess.run(
+                            ep_summary['render_op'],
+                            feed_dict={
+                                ep_summary['render_human_pl']: env.render('human')[None,:],
+                                ep_summary['render_agent_pl']: env.render('agent')[None,:],
+                                ep_summary['render_episode_pl']: env.render('episode')[None,:],
+                            }
+                        )
+                    else:
+                        # Atari:
+                        # print('runner_{}: atari render attempt'.format(task))
+                        renderings = sess.run(
+                            ep_summary['test_render_op'],
+                            feed_dict={
+                                ep_summary['render_atari_pl']: state[None,:] * 255
+                            }
+                        )
+
                     summary_writer.add_summary(renderings, sess.run(policy.global_episode))
                     summary_writer.flush()
 
@@ -226,6 +236,7 @@ def env_runner(sess,
         # once we have enough experience, yield it, and have the ThreadRunner place it on a queue:
         yield rollout
 
+
 class A3C(object):
     """____"""
     def __init__(self,
@@ -233,10 +244,14 @@ class A3C(object):
                  task,
                  model_gamma=0.99,
                  model_lambda=1.00,
-                 model_learn_rate=1e-4,
+                 model_beta=0.1,  # entropy regularizer
+                 opt_learn_rate=1e-4,
+                 opt_decay=0.99,
+                 opt_momentum=0.0,
+                 opt_epsilon=1e-10,
                  rollout_length=20,
-                 episode_summary_freq=20,  # every i`th episode
-                 env_render_freq=10000,   # every i`th local_step
+                 episode_summary_freq=2,  # every i`th episode
+                 env_render_freq=10,   # every i`th episode
                  model_summary_freq=100,  # every i`th local_step
                  test_mode=False,  # gym_atari test mode
                  **kwargs):
@@ -250,7 +265,11 @@ class A3C(object):
         self.task = task
         self.model_gamma = model_gamma
         self.model_lambda = model_lambda
-        self.model_learn_rate = model_learn_rate
+        self.model_beta = model_beta
+        self.opt_learn_rate = opt_learn_rate
+        self.opt_decay = opt_decay
+        self.opt_epsilon = opt_epsilon
+        self.opt_momentum = opt_momentum
         self.rollout_length = rollout_length
         self.episode_summary_freq = episode_summary_freq
         self.env_render_freq = env_render_freq
@@ -281,7 +300,6 @@ class A3C(object):
                     ),
                     trainable=False
                 )
-
         inc_episode = self.global_episode.assign_add(1)
 
         with tf.device(worker_device):
@@ -308,7 +326,7 @@ class A3C(object):
             entropy = - tf.reduce_sum(prob_tf * log_prob_tf)
 
             bs = tf.to_float(tf.shape(pi.x)[0])
-            self.loss = pi_loss + 0.5 * vf_loss - entropy * 0.01
+            self.loss = pi_loss + 0.5 * vf_loss - entropy * self.model_beta
 
             grads = tf.gradients(self.loss, pi.var_list)
 
@@ -322,8 +340,16 @@ class A3C(object):
             inc_step = self.global_step.assign_add(tf.shape(pi.x)[0])
 
             # each worker has a different set of adam optimizer parameters
-            # TODO: refine optimizer config, add RMSProp
-            opt = tf.train.AdamOptimizer(self.model_learn_rate)
+            #
+            opt = tf.train.AdamOptimizer(self.opt_learn_rate)
+
+            #opt = tf.train.RMSPropOptimizer(
+            #    learning_rate=self.opt_learn_rate,
+            #    decay=0.99,
+            #    momentum=0.0,
+            #    epsilon=1e-1,
+            #)
+
             self.train_op = tf.group(opt.apply_gradients(grads_and_vars), inc_step)
             self.summary_writer = None
             self.local_steps = 0
@@ -334,7 +360,6 @@ class A3C(object):
                     tf.summary.scalar("model/policy_loss", pi_loss / bs),
                     tf.summary.scalar("model/value_loss", vf_loss / bs),
                     tf.summary.scalar("model/entropy", entropy / bs),
-                    #tf.summary.image("model/state", pi.x),
                     tf.summary.scalar("model/grad_global_norm", tf.global_norm(grads)),
                     tf.summary.scalar("model/var_global_norm", tf.global_norm(pi.var_list)),
                 ],
@@ -346,6 +371,7 @@ class A3C(object):
                 render_human_pl=tf.placeholder(tf.uint8, [None, None, None, 3]),
                 render_agent_pl=tf.placeholder(tf.uint8, [None, None, None, 3]),
                 render_episode_pl=tf.placeholder(tf.uint8, [None, None, None, 3]),
+                render_atari_pl=tf.placeholder(tf.uint8, [None, None, None, 1]),
 
                 total_r_pl=tf.placeholder(tf.float32, ),
                 cpu_time_pl=tf.placeholder(tf.float32, ),
@@ -361,6 +387,9 @@ class A3C(object):
                 ],
                 name='render'
             )
+            # For Atari:
+            self.ep_summary['test_render_op'] = tf.summary.image("model/state", self.ep_summary['render_atari_pl'])
+
             # Episode stat. summary:
             self.ep_summary['stat_op'] = tf.summary.merge(
                 [
@@ -423,8 +452,6 @@ class A3C(object):
         rollout = self.pull_batch_from_queue()
         batch = process_rollout(rollout, gamma=self.model_gamma, lambda_=self.model_lambda)
 
-        # TODO: put summaries inside tf.supervisor loops in worker?
-        # Almost all the rest is summary preparation.
         # Only chief worker writes model summaries:
         should_compute_summary =\
             self.local_steps % self.model_summary_freq == 0   # self.task == 0 and

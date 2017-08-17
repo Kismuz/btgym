@@ -519,8 +519,9 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [x] proper rendering for entire episode;
  - [x] tensorboard integration;
  - [x] multiply agents asynchronous operation feature (e.g for A3C):
-    -  [possibly] via dedicated data server;
- - [ ] multi-modal observation space shape;
+ - [x] dedicated data server;
+ - [ ] multi-modal observation space shape; - IN PROGRESS
+ - [ ] A3C implementation tweaked for BTgym; - IN PROGRESS
  - [ ] sequential and sliding time-window sampling;
  - [ ] multiply instruments trading;
  

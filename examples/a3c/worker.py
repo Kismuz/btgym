@@ -41,6 +41,7 @@ class FastSaver(tf.train.Saver):
 
 class Worker(multiprocessing.Process):
     """___"""
+    env = None
 
     def __init__(self,
                  env_class,
@@ -50,6 +51,7 @@ class Worker(multiprocessing.Process):
                  task,
                  log_dir,
                  log,
+                 log_level,
                  max_steps=100000000,
                  test_mode=False,
                  **kwargs):
@@ -65,25 +67,9 @@ class Worker(multiprocessing.Process):
         self.log = log
         logging.basicConfig()
         self.log = logging.getLogger('{}_{}'.format(self.job_name, self.task))
-        self.log.setLevel('DEBUG')
+        self.log.setLevel(log_level)
         self.kwargs = kwargs
         self.test_mode = test_mode
-
-    def show_rendered_image(self, rgb_array):
-        """
-        Convert numpy array to RGB image using PILLOW and
-        show it inline using IPykernel.
-        """
-        Display.display(Image.fromarray(rgb_array))
-
-    def render_all_modes(self):
-        """
-        Retrieve and show environment renderings
-        for all supported modes.
-        """
-        for mode in self.env.metadata['render.modes']:
-            print('[{}] mode:'.format(mode))
-            self.show_rendered_image(self.env.render(mode))
 
     def run(self):
         """
@@ -101,7 +87,7 @@ class Worker(multiprocessing.Process):
                 task_index=self.task,
                 config=tf.ConfigProto(device_filters=["/job:ps"])
             )
-            self.log.info('parameters_server started.')
+            self.log.debug('parameters_server started.')
             # Just block here:
             server.join()
 
@@ -115,7 +101,7 @@ class Worker(multiprocessing.Process):
                     inter_op_parallelism_threads=2
                 )
             )
-            self.log.debug('tf.server started.')
+            self.log.debug('worker_{} tf.server started.'.format(self.task))
 
             self.log.debug('making environment.')
             if not self.test_mode:
@@ -168,7 +154,7 @@ class Worker(multiprocessing.Process):
                 summary_op=None,
                 init_op=init_op,
                 init_fn=init_fn,
-                #summary_writer=summary_writer,  # TODO do we need it here?
+                #summary_writer=summary_writer,
                 ready_op=tf.report_uninitialized_variables(variables_to_save),
                 global_step=trainer.global_step,
                 save_model_secs=300,
@@ -177,28 +163,17 @@ class Worker(multiprocessing.Process):
 
             with sv.managed_session(server.target, config=config) as sess, sess.as_default():
                 sess.run(trainer.sync)
-                self.log.debug('worker_{}: trainer synch`ed'.format(self.task))
                 trainer.start(sess, summary_writer)
-                self.log.debug('worker_{}: trainer started'.format(self.task))
                 global_step = sess.run(trainer.global_step)
                 self.log.info("worker_{}: starting training at step: {}".format(self.task, global_step))
                 while not sv.should_stop() and global_step < self.max_steps:
                     trainer.process(sess)
                     global_step = sess.run(trainer.global_step)
 
-                    # TEST:
-
-                    if False:
-                        print('RENDER ATTEMPT at {}...'.format(global_step))
-                        self.render_all_modes()
-                        print('RENDERED')
-
-            # Ask for all the services to stop:
-            sv.stop()
-            self.env.close()
+                # Ask for all the services to stop:
+                self.env.close()
+                sv.stop()
             self.log.info('worker_{}: reached {} steps, exiting.'.format(self.task, global_step))
-
-
 
 
 class TestTrainer():

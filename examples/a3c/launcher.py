@@ -26,6 +26,7 @@ import logging
 import time
 import psutil
 from subprocess import PIPE
+import signal
 #import multiprocessing
 
 #import tensorflow as tf
@@ -60,8 +61,12 @@ class Launcher():
     env_render_freq = None
     model_gamma = None
     model_lambda = None
-    model_learn_rate = None
-    rollout_length= None
+    model_beta = None
+    opt_learn_rate = None
+    opt_decay = None
+    opt_momentum = None
+    opt_epsilon = None
+    rollout_length = None
 
     ports_to_use = []
 
@@ -71,8 +76,13 @@ class Launcher():
         self.kwargs = kwargs
         for key, value in kwargs.items():
             if key in dir(self):
-                # TODO: partial dict attr update
-                setattr(self, key, value)
+                self_value = getattr(self, key)
+                # Partial dict attr update (only first level, no nested dict!):
+                if type(self_value) == dict:
+                    self_value.update(value)
+                    setattr(self, key, self_value)
+                else:
+                    setattr(self, key, value)
             else:
                 raise KeyError('Unexpected key argument: {}={}'.format(key, value))
 
@@ -89,7 +99,7 @@ class Launcher():
             self.log.info('{} created.'.format(self.cluster_config['log_dir']))
 
         if not self.test_mode:
-            # We should have theese to proceed with BTgym env.:
+            # We should have those to proceed with BTgym env.:
             assert 'port' in self.env_config.keys()
             assert 'data_port' in self.env_config.keys()
             assert self.env_class is not None
@@ -114,8 +124,8 @@ class Launcher():
                     else:
                         env_config['data_master'] = False
                         env_config['port'] += task_index  # increment connection port
-                        env_config['render_enabled'] = False  # disable rendering for all but chief
 
+                        env_config['render_enabled'] = False  # disable rendering for all but chief
                 worker_config.update(
                     {
                         'env_class': self.env_class,
@@ -125,12 +135,15 @@ class Launcher():
                         'task': task_index,
                         'log_dir': self.cluster_config['log_dir'],
                         'max_steps': self.train_steps,
-                        'log': self.log
+                        'log': self.log,
+                        'log_level': self.log.getEffectiveLevel()
                     }
                 )
+                self.clear_port(env_config['port'])
                 self.workers_config_list.append(worker_config)
                 task_index += 1
 
+        self.clear_port(self.env_config['data_port'])
         self.log.debug('Launcher ready.')
 
     def make_cluster_spec(self, config):
@@ -175,6 +188,21 @@ class Launcher():
         """
         workers_list = []
         p_servers_list = []
+        chief_worker = None
+
+        def signal_handler(signal, frame):
+            nonlocal workers_list
+            nonlocal chief_worker
+            nonlocal p_servers_list
+
+            def stop_worker(worker_list):
+                for worker in worker_list:
+                    worker.terminate()
+
+            stop_worker(workers_list)
+            stop_worker([chief_worker])
+            stop_worker(p_servers_list)
+
 
         # Start workers:
         for worker_config in self.workers_config_list:
@@ -196,8 +224,15 @@ class Launcher():
             else:
                 p_servers_list.append(worker)
 
-
         # TODO: launch tensorboard
+
+        signal.signal(signal.SIGINT, signal_handler)
+
+        # Halt here:
+        msg = 'Press `Ctrl-C` to stop training and close launcher.'
+        print(msg)
+        self.log.info(msg)
+        signal.pause()
 
         # Wait every worker to finish:
         for worker in workers_list:
@@ -207,9 +242,7 @@ class Launcher():
         chief_worker.join()
         self.log.info('chief_worker_{} has joined.'.format(chief_worker.task))
 
-        # Kill param_servers:
         for ps in p_servers_list:
-            ps.terminate()
             ps.join()
             self.log.info('parameter_server_{} has joined.'.format(ps.task))
 
