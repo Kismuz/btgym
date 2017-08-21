@@ -121,8 +121,11 @@ class Worker(multiprocessing.Process):
                 except:
                     raise SystemExit(' Worker_{} failed to make Atari Gym environment'.format(self.task))
 
+            self.log.debug('worker_{}:envronment ok.'.format(self.task))
             # Define trainer:
             trainer = A3C(env=self.env, task=self.task, test_mode=self.test_mode, **self.kwargs)
+
+            self.log.debug('worker_{}:trainer ok.'.format(self.task))
 
             # Saver-related:
             variables_to_save = [v for v in tf.global_variables() if not v.name.startswith("local")]
@@ -133,9 +136,9 @@ class Worker(multiprocessing.Process):
 
             var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
 
-            #self.log.debug('worker-{}: trainable vars:'.format(self.task))
-            #for v in var_list:
-            #    self.log.debug('{}: {}'.format(v.name, v.get_shape()))
+            self.log.debug('worker-{}: trainable vars:'.format(self.task))
+            for v in var_list:
+                self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
             def init_fn(ses):
                 self.log.debug("Initializing all parameters.")

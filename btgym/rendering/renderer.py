@@ -122,7 +122,7 @@ class BTgymRendering():
         if len(state[mode].shape) <= 2:
             state = np.asarray(state[mode])
 
-        elif len(state.shape) == 3:
+        elif len(state[mode].shape) == 3:
             state = np.asarray(state[mode][:, :, self.render_state_channel])
 
         else:
@@ -401,6 +401,7 @@ class BTgymNullRendering():
     def __init__(self, *args, **kwargs):
         self.plug = (np.random.rand(100, 200, 3) * 255).astype(dtype=np.uint8)
         self.params = {'rendering': 'disabled'}
+        self.render_modes = []
 
     def initialize_pyplot(self):
         pass

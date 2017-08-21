@@ -136,7 +136,7 @@ def env_runner(sess,
     the policy, and as long as the rollout exceeds a certain length, the thread
     runner appends the policy to the queue.
     """
-    last_state = env.reset()
+    last_state = env.reset()['model_input']
     last_features = policy.get_initial_features()
     length = 0
     local_episode = 0
@@ -151,7 +151,7 @@ def env_runner(sess,
             action, value_, features = fetched[0], fetched[1], fetched[2:]
             # argmax to convert from one-hot:
             state, reward, terminal, info = env.step(action.argmax())
-
+            state = state['model_input']
             # collect the experience
             rollout.add(last_state, action, reward, value_, terminal, last_features)
             length += 1
@@ -203,7 +203,7 @@ def env_runner(sess,
                             ep_summary['render_op'],
                             feed_dict={
                                 ep_summary['render_human_pl']: env.render('human')[None,:],
-                                ep_summary['render_agent_pl']: env.render('agent')[None,:],
+                                ep_summary['render_model_input_pl']: env.render('model_input')[None,:],
                                 ep_summary['render_episode_pl']: env.render('episode')[None,:],
                             }
                         )
@@ -221,7 +221,7 @@ def env_runner(sess,
                     summary_writer.flush()
 
                 # New episode:
-                last_state = env.reset()
+                last_state = env.reset()['model_input']
                 last_features = policy.get_initial_features()
                 length = 0
                 rewards = 0
@@ -276,10 +276,15 @@ class A3C(object):
         self.model_summary_freq = model_summary_freq
         self.test_mode = test_mode
 
+        # print('A3C_{} init started'.format(self.task))
+
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
-                self.network = LSTMPolicy(env.observation_space.shape, env.action_space.n)
+                self.network = LSTMPolicy(
+                    env.observation_space.spaces['model_input'].shape,
+                    env.action_space.n
+                )
                 self.global_step = tf.get_variable(
                     "global_step",
                     [],
@@ -304,7 +309,10 @@ class A3C(object):
 
         with tf.device(worker_device):
             with tf.variable_scope("local"):
-                self.local_network = pi = LSTMPolicy(env.observation_space.shape, env.action_space.n)
+                self.local_network = pi = LSTMPolicy(
+                    env.observation_space.spaces['model_input'].shape,
+                    env.action_space.n
+                )
                 pi.global_step = self.global_step
                 pi.global_episode = self.global_episode
                 pi.inc_episode = inc_episode
@@ -354,6 +362,8 @@ class A3C(object):
             self.summary_writer = None
             self.local_steps = 0
 
+            # print('A3C_{} train op defined'.format(self.task))
+
             # Model stat. summary:
             self.model_summary_op = tf.summary.merge(
                 [
@@ -369,7 +379,7 @@ class A3C(object):
             self.ep_summary = dict(
                 # Summary placeholders
                 render_human_pl=tf.placeholder(tf.uint8, [None, None, None, 3]),
-                render_agent_pl=tf.placeholder(tf.uint8, [None, None, None, 3]),
+                render_model_input_pl=tf.placeholder(tf.uint8, [None, None, None, 3]),
                 render_episode_pl=tf.placeholder(tf.uint8, [None, None, None, 3]),
                 render_atari_pl=tf.placeholder(tf.uint8, [None, None, None, 1]),
 
@@ -382,7 +392,7 @@ class A3C(object):
             self.ep_summary['render_op'] = tf.summary.merge(
                 [
                     tf.summary.image('human', self.ep_summary['render_human_pl']),
-                    tf.summary.image('agent', self.ep_summary['render_agent_pl']),
+                    tf.summary.image('model_input', self.ep_summary['render_model_input_pl']),
                     tf.summary.image('episode', self.ep_summary['render_episode_pl']),
                 ],
                 name='render'
@@ -407,6 +417,9 @@ class A3C(object):
                 ],
                 name='episode_atari'
             )
+
+            # print('A3C_{} summaries ok'.format(self.task))
+
             # Make runner:
             # 20 represents the number of "local steps":  the number of timesteps
             # we run the policy before we update the parameters.
@@ -424,6 +437,8 @@ class A3C(object):
                 self.test_mode,
                 self.ep_summary
             )
+
+            # print('A3C_{} init done'.format(self.task))
 
 
     def start(self, sess, summary_writer):
