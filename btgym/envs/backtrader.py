@@ -24,7 +24,7 @@ import zmq
 import os
 import itertools
 # import psutil
-
+import numpy as np
 import gym
 from gym import error, spaces
 #from gym import utils
@@ -32,7 +32,7 @@ from gym import error, spaces
 
 import backtrader as bt
 
-from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering, BTgymDataFeedServer
+from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering, BTgymDataFeedServer, BTgymMultiSpace
 
 from btgym.rendering import BTgymNullRendering
 
@@ -43,11 +43,6 @@ class BTgymEnv(gym.Env):
     """
     OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
     """
-    metadata = {'render.modes': ['human', 'agent', 'episode',]}
-    # `episode` - plotted episode results.
-    # `human` - state observation in conventional human-readable format.
-    # `agent` - state observation as seen by agent.
-
     # Datafeed Server management:
     data_master = True
     data_network_address = 'tcp://127.0.0.1:'  # using localhost.
@@ -83,6 +78,11 @@ class BTgymEnv(gym.Env):
 
     # Rendering:
     render_enabled = True
+    render_modes = ['human', 'episode',]
+    # `episode` - plotted episode results.
+    # `human` - raw_state observation in conventional human-readable format.
+    #  <obs_space_key> - rendering of arbitrary state presented in observation_space with same key.
+
     renderer = None  # Rendering support.
     rendered_rgb = dict()  # Keep last rendered images for each mode.
 
@@ -141,16 +141,26 @@ class BTgymEnv(gym.Env):
             dataset = dict(
                 filename=None,
             ),
-            strategy = dict(),
+            strategy = dict(
+                state_shape=dict(),
+            ),
             render = dict(),
         )
         p2 = dict(
             # Strategy related parameters:
-            state_shape=None,
-                # observation state shape, by convention first dimension is time embedding;
-                # one can define any shape; match env.observation_space.shape.
-            state_low=None,  # observation space state min/max values,
-            state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
+            # Observation state shape is dictionary of Gym spaces,
+            # at least should contain `raw_state` field.
+            # By convention first dimension of every Gym Box space is time embedding one;
+            # one can define any shape; should match env.observation_space.shape.
+            # observation space state min/max values,
+            # For `raw_state' - absolute min/max values from BTgymDataset will be used.
+            state_shape=dict(
+                raw_state=spaces.Box(
+                    shape=(10, 4),
+                    low=-100,
+                    high=100,
+                )
+            ),
             drawdown_call=None,  # episode maximum drawdown threshold, default is 90% of initial value.
             portfolio_actions=None,
                 # agent actions,
@@ -168,6 +178,8 @@ class BTgymEnv(gym.Env):
         for key in dir(self):
             if key in kwargs.keys():
                 setattr(self, key, kwargs.pop(key))
+
+        self.metadata = {'render.modes': self.render_modes}
 
         # Verbosity control:
         self.log = logging.getLogger('Env')
@@ -294,33 +306,40 @@ class BTgymEnv(gym.Env):
         for key, value in self.engine.strats[0][0][2].items():
             self.params['strategy'][key] = value
 
-        # For min/max, if not been set explicitly,
-        # the only sensible way is to infer from raw Dataset price values (we already got those from data_server):
-        if self.params['strategy']['state_low'] is None or self.params['strategy']['state_high'] is None:
+        # ... Push it all back (don't ask):
+        for key, value in  self.params['strategy'].items():
+            self.engine.strats[0][0][2][key] = value
 
-            # Exclude 'volume' from columns we count:
-            self.dataset_columns.remove('volume')
+        # For 'raw_state' field min/max values
+        # the only way is to infer from raw Dataset price values (we already got those from data_server):
 
-            # Override with absolute price min and max values:
-            self.params['strategy']['state_low'] =\
-            self.engine.strats[0][0][2]['state_low'] =\
-                self.dataset_stat.loc['min', self.dataset_columns].min()
+        # Exclude 'volume' from columns we count:
+        self.dataset_columns.remove('volume')
 
-            self.params['strategy']['state_high'] =\
-            self.engine.strats[0][0][2]['state_high'] =\
-                self.dataset_stat.loc['max', self.dataset_columns].max()
+        #print(self.params['strategy'])
+        #print('self.engine.strats[0][0][2]:', self.engine.strats[0][0][2])
+        #print('self.engine.strats[0][0][0].params:', self.engine.strats[0][0][0].params._gettuple())
 
-            self.log.info('Inferring obs. space high/low form dataset: {:.6f} / {:.6f}.'.
-                          format(self.params['strategy']['state_low'] , self.params['strategy']['state_high']))
+        # Override with absolute price min and max values:
+        self.params['strategy']['state_shape']['raw_state'].low =\
+            self.engine.strats[0][0][2]['state_shape']['raw_state'].low =\
+            np.zeros(self.params['strategy']['state_shape']['raw_state'].shape) +\
+            self.dataset_stat.loc['min', self.dataset_columns].min()
+
+        self.params['strategy']['state_shape']['raw_state'].high = \
+            self.engine.strats[0][0][2]['state_shape']['raw_state'].high = \
+            np.zeros(self.params['strategy']['state_shape']['raw_state'].shape) + \
+            self.dataset_stat.loc['max', self.dataset_columns].max()
+
+        self.log.info('Inferring `state_raw` high/low values form dataset: {:.6f} / {:.6f}.'.
+                      format(self.dataset_stat.loc['min', self.dataset_columns].min(),
+                             self.dataset_stat.loc['max', self.dataset_columns].max()))
 
         # Set observation space shape from engine/strategy parameters:
-        self.observation_space = spaces.Box(low=self.params['strategy']['state_low'],
-                                            high=self.params['strategy']['state_high'],
-                                            shape=self.params['strategy']['state_shape'],
-                                            )
+        self.observation_space = BTgymMultiSpace(self.params['strategy']['state_shape'])
 
-        self.log.debug('Obs. shape: {}'.format(self.observation_space.shape))
-        self.log.debug('Obs. min:\n{}\nmax:\n{}'.format(self.observation_space.low, self.observation_space.high))
+        self.log.debug('Obs. shape: {}'.format(self.observation_space.spaces))
+        #self.log.debug('Obs. min:\n{}\nmax:\n{}'.format(self.observation_space.low, self.observation_space.high))
 
         # Set action space and corresponding server messages:
         self.action_space = spaces.Discrete(len(self.params['strategy']['portfolio_actions']))
@@ -522,16 +541,16 @@ class BTgymEnv(gym.Env):
             self._assert_response(self.env_response)
 
             # Check (once) if state_space is as expected:
-            if self.env_response[0].shape == self.observation_space.shape:
+            if self.observation_space.contains(self.env_response[0]):
                 pass
 
             else:
                 msg = (
                     '\nState observation shape mismatch!\n' +
-                    'Shape set by env: {},\n' +
+                    'Space set by env: {},\n' +
                     'Shape returned by server: {}.\n' +
                     'Hint: Wrong Strategy.get_state() parameters?'
-                ).format(self.observation_space.shape, self.env_response[0].shape)
+                ).format(self.observation_space.spaces, self.env_response[0])
                 self.log.error(msg)
                 self._stop_server()
                 raise AssertionError(msg)
@@ -641,11 +660,11 @@ class BTgymEnv(gym.Env):
             return None
 
         self.socket.send_pyobj({'ctrl': '_render', 'mode': mode})
-        rgb_array = self.socket.recv_pyobj()
+        rgb_array_dict = self.socket.recv_pyobj()
 
-        self.rendered_rgb[mode] = rgb_array
+        self.rendered_rgb.update(rgb_array_dict)
 
-        return rgb_array
+        return self.rendered_rgb[mode]
 
     def stop(self):
         """

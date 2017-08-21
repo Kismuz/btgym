@@ -24,6 +24,7 @@ from .server import BTgymServer
 from .dataserver import BTgymDataFeedServer
 from .strategy import BTgymStrategy
 from .rendering import BTgymRendering
+from .spaces import BTgymMultiSpace
 #from .monitor import BTgymMonitor
 from .envs.backtrader import BTgymEnv
 

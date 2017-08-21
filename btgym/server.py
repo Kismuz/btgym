@@ -69,8 +69,7 @@ class _BTgymAnalyzer(bt.Analyzer):
         self.log.debug('RunStop() invoked with {}'.format(self.strategy.broker_message))
 
         # Do final renderings, it will be kept by renderer class, not sending anywhere:
-        _ = self.render.render(['human', 'agent'], step_to_render=self.step_to_render,)
-        _ = None
+        self.render.render(self.render.render_modes, step_to_render=self.step_to_render, send_img=False)
 
         self.strategy.close()
         self.strategy.env.runstop()
@@ -104,7 +103,6 @@ class _BTgymAnalyzer(bt.Analyzer):
 
             # Control actions loop, ignoring 'action' key:
             while 'ctrl' in self.message:
-
                 # Rendering requested:
                 if self.message['ctrl'] == '_render':
                     self.socket.send_pyobj(
@@ -139,7 +137,8 @@ class _BTgymAnalyzer(bt.Analyzer):
 
             # Back up step information for rendering.
             # It pays when using skip-frames: will'll get future state otherwise.
-            self.step_to_render = (raw_state, state, reward, is_done, self.info_list)
+
+            self.step_to_render = ({'human':raw_state}, state, reward, is_done, self.info_list)
 
             # Reset info:
             self.info_list = []

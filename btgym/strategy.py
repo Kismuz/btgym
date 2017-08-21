@@ -20,6 +20,8 @@
 import backtrader as bt
 import backtrader.indicators as btind
 
+from gym import spaces
+
 import numpy as np
 
 
@@ -53,12 +55,21 @@ class BTgymStrategy(bt.Strategy):
     order_failed = False
     broker_message = '-'
     raw_state = None
-    state = None
+    state = dict()
     params = dict(
-        state_shape=(10, 4),  # observation state shape, by convention first dimension is time embedding one;
-                              # one can define any shape; should match env.observation_space.shape.
-        state_low=None,  # observation space state min/max values,
-        state_high=None,  # if set to None - absolute min/max values from BTgymDataset will be used.
+        # Observation state shape is dictionary of Gym spaces,
+        # at least should contain `raw_state` field.
+        # By convention first dimension of every Gym Box space is time embedding one;
+        # one can define any shape; should match env.observation_space.shape.
+        # observation space state min/max values,
+        # For `raw_state' - absolute min/max values from BTgymDataset will be used.
+        state_shape=dict(
+            raw_state=spaces.Box(
+                shape=(10, 4),
+                low=-100, # will get overridden.
+                high=100,
+            )
+        ),
         drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.
         target_call=10,  # finish episode when reaching profit target, in percent.
         dataset_stat=None,  # Summary descriptive statistics for entire dataset and
@@ -76,14 +87,13 @@ class BTgymStrategy(bt.Strategy):
         # A wacky way to define strategy 'minimum period'
         # for proper time-embedded state composition:
         self.data.dim_sma = btind.SimpleMovingAverage(self.datas[0],
-                                                      period=self.p.state_shape[0])
+                                                      period=self.p.state_shape['raw_state'].shape[0])
         self.data.dim_sma.plotinfo.plot = False
-        self.target_value = self.env.broker.startingcash * (1 + self.p.target_call)
+        self.target_value = self.env.broker.startingcash * (1 + self.p.target_call / 100)
 
         # Add custom data Lines if any (just a convenience wrapper):
         self.set_datalines()
         self.log.debug('Kwargs:\n{}\n'.format(str(kwargs)))
-        self.state = np.zeros(self.p.state_shape)
 
     def nextstart(self):
         self.inner_embedding = self.data.close.buflen()
@@ -96,7 +106,7 @@ class BTgymStrategy(bt.Strategy):
         should be explicitly defined by overriding this method [convention].
         Invoked once by Strategy.__init__().
         """
-        #self.log.warning('Deprecated method. Will be removed in the future. Use _get_raw_state() instead.')
+        #self.log.warning('Deprecated method. Use __init__  with Super(..., self).__init__(**kwargs) instead.')
 
     def _get_raw_state(self):
         """
@@ -107,10 +117,10 @@ class BTgymStrategy(bt.Strategy):
         """
         self.raw_state = np.row_stack(
             (
-                np.frombuffer(self.data.open.get(size=self.p.state_shape[0])),
-                np.frombuffer(self.data.low.get(size=self.p.state_shape[0])),
-                np.frombuffer(self.data.high.get(size=self.p.state_shape[0])),
-                np.frombuffer(self.data.close.get(size=self.p.state_shape[0])),
+                np.frombuffer(self.data.open.get(size=self.p.state_shape['raw_state'].shape[0])),
+                np.frombuffer(self.data.low.get(size=self.p.state_shape['raw_state'].shape[0])),
+                np.frombuffer(self.data.high.get(size=self.p.state_shape['raw_state'].shape[0])),
+                np.frombuffer(self.data.close.get(size=self.p.state_shape['raw_state'].shape[0])),
             )
         ).T
 
@@ -128,7 +138,8 @@ class BTgymStrategy(bt.Strategy):
         NOTE: while iterating, ._get_raw_state() method is called just before this one,
         so variable `self.raw_state` is fresh and ready to use.
         """
-        return self.raw_state
+        self.state['raw_state'] = self.raw_state
+        return self.state
 
     def get_reward(self):
         """

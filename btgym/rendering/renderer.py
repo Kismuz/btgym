@@ -29,12 +29,13 @@ class BTgymRendering():
     """
     # Here we'll keep last rendered image for each rendering mode:
     rgb_dict = dict()
+    render_modes = ['episode', 'human']
     params = dict(
         # Plotting controls, can be passed as kwargs:
-        render_agent_as_image=True,
-        render_agent_channel=0,
+        render_state_as_image=True,
+        render_state_channel=0,
         render_size_human=(6, 3.5),
-        render_size_agent=(7, 3.5),
+        render_size_state=(7, 3.5),
         render_size_episode=(12,8),
         render_dpi=75,
         render_plotstyle='seaborn',
@@ -76,7 +77,8 @@ class BTgymRendering():
         #self.plotter = BTgymPlotter() # Modified bt.Cerebro() plotter, to get episode renderings.
 
         # Set empty plugs for each render mode:
-        for mode in render_modes:
+        self.render_modes = render_modes
+        for mode in self.render_modes:
             self.rgb_dict[mode] = self.rgb_empty()
 
     def initialize_pyplot(self):
@@ -112,21 +114,21 @@ class BTgymRendering():
         """
         return (np.random.rand(100, 200, 3) * 255).astype(dtype=np.uint8)
 
-    def parse_response(self, state, reward, info, done,):
+    def parse_response(self, state, mode, reward, info, done,):
         """
         Converts environment response to plotting attributes:
         state, title, text.
         """
-        if len(state.shape) <= 2:
-            state = np.asarray(state)
+        if len(state[mode].shape) <= 2:
+            state = np.asarray(state[mode])
 
         elif len(state.shape) == 3:
-            state = np.asarray(state[:, :, self.render_agent_channel])
+            state = np.asarray(state[mode][:, :, self.render_state_channel])
 
         else:
             raise NotImplementedError(
                 '2D rendering can be done for obs. state tensor with rank <= 3; ' +\
-                'state shape received: {}'.format(np.asarray(state).shape))
+                'state shape received: {}'.format(np.asarray(state[mode]).shape))
 
         # Figure out how to deal with info output:
         try:
@@ -163,7 +165,7 @@ class BTgymRendering():
 
         return state, title, box_text
 
-    def render(self, mode, cerebro=None, step_to_render=None, ):
+    def render(self, mode_list, cerebro=None, step_to_render=None, send_img=True):
         """
         Renders given mode if possible, else
         just passes last already rendered image.
@@ -174,10 +176,10 @@ class BTgymRendering():
                 update stored `episode` image.
 
             If `step_to_render' arg is received:
-                if mode = 'human':
+                if mode = 'raw_state':
                     render current state observation in conventional 'price' format,
-                    update stored `human` image;
-                if mode = 'agent':
+                    update stored `raw_state` image;
+                if mode = something_else':
                     visualise observation as 'seen' by agent,
                     update stored 'agent' image.
 
@@ -187,6 +189,8 @@ class BTgymRendering():
             It can actually return several modes in a single dict.
             It prevented by Gym modes convention, but done internally at the end of the episode.
         """
+        if type(mode_list) == str:
+            mode_list = [mode_list]
         if cerebro is not None:
             self.rgb_dict['episode'] = self.draw_episode(cerebro)
             # Try to render given episode:
@@ -205,9 +209,6 @@ class BTgymRendering():
             #fig.canvas.draw()
             #rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
             #self.rgb_dict['episode'] = rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-
-
-
             # Clean up:
             #self.plt.gcf().clear()
             #self.plt.close(fig)
@@ -222,52 +223,45 @@ class BTgymRendering():
             # Unpack:
             raw_state, state, reward, done, info = step_to_render
 
-            if 'agent' in mode:
-                # Render `agent` state:
-                agent_state, title, box_text = self.parse_response(state, reward, info, done)
-                if self.render_agent_as_image:
-                    self.rgb_dict['agent'] = self.draw_image(agent_state,
-                                                             figsize=self.render_size_agent,
-                                                             title=title,
-                                                             box_text=box_text,
-                                                             ylabel=self.render_ylabel,
-                                                             xlabel=self.render_xlabel,
-                                                             )
-                else:
-                    self.rgb_dict['agent'] = self.draw_plot(agent_state,
-                                                            figsize=self.render_size_agent,
+            for mode in mode_list:
+                if mode in self.render_modes and mode not in ['episode', 'human']:
+                    # Render user-defined (former agent) mode state:
+                    agent_state, title, box_text = self.parse_response(state, mode, reward, info, done)
+                    if self.render_state_as_image:
+                        self.rgb_dict[mode] = self.draw_image(agent_state,
+                                                                 figsize=self.render_size_state,
+                                                                 title=title,
+                                                                 box_text=box_text,
+                                                                 ylabel=self.render_ylabel,
+                                                                 xlabel=self.render_xlabel,
+                                                                 )
+                    else:
+                        self.rgb_dict[mode] = self.draw_plot(agent_state,
+                                                                figsize=self.render_size_state,
+                                                                title=title,
+                                                                box_text=box_text,
+                                                                ylabel=self.render_ylabel,
+                                                                xlabel=self.render_xlabel,
+                                                                )
+
+                if 'human' in mode:
+                    # Render `human` state:
+                    human_state, title, box_text = self.parse_response(raw_state, mode, reward, info, done)
+                    self.rgb_dict['human'] = self.draw_plot(human_state,
+                                                            figsize=self.render_size_human,
                                                             title=title,
                                                             box_text=box_text,
-                                                            ylabel=self.render_ylabel,
+                                                            ylabel='Price',
                                                             xlabel=self.render_xlabel,
                                                             )
-
-            if 'human' in mode:
-                # Render `human` state:
-                human_state, title, box_text = self.parse_response(raw_state, reward, info, done)
-                self.rgb_dict['human'] = self.draw_plot(human_state,
-                                                        figsize=self.render_size_human,
-                                                        title=title,
-                                                        box_text=box_text,
-                                                        ylabel='Price',
-                                                        xlabel=self.render_xlabel,
-                                                        )
-
-        # Now return what requested by `mode` key:
-        if type(mode) is str:
-            # If `mode` is a single str value:
-            if mode in self.rgb_dict.keys():
-                # If it is legal - let it go:
-                return self.rgb_dict[mode]
-
-            else:
-                return self.rgb_empty()
+            if send_img:
+                return self.rgb_dict
 
         else:
             # this case is for internal use only;
             # now `mode` supposed to contain several modes, let's return dictionary of arrays:
             return_dict = dict()
-            for entry in mode:
+            for entry in mode_list:
                 if entry in self.rgb_dict.keys():
                     # ...and it is legal:
                     return_dict[entry] = self.rgb_dict[entry]
