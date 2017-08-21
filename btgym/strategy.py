@@ -50,6 +50,7 @@ class BTgymStrategy(bt.Strategy):
     is_done = False
     action = 'hold'
     order = None
+    order_failed = False
     broker_message = '-'
     raw_state = None
     state = None
@@ -235,6 +236,8 @@ class BTgymStrategy(bt.Strategy):
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
             self.broker_message = 'ORDER FAILED with status: ' + str(order.getstatusname())
+            # Rise order_failed flag until get_reward() will [hopefully] use and reset it:
+            self.order_failed = True
         self.order = None
 
     def next(self):

@@ -2,7 +2,7 @@
 
 *.pyc
 
-tmp/*
+*.tmp/
 
 /workbench/
 
