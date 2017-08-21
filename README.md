@@ -106,12 +106,13 @@ MyEnvironment = gym.make('backtrader-v5555')
 
 Maximum environment flexibility is achieved by explicitly defining and passing `Dataset` and `Cerebro` instances:
 ```python
+from gym import spaces
 import backtrader as bt
 from btgym import BTgymDataset, BTgymStrategy, BTgymEnv
  
 MyCerebro = bt.Cerebro()
 MyCerebro.addstrategy(BTgymStrategy,
-                      state_shape=(20,4),
+                      state_shape={'raw_state': spaces.Box(low=0,high=1,shape=(20,4))},
                       skip_frame=5,
                       state_low=None,
                       state_high=None,
