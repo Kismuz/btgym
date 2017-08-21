@@ -18,9 +18,6 @@
 ###############################################################################
 import logging
 import numpy as np
-import matplotlib.dates as mdates
-import matplotlib.finance as mf
-import pandas as pd
 
 #from .plotter import BTgymPlotter
 from .plotter import DrawCerebro
@@ -275,28 +272,47 @@ class BTgymRendering():
             return return_dict
 
     def draw_plot(self, data, figsize=(10,6), title='', box_text='', xlabel='X', ylabel='Y'):
-
-        fig, ax = self.plt.subplots(figsize=figsize, dpi=self.render_dpi,)
+        """
+        Visualises environment state as 2d line plot.
+        Retrurns image as rgb_array.
+        """
+        fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
+        #ax = fig.add_subplot(111)
 
         self.plt.style.use(self.render_plotstyle)
         self.plt.title(title)
+
+        # Plot x axis as reversed time-step embedding:
+        xticks = np.linspace(data.shape[-1] - 1, 0, int(data.shape[-1]), dtype=int)
+        self.plt.xticks(xticks.tolist(), (- xticks[::-1]).tolist(), visible=False)
+
+        # Set every 5th tick label visible:
+        for tick in self.plt.xticks()[1][::5]:
+            tick.set_visible(True)
 
         self.plt.xlabel(xlabel)
         self.plt.ylabel(ylabel)
         self.plt.grid(True)
 
+        # Switch off antialiasing:
+        #self.plt.setp([ax.get_xticklines() + ax.get_yticklines() + ax.get_xgridlines() + ax.get_ygridlines()],antialiased=False)
+        #self.plt.rcParams['text.antialiased']=False
+
         # Add Info box:
         self.plt.text(0, data.min(), box_text, **self.render_boxtext)
 
-        tmp_data = pd.DataFrame(data, columns=['open', 'low', 'high', 'close'])
-        ohlc = list(
-            zip(tmp_data.index, tmp_data.open.tolist(), tmp_data.high.tolist(), tmp_data.low.tolist(),
-                tmp_data.close.tolist()))
-
-        mf.candlestick_ohlc(ax, ohlc, width=0.2, colorup='green', colordown='red')
+        self.plt.plot(data)
+        self.plt.tight_layout()
 
         fig.canvas.draw()
+
+        # Save it to a numpy array:
         rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+
+        # Clean up:
+        self.plt.close(fig)
+        #self.plt.gcf().clear()
+
         return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
     def draw_image(self, data, figsize=(12,6), title='', box_text='', xlabel='X', ylabel='Y'):
