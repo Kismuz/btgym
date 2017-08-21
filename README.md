@@ -520,13 +520,21 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [x] tensorboard integration;
  - [x] multiply agents asynchronous operation feature (e.g for A3C):
  - [x] dedicated data server;
- - [ ] multi-modal observation space shape; - IN PROGRESS
+ - [x] multi-modal observation space shape; - DONE 9/10
  - [ ] A3C implementation tweaked for BTgym; - IN PROGRESS
  - [ ] sequential and sliding time-window sampling;
  - [ ] multiply instruments trading;
  
  
 ### <a name="news"></a>[News and updates:](#title)
+
+- 21.08.17: UPDATE: BTgym is now using multi-modal observation space.
+     - space now is dictionary (not nested yet) of simple gym spaces.
+     - `raw_state` is default Box space of OHLC prices. Subclass BTgymStrategy and override `get_state()` method to
+            compute alll parts of env. observation.
+     - rendering can be performed for avery entry in observation dictionary as long as it is Box ranked <=3
+            and same key is passed in reneder_modes kwarg of environment. See updated examples.
+ 
 
 - 07.08.17: BTgym is now optimized for asynchronous operation with multiply environment instances.
      - dedicated data_server is used for dataset management;

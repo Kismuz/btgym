@@ -283,7 +283,7 @@ class BTgymRendering():
         self.plt.title(title)
 
         # Plot x axis as reversed time-step embedding:
-        xticks = np.linspace(data.shape[-1] - 1, 0, int(data.shape[-1]), dtype=int)
+        xticks = np.linspace(data.shape[0] - 1, 0, int(data.shape[0]), dtype=int)
         self.plt.xticks(xticks.tolist(), (- xticks[::-1]).tolist(), visible=False)
 
         # Set every 5th tick label visible:
@@ -327,7 +327,7 @@ class BTgymRendering():
         self.plt.title(title)
 
         # Plot x axis as reversed time-step embedding:
-        xticks = np.linspace(data.shape[0] - 1, 0, int(data.shape[-1]), dtype=int)
+        xticks = np.linspace(data.shape[0] - 1, 0, int(data.shape[0]), dtype=int)
         self.plt.xticks(xticks.tolist(), (- xticks[::-1]).tolist(), visible=False)
 
         # Set every 5th tick label visible:
