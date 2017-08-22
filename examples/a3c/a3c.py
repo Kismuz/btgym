@@ -136,7 +136,10 @@ def env_runner(sess,
     the policy, and as long as the rollout exceeds a certain length, the thread
     runner appends the policy to the queue.
     """
-    last_state = env.reset()['model_input']
+    last_state = env.reset()
+    if not test:
+        last_state = last_state['model_input']
+
     last_features = policy.get_initial_features()
     length = 0
     local_episode = 0
@@ -151,7 +154,8 @@ def env_runner(sess,
             action, value_, features = fetched[0], fetched[1], fetched[2:]
             # argmax to convert from one-hot:
             state, reward, terminal, info = env.step(action.argmax())
-            state = state['model_input']
+            if not test:
+                state = state['model_input']
             # collect the experience
             rollout.add(last_state, action, reward, value_, terminal, last_features)
             length += 1
@@ -221,7 +225,10 @@ def env_runner(sess,
                     summary_writer.flush()
 
                 # New episode:
-                last_state = env.reset()['model_input']
+                last_state = env.reset()
+                if not test:
+                    last_state = last_state['model_input']
+
                 last_features = policy.get_initial_features()
                 length = 0
                 rewards = 0
@@ -279,10 +286,17 @@ class A3C(object):
         # print('A3C_{} init started'.format(self.task))
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
+
+        if self.test_mode:
+            model_input_shape = env.observation_space.shape
+
+        else:
+            model_input_shape = env.observation_space.spaces['model_input'].shape
+
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
                 self.network = LSTMPolicy(
-                    env.observation_space.spaces['model_input'].shape,
+                    model_input_shape,
                     env.action_space.n
                 )
                 self.global_step = tf.get_variable(
@@ -305,12 +319,13 @@ class A3C(object):
                     ),
                     trainable=False
                 )
+        # Increment episode count:
         inc_episode = self.global_episode.assign_add(1)
 
         with tf.device(worker_device):
             with tf.variable_scope("local"):
                 self.local_network = pi = LSTMPolicy(
-                    env.observation_space.spaces['model_input'].shape,
+                    model_input_shape,
                     env.action_space.n
                 )
                 pi.global_step = self.global_step
