@@ -530,11 +530,13 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
 ### <a name="news"></a>[News and updates:](#title)
 
 - 21.08.17: UPDATE: BTgym is now using multi-modal observation space.
-     - space now is dictionary (not nested yet) of simple gym spaces.
+     - space used is simple extension of gym: `BTgymMultiSpace(gym.Space)` - dictionary (not nested yet) of core gym spaces.
+     - defined in `btgym/spaces.py`.
      - `raw_state` is default Box space of OHLC prices. Subclass BTgymStrategy and override `get_state()` method to
             compute alll parts of env. observation.
-     - rendering can be performed for avery entry in observation dictionary as long as it is Box ranked <=3
-            and same key is passed in reneder_modes kwarg of environment. See updated examples.
+     - rendering can now be performed for avery entry in observation dictionary as long as it is Box ranked <=3
+            and same key is passed in reneder_modes kwarg of environment.
+            'Agent' mode renamed to 'state'. See updated examples.
  
 
 - 07.08.17: BTgym is now optimized for asynchronous operation with multiply environment instances.

@@ -167,7 +167,7 @@ class BTgymStrategy(bt.Strategy):
             broker_cash=self.stats.broker.cash[0],
             broker_value=self.stats.broker.value[0],
             drawdown=self.stats.drawdown.drawdown[0],
-            #max_drawdown=self.stats.drawdown.maxdrawdown[0],
+            max_drawdown=self.stats.drawdown.maxdrawdown[0],
         )
 
     def get_done(self):

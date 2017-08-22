@@ -54,6 +54,15 @@ class _BTgymAnalyzer(bt.Analyzer):
         self.render = self.strategy.env._render
         self.message = None
         self.step_to_render = None # Due to reset(), this will get populated before first render() call.
+
+        # At the end of the episode - render everything but episode:
+        self.render_at_stop = self.render.render_modes.copy()
+        try:
+            self.render_at_stop.remove('episode')
+
+        except:
+            pass
+
         self.info_list = []
 
     def prenext(self):
@@ -69,7 +78,7 @@ class _BTgymAnalyzer(bt.Analyzer):
         self.log.debug('RunStop() invoked with {}'.format(self.strategy.broker_message))
 
         # Do final renderings, it will be kept by renderer class, not sending anywhere:
-        self.render.render(self.render.render_modes, step_to_render=self.step_to_render, send_img=False)
+        self.render.render(self.render_at_stop, step_to_render=self.step_to_render, send_img=False)
 
         self.strategy.close()
         self.strategy.env.runstop()
