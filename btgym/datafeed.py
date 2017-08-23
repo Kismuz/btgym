@@ -48,7 +48,7 @@ class BTgymDataset:
     # TODO: implement sequential and time-window sampling.
     #  Parameters and their default values:
     params = dict(
-        filename=None,  # Should be given either here  or when calling read_csv()
+        filename=None,  # Str or list of str, should be given either here  or when calling read_csv()
 
         # Default parameters for source-specific CSV datafeed class,
         # correctly parses 1 minute Forex generic ASCII
@@ -110,32 +110,45 @@ class BTgymDataset:
             self.log = logging.getLogger('dummy')
             self.log.addHandler(logging.NullHandler())
 
-    def read_csv(self, filename=None):
+    def read_csv(self, data_filename=None):
         """
-        Populates instance by loading data: CSV file --> pandas dataframe
+        Populates instance by loading data: CSV file --> pandas dataframe.
+        Args:
+            filename: string or list of strings.
         """
-        if filename:
-            self.filename = filename  # override data source if one is given
-        try:
-            assert self.filename and os.path.isfile(self.filename)
-            self.data = pd.read_csv(self.filename,
-                                    sep=self.sep,
-                                    header=self.header,
-                                    index_col=self.index_col,
-                                    parse_dates=self.parse_dates,
-                                    names=self.names)
-            self.log.info('Loaded {} records from <{}>.'.format(self.data.shape[0], self.filename))
+        if data_filename:
+            self.filename = data_filename  # override data source if one is given
+        if type(self.filename) == str:
+            self.filename = [self.filename]
 
-        except:
+        dataframes = []
+        for filename in self.filename:
             try:
-                assert 'episode_dataset' in self.filename
-                self.log.warning('Attempt to load data into episode dataset: ignored.')
-                return None
+                assert filename and os.path.isfile(filename)
+                dataframes += [
+                    pd.read_csv(
+                        filename,
+                        sep=self.sep,
+                        header=self.header,
+                        index_col=self.index_col,
+                        parse_dates=self.parse_dates,
+                        names=self.names
+                    )
+                ]
+                self.log.info('Loaded {} records from <{}>.'.format(dataframes[-1].shape[0], filename))
 
             except:
-                msg = 'Data file <{}> not specified / not found.'.format(str(self.filename))
-                self.log.error(msg)
-                raise FileNotFoundError(msg)
+                try:
+                    assert 'episode_dataset' in self.filename
+                    self.log.warning('Attempt to load data into episode dataset: ignored.')
+                    return None
+
+                except:
+                    msg = 'Data file <{}> not specified / not found.'.format(str(filename))
+                    self.log.error(msg)
+                    raise FileNotFoundError(msg)
+
+        self.data = pd.concat(dataframes)
 
     def describe(self):
         """

@@ -468,7 +468,7 @@ Repeat until bored:
 ```
 #### Methods:
 #### read_csv(filename):
-Populates instance by loading data from CSV file.
+Populates instance by loading data from [list of] CSV files[s].
 
 #### sample_random():
 Randomly samples continuous subset of data.
@@ -521,13 +521,18 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [x] tensorboard integration;
  - [x] multiply agents asynchronous operation feature (e.g for A3C):
  - [x] dedicated data server;
- - [x] multi-modal observation space shape; - DONE 9/10
+ - [x] multi-modal observation space shape;
  - [ ] A3C implementation tweaked for BTgym; - IN PROGRESS
  - [ ] sequential and sliding time-window sampling;
  - [ ] multiply instruments trading;
  
  
 ### <a name="news"></a>[News and updates:](#title)
+
+- 23.08.17: `filename` arg in environment/dataset specification now can be list of csv files. 
+      - handy for bigger dataset creation;
+      - data from all files are concatenated and sampled uniformly;
+      - no record duplication and format consistency checks preformed.
 
 - 21.08.17: UPDATE: BTgym is now using multi-modal observation space.
      - space used is simple extension of gym: `BTgymMultiSpace(gym.Space)` - dictionary (not nested yet) of core gym spaces.

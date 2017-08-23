@@ -160,7 +160,6 @@ def env_runner(sess,
             rollout.add(last_state, action, reward, value_, terminal, last_features)
             length += 1
             rewards += reward
-
             last_state = state
             last_features = features
 
@@ -506,3 +505,7 @@ class A3C(object):
             self.summary_writer.flush()
 
         self.local_steps += 1
+
+        #print('a3c.process():',
+        #      self.local_network.diagnostic,
+        #      sess.run( self.local_network.diagnostic['step_size'], {self.local_network.x: batch.si}))

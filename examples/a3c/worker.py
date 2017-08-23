@@ -136,9 +136,9 @@ class Worker(multiprocessing.Process):
 
             var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
 
-            self.log.debug('worker-{}: trainable vars:'.format(self.task))
-            for v in var_list:
-                self.log.debug('{}: {}'.format(v.name, v.get_shape()))
+            #self.log.debug('worker-{}: trainable vars:'.format(self.task))
+            #for v in var_list:
+            #    self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
             def init_fn(ses):
                 self.log.debug("Initializing all parameters.")

@@ -55,12 +55,22 @@ def categorical_sample(logits, d):
 
 class LSTMPolicy(object):
     def __init__(self, ob_space, ac_space):
+
+        self.diagnostic = dict()
+
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space))
+
+        self.diagnostic['input_shape'] = self.x.shape
 
         for i in range(4):
             x = tf.nn.elu(conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
+
+        self.diagnostic['after_conv_shape'] = x.shape
+
         # introduce a "fake" batch dimension of 1 after flatten so that we can do LSTM over time dim
         x = tf.expand_dims(flatten(x), [0])
+
+        self.diagnostic['flatten_shape'] = x.shape
 
         size = 256
         if use_tf100_api:
@@ -69,6 +79,8 @@ class LSTMPolicy(object):
             lstm = rnn.rnn_cell.BasicLSTMCell(size, state_is_tuple=True)
         self.state_size = lstm.state_size
         step_size = tf.shape(self.x)[:1]
+
+        self.diagnostic['step_size'] = step_size
 
         c_init = np.zeros((1, lstm.state_size.c), np.float32)
         h_init = np.zeros((1, lstm.state_size.h), np.float32)
@@ -97,6 +109,9 @@ class LSTMPolicy(object):
 
     def act(self, ob, c, h):
         sess = tf.get_default_session()
+
+        #print('pi.act():', self.diagnostic, sess.run( self.diagnostic['step_size'], {self.x: [ob]}))
+
         return sess.run([self.sample, self.vf] + self.state_out,
                         {self.x: [ob], self.state_in[0]: c, self.state_in[1]: h})
 
