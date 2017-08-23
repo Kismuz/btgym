@@ -529,10 +529,10 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
 ### <a name="news"></a>[News and updates:](#title)
 
-- 23.08.17: `filename` arg in environment/dataset specification now can be list of csv files. 
-      - handy for bigger dataset creation;
-      - data from all files are concatenated and sampled uniformly;
-      - no record duplication and format consistency checks preformed.
+- 23.08.17: `filename` arg in environment/dataset specification now can be list of csv files.
+    - handy for bigger dataset creation;
+    - data from all files are concatenated and sampled uniformly;
+    - no record duplication and format consistency checks preformed.
 
 - 21.08.17: UPDATE: BTgym is now using multi-modal observation space.
      - space used is simple extension of gym: `BTgymMultiSpace(gym.Space)` - dictionary (not nested yet) of core gym spaces.
