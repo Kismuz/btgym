@@ -99,7 +99,7 @@ class LSTMPolicy(object):
         sess = tf.get_default_session()
         return sess.run([self.sample, self.vf] + self.state_out,
                         {self.x: [ob], self.state_in[0]: c, self.state_in[1]: h})
-    
+
     def value(self, ob, c, h):
         sess = tf.get_default_session()
         return sess.run(self.vf, {self.x: [ob], self.state_in[0]: c, self.state_in[1]: h})[0]

@@ -546,7 +546,7 @@ class BTgymEnv(gym.Env):
 
             else:
                 msg = (
-                    '\nState observation shape mismatch!\n' +
+                    '\nState observation shape or min/max values mismatch!\n' +
                     'Space set by env: {},\n' +
                     'Shape returned by server: {}.\n' +
                     'Hint: Wrong Strategy.get_state() parameters?'
