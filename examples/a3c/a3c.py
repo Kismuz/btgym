@@ -285,7 +285,7 @@ class A3C(object):
         self.model_summary_freq = model_summary_freq
         self.test_mode = test_mode
 
-        # print('A3C_{} init started'.format(self.task))
+        print('A3C_{} init started'.format(self.task))
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
@@ -379,7 +379,7 @@ class A3C(object):
             self.summary_writer = None
             self.local_steps = 0
 
-            # print('A3C_{} train op defined'.format(self.task))
+            print('A3C_{} train op defined'.format(self.task))
 
             # Model stat. summary:
             self.model_summary_op = tf.summary.merge(
