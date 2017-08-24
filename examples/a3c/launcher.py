@@ -27,11 +27,9 @@ import time
 import psutil
 from subprocess import PIPE
 import signal
-#import multiprocessing
-
-#import tensorflow as tf
 
 from worker import Worker
+from model import LSTMPolicy
 
 
 class Launcher():
@@ -51,10 +49,11 @@ class Launcher():
         num_ps=1,
         log_dir='./tmp/a3c_log',
     )
+    model_class = LSTMPolicy
     verbose = 0
     test_mode = False
 
-    # Legal kwargs:
+    # Other legal kwargs:
     train_steps = None
     model_summary_freq = None
     episode_summary_freq = None
@@ -130,6 +129,7 @@ class Launcher():
                     {
                         'env_class': self.env_class,
                         'env_config': env_config,
+                        'model_class': self.model_class,
                         'cluster_spec': self.cluster_spec,
                         'job_name': key,
                         'task': task_index,

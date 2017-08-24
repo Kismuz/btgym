@@ -6,7 +6,7 @@ from __future__ import print_function
 from collections import namedtuple
 import numpy as np
 import tensorflow as tf
-from model import LSTMPolicy
+#from model import LSTMPolicy
 import six.moves.queue as queue
 import scipy.signal
 import threading
@@ -70,7 +70,8 @@ class PartialRollout(object):
 
 class RunnerThread(threading.Thread):
     """
-    Despite BTgym is not real-time environment [yet], thread-runner approach is still here:
+    Despite BTgym is not real-time environment [yet], thread-runner approach is still here.
+    From original universe-starter-agent:
     One of the key distinctions between a normal environment and a universe environment
     is that a universe environment is _real time_.  This means that there should be a thread
     that would constantly interact with the environment and tell it what to do.  This thread is here.
@@ -248,6 +249,7 @@ class A3C(object):
     def __init__(self,
                  env,
                  task,
+                 model_class,
                  model_gamma=0.99,
                  model_lambda=1.00,
                  model_beta=0.1,  # entropy regularizer
@@ -269,6 +271,7 @@ class A3C(object):
         """
         self.env = env
         self.task = task
+        self.model_class = model_class
         self.model_gamma = model_gamma
         self.model_lambda = model_lambda
         self.model_beta = model_beta
@@ -294,7 +297,7 @@ class A3C(object):
 
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
-                self.network = LSTMPolicy(
+                self.network = self.model_class(
                     model_input_shape,
                     env.action_space.n
                 )
@@ -323,7 +326,7 @@ class A3C(object):
 
         with tf.device(worker_device):
             with tf.variable_scope("local"):
-                self.local_network = pi = LSTMPolicy(
+                self.local_network = pi = self.model_class(
                     model_input_shape,
                     env.action_space.n
                 )
@@ -386,6 +389,7 @@ class A3C(object):
                     tf.summary.scalar("model/entropy", entropy / bs),
                     tf.summary.scalar("model/grad_global_norm", tf.global_norm(grads)),
                     tf.summary.scalar("model/var_global_norm", tf.global_norm(pi.var_list)),
+                    tf.summary.histogram('model/decayed_rewards_on_batch', self.r),
                 ],
                 name='model'
             )

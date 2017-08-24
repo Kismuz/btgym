@@ -46,6 +46,7 @@ class Worker(multiprocessing.Process):
     def __init__(self,
                  env_class,
                  env_config,
+                 model_class,
                  cluster_spec,
                  job_name,
                  task,
@@ -59,6 +60,7 @@ class Worker(multiprocessing.Process):
         super(Worker, self).__init__()
         self.env_class = env_class
         self.env_config = env_config
+        self.model_class = model_class
         self.cluster_spec = cluster_spec
         self.job_name = job_name
         self.task = task
@@ -123,7 +125,12 @@ class Worker(multiprocessing.Process):
 
             self.log.debug('worker_{}:envronment ok.'.format(self.task))
             # Define trainer:
-            trainer = A3C(env=self.env, task=self.task, test_mode=self.test_mode, **self.kwargs)
+            trainer = A3C(
+                env=self.env,
+                task=self.task,
+                model_class=self.model_class,
+                test_mode=self.test_mode,
+                **self.kwargs)
 
             self.log.debug('worker_{}:trainer ok.'.format(self.task))
 
