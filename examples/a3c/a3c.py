@@ -250,6 +250,7 @@ class A3C(object):
                  env,
                  task,
                  model_class,
+                 log,
                  model_gamma=0.99,
                  model_lambda=1.00,
                  model_beta=0.1,  # entropy regularizer
@@ -284,8 +285,9 @@ class A3C(object):
         self.env_render_freq = env_render_freq
         self.model_summary_freq = model_summary_freq
         self.test_mode = test_mode
+        self.log = log
 
-        print('A3C_{} init started'.format(self.task))
+        self.log.debug('A3C_{}: init() started'.format(self.task))
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
@@ -379,7 +381,7 @@ class A3C(object):
             self.summary_writer = None
             self.local_steps = 0
 
-            print('A3C_{} train op defined'.format(self.task))
+            self.log.debug('A3C_{}: train op defined'.format(self.task))
 
             # Model stat. summary:
             self.model_summary_op = tf.summary.merge(
@@ -436,7 +438,7 @@ class A3C(object):
                 name='episode_atari'
             )
 
-            # print('A3C_{} summaries ok'.format(self.task))
+            # self.log.debug('A3C_{}: summaries ok'.format(self.task))
 
             # Make runner:
             # 20 represents the number of "local steps":  the number of timesteps
@@ -456,7 +458,7 @@ class A3C(object):
                 self.ep_summary
             )
 
-            # print('A3C_{} init done'.format(self.task))
+            self.log.debug('A3C_{}: init() done'.format(self.task))
 
 
     def start(self, sess, summary_writer):

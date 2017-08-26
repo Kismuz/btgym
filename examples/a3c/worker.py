@@ -130,6 +130,7 @@ class Worker(multiprocessing.Process):
                 task=self.task,
                 model_class=self.model_class,
                 test_mode=self.test_mode,
+                log=self.log,
                 **self.kwargs)
 
             self.log.debug('worker_{}:trainer ok.'.format(self.task))
