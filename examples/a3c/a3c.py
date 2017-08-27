@@ -6,6 +6,7 @@ from __future__ import print_function
 from collections import namedtuple
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.util.nest import flatten as flatten_nested
 #from model import LSTMPolicy
 import six.moves.queue as queue
 import scipy.signal
@@ -141,7 +142,7 @@ def env_runner(sess,
     if not test:
         last_state = last_state['model_input']
 
-    last_features = policy.get_initial_features()
+    last_features = policy.get_initial_state()
     length = 0
     local_episode = 0
     rewards = 0
@@ -151,7 +152,7 @@ def env_runner(sess,
         rollout = PartialRollout()
 
         for _ in range(num_local_steps):
-            fetched = policy.act(last_state, *last_features)
+            fetched = policy.act(last_state, last_features)
             action, value_, features = fetched[0], fetched[1], fetched[2:]
             # argmax to convert from one-hot:
             state, reward, terminal, info = env.step(action.argmax())
@@ -229,7 +230,7 @@ def env_runner(sess,
                 if not test:
                     last_state = last_state['model_input']
 
-                last_features = policy.get_initial_features()
+                last_features = policy.get_initial_state()
                 length = 0
                 rewards = 0
                 # Increment global and local episode counts:
@@ -238,7 +239,7 @@ def env_runner(sess,
                 break
 
         if not terminal_end:
-            rollout.r = policy.value(last_state, *last_features)
+            rollout.r = policy.value(last_state, last_features)
 
         # once we have enough experience, yield it, and have the ThreadRunner place it on a queue:
         yield rollout
@@ -497,13 +498,16 @@ class A3C(object):
             fetches = [self.train_op, self.global_step]
 
         feed_dict = {
-            self.local_network.x: batch.si,
-            self.ac: batch.a,
-            self.adv: batch.adv,
-            self.r: batch.r,
-            self.local_network.state_in[0]: batch.features[0],
-            self.local_network.state_in[1]: batch.features[1],
+            pl: value for pl, value in zip(self.local_network.lstm_state_pl_flatten, flatten_nested(batch.features))
         }
+        feed_dict.update(
+            {
+                self.local_network.x: batch.si,
+                self.ac: batch.a,
+                self.adv: batch.adv,
+                self.r: batch.r,
+            }
+        )
         fetched = sess.run(fetches, feed_dict=feed_dict)
 
         if should_compute_summary:
