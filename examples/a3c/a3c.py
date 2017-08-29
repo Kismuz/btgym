@@ -6,6 +6,7 @@ from __future__ import print_function
 from collections import namedtuple
 import numpy as np
 import tensorflow as tf
+#import tensorflow.contrib.rnn as rnn
 from tensorflow.python.util.nest import flatten as flatten_nested
 #from model import LSTMPolicy
 import six.moves.queue as queue
@@ -30,8 +31,12 @@ def process_rollout(rollout, gamma, lambda_=1.0):
     # this formula for the advantage comes "Generalized Advantage Estimation":
     # https://arxiv.org/abs/1506.02438
     batch_adv = discount(delta_t, gamma * lambda_)
+    features = rollout.features
+    #print('**rollout\n')
+    #print('rewards:', rewards)
+    #print('terminal:', rollout.terminal)
+    #print('features:', rollout.features)
 
-    features = rollout.features[0]
     return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features)
 
 Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
@@ -56,7 +61,8 @@ class PartialRollout(object):
         self.rewards += [reward]
         self.values += [value]
         self.terminal = terminal
-        self.features += [features]
+        self.features = features
+        #self.features += [features]
 
     def extend(self, other):
         assert not self.terminal
@@ -142,7 +148,7 @@ def env_runner(sess,
     if not test:
         last_state = last_state['model_input']
 
-    last_features = policy.get_initial_state()
+    last_features = policy.get_initial_features()
     length = 0
     local_episode = 0
     rewards = 0
@@ -150,16 +156,23 @@ def env_runner(sess,
     while True:
         terminal_end = False
         rollout = PartialRollout()
+        rollout_features = last_features
 
         for _ in range(num_local_steps):
-            fetched = policy.act(last_state, last_features)
-            action, value_, features = fetched[0], fetched[1], fetched[2:]
+            action, value_, features = policy.act(last_state, last_features)
             # argmax to convert from one-hot:
             state, reward, terminal, info = env.step(action.argmax())
+
+            #test_features = rnn.LSTMStateTuple(
+            #    np.ones(features[0].c.shape) * reward * 10,
+            #    - 1 * np.ones(features[0].h.shape) * reward * 10
+            #)
+            #features = test_features
+
             if not test:
                 state = state['model_input']
             # collect the experience
-            rollout.add(last_state, action, reward, value_, terminal, last_features)
+            rollout.add(last_state, action, reward, value_, terminal, rollout_features)
             length += 1
             rewards += reward
             last_state = state
@@ -230,7 +243,7 @@ def env_runner(sess,
                 if not test:
                     last_state = last_state['model_input']
 
-                last_features = policy.get_initial_state()
+                last_features = policy.get_initial_features()
                 length = 0
                 rewards = 0
                 # Increment global and local episode counts:
@@ -243,6 +256,8 @@ def env_runner(sess,
 
         # once we have enough experience, yield it, and have the ThreadRunner place it on a queue:
         yield rollout
+
+
 
 
 class A3C(object):
@@ -471,12 +486,16 @@ class A3C(object):
         Self explanatory:  take a rollout from the queue of the thread runner.
         """
         rollout = self.runner.queue.get(timeout=600.0)
+
+        return rollout
+        """
         while not rollout.terminal:
             try:
                 rollout.extend(self.runner.queue.get_nowait())
             except queue.Empty:
                 break
         return rollout
+        """
 
     def process(self, sess):
         """
@@ -497,6 +516,8 @@ class A3C(object):
         else:
             fetches = [self.train_op, self.global_step]
 
+        #print('batch.features:', flatten_nested(batch.features),)
+
         feed_dict = {
             pl: value for pl, value in zip(self.local_network.lstm_state_pl_flatten, flatten_nested(batch.features))
         }
@@ -508,6 +529,9 @@ class A3C(object):
                 self.r: batch.r,
             }
         )
+        #for key,value in feed_dict.items():
+        #    print(key,':', value.shape,'\n')
+
         fetched = sess.run(fetches, feed_dict=feed_dict)
 
         if should_compute_summary:
