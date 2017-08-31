@@ -17,7 +17,7 @@ General purpose of this wrapper is to provide gym-integrated framework for
 running reinforcement learning experiments 
 in [close to] real world algorithmic trading environments.
 
-### [See news and update notes below](#news)
+## [See news and update notes below](#news)
 
 ```
 DISCLAIMER:
@@ -25,7 +25,7 @@ This package is neither out-of-the-box-moneymaker, nor it provides ready-to-conv
 Rather, it is framework for setting experiments with complex, non stationary, time-series based environments.
 I have no idea what kind of algorithm and setup will solve it [if any]. Explore on your own!
 ```
-###### This work is in early development stage. Any suggestions, feedback and contributions are welcome.
+###### This work is in early development stage. Expect some surprises.
 ****
 ### <a name="contents"></a>Contents
 - [Installation](#install)
@@ -528,6 +528,11 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
  
 ### <a name="news"></a>[News and updates:](#title)
+
+- 31.08.17: Basic implementation of A3C algorithm is done and moved inside BTgym package.
+    - algorithm logic consistency tests are passed;
+    - still work in early stage, experiments with obs. state features and policy estimator architecture ahead;
+    - check out [`examples/a3c`](./examples/a3c) directory.
 
 - 23.08.17: `filename` arg in environment/dataset specification now can be list of csv files.
     - handy for bigger dataset creation;
