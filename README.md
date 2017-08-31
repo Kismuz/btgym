@@ -17,7 +17,7 @@ General purpose of this wrapper is to provide gym-integrated framework for
 running reinforcement learning experiments 
 in [close to] real world algorithmic trading environments.
 
-## [See news and update notes below](#news)
+### [See news and update notes below](#news)
 
 ```
 DISCLAIMER:

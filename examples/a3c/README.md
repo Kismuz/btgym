@@ -8,7 +8,7 @@
 ##### ROADMAP:
 
 - [x] reject test: Atari environment;
-- [ ] artificial data reject test: sine wave;
+- [x] artificial data reject test: sine wave;
 - [ ] signal feature selection exploration;
 - [ ] reward definition exploration;
 - [ ] [LSTM]policy estimator architecture exploration;
