@@ -1,33 +1,25 @@
 # Original code is taken from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
 
-import cv2
-from gym.spaces.box import Box
 import numpy as np
+import cv2
 import gym
-
-from universe import vectorized
-from universe.wrappers import BlockingReset, GymCoreAction, EpisodeID, Unvectorize, Vectorize, Vision, Logger
-
+from gym import spaces
 
 def create_env(env_id,  **kwargs):
     """
-    Sstate preprocessor wrapper.
-    Only Atari environments are supported.
+    State preprocessor wrapper for Atari environments.
     """
     assert "." not in env_id  # universe environments have dots in names.
     return create_atari_env(env_id)
 
 def create_atari_env(env_id):
-
     env = gym.make(env_id)
-    env = Vectorize(env)
     env = AtariRescale42x42(env)
-    env = Unvectorize(env)
+
     return env
 
 def _process_frame42(frame):
-    # TODO: get rid of cv2 and universe wrappers
     frame = frame[34:34+160, :160]
     # Resize by half, then down to 42x42 (essentially mipmapping). If
     # we resize directly we lose pixels that, when mapped to 42x42,
@@ -40,10 +32,10 @@ def _process_frame42(frame):
     frame = np.reshape(frame, [42, 42, 1])
     return frame
 
-class AtariRescale42x42(vectorized.ObservationWrapper):
+class AtariRescale42x42(gym.ObservationWrapper):
     def __init__(self, env=None):
         super(AtariRescale42x42, self).__init__(env)
-        self.observation_space = Box(0.0, 1.0, [42, 42, 1])
+        self.observation_space = spaces.Box(0.0, 1.0, [42, 42, 1])
 
-    def _observation(self, observation_n):
-        return [_process_frame42(observation) for observation in observation_n]
+    def _observation(self, observation):
+        return _process_frame42(observation)

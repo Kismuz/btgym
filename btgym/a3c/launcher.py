@@ -28,13 +28,14 @@ import psutil
 from subprocess import PIPE
 import signal
 
-from worker import Worker
-from model import LSTMPolicy
+from .worker import Worker
+from .model import LSTMPolicy2D
+
 
 
 class Launcher():
     """
-    Starts distributed TF training session with workers running separate BTgym environments.
+    Starts distributed TF training session with workers running separate instances of BTgym environment.
     """
     env_class = None
     env_config = dict(
@@ -49,7 +50,10 @@ class Launcher():
         num_ps=1,
         log_dir='./tmp/a3c_log',
     )
-    model_class = LSTMPolicy
+    policy_class = LSTMPolicy2D
+    policy_config = dict(
+        lstm_layers=(256,),
+    )
     verbose = 0
     test_mode = False
 
@@ -129,7 +133,8 @@ class Launcher():
                     {
                         'env_class': self.env_class,
                         'env_config': env_config,
-                        'model_class': self.model_class,
+                        'policy_class': self.policy_class,
+                        'policy_config': self.policy_config,
                         'cluster_spec': self.cluster_spec,
                         'job_name': key,
                         'task': task_index,

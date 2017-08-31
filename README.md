@@ -43,9 +43,9 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
    
 ****
 ### <a name="install"></a>[Installation](#contents)
-- Btgym requires:  `gym`, `backtrader`, `pandas`, `numpy`, `pyzmq`, `matplotlib`,`pillow`, `ipython`, `psutil`.
-- Optional Tensorboard monitoring requires `tensorflow`. 
-- Examples requires: `scipy`.
+- Btgym requires:  `gym[atari]`, `tensorflow`, `opencv-python`,
+                   `backtrader`, `pandas`, `numpy`, `scipy`, `pyzmq`,
+                   `matplotlib`,`pillow`, `ipython`, `psutil`.
 - Clone or copy btgym repository to local disk, cd to it and run: `pip install -e . `
 to install package and all dependencies:
 ``` 

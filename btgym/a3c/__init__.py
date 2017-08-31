@@ -17,14 +17,9 @@
 #
 ###############################################################################
 
-#from .memoryagent import BTgymMemoryAgent
-
-from .agent import BTgymDqnAgent
-
-from .memory import BTgymReplayMemory
-
-from .network import BTgymNeuralNetwork
-
-from .model import BTgymModel
-
+#from .envs import create_env
+from .worker import Worker
+from .model import LSTMPolicy
+from .a3c import A3C
+from .launcher import Launcher
 

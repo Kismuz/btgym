@@ -6,9 +6,7 @@ from __future__ import print_function
 from collections import namedtuple
 import numpy as np
 import tensorflow as tf
-#import tensorflow.contrib.rnn as rnn
 from tensorflow.python.util.nest import flatten as flatten_nested
-#from model import LSTMPolicy
 import six.moves.queue as queue
 import scipy.signal
 import threading
@@ -32,10 +30,6 @@ def process_rollout(rollout, gamma, lambda_=1.0):
     # https://arxiv.org/abs/1506.02438
     batch_adv = discount(delta_t, gamma * lambda_)
     features = rollout.features
-    #print('**rollout\n')
-    #print('rewards:', rewards)
-    #print('terminal:', rollout.terminal)
-    #print('features:', rollout.features)
 
     return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features)
 
@@ -160,12 +154,17 @@ def env_runner(sess,
 
         for _ in range(num_local_steps):
             action, value_, features = policy.act(last_state, last_features)
+
+            #test_action = np.zeros(6)
+            #test_action[0] = 1
+            #action = test_action
+
             # argmax to convert from one-hot:
             state, reward, terminal, info = env.step(action.argmax())
 
             #test_features = rnn.LSTMStateTuple(
-            #    np.ones(features[0].c.shape) * reward * 10,
-            #    - 1 * np.ones(features[0].h.shape) * reward * 10
+            #    np.ones(features.c.shape) * reward * 10 + 10,
+            #    - 1 * np.ones(features.h.shape) * reward * 10 - 10
             #)
             #features = test_features
 
@@ -187,7 +186,6 @@ def env_runner(sess,
 
                 # Episode statistic:
                 if local_episode % episode_summary_freq == 0:
-                    #print('runner_{}: episode summary attempt'.format(task))
                     if not test:
                         # BTgym:
                         episode_stat = env.get_stat()  # get episode statistic
@@ -265,7 +263,8 @@ class A3C(object):
     def __init__(self,
                  env,
                  task,
-                 model_class,
+                 policy_class,
+                 policy_config,
                  log,
                  model_gamma=0.99,
                  model_lambda=1.00,
@@ -288,7 +287,8 @@ class A3C(object):
         """
         self.env = env
         self.task = task
-        self.model_class = model_class
+        self.policy_class = policy_class
+        self.policy_config = policy_config
         self.model_gamma = model_gamma
         self.model_lambda = model_lambda
         self.model_beta = model_beta
@@ -315,9 +315,10 @@ class A3C(object):
 
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
-                self.network = self.model_class(
+                self.network = self.policy_class(
                     model_input_shape,
-                    env.action_space.n
+                    env.action_space.n,
+                    **self.policy_config
                 )
                 self.global_step = tf.get_variable(
                     "global_step",
@@ -344,9 +345,10 @@ class A3C(object):
 
         with tf.device(worker_device):
             with tf.variable_scope("local"):
-                self.local_network = pi = self.model_class(
+                self.local_network = pi = self.policy_class(
                     model_input_shape,
-                    env.action_space.n
+                    env.action_space.n,
+                    **self.policy_config
                 )
                 pi.global_step = self.global_step
                 pi.global_episode = self.global_episode
@@ -516,8 +518,6 @@ class A3C(object):
         else:
             fetches = [self.train_op, self.global_step]
 
-        #print('batch.features:', flatten_nested(batch.features),)
-
         feed_dict = {
             pl: value for pl, value in zip(self.local_network.lstm_state_pl_flatten, flatten_nested(batch.features))
         }
@@ -529,8 +529,12 @@ class A3C(object):
                 self.r: batch.r,
             }
         )
+
+        #print('TRAIN_FEED_DICT:\n', feed_dict)
+        #print('\n=======S=======\n')
         #for key,value in feed_dict.items():
         #    print(key,':', value.shape,'\n')
+        #print('\n=====E======\n')
 
         fetched = sess.run(fetches, feed_dict=feed_dict)
 
@@ -539,7 +543,3 @@ class A3C(object):
             self.summary_writer.flush()
 
         self.local_steps += 1
-
-        #print('a3c.process():',
-        #      self.local_network.diagnostic,
-        #      sess.run( self.local_network.diagnostic['step_size'], {self.local_network.x: batch.si}))

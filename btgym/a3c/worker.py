@@ -2,8 +2,6 @@
 # https://github.com/openai/universe-starter-agent
 # Under MIT licence.
 
-import cv2
-import go_vncdriver
 
 import sys
 sys.path.insert(0,'..')
@@ -12,13 +10,11 @@ import os
 import logging
 import multiprocessing
 
-import IPython.display as Display
-import PIL.Image as Image
-
+import cv2
 import tensorflow as tf
 
-from a3c import A3C
-from envs import create_env
+from .a3c import A3C
+from .envs import create_env
 
 class FastSaver(tf.train.Saver):
     """
@@ -46,21 +42,23 @@ class Worker(multiprocessing.Process):
     def __init__(self,
                  env_class,
                  env_config,
-                 model_class,
+                 policy_class,
+                 policy_config,
                  cluster_spec,
                  job_name,
                  task,
                  log_dir,
                  log,
                  log_level,
-                 max_steps=100000000,
+                 max_steps=1000000000,
                  test_mode=False,
                  **kwargs):
         """___"""
         super(Worker, self).__init__()
         self.env_class = env_class
         self.env_config = env_config
-        self.model_class = model_class
+        self.policy_class = policy_class
+        self.policy_config = policy_config
         self.cluster_spec = cluster_spec
         self.job_name = job_name
         self.task = task
@@ -77,6 +75,8 @@ class Worker(multiprocessing.Process):
         """
         Worker runtime body.
         """
+        if self.test_mode:
+            import gym
 
         # Define cluster:
         cluster = tf.train.ClusterSpec(self.cluster_spec).as_cluster_def()
@@ -128,7 +128,8 @@ class Worker(multiprocessing.Process):
             trainer = A3C(
                 env=self.env,
                 task=self.task,
-                model_class=self.model_class,
+                policy_class=self.policy_class,
+                policy_config=self.policy_config,
                 test_mode=self.test_mode,
                 log=self.log,
                 **self.kwargs)
@@ -142,8 +143,7 @@ class Worker(multiprocessing.Process):
 
             saver = FastSaver(variables_to_save)
 
-            var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
-
+            #var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
             #self.log.debug('worker-{}: trainable vars:'.format(self.task))
             #for v in var_list:
             #    self.log.debug('{}: {}'.format(v.name, v.get_shape()))
