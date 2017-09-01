@@ -343,6 +343,7 @@ class BTgymRendering():
         # Switch off antialiasing:
         # self.plt.setp([ax.get_xticklines() + ax.get_yticklines() + ax.get_xgridlines() + ax.get_ygridlines()],antialiased=False)
         # self.plt.rcParams['text.antialiased']=False
+        #self.log.warning('render_data_shape:{}'.format(data.shape))
 
         # Add Info box:
         self.plt.text(0, data.shape[1] - 1, box_text, **self.render_boxtext)

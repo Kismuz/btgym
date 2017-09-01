@@ -176,7 +176,7 @@ class Worker(multiprocessing.Process):
                 sess.run(trainer.sync)
                 trainer.start(sess, summary_writer)
                 global_step = sess.run(trainer.global_step)
-                self.log.info("worker_{}: starting training at step: {}".format(self.task, global_step))
+                self.log.warning("worker_{}: starting training at step: {}".format(self.task, global_step))
                 while not sv.should_stop() and global_step < self.max_steps:
                     trainer.process(sess)
                     global_step = sess.run(trainer.global_step)
@@ -184,7 +184,7 @@ class Worker(multiprocessing.Process):
                 # Ask for all the services to stop:
                 self.env.close()
                 sv.stop()
-            self.log.info('worker_{}: reached {} steps, exiting.'.format(self.task, global_step))
+            self.log.warning('worker_{}: reached {} steps, exiting.'.format(self.task, global_step))
 
 
 class TestTrainer():

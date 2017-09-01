@@ -28,7 +28,9 @@ class BaseLSTMPolicy(object):
         self.lstm = rnn.MultiRNNCell(lstm, state_is_tuple=True)
         # self.lstm = lstm[0]
 
-        step_size = tf.shape(self.x)[:1]
+        # Get time_dimension as [1]-shaped tensor:
+        step_size = tf.expand_dims(tf.shape(x)[1], [0])
+        #step_size = tf.shape(self.x)[:1]
 
         self.lstm_init_state = self.lstm.zero_state(1, dtype=tf.float32)
 
@@ -43,7 +45,7 @@ class BaseLSTMPolicy(object):
             time_major=False
         )
 
-        x = tf.reshape(lstm_outputs, [-1, size])
+        x = tf.reshape(lstm_outputs, [-1, lstm_layers[-1]])
 
         self.logits = self.linear(x, ac_space, "action", self.normalized_columns_initializer(0.01))
         self.vf = tf.reshape(self.linear(x, 1, "value", self.normalized_columns_initializer(1.0)), [-1])
@@ -172,7 +174,8 @@ class _LSTMPolicy_original(object):
         lstm = rnn.BasicLSTMCell(size, state_is_tuple=True)
 
         self.state_size = lstm.state_size
-        step_size = tf.shape(self.x)[:1]
+        # Get time_dimension as [1]-shaped tensor:
+        step_size = tf.expand_dims(tf.shape(x)[1], [0])  # TODO: VERIFY!!!
 
         c_init = np.zeros((1, lstm.state_size.c), np.float32)
         h_init = np.zeros((1, lstm.state_size.h), np.float32)

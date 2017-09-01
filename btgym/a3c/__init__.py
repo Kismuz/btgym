@@ -19,7 +19,7 @@
 
 #from .envs import create_env
 from .worker import Worker
-from .model import LSTMPolicy
+from .model import LSTMPolicy, LSTMPolicy2D, BaseLSTMPolicy
 from .a3c import A3C
 from .launcher import Launcher
 
