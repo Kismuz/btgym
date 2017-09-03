@@ -148,7 +148,7 @@ class LSTMPolicy(BaseLSTMPolicy):
 
     def __init__(self, ob_space, ac_space, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,)):
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space), name='x_in_pl')
-        print('LSTM LAYERS:', lstm_layers)
+
         super(LSTMPolicy, self).__init__(x, ob_space, ac_space, lstm_class, lstm_layers)
 
 

@@ -118,8 +118,8 @@ class BTgymStrategy(bt.Strategy):
         self.raw_state = np.row_stack(
             (
                 np.frombuffer(self.data.open.get(size=self.p.state_shape['raw_state'].shape[0])),
-                np.frombuffer(self.data.low.get(size=self.p.state_shape['raw_state'].shape[0])),
                 np.frombuffer(self.data.high.get(size=self.p.state_shape['raw_state'].shape[0])),
+                np.frombuffer(self.data.low.get(size=self.p.state_shape['raw_state'].shape[0])),
                 np.frombuffer(self.data.close.get(size=self.p.state_shape['raw_state'].shape[0])),
             )
         ).T
