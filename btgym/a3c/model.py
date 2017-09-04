@@ -19,7 +19,7 @@ class BaseLSTMPolicy(object):
         # Flatten end expand with fake time dim to feed to LSTM bank:
         x = tf.expand_dims(batch_flatten(x_in), [0])
         # x = tf.expand_dims(self.flatten_homebrew(x_in), [0])
-
+        #print('GOT HERE 2, x:', x.shape)
         # Define LSTM layers:
         lstm = []
         for size in lstm_layers:
@@ -31,12 +31,13 @@ class BaseLSTMPolicy(object):
         # Get time_dimension as [1]-shaped tensor:
         step_size = tf.expand_dims(tf.shape(x)[1], [0])
         #step_size = tf.shape(self.x)[:1]
-
+        #print('GOT HERE 3')
         self.lstm_init_state = self.lstm.zero_state(1, dtype=tf.float32)
 
         lstm_state_pl = self.rnn_placeholders(self.lstm.zero_state(1, dtype=tf.float32))
         self.lstm_state_pl_flatten = flatten_nested(lstm_state_pl)
 
+        #print('GOT HERE 4, x:', x.shape)
         lstm_outputs, self.lstm_state_out = tf.nn.dynamic_rnn(
             self.lstm,
             x,
@@ -44,7 +45,7 @@ class BaseLSTMPolicy(object):
             sequence_length=step_size,
             time_major=False
         )
-
+        #print('GOT HERE 5')
         x = tf.reshape(lstm_outputs, [-1, lstm_layers[-1]])
 
         self.logits = self.linear(x, ac_space, "action", self.normalized_columns_initializer(0.01))

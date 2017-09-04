@@ -170,7 +170,7 @@ class Worker(multiprocessing.Process):
                 global_step=trainer.global_step,
                 save_model_secs=300,
             )
-            self.log.debug("connecting to the parameter server... ")
+            self.log.debug("worker_{}: connecting to the parameter server... ".format(self.task))
 
             with sv.managed_session(server.target, config=config) as sess, sess.as_default():
                 sess.run(trainer.sync)
