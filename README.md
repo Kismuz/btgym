@@ -591,4 +591,5 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
   
 - 17.06.17:
   first working alpha v0.0.2.
-
+ 
+ 
