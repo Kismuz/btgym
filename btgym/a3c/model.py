@@ -7,6 +7,7 @@ import tensorflow.contrib.rnn as rnn
 from tensorflow.contrib.layers import flatten as batch_flatten
 from tensorflow.python.util.nest import flatten as flatten_nested
 
+
 class BaseLSTMPolicy(object):
     """
     Base policy estimator with multi-layer LSTM cells option.
@@ -106,6 +107,7 @@ class BaseLSTMPolicy(object):
             structure = [self.rnn_placeholders(x) for x in state]
             return tuple(structure)
 
+
 class LSTMPolicy2D(BaseLSTMPolicy):
     """
     Policy estimator suited for Atari environments.
@@ -141,6 +143,7 @@ class LSTMPolicy2D(BaseLSTMPolicy):
             b = tf.get_variable("b", [1, 1, 1, num_filters], initializer=tf.constant_initializer(0.0),
                                 collections=collections)
             return tf.nn.conv2d(x, w, stride_shape, pad) + b
+
 
 class LSTMPolicy(BaseLSTMPolicy):
     """
