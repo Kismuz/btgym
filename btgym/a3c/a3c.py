@@ -409,7 +409,7 @@ class A3C(object):
             self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), inc_step)
 
             #self.train_op = tf.group(opt.apply_gradients(grads_and_vars), inc_step)
-            
+
             self.summary_writer = None
             self.local_steps = 0
 

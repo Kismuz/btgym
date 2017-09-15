@@ -70,7 +70,9 @@ class BaseLSTMPolicy(object):
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
         # Add moving averages to save list ( meant for Batch_norm layer):
         moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')
-        self.var_list += moving_var_list
+        renorm_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*renorm.*')
+
+        self.var_list += moving_var_list + renorm_var_list
 
     def get_initial_features(self):
         sess = tf.get_default_session()
