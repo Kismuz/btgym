@@ -75,6 +75,8 @@ class Worker(multiprocessing.Process):
         """
         Worker runtime body.
         """
+        tf.reset_default_graph()
+
         if self.test_mode:
             import gym
 
@@ -143,10 +145,9 @@ class Worker(multiprocessing.Process):
 
             saver = FastSaver(variables_to_save)
 
-            #var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
-            #self.log.debug('worker-{}: trainable vars:'.format(self.task))
-            #for v in var_list:
-            #    self.log.debug('{}: {}'.format(v.name, v.get_shape()))
+            self.log.debug('worker_{}: vars_to_save:'.format(self.task))
+            for v in variables_to_save:
+                self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
             def init_fn(ses):
                 self.log.debug("Initializing all parameters.")
@@ -173,6 +174,7 @@ class Worker(multiprocessing.Process):
             self.log.debug("worker_{}: connecting to the parameter server... ".format(self.task))
 
             with sv.managed_session(server.target, config=config) as sess, sess.as_default():
+
                 sess.run(trainer.sync)
                 trainer.start(sess, summary_writer)
                 global_step = sess.run(trainer.global_step)

@@ -354,6 +354,15 @@ class A3C(object):
                 pi.global_episode = self.global_episode
                 pi.inc_episode = inc_episode
 
+            # Meant for Batch-norm layers:
+            pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
+
+            self.log.debug('A3C_{}: local_network_upd_ops_collection:\n{}'.format(self.task, pi.update_ops))
+
+            self.log.debug('\nA3C_{}: local_network_var_list_to_save:'.format(self.task))
+            for v in pi.var_list:
+                self.log.debug('{}: {}'.format(v.name, v.get_shape()))
+
             self.ac = tf.placeholder(tf.float32, [None, env.action_space.n], name="ac")
             self.adv = tf.placeholder(tf.float32, [None], name="adv")
             self.r = tf.placeholder(tf.float32, [None], name="r")
@@ -364,6 +373,7 @@ class A3C(object):
             # the "policy gradients" loss:  its derivative is precisely the policy gradient
             # notice that self.ac is a placeholder that is provided externally.
             # adv will contain the advantages, as calculated in process_rollout:
+
             pi_loss = - tf.reduce_sum(tf.reduce_sum(log_prob_tf * self.ac, [1]) * self.adv)
 
             # loss of value function:
@@ -371,6 +381,7 @@ class A3C(object):
             entropy = - tf.reduce_sum(prob_tf * log_prob_tf)
 
             bs = tf.to_float(tf.shape(pi.x)[0])
+
             self.loss = pi_loss + 0.5 * vf_loss - entropy * self.model_beta
 
             grads = tf.gradients(self.loss, pi.var_list)
@@ -395,7 +406,10 @@ class A3C(object):
             #    epsilon=1e-1,
             #)
 
-            self.train_op = tf.group(opt.apply_gradients(grads_and_vars), inc_step)
+            self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), inc_step)
+
+            #self.train_op = tf.group(opt.apply_gradients(grads_and_vars), inc_step)
+            
             self.summary_writer = None
             self.local_steps = 0
 
@@ -527,13 +541,17 @@ class A3C(object):
                 self.ac: batch.a,
                 self.adv: batch.adv,
                 self.r: batch.r,
+                self.local_network.train_phase: True,
             }
         )
 
         #print('TRAIN_FEED_DICT:\n', feed_dict)
         #print('\n=======S=======\n')
         #for key,value in feed_dict.items():
-        #    print(key,':', value.shape,'\n')
+        #    try:
+        #        print(key,':', value.shape,'\n')
+        #    except:
+        #        print(key, ':', value, '\n')
         #print('\n=====E======\n')
 
         fetched = sess.run(fetches, feed_dict=feed_dict)

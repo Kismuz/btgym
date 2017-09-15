@@ -20,7 +20,22 @@ class BaseLSTMPolicy(object):
         # Flatten end expand with fake time dim to feed to LSTM bank:
         x = tf.expand_dims(batch_flatten(x_in), [0])
         # x = tf.expand_dims(self.flatten_homebrew(x_in), [0])
+        try:
+            if self.train_phase is not None:
+                pass
+
+        except:
+            self.train_phase = tf.placeholder_with_default(
+                tf.constant(False, dtype=tf.bool),
+                shape=(),
+                name='train_phase_flag_pl'
+            )
+        self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+
         #print('GOT HERE 2, x:', x.shape)
+        #print('GOT HERE 2, train_phase:', self.train_phase.shape)
+        #print('GOT HERE 2, update_ops:', self.update_ops)
+
         # Define LSTM layers:
         lstm = []
         for size in lstm_layers:
@@ -53,6 +68,9 @@ class BaseLSTMPolicy(object):
         self.vf = tf.reshape(self.linear(x, 1, "value", self.normalized_columns_initializer(1.0)), [-1])
         self.sample = self.categorical_sample(self.logits, ac_space)[0, :]
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
+        # Add moving averages to save list ( meant for Batch_norm layer):
+        moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')
+        self.var_list += moving_var_list
 
     def get_initial_features(self):
         sess = tf.get_default_session()
@@ -64,13 +82,14 @@ class BaseLSTMPolicy(object):
     def act(self, ob, lstm_state):
         sess = tf.get_default_session()
         feeder = {pl: value for pl, value in zip(self.lstm_state_pl_flatten, flatten_nested(lstm_state))}
-        feeder.update({self.x: [ob]})
+        feeder.update({self.x: [ob], self.train_phase: False})
+        #print('#####_feeder:\n', feeder)
         return sess.run([self.sample, self.vf, self.lstm_state_out], feeder)
 
     def value(self, ob, lstm_state):
         sess = tf.get_default_session()
         feeder = {pl: value for pl, value in zip(self.lstm_state_pl_flatten, flatten_nested(lstm_state))}
-        feeder.update({self.x: [ob]})
+        feeder.update({self.x: [ob], self.train_phase: False})
         return sess.run(self.vf, feeder)[0]
 
     def normalized_columns_initializer(self, std=1.0):
