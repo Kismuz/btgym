@@ -125,16 +125,23 @@ class BTgymDataset:
         for filename in self.filename:
             try:
                 assert filename and os.path.isfile(filename)
-                dataframes += [
-                    pd.read_csv(
-                        filename,
-                        sep=self.sep,
-                        header=self.header,
-                        index_col=self.index_col,
-                        parse_dates=self.parse_dates,
-                        names=self.names
-                    )
-                ]
+                current_dataframe = pd.read_csv(
+                    filename,
+                    sep=self.sep,
+                    header=self.header,
+                    index_col=self.index_col,
+                    parse_dates=self.parse_dates,
+                    names=self.names
+                )
+
+                # Check and remove duplicate datetime indexes:
+                duplicates = current_dataframe.index.duplicated(keep='first')
+                how_bad = duplicates.sum()
+                if how_bad > 0:
+                    current_dataframe = current_dataframe[~duplicates]
+                    self.log.info('Found {} duplicated date_time records. Removed all but first occurrences.'.format(how_bad))
+
+                dataframes += [current_dataframe]
                 self.log.info('Loaded {} records from <{}>.'.format(dataframes[-1].shape[0], filename))
 
             except:
