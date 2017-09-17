@@ -139,7 +139,8 @@ class BTgymDataset:
                 how_bad = duplicates.sum()
                 if how_bad > 0:
                     current_dataframe = current_dataframe[~duplicates]
-                    self.log.info('Found {} duplicated date_time records. Removed all but first occurrences.'.format(how_bad))
+                    self.log.warning('Found {} duplicated date_time records in <{}>.\
+                     Removed all but first occurrences.'.format(how_bad, filename))
 
                 dataframes += [current_dataframe]
                 self.log.info('Loaded {} records from <{}>.'.format(dataframes[-1].shape[0], filename))
