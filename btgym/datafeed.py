@@ -89,8 +89,8 @@ class BTgymDataset:
         """ _____"""
         # Update parameters with relevant kwargs:
         for key, value in kwargs.items():
-            #if key in self.params.keys():
-            self.params[key] = value
+            if key in self.params.keys():
+                self.params[key] = value
 
         # Unpack it as attributes:
         for key, value in self.params.items():
