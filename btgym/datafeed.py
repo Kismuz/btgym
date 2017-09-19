@@ -89,8 +89,8 @@ class BTgymDataset:
         """ _____"""
         # Update parameters with relevant kwargs:
         for key, value in kwargs.items():
-            if key in self.params.keys():
-                self.params[key] = value
+            #if key in self.params.keys():
+            self.params[key] = value
 
         # Unpack it as attributes:
         for key, value in self.params.items():
@@ -270,7 +270,7 @@ class BTgymDataset:
             if episode_sample_len - self.max_episode_len < self.max_time_gap:
                 self.log.debug('Sample accepted.')
                 # If sample OK - return episodic-dataset:
-                episode = BTgymDataset(**self.params)
+                episode = self.__class__(**self.params)
                 episode.filename = '_btgym_episode_' + str(adj_timedate)
                 self.log.info('Episode id: <{}>.'.format(episode.filename))
                 episode.data = episode_sample

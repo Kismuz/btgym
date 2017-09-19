@@ -1,7 +1,8 @@
 # This code borrows heavily from OpenAI universal_starter_agent:
 # https://github.com/openai/universe-starter-agent
 # Under MIT licence.
-
+#
+# Paper: https://arxiv.org/abs/1602.01783
 
 import sys
 sys.path.insert(0,'..')

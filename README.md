@@ -522,7 +522,9 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [x] multiply agents asynchronous operation feature (e.g for A3C):
  - [x] dedicated data server;
  - [x] multi-modal observation space shape;
- - [ ] A3C implementation tweaked for BTgym; - IN PROGRESS
+ - [x] A3C implementation for BTgym;
+ - [ ] UNREAL implementation for BTgym;
+ - [ ] risk-sensitive agents implementation;
  - [ ] sequential and sliding time-window sampling;
  - [ ] multiply instruments trading;
  

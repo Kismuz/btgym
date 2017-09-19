@@ -1,5 +1,7 @@
 # Original code is taken from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
+#
+# Paper: https://arxiv.org/abs/1602.01783
 
 
 from __future__ import print_function
@@ -254,8 +256,6 @@ def env_runner(sess,
 
         # once we have enough experience, yield it, and have the ThreadRunner place it on a queue:
         yield rollout
-
-
 
 
 class A3C(object):

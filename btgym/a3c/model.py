@@ -1,5 +1,7 @@
 # Original code is taken from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
+#
+# Paper: https://arxiv.org/abs/1602.01783
 
 import numpy as np
 import tensorflow as tf

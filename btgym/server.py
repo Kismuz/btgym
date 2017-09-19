@@ -404,7 +404,7 @@ class BTgymServer(multiprocessing.Process):
             cerebro.strats[0][0][2]['episode_stat'] = data_server_response['message']['episode_stat']
 
             # Set nice broker cash plotting:
-            #cerebro.broker.set_shortcash(False)
+            cerebro.broker.set_shortcash(False)
 
             # Add data to engine:
             cerebro.adddata(episode_datafeed)
