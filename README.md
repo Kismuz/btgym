@@ -531,6 +531,11 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
 ### <a name="news"></a>[News and updates:](#title)
 
+- 20.09.17: A3C optimised sine-wave test added [here.](./examples/a3c/a3c_reject_test_3_sine_conv1d_sma_log_grad.ipynb)
+    - This notebook presents some basic ideas on state presentation, reward shaping,
+      model architecture and hyperparameters choice.
+      With those tweaks sine-wave sanity test is converging faster and with greater stability.
+
 - 31.08.17: Basic implementation of A3C algorithm is done and moved inside BTgym package.
     - algorithm logic consistency tests are passed;
     - still work in early stage, experiments with obs. state features and policy estimator architecture ahead;
