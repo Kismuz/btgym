@@ -532,7 +532,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
 ### <a name="news"></a>[News and updates:](#title)
 
 - 22.09.17: A3C [test_4](./examples/a3c/a3c_test_4_small_real_data.ipynb) added:
-    - ~~solving~~ overfitting on small 1 month dataset of EURUSD 1-minute bar data; 
+    - passing train convergence test on small (1 month) dataset of EURUSD 1-minute bar data; 
 
 - 20.09.17: A3C optimised sine-wave test added [here.](./examples/a3c/a3c_reject_test_3_sine_conv1d_sma_log_grad.ipynb)
     - This notebook presents some basic ideas on state presentation, reward shaping,
