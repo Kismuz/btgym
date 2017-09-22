@@ -403,7 +403,7 @@ class A3C(object):
             #    learning_rate=self.opt_learn_rate,
             #    decay=0.99,
             #    momentum=0.0,
-            #    epsilon=1e-1,
+            #    epsilon=1e-8,
             #)
 
             self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), inc_step)
