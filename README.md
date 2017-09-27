@@ -530,8 +530,10 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
  
 ### <a name="news"></a>[News and updates:](#title)
+- 27.09.17: A3C [test_4.2](./examples/a3c/a3c_test_4_2_no_feature_signal_conv1d.ipynb) added:
+    - some progress on estimator architecture search, state and reward shaping;
 
-- 22.09.17: A3C [test_4](./examples/a3c/a3c_test_4_small_real_data.ipynb) added:
+- 22.09.17: A3C [test_4](./examples/a3c/a3c_test_4_sma_bank_features.ipynb) added:
     - passing train convergence test on small (1 month) dataset of EURUSD 1-minute bar data; 
 
 - 20.09.17: A3C optimised sine-wave test added [here.](./examples/a3c/a3c_reject_test_3_sine_conv1d_sma_log_grad.ipynb)
