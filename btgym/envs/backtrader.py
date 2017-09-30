@@ -545,12 +545,36 @@ class BTgymEnv(gym.Env):
                 pass
 
             else:
+                msg1 = ''
+                for k, v in self.observation_space.spaces.items():
+                    msg1 += '[{}]: {}, low: {}, high: {}\n'.format(
+                        k, v, v.low.min(), v.high.max()
+                    )
+                msg2 = ''
+                for k, v in self.env_response[0].items():
+                    msg2 += '[{}]: shape: {}, low: {}, high: {}\n'.format(
+                        k, v.shape, v.min(), v.max()
+                    )
+                msg3 = ''
+                for step_info in self.env_response[-1]:
+                    msg3 += '{}\n'.format(step_info)
                 msg = (
-                    '\nState observation shape or min/max values mismatch!\n' +
-                    'Space set by env: {},\n' +
-                    'Shape returned by server: {}.\n' +
+                    '\nState observation shape/range mismatch!\n' +
+                    'Space set by env: \n{}\n' +
+                    'Space returned by server: \n{}\n' +
+                    'Full response:\n{}\n' +
+                    'Reward: {}\n' +
+                    'Done: {}\n' +
+                    'Info:\n{}\n' +
                     'Hint: Wrong Strategy.get_state() parameters?'
-                ).format(self.observation_space.spaces, self.env_response[0])
+                ).format(
+                    msg1,
+                    msg2,
+                    self.env_response[0],
+                    self.env_response[1],
+                    self.env_response[2],
+                    msg3,
+                )
                 self.log.error(msg)
                 self._stop_server()
                 raise AssertionError(msg)
