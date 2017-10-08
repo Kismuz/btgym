@@ -20,6 +20,9 @@
 #from .envs import create_env
 from .worker import Worker
 from .model import LSTMPolicy, LSTMPolicy2D, BaseLSTMPolicy
+from .model_unreal import BaseUnrealPolicy
 from .a3c import A3C
+from .experience import Experience, ExperienceFrame
+from .unreal import Unreal, PartialRollout
 from .launcher import Launcher
 

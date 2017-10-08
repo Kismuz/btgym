@@ -70,7 +70,8 @@ class BaseLSTMPolicy(object):
         self.vf = tf.reshape(self.linear(x, 1, "value", self.normalized_columns_initializer(1.0)), [-1])
         self.sample = self.categorical_sample(self.logits, ac_space)[0, :]
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
-        # Add moving averages to save list ( meant for Batch_norm layer):
+
+        # Add moving averages to save list (meant for Batch_norm layer):
         moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')
         renorm_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*renorm.*')
 
@@ -140,14 +141,45 @@ class LSTMPolicy2D(BaseLSTMPolicy):
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space), name='x_in_pl')
 
         # Conv layers:
-        for i in range(4):
-            x = tf.nn.elu(self.conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
+        #for i in range(4):
+        #    x = tf.nn.elu(self.conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
+
+        x = self._conv2d_constructor(x)
 
         super(LSTMPolicy2D, self).__init__(x, ob_space, ac_space, lstm_class, lstm_layers)
 
+    def _conv2d_constructor(self,
+                               x,
+                               num_layers=4,
+                               num_filters=32,
+                               filter_size=(3, 3),
+                               stride=(2, 2),
+                               pad="SAME",
+                               dtype=tf.float32,
+                               collections=None,
+                               reuse=False):
+        """
+        Defines graph of [possibly shared] 2d convolution network.
+        """
+        for i in range(num_layers):
+            x = tf.nn.elu(
+                self.conv2d(
+                    x,
+                    num_filters,
+                    "conv2d_{}".format(i + 1),
+                    filter_size,
+                    stride,
+                    pad,
+                    dtype,
+                    collections,
+                    reuse
+                )
+            )
+        return x
+
     def conv2d(self, x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", dtype=tf.float32,
-               collections=None):
-        with tf.variable_scope(name):
+               collections=None, reuse=False):
+        with tf.variable_scope(name, reuse=reuse):
             stride_shape = [1, stride[0], stride[1], 1]
             filter_shape = [filter_size[0], filter_size[1], int(x.get_shape()[3]), num_filters]
 

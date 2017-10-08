@@ -14,7 +14,6 @@ import multiprocessing
 import cv2
 import tensorflow as tf
 
-from .a3c import A3C
 from .envs import create_env
 
 class FastSaver(tf.train.Saver):
@@ -45,6 +44,7 @@ class Worker(multiprocessing.Process):
                  env_config,
                  policy_class,
                  policy_config,
+                 trainer_class,
                  cluster_spec,
                  job_name,
                  task,
@@ -60,6 +60,7 @@ class Worker(multiprocessing.Process):
         self.env_config = env_config
         self.policy_class = policy_class
         self.policy_config = policy_config
+        self.trainer_class = trainer_class
         self.cluster_spec = cluster_spec
         self.job_name = job_name
         self.task = task
@@ -128,7 +129,7 @@ class Worker(multiprocessing.Process):
 
             self.log.debug('worker_{}:envronment ok.'.format(self.task))
             # Define trainer:
-            trainer = A3C(
+            trainer = self.trainer_class(
                 env=self.env,
                 task=self.task,
                 policy_class=self.policy_class,
@@ -179,7 +180,16 @@ class Worker(multiprocessing.Process):
                 sess.run(trainer.sync)
                 trainer.start(sess, summary_writer)
                 global_step = sess.run(trainer.global_step)
-                self.log.warning("worker_{}: starting training at step: {}".format(self.task, global_step))
+                try:
+                    if not trainer.memory.is_full():
+                        trainer.fill_replay_memory(sess)
+                except:
+                    self.log.warning(
+                        "worker_{}: trainer {} does not uses replay memory.".
+                            format(self.task, self.trainer_class)
+                    )
+
+                self.log.warning("worker_{}: started training at step: {}".format(self.task, global_step))
                 while not sv.should_stop() and global_step < self.max_steps:
                     trainer.process(sess)
                     global_step = sess.run(trainer.global_step)

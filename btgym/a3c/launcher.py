@@ -29,6 +29,7 @@ from subprocess import PIPE
 import signal
 
 from .worker import Worker
+from .a3c import A3C
 from .model import LSTMPolicy2D
 
 
@@ -54,6 +55,7 @@ class Launcher():
     policy_config = dict(
         lstm_layers=(256,),
     )
+    trainer_class = A3C
     verbose = 0
     test_mode = False
 
@@ -135,6 +137,7 @@ class Launcher():
                         'env_config': env_config,
                         'policy_class': self.policy_class,
                         'policy_config': self.policy_config,
+                        'trainer_class': self.trainer_class,
                         'cluster_spec': self.cluster_spec,
                         'job_name': key,
                         'task': task_index,
