@@ -5,7 +5,6 @@
 import numpy as np
 from collections import deque
 
-
 class ExperienceFrame(object):
     def __init__(self,
                  position,
@@ -49,7 +48,7 @@ class ExperienceFrame(object):
         return action_reward
 
 
-class Experience(object):
+class Memory(object):
     """
     Replay memory.
     """
@@ -73,7 +72,7 @@ class Experience(object):
         if frame.terminal and len(self._frames) > 0 and self._frames[-1].terminal:
             # Discard if terminal frame continues
             print("Sequential terminal frame encountered. Discarded.")
-            print(frame.state)
+            print(self._frames[-1].position, frame.position)
             return
 
         frame_index = self._top_frame_index + len(self._frames)
@@ -119,7 +118,8 @@ class Experience(object):
                 # Means part or tail of previously recorded episode is somehow lost,
                 # so need to mark it as 'ended':
                 self._frames[-1].terminal = True
-                #print('{} changed to terminal'.format(self._frames[-1].state))
+                print('***{} changed to terminal'.format(self._frames[-1].position))
+                print('*** stored: ', self._frames[-1].position, 'next: ', rollout.position[0])
         # Add experiences one by one:
         # TODO: pain-slow. Vectorize?
         for i in range(len(rollout.position)):
@@ -130,7 +130,7 @@ class Experience(object):
                     rollout.actions[i],
                     rollout.rewards[i],
                     rollout.values[i],
-                    rollout.r,
+                    rollout.r[i],
                     rollout.terminal[i],
                     rollout.features[i],
                     rollout.pixel_change[i],

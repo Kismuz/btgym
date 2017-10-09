@@ -17,12 +17,13 @@
 #
 ###############################################################################
 
-#from .envs import create_env
+from .envs import create_env
 from .worker import Worker
 from .model import LSTMPolicy, LSTMPolicy2D, BaseLSTMPolicy
 from .model_unreal import BaseUnrealPolicy
 from .a3c import A3C
-from .experience import Experience, ExperienceFrame
-from .unreal import Unreal, PartialRollout
+from .rollout import PartialRollout
+from .memory import Memory, ExperienceFrame
+from .unreal import Unreal
 from .launcher import Launcher
 

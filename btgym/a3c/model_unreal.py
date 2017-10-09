@@ -29,8 +29,9 @@ class BaseUnrealPolicy(object):
         self.a3c_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='a3c_state_in_pl')
         self.rp_state_in = tf.placeholder(tf.float32, [rp_sequence_size-1] + list(ob_space), name='rp_state_in_pl')
         self.vr_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='vr_state_in_pl')
+        self.pc_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='pc_state_in_pl')
 
-        # Batch-norm related (useless, ignore):
+        # Batch-norm related (useless, ignore or move lower to make use):
         try:
             if self.train_phase is not None:
                 pass
@@ -41,21 +42,31 @@ class BaseUnrealPolicy(object):
                 shape=(),
                 name='train_phase_flag_pl'
             )
-        self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 
-        # Define base A3C policy network:
-        # Conv layers:
+        # Base A3C policy network:
+        # Conv. layers:
         a3c_x = self._conv_2D_network_constructor(self.a3c_state_in, ob_space, ac_space)
         # LSTM layers:
         [a3c_x, self.a3c_lstm_init_state, self.a3c_lstm_state_out, self.a3c_lstm_state_pl_flatten] =\
             self._lstm_network_constructor(a3c_x, lstm_class, lstm_layers, )
-        # A3C specific:
+        # A3C policy and value outputs and ction-sampling function:
         [self.a3c_logits, self.a3c_vf, self.a3c_sample] = self._dense_a3c_network_constructor(a3c_x, ac_space)
 
-        # Pixel control network:
+        # Aux1: `Pixel control` network:
+        # Define pixels-change estimator function:
+        [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
+            self._pixel_change_2D_estimator_constructor(ob_space)
 
+        # Shared conv and lstm nets:
+        pc_x = self._conv_2D_network_constructor(self.pc_state_in, ob_space, ac_space, reuse=True)
 
-        # Value fn. replay network:
+        [pc_x, _, _, self.pc_lstm_state_pl_flatten] =\
+            self._lstm_network_constructor(pc_x, lstm_class, lstm_layers, reuse=True)
+
+        # PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:
+        self.pc_q = self._duelling_pc_network_constructor(pc_x)
+
+        # Aux2: `Value function replay` network:
         # If I got it correct, vr network is fully shared with a3c net but with `value` only output:
         vr_x = self._conv_2D_network_constructor(self.vr_state_in, ob_space, ac_space, reuse=True)
 
@@ -64,19 +75,15 @@ class BaseUnrealPolicy(object):
 
         [_, self.vr_value, _] = self._dense_a3c_network_constructor(vr_x, ac_space, reuse=True)
 
-
-        # Reward prediction network:
+        # Aux3: `Reward prediction` network:
         # Shared conv.:
         rp_x = self._conv_2D_network_constructor(self.rp_state_in, ob_space, ac_space, reuse=True)
-        # Shared LSTM: ???? - no LSTM, just flatten tensor and put it in softmax!
-        #[rp_x, _, _, self.rp_lstm_state_pl_flatten] =\
-        #    self._lstm_network_constructor(rp_x, lstm_class, lstm_layers, reuse=True)
 
         # RP output:
         self.rp_logits = self._dense_rp_network_constructor(rp_x)
 
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
-
+        self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         # Add moving averages to save list (meant for Batch_norm layer):
         moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')
         renorm_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*renorm.*')
@@ -84,6 +91,7 @@ class BaseUnrealPolicy(object):
         self.var_list += moving_var_list + renorm_var_list
 
     def get_a3c_initial_features(self):
+        """Called by thread-runner."""
         sess = tf.get_default_session()
         return sess.run(self.a3c_lstm_init_state)
 
@@ -92,6 +100,7 @@ class BaseUnrealPolicy(object):
         return tf.reshape(x, [-1, np.prod(x.get_shape().as_list()[1:])])
 
     def a3c_act(self, ob, lstm_state):
+        """Called by thread-runner."""
         sess = tf.get_default_session()
         feeder = {pl: value for pl, value in zip(self.a3c_lstm_state_pl_flatten, flatten_nested(lstm_state))}
         feeder.update({self.a3c_state_in: [ob], self.train_phase: False})
@@ -99,6 +108,7 @@ class BaseUnrealPolicy(object):
         return sess.run([self.a3c_sample, self.a3c_vf, self.a3c_lstm_state_out], feeder)
 
     def get_a3c_value(self, ob, lstm_state):
+        """Called by thread-runner."""
         sess = tf.get_default_session()
         feeder = {pl: value for pl, value in zip(self.a3c_lstm_state_pl_flatten, flatten_nested(lstm_state))}
         feeder.update({self.a3c_state_in: [ob], self.train_phase: False})
@@ -112,12 +122,17 @@ class BaseUnrealPolicy(object):
         feeder = {self.rp_state_in: [ob], self.train_phase: False}
         return sess.run(self.rp_logits, feeder)[0]
 
+    def get_pc_target(self, state, last_state):
+        """Called by thread-runner."""
+        sess = tf.get_default_session()
+        feeder = {self.pc_change_state_in: state, self.pc_change_last_state_in: last_state}
+        return sess.run(self.pc_target, feeder)[0,...,0]
+
     def normalized_columns_initializer(self, std=1.0):
         def _initializer(shape, dtype=None, partition_info=None):
             out = np.random.randn(*shape).astype(np.float32)
             out *= std / np.sqrt(np.square(out).sum(axis=0, keepdims=True))
             return tf.constant(out)
-
         return _initializer
 
     def linear(self, x, size, name, initializer=None, bias_init=0, reuse=False):
@@ -127,12 +142,13 @@ class BaseUnrealPolicy(object):
         return tf.matmul(x, w) + b
 
     def categorical_sample(self, logits, d):
+        """Called by thread-runner."""
         value = tf.squeeze(tf.multinomial(logits - tf.reduce_max(logits, [1], keep_dims=True), 1), [1])
         return tf.one_hot(value, d)
 
     def rnn_placeholders(self, state):
         """
-        Converts RNN state tensors to placeholders.
+        Given nested [multilayer] RNN state tensors, infers and returns state placeholders.
         """
         if isinstance(state, tf.contrib.rnn.LSTMStateTuple):
             c, h = state
@@ -168,6 +184,36 @@ class BaseUnrealPolicy(object):
             b = tf.get_variable("b", [1, 1, 1, num_filters], initializer=tf.constant_initializer(0.0),
                                 collections=collections)
             return tf.nn.conv2d(x, w, stride_shape, pad) + b
+
+    def deconv2d(self, x, output_channels, name, filter_size=(4, 4), stride=(2, 2),
+                 dtype=tf.float32, collections=None, reuse=False):
+        with tf.variable_scope(name, reuse=reuse):
+            stride_shape = [1, stride[0], stride[1], 1]
+
+            batch_size = tf.shape(x)[0]
+            input_height = int(x.get_shape()[1])
+            input_width = int(x.get_shape()[2])
+            input_channels = int(x.get_shape()[3])
+
+            out_height = (input_height - 1) * stride[0] + filter_size[0]
+            out_width = (input_width - 1) * stride[1] + filter_size[1]
+
+            filter_shape = [filter_size[0], filter_size[1], output_channels, input_channels]
+            output_shape = tf.stack([batch_size, out_height, out_width, output_channels])
+
+            fan_in = np.prod(filter_shape[:2]) * input_channels
+            fan_out = np.prod(filter_shape[:2]) * output_channels
+            # initialize weights with random weights
+            w_bound = np.sqrt(6. / (fan_in + fan_out))
+
+            w = tf.get_variable("d_W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
+                                collections=collections)
+            b = tf.get_variable("d_b", [1, 1, 1, output_channels], initializer=tf.constant_initializer(0.0),
+                                collections=collections)
+
+            return tf.nn.conv2d_transpose(x, w, output_shape,
+                                          strides=stride_shape,
+                                          padding='VALID') + b
 
     def _conv_2D_network_constructor(self,
                                      x,
@@ -211,7 +257,7 @@ class BaseUnrealPolicy(object):
              batch-wise flattened output tensor;
              lstm initial state tensor;
              lstm state output tensor;
-             lstm flattened feed placeholder tensor;
+             lstm flattened feed placeholders as tuple.
         """
         with tf.variable_scope('lstm', reuse=reuse):
             # Flatten and expand with fake time dim to feed to LSTM bank:
@@ -269,3 +315,34 @@ class BaseUnrealPolicy(object):
         logits = self.linear(x, 3, 'rp_classifier', self.normalized_columns_initializer(0.01))
         # Note:  softmax is actually not here but inside loss operation (see unreal.py)
         return logits
+
+    def _pixel_change_2D_estimator_constructor(self, ob_space):
+        """
+        Defines op for estimating `pixel change` as subsampled to [20,20]
+        absolute difference of two states.
+        """
+        input_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_state_in')
+        input_last_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_last_state_in')
+
+        x = tf.abs(tf.subtract(input_state, input_last_state))
+        x = tf.expand_dims(x, 0)[:, 1:-1, 1:-1, :]  # fake batch dim and crop
+        x = tf.reduce_mean(x, axis=-1, keep_dims=True)
+        x_out = tf.nn.avg_pool(x, [1,2,2,1], [1,2,2,1], 'SAME')
+        return input_state, input_last_state, x_out
+
+    def _duelling_pc_network_constructor(self, x):
+        """
+        Stage3 network for `pixel control' task: from LSTM output to aux. Q-value features.
+        """
+        x = tf.nn.elu(self.linear(x, 9*9*32, 'pc_dense', self.normalized_columns_initializer(0.01)))
+        x = tf.reshape(x, [-1, 9, 9, 32])
+        pc_a = self.deconv2d(x, self.ac_space, 'pc_advantage', [4, 4], [2, 2]) # [None, 20, 20, ac_size]
+        pc_v = self.deconv2d(x, 1, 'pc_value_fn', [4, 4], [2, 2])  # [None, 20, 20, 1]
+
+        # Q-value estimate using advantage mean,
+        # as (9) in "Dueling Network Architectures...":
+        # https://arxiv.org/pdf/1511.06581.pdf
+        pc_a_mean = tf.reduce_mean(pc_a, axis=3, keep_dims=True)
+        pc_q = pc_v + pc_a - pc_a_mean  # [None, 20, 20, ac_size]
+
+        return pc_q

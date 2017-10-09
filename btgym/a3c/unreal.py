@@ -19,7 +19,7 @@ import six.moves.queue as queue
 import scipy.signal
 import threading
 
-from btgym.a3c import Experience
+from btgym.a3c import Memory, PartialRollout
 
 def discount(x, gamma):
     return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
@@ -32,97 +32,27 @@ def process_rollout(rollout, gamma, lambda_=1.0):
     batch_si = np.asarray(rollout.states)
     batch_a = np.asarray(rollout.actions)
     rewards = np.asarray(rollout.rewards)
-    vpred_t = np.asarray(rollout.values + [rollout.r])
-
-    rewards_plus_v = np.asarray(rollout.rewards + [rollout.r])
+    pix_change = np.asarray(rollout.pixel_change)
+    rollout_r = rollout.r[-1][0]  # only last value used here
+    vpred_t = np.asarray(rollout.values + [rollout_r])
+    try:
+        rewards_plus_v = np.asarray(rollout.rewards + [rollout_r])
+    except:
+        print('rollout.r: ', type(rollout.r))
+        print('rollout.rewards[-1]: ', rollout.rewards[-1], type(rollout.rewards[-1]))
+        print('rollout_r:', rollout_r, rollout_r.shape, type(rollout_r))
+        raise RuntimeError('!!!')
     batch_r = discount(rewards_plus_v, gamma)[:-1]
     delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
     # this formula for the advantage comes "Generalized Advantage Estimation":
     # https://arxiv.org/abs/1506.02438
     batch_adv = discount(delta_t, gamma * lambda_)
-    features = rollout.features[0]
+    features = rollout.features[0]  # only first LSTM state used here
 
-    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features)
-
-
-Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
+    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features, pix_change)
 
 
-class PartialRollout(object):
-    """
-    A piece of a complete rollout.  We run our agent, and process its experience
-    once it has processed enough steps.
-    """
-    def __init__(self):
-        self.position = []
-        self.states = []
-        self.actions = []
-        self.rewards = []
-        self.values = []
-        self.r = 0.0
-        self.terminal = []
-        self.features = []
-        self.pixel_change = []
-        self.last_actions = []
-        self.last_rewards = []
-
-    def add(self,
-            position,
-            state,
-            action,
-            reward,
-            value,
-            terminal,
-            features,
-            pixel_change,
-            last_action,
-            last_reward):
-        self.position += [position]
-        self.states += [state]
-        self.actions += [action]
-        self.rewards += [reward]
-        self.values += [value]
-        self.terminal += [terminal]
-        self.features += [features]
-        self.pixel_change += [pixel_change]
-        self.last_actions += [last_action]
-        self.last_rewards += [last_reward]
-
-    def add_memory_sample(self, sample):
-        """
-        Given replay memory sample as list of frames of `length`,
-        converts it to rollout of same `length`.
-        """
-        for frame in sample:
-            self.add(
-                frame.position,
-                frame.state,
-                frame.action,
-                frame.reward,
-                frame.value,
-                frame.terminal,
-                frame.features,
-                frame.pixel_change,
-                frame.last_action,
-                frame.last_reward
-            )
-            self.r = frame.r
-
-    """
-    def extend(self, other):
-        assert not self.terminal
-        self.states.extend(other.states)
-        self.actions.extend(other.actions)
-        self.rewards.extend(other.rewards)
-        self.values.extend(other.values)
-        self.r = other.r
-        self.state_next = other.state_next
-        self.terminal = other.terminal
-        self.features = other.features
-        self.pixel_change.extend(other.pixel_change)
-        self.last_actions = other.last_action
-        self.last_rewards = other.last_reward
-    """
+Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features", "pc"])
 
 class RunnerThread(threading.Thread):
     """
@@ -208,41 +138,97 @@ def env_runner(sess,
         terminal_end = False
         rollout = PartialRollout()
 
-        for roll_step in range(num_local_steps):
-            action, value_, features = policy.a3c_act(last_state, last_features)
+        # Partially collect first experience of rollout:
+        action, value_, features = policy.a3c_act(last_state, last_features)
 
-            # argmax to convert from one-hot:
-            state, reward, terminal, info = env.step(action.argmax())
-            pixel_change = 0  # dummy, TODO: pixel calc, env. and/or policy dependent
+        # argmax to convert from one-hot:
+        state, reward, terminal, info = env.step(action.argmax())
+        if not test:
+            state = state['model_input']
+        # Estimate `pixel_change`:
+        pixel_change = policy.get_pc_target(state, last_state)
 
-            if not test:
-                state = state['model_input']
-            # Collect the experience:
-            frame_position = {'episode': local_episode, 'step': length}
-            rollout.add(
-                frame_position,
-                last_state,
-                action,
-                reward,
-                value_,
-                terminal,
-                last_features,
-                pixel_change,
-                last_action,  # as a[-1]
-                last_reward,  # as r[-1]
-            )
-            print('rollout_step: {}, frame_pos: {}\nreward: {}, value: {}, terminal: {}'.format(
-                roll_step, frame_position, reward, value_, terminal)
-            )
+        # Collect the experience:
+        frame_position = {'episode': local_episode, 'step': length}
+        last_experience = dict(
+            position=frame_position,
+            state=last_state,
+            action=action,
+            reward=reward,
+            value=value_,
+            terminal=terminal,
+            features=last_features,
+            pixel_change=pixel_change,
+            last_action=last_action,  # as a[-1]
+            last_reward=last_reward,  # as r[-1]
+        )
+        length += 1
+        rewards += reward
+        last_state = state
+        last_features = features
+        last_action = action
+        last_reward = reward
 
-            length += 1
-            rewards += reward
-            last_state = state
-            last_features = features
-            last_action = action
-            last_reward = reward
+        for roll_step in range(1, num_local_steps):
+            if not terminal:
+                # Continue adding experiences to rollout:
+                action, value_, features = policy.a3c_act(last_state, last_features)
+
+                # argmax to convert from one-hot:
+                state, reward, terminal, info = env.step(action.argmax())
+                if not test:
+                        state = state['model_input']
+                pixel_change = policy.get_pc_target(state, last_state)
+
+                # Partially collect next experience:
+                frame_position = {'episode': local_episode, 'step': length}
+                experience = dict(
+                    position=frame_position,
+                    state=last_state,
+                    action=action,
+                    reward=reward,
+                    value=value_,
+                    terminal=terminal,
+                    features=last_features,
+                    pixel_change=pixel_change,
+                    last_action=last_action,  # as a[-1]
+                    last_reward=last_reward,  # as r[-1]
+                )
+                # Complete and add previous experience:
+                last_experience['value_next'] = value_
+                rollout.add(**last_experience)
+
+                #print ('last_experience {}'.format(last_experience['position']))
+                #for k,v in last_experience.items():
+                #    try:
+                #        print(k, 'shape: ', v.shape)
+                #    except:
+                #        try:
+                #            print(k, 'type: ', type(v), 'len: ', len(v))
+                #        except:
+                #            print(k, 'type: ', type(v), 'value: ', v)
+
+                #print('rollout_step: {}, last_exp/frame_pos: {}\nr: {}, v: {}, v_next: {}, t: {}'.
+                #    format(
+                #        length,
+                #        last_experience['position'],
+                #        last_experience['reward'],
+                #        last_experience['value'],
+                #        last_experience['value_next'],
+                #        last_experience['terminal']
+                #    )
+                #)
+
+                length += 1
+                rewards += reward
+                last_state = state
+                last_features = features
+                last_action = action
+                last_reward = reward
+                last_experience = experience
 
             if terminal:
+                # Finished episode within last taken step:
                 terminal_end = True
                 #print("Episode finished. Sum of rewards: %d. Length: %d" % (rewards, length))
 
@@ -315,11 +301,42 @@ def env_runner(sess,
                 # Increment global and local episode counts:
                 sess.run(policy.inc_episode)
                 local_episode += 1
-                break  # flush collected experience once we got episode finished
+                break
 
+        # After rolling `num_local_steps` or less (if got `terminal`)
+        # complete final experience of the rollout:
         if not terminal_end:
-            rollout.r = policy.get_a3c_value(last_state, last_features)
-            print('value_next: ', rollout.r)
+            #print('last_non_terminal_value_next_added')
+            last_experience['value_next'] = np.asarray([policy.get_a3c_value(last_state, last_features)])
+
+        else:
+            #print('last_terminal_value_next_added')
+            last_experience['value_next'] = np.asarray([0.0])
+
+        rollout.add(**last_experience)
+
+        #print('last_experience {}'.format(last_experience['position']))
+        #for k, v in last_experience.items():
+        #    try:
+        #        print(k, 'shape: ', v.shape)
+        #    except:
+        #        try:
+        #            print(k, 'type: ', type(v), 'len: ', len(v))
+        #        except:
+        #            print(k, 'type: ', type(v), 'value: ', v)
+
+        #print('rollout_step: {}, last_exp/frame_pos: {}\nr: {}, v: {}, v_next: {}, t: {}'.
+        #    format(
+        #        length,
+        #        last_experience['position'],
+        #        last_experience['reward'],
+        #        last_experience['value'],
+        #        last_experience['value_next'],
+        #        last_experience['terminal']
+        #    )
+        #)
+        #print('rollout size: {}, last r: {}'.format(len(rollout.position), rollout.r[-1]))
+        #print('last value_next: ', last_experience['value_next'], ', rollout flushed.')
 
         # once we have enough experience, yield it, and have the ThreadRunner place it on a queue:
         yield rollout
@@ -346,9 +363,9 @@ class Unreal(object):
                  model_summary_freq=100,  # every i`th local_step
                  test_mode=False,  # gym_atari test mode
                  replay_memory_size=2000,
-                 use_reward_prediction=True,
+                 use_reward_prediction=False,
                  use_pixel_control=True,
-                 use_value_replay=True,
+                 use_value_replay=False,
                  gamma_pc=0.9,  # pixel change gamma
                  rp_reward_threshold=0.1, # r.prediction: abs.rewards values bigger than this are considered non-zero
                  rp_sequence_size=4,  # r.prediction sampling
@@ -397,7 +414,7 @@ class Unreal(object):
         self.use_any_aux_tasks = use_value_replay or use_pixel_control or use_reward_prediction
 
         # Make replay memory:
-        self.memory = Experience(
+        self.memory = Memory(
             self.replay_memory_size,
             self.rp_sequence_size,
             self.rp_reward_threshold
@@ -498,9 +515,17 @@ class Unreal(object):
 
             if self.use_pixel_control:
                 # Pixel control loss
-                # TODO: implement
-                pc_loss = 0
-                self.loss = self.loss + pc_loss
+                self.pc_action = tf.placeholder(tf.float32, [None, env.action_space.n], name="pc_action")
+                self.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
+                # Get Q-value features for actions been taken and define loss:
+                pc_action_reshaped = tf.reshape(self.pc_action, [-1, 1, 1, env.action_space.n])
+                pc_q_action = tf.multiply(pi.pc_q, pc_action_reshaped)
+                pc_q_action = tf.reduce_sum(pc_q_action, axis=-1, keep_dims=False)
+                pc_loss = tf.nn.l2_loss(self.pc_target - pc_q_action)
+                pc_gamma = .01
+                self.loss = self.loss + pc_gamma * pc_loss
+                # Add specific summary:
+                model_summaries += [tf.summary.scalar('p_c/value_loss', pc_loss / bs)]
 
             if self.use_value_replay:
                 # Value function replay loss:
@@ -517,7 +542,6 @@ class Unreal(object):
                     logits=pi.rp_logits
                 )[0]
                 self.loss = self.loss + rp_loss
-                # Add specific summary:
                 model_summaries += [tf.summary.scalar('r_p/class_loss', rp_loss / bs)]
 
             grads = tf.gradients(self.loss, pi.var_list)
@@ -647,16 +671,12 @@ class Unreal(object):
         """
         return rollout
 
-    def process_rp(self):
+    def process_rp(self, rp_experience_frames):
         """
-        Priority-samples and processes replay memory, defines reward target.
+        Estimates reward prediction target.
         Returns feed dictionary for `reward prediction` loss estimation subgraph.
         """
-        rp_experience_frames = self.memory.sample_rp_sequence()
-        # `self.rp_sequence_size` frames
-
         batch_rp_state = []
-        #lstm_state = rp_experience_frames[0].features  # milk experiment!
         batch_rp_target = []
 
         for i in range(self.rp_sequence_size - 1):
@@ -673,24 +693,13 @@ class Unreal(object):
         else:
             rp_t[0] = 1.0  # zero [100]
         batch_rp_target.append(rp_t)
-        #feeder = {
-        #    pl: value for pl, value in zip(self.local_network.rp_lstm_state_pl_flatten, flatten_nested(lstm_state))
-        #}
         feeder = {self.local_network.rp_state_in: batch_rp_state, self.rp_target: batch_rp_target}
         return feeder
 
-    def process_vr(self):
+    def process_vr(self, batch):
         """
-        Uniformly samples and processes replay memory, defines `value replay` target.
         Returns feed dictionary for `value replay` loss estimation subgraph.
         """
-        rollout = PartialRollout()
-        # Convert memory sample to `off-policy` rollout:
-        rollout.add_memory_sample(self.memory.sample_sequence(self.rollout_length))
-
-        # Process in same way we do with on-policy experience:
-        batch = process_rollout(rollout, gamma=self.model_gamma, lambda_=self.model_lambda)
-
         feeder = {
             pl: value for pl, value in zip(self.local_network.vr_lstm_state_pl_flatten, flatten_nested(batch.features))
         }  # ...passes lstm context
@@ -700,6 +709,22 @@ class Unreal(object):
                 #self.vr_action: batch.a,  # don't need those for value fn. estimation
                 #self.vr_advantage: batch.adv,
                 self.vr_target_reward: batch.r,
+            }
+        )
+        return feeder
+
+    def process_pc(self, batch):
+        """
+        Returns feed dictionary for `pixel control` loss estimation subgraph.
+        """
+        feeder = {
+            pl: value for pl, value in zip(self.local_network.pc_lstm_state_pl_flatten, flatten_nested(batch.features))
+        }
+        feeder.update(
+            {
+                self.local_network.pc_state_in: batch.si,
+                self.pc_action: batch.a,
+                self.pc_target: batch.pc
             }
         )
         return feeder
@@ -718,19 +743,54 @@ class Unreal(object):
 
     def process(self, sess):
         """
-        Grabs a rollout that's been produced by the thread runner,
-        and updates the parameters.  The update is then sent to the parameter
+        Grabs a on_policy_rollout that's been produced by the thread runner,
+        samples off_policy rollout[s] from replay memory and updates the parameters.
+        The update is then sent to the parameter
         server.
         """
         sess.run(self.sync)  # copy weights from shared to local
-        rollout = self.pull_batch_from_queue()
+        on_policy_rollout = self.pull_batch_from_queue()
 
-        # Process rollout for on-policy A3C train step:
-        batch = process_rollout(rollout, gamma=self.model_gamma, lambda_=self.model_lambda)
+        # Process on_policy_rollout for A3C train step:
+        a3c_batch = process_rollout(on_policy_rollout, gamma=self.model_gamma, lambda_=self.model_lambda)
 
-        # Add pulled rollout to replay memory for off-policy training:
+        # Feeder for base A3C loss estimation graph:
+        feed_dict = {
+            pl: value for pl, value in zip(self.local_network.a3c_lstm_state_pl_flatten, flatten_nested(a3c_batch.features))
+        }  # ..passes lstm context
+        feed_dict.update(
+            {
+                self.local_network.a3c_state_in: a3c_batch.si,
+                self.a3c_action: a3c_batch.a,
+                self.a3c_advantage: a3c_batch.adv,
+                self.a3c_reward: a3c_batch.r,
+                self.local_network.train_phase: True,
+            }
+        )
+
         if self.use_any_aux_tasks:
-            self.memory.add_rollout(rollout)
+            # Uniformly sample for PC and VR:
+            off_policy_rollout = PartialRollout()
+            # Convert memory sample to rollout and make batch:
+            off_policy_rollout.add_memory_sample(self.memory.sample_sequence(self.rollout_length))
+            off_policy_batch = process_rollout(off_policy_rollout, gamma=self.model_gamma, lambda_=self.model_lambda)
+
+            # Update with reward prediction subgraph:
+            if self.use_reward_prediction:
+                # Priority-sample for RP:
+                pr_sample = self.memory.sample_rp_sequence()
+                feed_dict.update(self.process_rp(pr_sample))
+
+            # Pixel control ...
+            if self.use_pixel_control:
+                feed_dict.update(self.process_pc(off_policy_batch))
+
+            # VR...
+            if self.use_value_replay:
+                feed_dict.update(self.process_vr(off_policy_batch))
+
+            # Add pulled on_policy_rollout to replay memory:
+            self.memory.add_rollout(on_policy_rollout)
 
         # Every worker writes model summaries:
         should_compute_summary =\
@@ -740,31 +800,6 @@ class Unreal(object):
             fetches = [self.model_summary_op, self.train_op, self.global_step]
         else:
             fetches = [self.train_op, self.global_step]
-
-        # Feeder for base A3C loss estimation graph:
-        feed_dict = {
-            pl: value for pl, value in zip(self.local_network.a3c_lstm_state_pl_flatten, flatten_nested(batch.features))
-        }  # ..passes lstm context
-        feed_dict.update(
-            {
-                self.local_network.a3c_state_in: batch.si,
-                self.a3c_action: batch.a,
-                self.a3c_advantage: batch.adv,
-                self.a3c_reward: batch.r,
-                self.local_network.train_phase: True,
-            }
-        )
-        # Update with reward prediction subgraph:
-        if self.use_reward_prediction:
-            feed_dict.update(self.process_rp())
-
-        # Pixel control ...
-        if self.use_pixel_control:
-            pass
-
-        # ...
-        if self.use_value_replay:
-            feed_dict.update(self.process_vr())
 
         #print('TRAIN_FEED_DICT:\n', feed_dict)
         #print('\n=======S=======\n')
