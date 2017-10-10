@@ -16,8 +16,7 @@ class ExperienceFrame(object):
                  terminal,
                  features,
                  pixel_change,
-                 last_action,
-                 last_reward):
+                 last_action_reward):
         self.position = position
         self.state = state
         self.action = action  # (Taken action with the 'state')
@@ -27,25 +26,7 @@ class ExperienceFrame(object):
         self.terminal = terminal  # (Whether terminated when 'state' was inputted)
         self.features = features  # LSTM context
         self.pixel_change = pixel_change
-        self.last_action = last_action  # (After this last action was taken, agent move to the 'state')
-        self.last_reward = last_reward # (After this last reward was received, agent move to the 'state')
-
-    def get_last_action_reward(self, action_size):
-        """
-        Return one hot vectored last action + last reward.
-        """
-        return ExperienceFrame.concat_action_and_reward(self.last_action, action_size,
-                                                        self.last_reward)
-
-    @staticmethod
-    def concat_action_and_reward(action, action_size, reward):
-        """
-        Return one hot vectored action and reward.
-        """
-        action_reward = np.zeros([action_size + 1])
-        action_reward[action] = 1.0
-        action_reward[-1] = float(reward)
-        return action_reward
+        self.last_action_reward = last_action_reward  # (After this last action was taken, agent move to the 'state')
 
 
 class Memory(object):
@@ -134,8 +115,7 @@ class Memory(object):
                     rollout.terminal[i],
                     rollout.features[i],
                     rollout.pixel_change[i],
-                    rollout.last_actions[i],
-                    rollout.last_rewards[i],
+                    rollout.last_actions_rewards[i],
                 )
             )
 

@@ -32,6 +32,7 @@ def process_rollout(rollout, gamma, lambda_=1.0):
     batch_si = np.asarray(rollout.states)
     batch_a = np.asarray(rollout.actions)
     rewards = np.asarray(rollout.rewards)
+    batch_ar = np.asarray(rollout.last_actions_rewards)
     pix_change = np.asarray(rollout.pixel_change)
     rollout_r = rollout.r[-1][0]  # only last value used here
     vpred_t = np.asarray(rollout.values + [rollout_r])
@@ -49,10 +50,10 @@ def process_rollout(rollout, gamma, lambda_=1.0):
     batch_adv = discount(delta_t, gamma * lambda_)
     features = rollout.features[0]  # only first LSTM state used here
 
-    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features, pix_change)
+    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features, pix_change, batch_ar)
 
 
-Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features", "pc"])
+Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features", "pc", "last_ar"])
 
 class RunnerThread(threading.Thread):
     """
@@ -132,14 +133,23 @@ def env_runner(sess,
     local_episode = 0
     rewards = 0
     last_action = np.zeros(env.action_space.n)
+    last_action[0] = 1
     last_reward = 0.0
+    last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
+
+    # Summary averages accumulators:
+    total_r = 0
+    cpu_time = 0
+    final_value = 0
+    total_steps = 0
+    total_steps_atari = 0
 
     while True:
         terminal_end = False
         rollout = PartialRollout()
 
         # Partially collect first experience of rollout:
-        action, value_, features = policy.a3c_act(last_state, last_features)
+        action, value_, features = policy.a3c_act(last_state, last_features, last_action_reward)
 
         # argmax to convert from one-hot:
         state, reward, terminal, info = env.step(action.argmax())
@@ -159,8 +169,7 @@ def env_runner(sess,
             terminal=terminal,
             features=last_features,
             pixel_change=pixel_change,
-            last_action=last_action,  # as a[-1]
-            last_reward=last_reward,  # as r[-1]
+            last_action_reward=last_action_reward,  # as a[-1]
         )
         length += 1
         rewards += reward
@@ -168,11 +177,12 @@ def env_runner(sess,
         last_features = features
         last_action = action
         last_reward = reward
+        last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
 
         for roll_step in range(1, num_local_steps):
             if not terminal:
                 # Continue adding experiences to rollout:
-                action, value_, features = policy.a3c_act(last_state, last_features)
+                action, value_, features = policy.a3c_act(last_state, last_features, last_action_reward)
 
                 # argmax to convert from one-hot:
                 state, reward, terminal, info = env.step(action.argmax())
@@ -191,10 +201,9 @@ def env_runner(sess,
                     terminal=terminal,
                     features=last_features,
                     pixel_change=pixel_change,
-                    last_action=last_action,  # as a[-1]
-                    last_reward=last_reward,  # as r[-1]
+                    last_action_reward=last_action_reward,
                 )
-                # Complete and add previous experience:
+                # Complete and push previous experience:
                 last_experience['value_next'] = value_
                 rollout.add(**last_experience)
 
@@ -234,20 +243,28 @@ def env_runner(sess,
 
                 # All environment-related summaries are here due to fact
                 # only runner allowed to interact with environment:
+                # Accumulate values for averaging:
+                total_r += rewards
+                total_steps_atari += length
+                if not test:
+                    episode_stat = env.get_stat()  # get episode statistic
+                    last_i = info[0]  # pull most recent info
+                    cpu_time += episode_stat['runtime'].total_seconds()
+                    final_value += last_i['broker_value']
+                    total_steps += episode_stat['length']
 
                 # Episode statistic:
                 if local_episode % episode_summary_freq == 0:
                     if not test:
                         # BTgym:
-                        episode_stat = env.get_stat()  # get episode statistic
-                        last_i = info[0]  # pull most recent info
+
                         fetched_episode_stat = sess.run(
                             ep_summary['stat_op'],
                             feed_dict={
-                                ep_summary['total_r_pl']: rewards,
-                                ep_summary['cpu_time_pl']: episode_stat['runtime'].total_seconds(),
-                                ep_summary['final_value_pl']: last_i['broker_value'],
-                                ep_summary['steps_pl']: episode_stat['length']
+                                ep_summary['total_r_pl']: total_r / episode_summary_freq,
+                                ep_summary['cpu_time_pl']: cpu_time / episode_summary_freq,
+                                ep_summary['final_value_pl']: final_value / episode_summary_freq,
+                                ep_summary['steps_pl']: total_steps / episode_summary_freq
                             }
                         )
                     else:
@@ -255,17 +272,21 @@ def env_runner(sess,
                         fetched_episode_stat = sess.run(
                             ep_summary['test_stat_op'],
                             feed_dict={
-                                ep_summary['total_r_pl']: rewards,
-                                ep_summary['steps_pl']: length
+                                ep_summary['total_r_pl']: total_r / episode_summary_freq,
+                                ep_summary['steps_pl']: total_steps_atari / episode_summary_freq
                             }
                         )
                     summary_writer.add_summary(fetched_episode_stat, sess.run(policy.global_episode))
                     summary_writer.flush()
+                    total_r = 0
+                    cpu_time = 0
+                    final_value = 0
+                    total_steps = 0
+                    total_steps_atari = 0
 
                 if task == 0 and local_episode % env_render_freq == 0 :
                     if not test:
                         # Render environment (chief worker only, not in atari test mode):
-                        #print('runner_{}: render attempt'.format(task))
                         renderings = sess.run(
                             ep_summary['render_op'],
                             feed_dict={
@@ -307,7 +328,9 @@ def env_runner(sess,
         # complete final experience of the rollout:
         if not terminal_end:
             #print('last_non_terminal_value_next_added')
-            last_experience['value_next'] = np.asarray([policy.get_a3c_value(last_state, last_features)])
+            last_experience['value_next'] = np.asarray(
+                [policy.get_a3c_value(last_state, last_features, last_action_reward)]
+            )
 
         else:
             #print('last_terminal_value_next_added')
@@ -350,8 +373,8 @@ class Unreal(object):
                  policy_class,
                  policy_config,
                  log,
-                 model_gamma=0.99,
-                 model_lambda=1.00,
+                 model_gamma=0.99,  # a3c decay
+                 model_lambda=1.00,  # a3c decay lambda
                  model_beta=0.01,  # entropy regularizer
                  opt_learn_rate=1e-4,
                  opt_decay=0.99,
@@ -363,10 +386,13 @@ class Unreal(object):
                  model_summary_freq=100,  # every i`th local_step
                  test_mode=False,  # gym_atari test mode
                  replay_memory_size=2000,
-                 use_reward_prediction=False,
+                 use_reward_prediction=True,
                  use_pixel_control=True,
-                 use_value_replay=False,
-                 gamma_pc=0.9,  # pixel change gamma
+                 use_value_replay=True,
+                 rp_lambda=1,  # aux tasks loss weights
+                 pc_lambda=0.1,
+                 vr_lambda=1,
+                 gamma_pc=0.9,  # pixel change gamma-decay - not used
                  rp_reward_threshold=0.1, # r.prediction: abs.rewards values bigger than this are considered non-zero
                  rp_sequence_size=4,  # r.prediction sampling
                  **kwargs):
@@ -383,9 +409,9 @@ class Unreal(object):
         self.policy_config = policy_config
 
         # A3C specific:
-        self.model_gamma = model_gamma
-        self.model_lambda = model_lambda
-        self.model_beta = model_beta
+        self.model_gamma = model_gamma  # r decay
+        self.model_lambda = model_lambda  # adv decay
+        self.model_beta = model_beta  # entropy
         self.opt_learn_rate = opt_learn_rate
         self.opt_decay = opt_decay
         self.opt_epsilon = opt_epsilon
@@ -402,6 +428,9 @@ class Unreal(object):
         self.test_mode = test_mode
 
         # UNREAL specific:
+        self.rp_lambda = rp_lambda
+        self.pc_lambda = pc_lambda
+        self.vr_lambda = vr_lambda
         self.gamma_pc = gamma_pc
         self.replay_memory_size = replay_memory_size
         self.rp_sequence_size = rp_sequence_size
@@ -482,9 +511,9 @@ class Unreal(object):
             for v in pi.var_list:
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
-            self.a3c_action = tf.placeholder(tf.float32, [None, env.action_space.n], name="a3c_action")
-            self.a3c_advantage = tf.placeholder(tf.float32, [None], name="a3c_advantage")
-            self.a3c_reward = tf.placeholder(tf.float32, [None], name="a3c_reward")
+            self.a3c_action_target = tf.placeholder(tf.float32, [None, env.action_space.n], name="a3c_action_pl")
+            self.a3c_advantage_target = tf.placeholder(tf.float32, [None], name="a3c_advantage_pl")
+            self.a3c_reward_target = tf.placeholder(tf.float32, [None], name="a3c_reward_pl")
 
             # A3C loss definition:
             log_prob_tf = tf.nn.log_softmax(pi.a3c_logits)
@@ -492,9 +521,9 @@ class Unreal(object):
             # the "policy gradients" loss:  its derivative is precisely the policy gradient
             # notice that self.ac is a placeholder that is provided externally.
             # adv will contain the advantages, as calculated in process_rollout():
-            pi_loss = - tf.reduce_sum(tf.reduce_sum(log_prob_tf * self.a3c_action, [1]) * self.a3c_advantage)
+            pi_loss = - tf.reduce_sum(tf.reduce_sum(log_prob_tf * self.a3c_action_target, [1]) * self.a3c_advantage_target)
             # loss of value function:
-            vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.a3c_vf - self.a3c_reward))
+            vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.a3c_vf - self.a3c_reward_target))
             entropy = - tf.reduce_sum(prob_tf * log_prob_tf)
 
             bs = tf.to_float(tf.shape(pi.a3c_state_in)[0])  # batch size
@@ -510,7 +539,7 @@ class Unreal(object):
                     tf.summary.histogram("a3c/logits", pi.a3c_logits),
                     tf.summary.scalar("a3c/value_loss", vf_loss / bs),
                     tf.summary.scalar("a3c/entropy", entropy / bs),
-                    tf.summary.histogram('a3c/decayed_batch_reward', self.a3c_reward),
+                    #tf.summary.histogram('a3c/decayed_batch_reward', self.a3c_reward),
                 ]
 
             if self.use_pixel_control:
@@ -522,17 +551,16 @@ class Unreal(object):
                 pc_q_action = tf.multiply(pi.pc_q, pc_action_reshaped)
                 pc_q_action = tf.reduce_sum(pc_q_action, axis=-1, keep_dims=False)
                 pc_loss = tf.nn.l2_loss(self.pc_target - pc_q_action)
-                pc_gamma = .01
-                self.loss = self.loss + pc_gamma * pc_loss
+                self.loss = self.loss + self.pc_lambda * pc_loss
                 # Add specific summary:
-                model_summaries += [tf.summary.scalar('p_c/value_loss', pc_loss / bs)]
+                model_summaries += [tf.summary.scalar('pix_control/value_loss', pc_loss / bs)]
 
             if self.use_value_replay:
                 # Value function replay loss:
                 self.vr_target_reward = tf.placeholder(tf.float32, [None], name="vr_target_reward")
                 vr_loss = tf.reduce_sum(tf.square(pi.vr_value - self.vr_target_reward))
-                self.loss = self.loss + vr_loss
-                model_summaries += [tf.summary.scalar('v_r/value_loss', vr_loss / bs)]
+                self.loss = self.loss + self.vr_lambda * vr_loss
+                model_summaries += [tf.summary.scalar('v_replay/value_loss', vr_loss / bs)]
 
             if self.use_reward_prediction:
                 # Reward prediction loss:
@@ -541,8 +569,9 @@ class Unreal(object):
                     labels=self.rp_target,
                     logits=pi.rp_logits
                 )[0]
-                self.loss = self.loss + rp_loss
-                model_summaries += [tf.summary.scalar('r_p/class_loss', rp_loss / bs)]
+                self.loss = self.loss + self.rp_lambda * rp_loss
+                model_summaries += [tf.summary.scalar('r_predict/class_loss', rp_loss / bs),
+                                    tf.summary.histogram("r_predict/logits", pi.rp_logits),]
 
             grads = tf.gradients(self.loss, pi.var_list)
 
@@ -700,17 +729,21 @@ class Unreal(object):
         """
         Returns feed dictionary for `value replay` loss estimation subgraph.
         """
-        feeder = {
-            pl: value for pl, value in zip(self.local_network.vr_lstm_state_pl_flatten, flatten_nested(batch.features))
-        }  # ...passes lstm context
-        feeder.update(
-            {
-                self.local_network.vr_state_in: batch.si,
-                #self.vr_action: batch.a,  # don't need those for value fn. estimation
-                #self.vr_advantage: batch.adv,
-                self.vr_target_reward: batch.r,
-            }
-        )
+        if not self.use_pixel_control:  # assuming using single pass of lower part of net on same off-policy batch
+            feeder = {
+                pl: value for pl, value in zip(self.local_network.vr_lstm_state_pl_flatten, flatten_nested(batch.features))
+            }  # ...passes lstm context
+            feeder.update(
+                {
+                    self.local_network.vr_state_in: batch.si,
+                    self.local_network.vr_a_r_in: batch.last_ar,
+                    #self.vr_action: batch.a,  # don't need those for value fn. estimation
+                    #self.vr_advantage: batch.adv,
+                    self.vr_target_reward: batch.r,
+                }
+            )
+        else:
+            feeder = {self.vr_target_reward: batch.r}
         return feeder
 
     def process_pc(self, batch):
@@ -723,6 +756,7 @@ class Unreal(object):
         feeder.update(
             {
                 self.local_network.pc_state_in: batch.si,
+                self.local_network.pc_a_r_in: batch.last_ar,
                 self.pc_action: batch.a,
                 self.pc_target: batch.pc
             }
@@ -761,13 +795,13 @@ class Unreal(object):
         feed_dict.update(
             {
                 self.local_network.a3c_state_in: a3c_batch.si,
-                self.a3c_action: a3c_batch.a,
-                self.a3c_advantage: a3c_batch.adv,
-                self.a3c_reward: a3c_batch.r,
+                self.local_network.a3c_a_r_in: a3c_batch.last_ar,
+                self.a3c_action_target: a3c_batch.a,
+                self.a3c_advantage_target: a3c_batch.adv,
+                self.a3c_reward_target: a3c_batch.r,
                 self.local_network.train_phase: True,
             }
         )
-
         if self.use_any_aux_tasks:
             # Uniformly sample for PC and VR:
             off_policy_rollout = PartialRollout()

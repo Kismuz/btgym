@@ -72,6 +72,17 @@ class Launcher():
     opt_momentum = None
     opt_epsilon = None
     rollout_length = None
+    replay_memory_size = None
+    use_reward_prediction = None
+    use_pixel_control = None
+    use_value_replay = None
+    rp_lambda = None
+    pc_lambda = None
+    vr_lambda = None
+    gamma_pc = None
+    rp_reward_threshold = None
+    rp_sequence_size = None
+
 
     ports_to_use = []
 

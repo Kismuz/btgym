@@ -15,8 +15,7 @@ class PartialRollout(object):
         self.terminal = []
         self.features = []
         self.pixel_change = []
-        self.last_actions = []
-        self.last_rewards = []
+        self.last_actions_rewards = []
 
     def add(self,
             position,
@@ -28,8 +27,7 @@ class PartialRollout(object):
             terminal,
             features,
             pixel_change,
-            last_action,
-            last_reward):
+            last_action_reward):
         self.position += [position]
         self.states += [state]
         self.actions += [action]
@@ -39,8 +37,7 @@ class PartialRollout(object):
         self.terminal += [terminal]
         self.features += [features]
         self.pixel_change += [pixel_change]
-        self.last_actions += [last_action]
-        self.last_rewards += [last_reward]
+        self.last_actions_rewards += [last_action_reward]
 
     def add_memory_sample(self, sample):
         """
@@ -58,8 +55,7 @@ class PartialRollout(object):
                 frame.terminal,
                 frame.features,
                 frame.pixel_change,
-                frame.last_action,
-                frame.last_reward
+                frame.last_action_reward
             )
 
     """
@@ -74,6 +70,5 @@ class PartialRollout(object):
         self.terminal = other.terminal
         self.features = other.features
         self.pixel_change.extend(other.pixel_change)
-        self.last_actions = other.last_action
-        self.last_rewards = other.last_reward
+        self.last_actions_rewards = other.last_action_reward
     """

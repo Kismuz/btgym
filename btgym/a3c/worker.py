@@ -104,7 +104,7 @@ class Worker(multiprocessing.Process):
                 task_index=self.task,
                 config=tf.ConfigProto(
                     intra_op_parallelism_threads=1,  # original was: 1
-                    inter_op_parallelism_threads=1  # original was: 2
+                    inter_op_parallelism_threads=2  # original was: 2
                 )
             )
             self.log.debug('worker_{} tf.server started.'.format(self.task))
