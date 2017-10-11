@@ -1,4 +1,13 @@
-
+# UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+# https://miyosuda.github.io/
+# https://github.com/miyosuda/unreal
+#
+# Original A3C code is taken from OpenAI repository under MIT licence:
+# https://github.com/openai/universe-starter-agent
+#
+# Papers:
+# https://arxiv.org/abs/1602.01783
+# https://arxiv.org/abs/1611.05397
 
 class PartialRollout(object):
     """

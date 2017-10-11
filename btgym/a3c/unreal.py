@@ -1,4 +1,4 @@
-# This implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+# This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
 # https://miyosuda.github.io/
 # https://github.com/miyosuda/unreal
 #
@@ -397,8 +397,7 @@ class Unreal(object):
                  rp_sequence_size=4,  # r.prediction sampling
                  **kwargs):
         """
-        BEGINNING PHASE
-        of an implementation of the UNREAL algorithm.
+        Implementation of the UNREAL algorithm.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
         But overall, we'll define the model, specify its inputs, and describe how the policy gradients step
         should be computed.

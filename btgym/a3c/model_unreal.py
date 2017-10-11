@@ -1,7 +1,13 @@
-# Original code is taken from OpenAI repository under MIT licence:
+# This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+# https://miyosuda.github.io/
+# https://github.com/miyosuda/unreal
+#
+# Original A3C code is taken from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
 #
-# Paper: https://arxiv.org/abs/1602.01783
+# Papers:
+# https://arxiv.org/abs/1602.01783
+# https://arxiv.org/abs/1611.05397
 
 import numpy as np
 import tensorflow as tf
@@ -36,18 +42,6 @@ class BaseUnrealPolicy(object):
         self.vr_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='vr_action_reward_in_pl')
         self.pc_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='pc_action_reward_in_pl')
 
-        # Batch-norm related (useless, ignore or move lower to make use):
-        try:
-            if self.train_phase is not None:
-                pass
-
-        except:
-            self.train_phase = tf.placeholder_with_default(
-                tf.constant(False, dtype=tf.bool),
-                shape=(),
-                name='train_phase_flag_pl'
-            )
-
         # Base A3C policy network:
         # Conv. layers:
         a3c_x = self._conv_2D_network_constructor(self.a3c_state_in, ob_space, ac_space)
@@ -59,6 +53,7 @@ class BaseUnrealPolicy(object):
 
         # Aux1: `Pixel control` network:
         # Define pixels-change estimator function:
+        # Yes, it rather env-specific but for atari case it is handy to do it here, see self.get_pc_target():
         [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
             self._pixel_change_2D_estimator_constructor(ob_space)
 
@@ -72,19 +67,17 @@ class BaseUnrealPolicy(object):
         self.pc_q = self._duelling_pc_network_constructor(pc_x)
 
         # Aux2: `Value function replay` network:
-        # If I got it correct, vr network is fully shared with a3c net but with `value` only output:
+        # VR network is fully shared with a3c net but with `value` only output:
 
-        # Make it single-pass with conv-lstm PC network on same off-policy batch:
+        # Make it also same ff-pass with conv-lstm PC network [because of same off-policy batch]:
 
         #vr_x = self._conv_2D_network_constructor(self.vr_state_in, ob_space, ac_space, reuse=True)
-
         #[vr_x, _, _, self.vr_lstm_state_pl_flatten] =\
         #    self._lstm_network_constructor(vr_x, lstm_class, lstm_layers, reuse=True)
         self.vr_state_in = self.pc_state_in
         self.vr_a_r_in = self.pc_a_r_in
         vr_x = pc_x
         self.vr_lstm_state_pl_flatten = self.pc_lstm_state_pl_flatten
-
 
         [_, self.vr_value, _] = self._dense_a3c_network_constructor(vr_x, ac_space, reuse=True)
 
@@ -95,13 +88,24 @@ class BaseUnrealPolicy(object):
         # RP output:
         self.rp_logits = self._dense_rp_network_constructor(rp_x)
 
-        # Batch-norm related:
-        self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
+        # Batch-norm related (useless, ignore):
+        try:
+            if self.train_phase is not None:
+                pass
+
+        except:
+            self.train_phase = tf.placeholder_with_default(
+                tf.constant(False, dtype=tf.bool),
+                shape=(),
+                name='train_phase_flag_pl'
+            )
+
         self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         # Add moving averages to save list:
         moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')
         renorm_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*renorm.*')
 
+        self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
         self.var_list += moving_var_list + renorm_var_list
 
     def get_a3c_initial_features(self):
@@ -240,30 +244,30 @@ class BaseUnrealPolicy(object):
                                      x,
                                      ob_space,
                                      ac_space,
-                                     num_layers=2,
-                                     num_filters=16,
-                                     filter_size=(8, 8),
-                                     stride=(4, 4),
+                                     num_layers=4,
+                                     num_filters=32,
+                                     filter_size=(3, 3),
+                                     stride=(2, 2),
                                      pad="SAME",
                                      dtype=tf.float32,
                                      collections=None,
                                      reuse=False):
         """
         Stage1 network: from preprocessed 2D input to estimated features.
-        Encapsulates convolutions, [possibly] skip-connections etc. [Possibly] shared.
+        Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.
         Returns:
             output tensor;
         """
-        #for i in range(num_layers):
-        #    x = tf.nn.elu(
-        #        self.conv2d(x, num_filters, "conv2d_{}".format(i + 1), filter_size, stride, pad, dtype, collections, reuse)
-        #    )
+        for i in range(num_layers):
+            x = tf.nn.elu(
+                self.conv2d(x, num_filters, "conv2d_{}".format(i + 1), filter_size, stride, pad, dtype, collections, reuse)
+            )
         # Following original paper design:
-        x = tf.nn.elu(self.conv2d(x, 16, 'conv2d_1', [8, 8], [4, 4], pad, dtype, collections, reuse))
-        x = tf.nn.elu(self.conv2d(x, 32, 'conv2d_2', [4, 4], [2, 2], pad, dtype, collections, reuse))
-        x = tf.nn.elu(
-            self.linear(batch_flatten(x), 256, 'conv_2d_dense', self.normalized_columns_initializer(0.01), reuse=reuse)
-        )
+        #x = tf.nn.elu(self.conv2d(x, 16, 'conv2d_1', [8, 8], [4, 4], pad, dtype, collections, reuse))
+        #x = tf.nn.elu(self.conv2d(x, 32, 'conv2d_2', [4, 4], [2, 2], pad, dtype, collections, reuse))
+        #x = tf.nn.elu(
+        #    self.linear(batch_flatten(x), 256, 'conv_2d_dense', self.normalized_columns_initializer(0.01), reuse=reuse)
+        #)
         return x
 
     def _lstm_network_constructor(self, x, a_r, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse=False):
@@ -280,7 +284,6 @@ class BaseUnrealPolicy(object):
 
             # Flatten, add action/reward and expand with fake time dim to feed LSTM bank:
             x = tf.concat([batch_flatten(x), a_r],axis=-1)
-
             x = tf.expand_dims(x, [0])
 
             # Define LSTM layers:
@@ -293,14 +296,12 @@ class BaseUnrealPolicy(object):
 
             # Get time_dimension as [1]-shaped tensor:
             step_size = tf.expand_dims(tf.shape(x)[1], [0])
-            #step_size = tf.shape(self.x)[:1]
-            #print('GOT HERE 3')
+
             lstm_init_state = lstm.zero_state(1, dtype=tf.float32)
 
             lstm_state_pl = self.rnn_placeholders(lstm.zero_state(1, dtype=tf.float32))
             lstm_state_pl_flatten = flatten_nested(lstm_state_pl)
 
-            #print('GOT HERE 4, x:', x.shape)
             lstm_outputs, lstm_state_out = tf.nn.dynamic_rnn(
                 lstm,
                 x,
@@ -308,7 +309,6 @@ class BaseUnrealPolicy(object):
                 sequence_length=step_size,
                 time_major=False
             )
-            #print('GOT HERE 5')
             x_out = tf.reshape(lstm_outputs, [-1, lstm_layers[-1]])
         return x_out, lstm_init_state, lstm_state_out, lstm_state_pl_flatten
 
@@ -353,7 +353,7 @@ class BaseUnrealPolicy(object):
 
     def _duelling_pc_network_constructor(self, x, reuse=False):
         """
-        Stage3 network for `pixel control' task: from LSTM output to aux. Q-value features.
+        Stage3 network for `pixel control' task: from LSTM output to Q-aux. features.
         """
         x = tf.nn.elu(self.linear(x, 9*9*32, 'pc_dense', self.normalized_columns_initializer(0.01), reuse=reuse))
         x = tf.reshape(x, [-1, 9, 9, 32])
