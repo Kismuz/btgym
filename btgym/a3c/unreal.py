@@ -2,7 +2,7 @@
 # https://miyosuda.github.io/
 # https://github.com/miyosuda/unreal
 #
-# Original A3C code is taken from OpenAI repository under MIT licence:
+# Original A3C code comes from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
 #
 # Papers:
@@ -25,9 +25,9 @@ def discount(x, gamma):
     return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
 
 
-def process_rollout(rollout, gamma, lambda_=1.0):
+def process_rollout(rollout, gamma, gae_lambda=1.0):
     """
-    Given a rollout, computes its returns and the advantage
+    Given a `PartialRollout` instance, computes its returns and the advantages.
     """
     batch_si = np.asarray(rollout.states)
     batch_a = np.asarray(rollout.actions)
@@ -45,9 +45,9 @@ def process_rollout(rollout, gamma, lambda_=1.0):
         raise RuntimeError('!!!')
     batch_r = discount(rewards_plus_v, gamma)[:-1]
     delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
-    # this formula for the advantage comes "Generalized Advantage Estimation":
+    # this formula for the advantage is (16) from "Generalized Advantage Estimation" paper:
     # https://arxiv.org/abs/1506.02438
-    batch_adv = discount(delta_t, gamma * lambda_)
+    batch_adv = discount(delta_t, gamma * gae_lambda)
     features = rollout.features[0]  # only first LSTM state used here
 
     return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features, pix_change, batch_ar)
@@ -58,7 +58,7 @@ Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features", "pc"
 class RunnerThread(threading.Thread):
     """
     Despite BTgym is not real-time environment [yet], thread-runner approach is still here.
-    From original universe-starter-agent:
+    From original `universe-starter-agent`:
     ...One of the key distinctions between a normal environment and a universe environment
     is that a universe environment is _real time_.  This means that there should be a thread
     that would constantly interact with the environment and tell it what to do.  This thread is here.
@@ -227,7 +227,6 @@ def env_runner(sess,
                 #        last_experience['terminal']
                 #    )
                 #)
-
                 length += 1
                 rewards += reward
                 last_state = state
@@ -286,7 +285,7 @@ def env_runner(sess,
 
                 if task == 0 and local_episode % env_render_freq == 0 :
                     if not test:
-                        # Render environment (chief worker only, not in atari test mode):
+                        # Render environment (chief worker only, and not in atari test mode):
                         renderings = sess.run(
                             ep_summary['render_op'],
                             feed_dict={
@@ -297,7 +296,6 @@ def env_runner(sess,
                         )
                     else:
                         # Atari:
-                        # print('runner_{}: atari render attempt'.format(task))
                         renderings = sess.run(
                             ep_summary['test_render_op'],
                             feed_dict={
@@ -317,6 +315,7 @@ def env_runner(sess,
                 length = 0
                 rewards = 0
                 last_action = np.zeros(env.action_space.n)
+                last_action[0] = 1
                 last_reward = 0.0
 
                 # Increment global and local episode counts:
@@ -361,7 +360,7 @@ def env_runner(sess,
         #print('rollout size: {}, last r: {}'.format(len(rollout.position), rollout.r[-1]))
         #print('last value_next: ', last_experience['value_next'], ', rollout flushed.')
 
-        # once we have enough experience, yield it, and have the ThreadRunner place it on a queue:
+        # Once we have enough experience, yield it, and have the ThreadRunner place it on a queue:
         yield rollout
 
 
@@ -373,9 +372,13 @@ class Unreal(object):
                  policy_class,
                  policy_config,
                  log,
-                 model_gamma=0.99,  # a3c decay
-                 model_lambda=1.00,  # a3c decay lambda
+                 random_seed=0,
+                 model_gamma=0.99,  # A3C decay
+                 model_gae_lambda=1.00,  # GAE lambda
                  model_beta=0.01,  # entropy regularizer
+                 opt_max_train_steps=10**7,
+                 opt_decay_steps=None,
+                 opt_end_learn_rate=None,
                  opt_learn_rate=1e-4,
                  opt_decay=0.99,
                  opt_momentum=0.0,
@@ -402,33 +405,53 @@ class Unreal(object):
         But overall, we'll define the model, specify its inputs, and describe how the policy gradients step
         should be computed.
         """
+        self.log = log
+
+        self.random_seed = random_seed
+        np.random.seed(self.random_seed)
+        self.log.debug('U_{}_rnd_seed:{}, log_u_sample_(0,1]x5: {}'.
+                       format(task, random_seed, self.log_uniform([1e-10,1], 5)))
+
         self.env = env
         self.task = task
         self.policy_class = policy_class
         self.policy_config = policy_config
 
         # A3C specific:
-        self.model_gamma = model_gamma  # r decay
-        self.model_lambda = model_lambda  # adv decay
-        self.model_beta = model_beta  # entropy
-        self.opt_learn_rate = opt_learn_rate
+        self.model_gamma = model_gamma  # decay
+        self.model_gae_lambda = model_gae_lambda  # general advantage estimator lambda
+        self.model_beta = self.log_uniform(model_beta, 1)  # entropy reg.
+
+        # Optimizer
+        self.opt_max_train_steps = opt_max_train_steps
+        self.opt_learn_rate = self.log_uniform(opt_learn_rate, 1)
+
+        if opt_end_learn_rate is None:
+            self.opt_end_learn_rate = self.opt_learn_rate
+        else:
+            self.opt_end_learn_rate = opt_end_learn_rate
+
+        if opt_decay_steps is None:
+            self.opt_decay_steps = self.opt_max_train_steps
+        else:
+            self.opt_decay_steps = opt_decay_steps
+
         self.opt_decay = opt_decay
         self.opt_epsilon = opt_epsilon
         self.opt_momentum = opt_momentum
         self.rollout_length = rollout_length
 
-        # Summaries and logging:
+        # Summaries :
         self.episode_summary_freq = episode_summary_freq
         self.env_render_freq = env_render_freq
         self.model_summary_freq = model_summary_freq
-        self.log = log
 
         # If True - use ATARI gym env.:
         self.test_mode = test_mode
 
         # UNREAL specific:
         self.rp_lambda = rp_lambda
-        self.pc_lambda = pc_lambda
+        self.pc_lambda = self.log_uniform(pc_lambda, 1)
         self.vr_lambda = vr_lambda
         self.gamma_pc = gamma_pc
         self.replay_memory_size = replay_memory_size
@@ -448,7 +471,13 @@ class Unreal(object):
             self.rp_reward_threshold
         )
 
-        self.log.debug('U_{}: init() started'.format(self.task))
+        self.log.info(
+            'U_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}, pc_lambda: {:1.8f}.'.
+                format(self.task, self.opt_learn_rate, self.model_beta, self.pc_lambda))
+
+        self.log.info(
+            'U_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
+                format(self.task, self.opt_max_train_steps, self.opt_decay_steps, self.opt_end_learn_rate))
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
@@ -458,6 +487,7 @@ class Unreal(object):
         else:
             model_input_shape = env.observation_space.spaces['model_input'].shape
 
+        # Start bulding graph:
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
                 self.network = self.policy_class(
@@ -510,16 +540,16 @@ class Unreal(object):
             for v in pi.var_list:
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
+            # A3C loss definition:
             self.a3c_action_target = tf.placeholder(tf.float32, [None, env.action_space.n], name="a3c_action_pl")
             self.a3c_advantage_target = tf.placeholder(tf.float32, [None], name="a3c_advantage_pl")
             self.a3c_reward_target = tf.placeholder(tf.float32, [None], name="a3c_reward_pl")
 
-            # A3C loss definition:
             log_prob_tf = tf.nn.log_softmax(pi.a3c_logits)
             prob_tf = tf.nn.softmax(pi.a3c_logits)
             # the "policy gradients" loss:  its derivative is precisely the policy gradient
-            # notice that self.ac is a placeholder that is provided externally.
-            # adv will contain the advantages, as calculated in process_rollout():
+            # notice that `a3c_action_target` is a placeholder that is provided externally.
+            # `a3c_advantage_target` will contain the advantages, as calculated in process_rollout():
             pi_loss = - tf.reduce_sum(tf.reduce_sum(log_prob_tf * self.a3c_action_target, [1]) * self.a3c_advantage_target)
             # loss of value function:
             vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.a3c_vf - self.a3c_reward_target))
@@ -529,7 +559,7 @@ class Unreal(object):
 
             a3c_loss = pi_loss + 0.5 * vf_loss - entropy * self.model_beta
 
-            # Start defining total loss:
+            # Start accumulating total loss:
             self.loss = a3c_loss
 
             # Base summaries:
@@ -550,6 +580,7 @@ class Unreal(object):
                 pc_q_action = tf.multiply(pi.pc_q, pc_action_reshaped)
                 pc_q_action = tf.reduce_sum(pc_q_action, axis=-1, keep_dims=False)
                 pc_loss = tf.nn.l2_loss(self.pc_target - pc_q_action)
+
                 self.loss = self.loss + self.pc_lambda * pc_loss
                 # Add specific summary:
                 model_summaries += [tf.summary.scalar('pix_control/value_loss', pc_loss / bs)]
@@ -558,6 +589,7 @@ class Unreal(object):
                 # Value function replay loss:
                 self.vr_target_reward = tf.placeholder(tf.float32, [None], name="vr_target_reward")
                 vr_loss = tf.reduce_sum(tf.square(pi.vr_value - self.vr_target_reward))
+
                 self.loss = self.loss + self.vr_lambda * vr_loss
                 model_summaries += [tf.summary.scalar('v_replay/value_loss', vr_loss / bs)]
 
@@ -583,9 +615,18 @@ class Unreal(object):
 
             inc_step = self.global_step.assign_add(tf.shape(pi.a3c_state_in)[0])
 
-            # each worker has a different set of adam optimizer parameters
-            #
-            opt = tf.train.AdamOptimizer(self.opt_learn_rate)
+            # Anneal learn rate:
+            learn_rate = tf.train.polynomial_decay(
+                self.opt_learn_rate,
+                self.global_step + 1,
+                self.opt_decay_steps,
+                self.opt_end_learn_rate,
+                power=1,
+                cycle=True,
+            )
+
+            # Each worker gets a different set of adam optimizer parameters
+            opt = tf.train.AdamOptimizer(learn_rate)
 
             #opt = tf.train.RMSPropOptimizer(
             #    learning_rate=self.opt_learn_rate,
@@ -601,7 +642,8 @@ class Unreal(object):
             # Add model-global statistics:
             model_summaries += [
                 tf.summary.scalar("global/grad_global_norm", tf.global_norm(grads)),
-                tf.summary.scalar("global/var_global_norm", tf.global_norm(pi.var_list))
+                tf.summary.scalar("global/var_global_norm", tf.global_norm(pi.var_list)),
+                tf.summary.scalar("global/opt_learn_rate", learn_rate),
             ]
 
             self.summary_writer = None
@@ -673,8 +715,31 @@ class Unreal(object):
                 self.test_mode,
                 self.ep_summary
             )
-
             self.log.debug('U_{}: init() done'.format(self.task))
+
+    def log_uniform(self, lo_hi, size):
+        """
+        Samples from log-uniform distribution in range specified by `lo_hi`.
+        Takes:
+            lo_hi: either scalar or [low_value, high_value]
+            size: sample size
+        Returns:
+             np.array or np.float (if size=1).
+        """
+        r = np.asarray(lo_hi)
+        try:
+            lo = r[0]
+            hi = r[-1]
+        except:
+            lo = hi = r
+        x = np.random.random(size)
+        log_lo = np.log(lo)
+        log_hi = np.log(hi)
+        v = log_lo * (1 - x) + log_hi * x
+        if size > 1:
+            return np.exp(v)
+        else:
+            return np.exp(v)[0]
 
     def start(self, sess, summary_writer):
         self.runner.start_runner(sess, summary_writer)  # starting runner thread
@@ -718,6 +783,7 @@ class Unreal(object):
 
         elif r < - self.rp_reward_threshold:
             rp_t[2] = 1.0  # negative [001]
+
         else:
             rp_t[0] = 1.0  # zero [100]
         batch_rp_target.append(rp_t)
@@ -728,7 +794,7 @@ class Unreal(object):
         """
         Returns feed dictionary for `value replay` loss estimation subgraph.
         """
-        if not self.use_pixel_control:  # assuming using single pass of lower part of net on same off-policy batch
+        if not self.use_pixel_control:  # use single pass of lower part of network, on same off-policy batch
             feeder = {
                 pl: value for pl, value in zip(self.local_network.vr_lstm_state_pl_flatten, flatten_nested(batch.features))
             }  # ...passes lstm context
@@ -737,7 +803,7 @@ class Unreal(object):
                     self.local_network.vr_state_in: batch.si,
                     self.local_network.vr_a_r_in: batch.last_ar,
                     #self.vr_action: batch.a,  # don't need those for value fn. estimation
-                    #self.vr_advantage: batch.adv,
+                    #self.vr_advantage: batch.adv, # neither..
                     self.vr_target_reward: batch.r,
                 }
             )
@@ -765,7 +831,7 @@ class Unreal(object):
     def fill_replay_memory(self, sess):
         """
         Fills replay memory with initial experiences.
-        Supposed to be called by worker() at the beginning of training.
+        Supposed to be called by worker() just before training begins.
         """
         if self.use_any_aux_tasks:
             sess.run(self.sync)
@@ -778,14 +844,13 @@ class Unreal(object):
         """
         Grabs a on_policy_rollout that's been produced by the thread runner,
         samples off_policy rollout[s] from replay memory and updates the parameters.
-        The update is then sent to the parameter
-        server.
+        The update is then sent to the parameter server.
         """
         sess.run(self.sync)  # copy weights from shared to local
         on_policy_rollout = self.pull_batch_from_queue()
 
         # Process on_policy_rollout for A3C train step:
-        a3c_batch = process_rollout(on_policy_rollout, gamma=self.model_gamma, lambda_=self.model_lambda)
+        a3c_batch = process_rollout(on_policy_rollout, gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
 
         # Feeder for base A3C loss estimation graph:
         feed_dict = {
@@ -806,7 +871,7 @@ class Unreal(object):
             off_policy_rollout = PartialRollout()
             # Convert memory sample to rollout and make batch:
             off_policy_rollout.add_memory_sample(self.memory.sample_sequence(self.rollout_length))
-            off_policy_batch = process_rollout(off_policy_rollout, gamma=self.model_gamma, lambda_=self.model_lambda)
+            off_policy_batch = process_rollout(off_policy_rollout, gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
 
             # Update with reward prediction subgraph:
             if self.use_reward_prediction:
@@ -822,7 +887,7 @@ class Unreal(object):
             if self.use_value_replay:
                 feed_dict.update(self.process_vr(off_policy_batch))
 
-            # Add pulled on_policy_rollout to replay memory:
+            # Save on_policy_rollout to replay memory:
             self.memory.add_rollout(on_policy_rollout)
 
         # Every worker writes model summaries:

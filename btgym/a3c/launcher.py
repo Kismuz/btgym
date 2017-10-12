@@ -16,6 +16,17 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ###############################################################################
+#
+# This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+# https://miyosuda.github.io/
+# https://github.com/miyosuda/unreal
+#
+# Original A3C code comes from OpenAI repository under MIT licence:
+# https://github.com/openai/universe-starter-agent
+#
+# Papers:
+# https://arxiv.org/abs/1602.01783
+# https://arxiv.org/abs/1611.05397
 
 
 import sys
@@ -27,6 +38,7 @@ import time
 import psutil
 from subprocess import PIPE
 import signal
+import numpy as np
 
 from .worker import Worker
 from .a3c import A3C
@@ -60,14 +72,17 @@ class Launcher():
     test_mode = False
 
     # Other legal kwargs:
+    root_random_seed = None
     train_steps = None
     model_summary_freq = None
     episode_summary_freq = None
     env_render_freq = None
     model_gamma = None
-    model_lambda = None
+    model_gae_lambda = None
     model_beta = None
     opt_learn_rate = None
+    opt_end_learn_rate = None
+    opt_decay_steps = None
     opt_decay = None
     opt_momentum = None
     opt_epsilon = None
@@ -109,6 +124,16 @@ class Launcher():
         for key, level in log_levels:
             if key == self.verbose:
                 self.log.setLevel(level)
+
+        # Seeding:
+        if self.root_random_seed is not None:
+            np.random.seed(self.root_random_seed)
+        self.log.info('Random seed: {}'.format(self.root_random_seed))
+
+        # Seeding for workers:
+        workers_rnd_seeds = list(
+            np.random.randint(0, 2**30, self.cluster_config['num_workers'] + self.cluster_config['num_ps'])
+        )
 
         if not os.path.exists(self.cluster_config['log_dir']):
             os.makedirs(self.cluster_config['log_dir'])
@@ -155,7 +180,8 @@ class Launcher():
                         'log_dir': self.cluster_config['log_dir'],
                         'max_steps': self.train_steps,
                         'log': self.log,
-                        'log_level': self.log.getEffectiveLevel()
+                        'log_level': self.log.getEffectiveLevel(),
+                        'random_seed': workers_rnd_seeds.pop()
                     }
                 )
                 self.clear_port(env_config['port'])

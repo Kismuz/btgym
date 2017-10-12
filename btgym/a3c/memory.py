@@ -124,7 +124,7 @@ class Memory(object):
 
     def sample_sequence(self, sequence_size):
         """
-        Uniformly samples sequence of frames of size `sequence_size`.
+        Uniformly samples sequence of frames of size `sequence_size` or less.
         Returns list of frames.
         """
         # -1 for the case if start pos is the terminated frame.
@@ -146,8 +146,8 @@ class Memory(object):
 
     def sample_rp_sequence(self, skewness=2, sample_attempts=100):
         """
-        Samples sequence of `self.rp_sequence_size` successive frames for reward prediction,
-        prioritizes ones with `non-zero reward' last frame with p=~0.5.
+        Priority-samples sequence of exactly `self.rp_sequence_size` successive frames
+        based  on last frame reward value.
         """
         if np.random.randint(skewness) == 0:
             from_zero = True

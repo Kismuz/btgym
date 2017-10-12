@@ -2,7 +2,7 @@
 # https://miyosuda.github.io/
 # https://github.com/miyosuda/unreal
 #
-# Original A3C code is taken from OpenAI repository under MIT licence:
+# Original A3C code comes from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
 #
 # Papers:
@@ -18,11 +18,8 @@ from tensorflow.python.util.nest import flatten as flatten_nested
 
 class BaseUnrealPolicy(object):
     """
-    Base policy estimator with multi-layer LSTM cells option.
+    Base policy estimator.
     """
-    #x = None
-    #a3c_state_in = None
-    #rp_state_in = None
 
     def __init__(self, ob_space, ac_space, rp_sequence_size, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,)):
         self.ob_space = ob_space
@@ -68,8 +65,7 @@ class BaseUnrealPolicy(object):
 
         # Aux2: `Value function replay` network:
         # VR network is fully shared with a3c net but with `value` only output:
-
-        # Make it also same ff-pass with conv-lstm PC network [because of same off-policy batch]:
+        # and has same forward-pass with conv-lstm PC network [because of same off-policy batch]:
 
         #vr_x = self._conv_2D_network_constructor(self.vr_state_in, ob_space, ac_space, reuse=True)
         #[vr_x, _, _, self.vr_lstm_state_pl_flatten] =\
@@ -105,11 +101,12 @@ class BaseUnrealPolicy(object):
         moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')
         renorm_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*renorm.*')
 
+        # What to save:
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
         self.var_list += moving_var_list + renorm_var_list
 
     def get_a3c_initial_features(self):
-        """Called by thread-runner."""
+        """Called by thread-runner. Returns LSTM zero-state."""
         sess = tf.get_default_session()
         return sess.run(self.a3c_lstm_init_state)
 
@@ -140,7 +137,7 @@ class BaseUnrealPolicy(object):
         return sess.run(self.a3c_vf, feeder)[0]
 
     def get_rp_prediction(self, ob, lstm_state):
-        """Test one, not used at train time."""
+        """Not used."""
         sess = tf.get_default_session()
         #feeder = {pl: value for pl, value in zip(self.rp_lstm_state_pl_flatten, flatten_nested(lstm_state))}
         #feeder.update({self.rp_state_in: [ob], self.train_phase: False})
@@ -212,6 +209,10 @@ class BaseUnrealPolicy(object):
 
     def deconv2d(self, x, output_channels, name, filter_size=(4, 4), stride=(2, 2),
                  dtype=tf.float32, collections=None, reuse=False):
+        """
+        Deconvolutional layer, paper:
+        http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf
+        """
         with tf.variable_scope(name, reuse=reuse):
             stride_shape = [1, stride[0], stride[1], 1]
 
@@ -347,7 +348,7 @@ class BaseUnrealPolicy(object):
         x = tf.abs(tf.subtract(input_state, input_last_state))
         x = tf.expand_dims(x, 0)[:, 1:-1, 1:-1, :]  # fake batch dim and crop
         x = tf.reduce_mean(x, axis=-1, keep_dims=True)
-        # TODO: max_pool may be better for pixel change detection
+        # TODO: max_pool may be better?
         x_out = tf.nn.avg_pool(x, [1,stride,stride,1], [1,stride,stride,1], 'SAME')
         return input_state, input_last_state, x_out
 
@@ -361,7 +362,7 @@ class BaseUnrealPolicy(object):
         pc_v = self.deconv2d(x, 1, 'pc_value_fn', [4, 4], [2, 2], reuse=reuse)  # [None, 20, 20, 1]
 
         # Q-value estimate using advantage mean,
-        # as (9) in "Dueling Network Architectures...":
+        # see (9) in "Dueling Network Architectures..." paper:
         # https://arxiv.org/pdf/1511.06581.pdf
         pc_a_mean = tf.reduce_mean(pc_a, axis=3, keep_dims=True)
         pc_q = pc_v + pc_a - pc_a_mean  # [None, 20, 20, ac_size]

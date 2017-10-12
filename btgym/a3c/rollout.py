@@ -2,7 +2,7 @@
 # https://miyosuda.github.io/
 # https://github.com/miyosuda/unreal
 #
-# Original A3C code is taken from OpenAI repository under MIT licence:
+# Original A3C code comes from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
 #
 # Papers:

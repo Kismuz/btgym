@@ -1,8 +1,13 @@
-# This code borrows heavily from OpenAI universal_starter_agent:
-# https://github.com/openai/universe-starter-agent
-# Under MIT licence.
+# This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+# https://miyosuda.github.io/
+# https://github.com/miyosuda/unreal
 #
-# Paper: https://arxiv.org/abs/1602.01783
+# Original A3C code comes from OpenAI repository under MIT licence:
+# https://github.com/openai/universe-starter-agent
+#
+# Papers:
+# https://arxiv.org/abs/1602.01783
+# https://arxiv.org/abs/1611.05397
 
 import sys
 sys.path.insert(0,'..')
@@ -135,6 +140,7 @@ class Worker(multiprocessing.Process):
                 policy_class=self.policy_class,
                 policy_config=self.policy_config,
                 test_mode=self.test_mode,
+                opt_max_train_steps=self.max_steps,
                 log=self.log,
                 **self.kwargs)
 
