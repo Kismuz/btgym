@@ -11,7 +11,7 @@
 
 class PartialRollout(object):
     """
-    A piece of a complete rollout.  We run our agent, and process its experience
+    Experience rollout.  We run our agent, and process its experience
     once it has processed enough steps.
     """
     def __init__(self):

@@ -19,36 +19,40 @@ class ExperienceFrame(object):
                  last_action_reward):
         self.position = position
         self.state = state
-        self.action = action  # (Taken action with the 'state')
-        self.reward = reward  # Reveived reward with the 'state'.
+        self.action = action
+        self.reward = reward
         self.value = value
         self.r = r
-        self.terminal = terminal  # (Whether terminated when 'state' was inputted)
+        self.terminal = terminal
         self.features = features  # LSTM context
         self.pixel_change = pixel_change
-        self.last_action_reward = last_action_reward  # (After this last action was taken, agent move to the 'state')
+        self.last_action_reward = last_action_reward
 
 
 class Memory(object):
     """
     Replay memory.
+    Note: must be filled up before sampling attempts.
+    Args:
+        history_size:       number of experiences stored;
+        max_sample_size:    maximum allowed sample size;
+        reward_threshold:   if |experience.reward| > reward_threshold - experience is considered
+                            to be 'priority';
     """
-    def __init__(self, history_size, rp_sequence_size=4, reward_threshold=0.1):
+    def __init__(self, history_size, max_sample_size, reward_threshold=0.1):
         self._history_size = history_size
         self._frames = deque(maxlen=history_size)
-        # Abs. treshold under which frame reward is considered to be zero:
         self.reward_threshold = reward_threshold
-        # Reward prediction sampling frame-stack size:
-        self.rp_sequence_size = int(rp_sequence_size)
-        # Frame indices for zero rewards:
+        self.max_sample_size = int(max_sample_size)
+        # Indices for non-priority frames:
         self._zero_reward_indices = deque()
-        # Frame indices for non zero rewards:
+        # Indices for priority frames:
         self._non_zero_reward_indices = deque()
         self._top_frame_index = 0
 
     def add_frame(self, frame):
         """
-        Appends single frame to experience buffer.
+        Appends single frame to memory.
         """
         if frame.terminal and len(self._frames) > 0 and self._frames[-1].terminal:
             # Discard if terminal frame continues
@@ -63,7 +67,7 @@ class Memory(object):
         self._frames.append(frame)
 
         # Decide and append index:
-        if frame_index >= self.rp_sequence_size - 1:
+        if frame_index >= self.max_sample_size - 1:
             if abs(frame.reward) <= self.reward_threshold:
                 self._zero_reward_indices.append(frame_index)
 
@@ -74,7 +78,7 @@ class Memory(object):
             # Decide from which index to discard:
             self._top_frame_index += 1
 
-            cut_frame_index = self._top_frame_index + self.rp_sequence_size - 1
+            cut_frame_index = self._top_frame_index + self.max_sample_size - 1
             # Cut frame if its index is lower than cut_frame_index:
             if len(self._zero_reward_indices) > 0 and \
                             self._zero_reward_indices[0] < cut_frame_index:
@@ -86,21 +90,22 @@ class Memory(object):
 
     def add_rollout(self, rollout):
         """
-        Adds frames from given rollout to experience buffer with respect to episode continuation.
+        Adds frames from given rollout to memory with respect to episode continuation.
         """
         # Check if current rollout is direct extension of last stored frame sequence:
         if len(self._frames) > 0 and not self._frames[-1].terminal:
-            # Check if it is same local episode and successive frame order:
+            # E.g. check if it is same local episode and successive frame order:
             if self._frames[-1].position['episode'] == rollout.position[0]['episode'] and \
                     self._frames[-1].position['step'] + 1 == rollout.position[0]['step']:
                 # Means it is ok to just extend previously stored episode
                 pass
             else:
                 # Means part or tail of previously recorded episode is somehow lost,
-                # so need to mark it as 'ended':
+                # so we need to mark stored episode as 'ended':
                 self._frames[-1].terminal = True
                 print('***{} changed to terminal'.format(self._frames[-1].position))
                 print('*** stored: ', self._frames[-1].position, 'next: ', rollout.position[0])
+                # If we get a lot of such messages it is an indication something is going wrong.
         # Add experiences one by one:
         # TODO: pain-slow. Vectorize?
         for i in range(len(rollout.position)):
@@ -122,15 +127,16 @@ class Memory(object):
     def is_full(self):
         return len(self._frames) >= self._history_size
 
-    def sample_sequence(self, sequence_size):
+    def sample_uniform(self, sequence_size):
         """
-        Uniformly samples sequence of frames of size `sequence_size` or less.
-        Returns list of frames.
+        Uniformly samples sequence of successive frames of size `sequence_size` or less.
+        Args:
+            sequence_size:  maximum sample size.
+        Returns:
+            list of ExperienceFrame's of size <= sequence_size.
         """
-        # -1 for the case if start pos is the terminated frame.
-        # (Then +1 not to start from terminated frame.)
         start_pos = np.random.randint(0, self._history_size - sequence_size - 1)
-
+        # Shift by one if hit terminal frame:
         if self._frames[start_pos].terminal:
             start_pos += 1  # assuming that there are no successive terminal frames.
 
@@ -144,15 +150,29 @@ class Memory(object):
 
         return sampled_frames
 
-    def sample_rp_sequence(self, skewness=2, sample_attempts=100):
+    def sample_priority(self, size, exact_size=False, skewness=2, sample_attempts=100):
         """
-        Priority-samples sequence of exactly `self.rp_sequence_size` successive frames
-        based  on last frame reward value.
+        Serves to implement simplified priority replay:
+        priority-samples sequence of successive frames, conditioned on last frame reward.
+        Args:
+            size:               sample size, must be <= self.max_sample_size;
+            exact_size:         whether accept sample with size less than 'size'
+                                or re-sample to get sample of exact size (needed for reward prediction task);
+            skewness:           int, sampling probability denominator, such as probability of sampling
+                                prioritized experience, p[priority_experience] = 1/skewness;
+            sample_attempts:    if exact_size=True, sets number of re-sampling attempts
+                                to get sample of continuous experiences (no `Terminal` frames inside except last);
+                                if number is reached - sample returned 'as is'.
+        Returns:
+            list of ExperienceFrame's.
         """
-        if np.random.randint(skewness) == 0:
-            from_zero = True
-        else:
+        if size > self.max_sample_size:
+            size = self.max_sample_size
+
+        if np.random.randint(int(skewness)) == 0:
             from_zero = False
+        else:
+            from_zero = True
 
         if len(self._zero_reward_indices) == 0:
             # zero rewards container was empty
@@ -175,26 +195,27 @@ class Memory(object):
                 index = np.random.randint(len(self._non_zero_reward_indices))
                 end_frame_index = self._non_zero_reward_indices[index]
 
-            start_frame_index = end_frame_index - self.rp_sequence_size + 1
+            start_frame_index = end_frame_index - size + 1
             raw_start_frame_index = start_frame_index - self._top_frame_index
 
             sampled_frames = []
             is_full = True
             if attempt == sample_attempts - 1:
                 check_sequence = False
-                print('Warning: failed to sample {} successive frames, sampled as is.'.format(self.rp_sequence_size))
+                print('Warning: failed to sample {} successive frames, sampled as is.'.format(size))
 
-            for i in range(self.rp_sequence_size - 1):
+            for i in range(size - 1):
                 frame = self._frames[raw_start_frame_index + i]
                 sampled_frames.append(frame)
                 if check_sequence:
                     if frame.terminal:
-                        is_full = False
+                        if exact_size:
+                            is_full = False
                         #print('attempt:', attempt)
                         #print('frame.terminal:', frame.terminal)
                         break
             # Last frame can be terminal anyway:
-            frame = self._frames[raw_start_frame_index + self.rp_sequence_size - 1]
+            frame = self._frames[raw_start_frame_index + size - 1]
             sampled_frames.append(frame)
 
             if is_full:

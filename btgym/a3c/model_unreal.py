@@ -39,13 +39,13 @@ class BaseUnrealPolicy(object):
         self.vr_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='vr_action_reward_in_pl')
         self.pc_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='pc_action_reward_in_pl')
 
-        # Base A3C policy network:
+        # Base on-policy A3C network:
         # Conv. layers:
         a3c_x = self._conv_2D_network_constructor(self.a3c_state_in, ob_space, ac_space)
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
         [a3c_x, self.a3c_lstm_init_state, self.a3c_lstm_state_out, self.a3c_lstm_state_pl_flatten] =\
             self._lstm_network_constructor(a3c_x, self.a3c_a_r_in, lstm_class, lstm_layers, )
-        # A3C policy and value outputs and ction-sampling function:
+        # A3C policy and value outputs and action-sampling function:
         [self.a3c_logits, self.a3c_vf, self.a3c_sample] = self._dense_a3c_network_constructor(a3c_x, ac_space)
 
         # Aux1: `Pixel control` network:

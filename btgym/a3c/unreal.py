@@ -465,19 +465,15 @@ class Unreal(object):
         self.use_any_aux_tasks = use_value_replay or use_pixel_control or use_reward_prediction
 
         # Make replay memory:
-        self.memory = Memory(
-            self.replay_memory_size,
-            self.rp_sequence_size,
-            self.rp_reward_threshold
-        )
+        self.memory = Memory( self.replay_memory_size, self.rollout_length, self.rp_reward_threshold)
 
         self.log.info(
             'U_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}, pc_lambda: {:1.8f}.'.
                 format(self.task, self.opt_learn_rate, self.model_beta, self.pc_lambda))
 
-        self.log.info(
-            'U_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
-                format(self.task, self.opt_max_train_steps, self.opt_decay_steps, self.opt_end_learn_rate))
+        #self.log.info(
+        #    'U_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
+        #        format(self.task, self.opt_max_train_steps, self.opt_decay_steps, self.opt_end_learn_rate))
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
@@ -487,7 +483,7 @@ class Unreal(object):
         else:
             model_input_shape = env.observation_space.spaces['model_input'].shape
 
-        # Start bulding graph:
+        # Start building graph:
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
                 self.network = self.policy_class(
@@ -540,7 +536,7 @@ class Unreal(object):
             for v in pi.var_list:
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
-            # A3C loss definition:
+            # On-policy A3C loss definition:
             self.a3c_action_target = tf.placeholder(tf.float32, [None, env.action_space.n], name="a3c_action_pl")
             self.a3c_advantage_target = tf.placeholder(tf.float32, [None], name="a3c_advantage_pl")
             self.a3c_reward_target = tf.placeholder(tf.float32, [None], name="a3c_reward_pl")
@@ -850,34 +846,35 @@ class Unreal(object):
         on_policy_rollout = self.pull_batch_from_queue()
 
         # Process on_policy_rollout for A3C train step:
-        a3c_batch = process_rollout(on_policy_rollout, gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
+        on_policy_batch = process_rollout(on_policy_rollout, gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
 
-        # Feeder for base A3C loss estimation graph:
+        # Feeder for on-policy A3C loss estimation graph:
         feed_dict = {
-            pl: value for pl, value in zip(self.local_network.a3c_lstm_state_pl_flatten, flatten_nested(a3c_batch.features))
+            pl: value for pl, value in zip(self.local_network.a3c_lstm_state_pl_flatten, flatten_nested(on_policy_batch.features))
         }  # ..passes lstm context
         feed_dict.update(
             {
-                self.local_network.a3c_state_in: a3c_batch.si,
-                self.local_network.a3c_a_r_in: a3c_batch.last_ar,
-                self.a3c_action_target: a3c_batch.a,
-                self.a3c_advantage_target: a3c_batch.adv,
-                self.a3c_reward_target: a3c_batch.r,
+                self.local_network.a3c_state_in: on_policy_batch.si,
+                self.local_network.a3c_a_r_in: on_policy_batch.last_ar,
+                self.a3c_action_target: on_policy_batch.a,
+                self.a3c_advantage_target: on_policy_batch.adv,
+                self.a3c_reward_target: on_policy_batch.r,
                 self.local_network.train_phase: True,
             }
         )
         if self.use_any_aux_tasks:
             # Uniformly sample for PC and VR:
+            uniform_sample = self.memory.sample_uniform(self.rollout_length)
+            # Convert memory sample to rollout to estimate GAE:
             off_policy_rollout = PartialRollout()
-            # Convert memory sample to rollout and make batch:
-            off_policy_rollout.add_memory_sample(self.memory.sample_sequence(self.rollout_length))
+            off_policy_rollout.add_memory_sample(uniform_sample)
             off_policy_batch = process_rollout(off_policy_rollout, gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
 
             # Update with reward prediction subgraph:
             if self.use_reward_prediction:
                 # Priority-sample for RP:
-                pr_sample = self.memory.sample_rp_sequence()
-                feed_dict.update(self.process_rp(pr_sample))
+                priority_rp_sample = self.memory.sample_priority(self.rp_sequence_size, exact_size=True)
+                feed_dict.update(self.process_rp(priority_rp_sample))
 
             # Pixel control ...
             if self.use_pixel_control:
