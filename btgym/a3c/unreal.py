@@ -389,9 +389,10 @@ class Unreal(object):
                  model_summary_freq=100,  # every i`th local_step
                  test_mode=False,  # gym_atari test mode
                  replay_memory_size=2000,
-                 use_reward_prediction=True,
-                 use_pixel_control=True,
-                 use_value_replay=True,
+                 use_off_policy_a3c=False,
+                 use_reward_prediction=False,
+                 use_pixel_control=False,
+                 use_value_replay=False,
                  rp_lambda=1,  # aux tasks loss weights
                  pc_lambda=0.1,
                  vr_lambda=1,
@@ -458,11 +459,13 @@ class Unreal(object):
         self.rp_sequence_size = rp_sequence_size
         self.rp_reward_threshold = rp_reward_threshold
 
-        # On/off switchers for Unreal auxillary reward and control tasks:
+        # On/off switchers for off-policy training and Unreal auxiliary tasks:
+        self.use_off_policy_a3c = use_off_policy_a3c
         self.use_reward_prediction = use_reward_prediction
         self.use_pixel_control = use_pixel_control
         self.use_value_replay = use_value_replay
         self.use_any_aux_tasks = use_value_replay or use_pixel_control or use_reward_prediction
+        self.use_memory = self.use_any_aux_tasks or self.use_off_policy_a3c
 
         # Make replay memory:
         self.memory = Memory( self.replay_memory_size, self.rollout_length, self.rp_reward_threshold)
@@ -567,6 +570,37 @@ class Unreal(object):
                     #tf.summary.histogram('a3c/decayed_batch_reward', self.a3c_reward),
                 ]
 
+            if self.use_off_policy_a3c:
+                # Off-policy A3C loss, mirrors on-policy:
+                self.off_a3c_action_target = tf.placeholder(
+                    tf.float32, [None, env.action_space.n], name="off_a3c_action_pl")
+                self.off_a3c_advantage_target = tf.placeholder(
+                    tf.float32, [None], name="off_a3c_advantage_pl")
+                self.off_a3c_reward_target = tf.placeholder(
+                    tf.float32, [None], name="off_a3c_reward_pl")
+
+                off_log_prob_tf = tf.nn.log_softmax(pi.off_a3c_logits)
+                off_prob_tf = tf.nn.softmax(pi.off_a3c_logits)
+                off_pi_loss = - tf.reduce_sum(
+                    tf.reduce_sum(off_log_prob_tf * self.off_a3c_action_target, [1]) * self.off_a3c_advantage_target)
+                # loss of value function:
+                off_vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.off_a3c_vf - self.off_a3c_reward_target))
+                off_entropy = - tf.reduce_sum(off_prob_tf * off_log_prob_tf)
+
+                off_bs = tf.to_float(tf.shape(pi.off_a3c_state_in)[0])  # off_ policy batch size
+
+                off_a3c_loss = off_pi_loss + 0.5 * off_vf_loss - off_entropy * self.model_beta
+
+                off_a3c_lambda = (1/0.5) / off_bs # Importance sampling bias correction
+
+                self.loss = self.loss + off_a3c_lambda * off_a3c_loss
+
+                model_summaries += [
+                    tf.summary.scalar("off_a3c/policy_loss", off_pi_loss / off_bs),
+                    tf.summary.scalar("off_a3c/value_loss", off_vf_loss / off_bs),
+                    tf.summary.scalar("off_a3c/entropy", off_entropy / off_bs),
+                ]
+
             if self.use_pixel_control:
                 # Pixel control loss
                 self.pc_action = tf.placeholder(tf.float32, [None, env.action_space.n], name="pc_action")
@@ -611,7 +645,7 @@ class Unreal(object):
 
             inc_step = self.global_step.assign_add(tf.shape(pi.a3c_state_in)[0])
 
-            # Anneal learn rate:
+            # Anneal learning rate:
             learn_rate = tf.train.polynomial_decay(
                 self.opt_learn_rate,
                 self.global_step + 1,
@@ -625,17 +659,16 @@ class Unreal(object):
             opt = tf.train.AdamOptimizer(learn_rate)
 
             #opt = tf.train.RMSPropOptimizer(
-            #    learning_rate=self.opt_learn_rate,
+            #    learning_rate=learn_rate,
             #    decay=0.99,
             #    momentum=0.0,
             #    epsilon=1e-8,
             #)
 
             self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), inc_step)
-
             #self.train_op = tf.group(opt.apply_gradients(grads_and_vars), inc_step)
 
-            # Add model-global statistics:
+            # Add model-wide statistics:
             model_summaries += [
                 tf.summary.scalar("global/grad_global_norm", tf.global_norm(grads)),
                 tf.summary.scalar("global/var_global_norm", tf.global_norm(pi.var_list)),
@@ -695,7 +728,7 @@ class Unreal(object):
             # self.log.debug('A3C_{}: summaries ok'.format(self.task))
 
             # Make runner:
-            # 20 represents the number of "local steps":  the number of timesteps
+            # `rollout_length` represents the number of "local steps":  the number of timesteps
             # we run the policy before we update the parameters.
             # The larger local steps is, the lower is the variance in our policy gradients estimate
             # on the one hand;  but on the other hand, we get less frequent parameter updates, which
@@ -829,7 +862,7 @@ class Unreal(object):
         Fills replay memory with initial experiences.
         Supposed to be called by worker() just before training begins.
         """
-        if self.use_any_aux_tasks:
+        if self.use_memory:
             sess.run(self.sync)
             while not self.memory.is_full():
                 rollout = self.pull_batch_from_queue()
@@ -843,9 +876,9 @@ class Unreal(object):
         The update is then sent to the parameter server.
         """
         sess.run(self.sync)  # copy weights from shared to local
-        on_policy_rollout = self.pull_batch_from_queue()
 
-        # Process on_policy_rollout for A3C train step:
+        # Get and process on_policy_rollout for A3C train step:
+        on_policy_rollout = self.pull_batch_from_queue()
         on_policy_batch = process_rollout(on_policy_rollout, gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
 
         # Feeder for on-policy A3C loss estimation graph:
@@ -862,6 +895,29 @@ class Unreal(object):
                 self.local_network.train_phase: True,
             }
         )
+        if self.use_off_policy_a3c:
+            # Get prioritized rollout from replay memory, [half size of on_policy]:
+            priority_a3c_sample = self.memory.sample_priority(int(self.rollout_length / 2), exact_size=False)
+            off_a3c_rollout = PartialRollout()
+            off_a3c_rollout.add_memory_sample(priority_a3c_sample)
+            off_a3c_batch = process_rollout(off_a3c_rollout, gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
+
+            # Feeder for off-policy A3C loss estimation graph:
+            off_a3c_feeder = {
+                pl: value for pl, value in
+            zip(self.local_network.off_a3c_lstm_state_pl_flatten, flatten_nested(off_a3c_batch.features))
+            }
+            off_a3c_feeder.update(
+                {
+                    self.local_network.off_a3c_state_in: off_a3c_batch.si,
+                    self.local_network.off_a3c_a_r_in: off_a3c_batch.last_ar,
+                    self.off_a3c_action_target: off_a3c_batch.a,
+                    self.off_a3c_advantage_target: off_a3c_batch.adv,
+                    self.off_a3c_reward_target: off_a3c_batch.r,
+                }
+            )
+            feed_dict.update(off_a3c_feeder)
+
         if self.use_any_aux_tasks:
             # Uniformly sample for PC and VR:
             uniform_sample = self.memory.sample_uniform(self.rollout_length)
@@ -884,6 +940,7 @@ class Unreal(object):
             if self.use_value_replay:
                 feed_dict.update(self.process_vr(off_policy_batch))
 
+        if self.use_memory:
             # Save on_policy_rollout to replay memory:
             self.memory.add_rollout(on_policy_rollout)
 
