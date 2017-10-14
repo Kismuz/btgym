@@ -389,13 +389,17 @@ class Unreal(object):
                  model_summary_freq=100,  # every i`th local_step
                  test_mode=False,  # gym_atari test mode
                  replay_memory_size=2000,
+                 replay_rollout_length=None,
                  use_off_policy_a3c=False,
                  use_reward_prediction=False,
                  use_pixel_control=False,
                  use_value_replay=False,
+                 use_priority_replay=False,
+                 priority_skewness=2,
                  rp_lambda=1,  # aux tasks loss weights
                  pc_lambda=0.1,
                  vr_lambda=1,
+                 off_a3c_lambda=1,
                  gamma_pc=0.9,  # pixel change gamma-decay - not used
                  rp_reward_threshold=0.1, # r.prediction: abs.rewards values bigger than this are considered non-zero
                  rp_sequence_size=4,  # r.prediction sampling
@@ -451,11 +455,16 @@ class Unreal(object):
         self.test_mode = test_mode
 
         # UNREAL specific:
+        self.off_a3c_lambda = off_a3c_lambda
         self.rp_lambda = rp_lambda
         self.pc_lambda = self.log_uniform(pc_lambda, 1)
         self.vr_lambda = vr_lambda
         self.gamma_pc = gamma_pc
         self.replay_memory_size = replay_memory_size
+        if replay_rollout_length is not None:
+            self.replay_rollout_length = replay_rollout_length
+        else:
+            self.replay_rollout_length = rollout_length
         self.rp_sequence_size = rp_sequence_size
         self.rp_reward_threshold = rp_reward_threshold
 
@@ -463,12 +472,18 @@ class Unreal(object):
         self.use_off_policy_a3c = use_off_policy_a3c
         self.use_reward_prediction = use_reward_prediction
         self.use_pixel_control = use_pixel_control
-        self.use_value_replay = use_value_replay
+        if use_off_policy_a3c:
+            self.use_value_replay = False  # v-replay is redundant in this case
+        else:
+            self.use_value_replay = use_value_replay
+        self.use_priority_replay = use_priority_replay
+        self.priority_skewness = priority_skewness
+
         self.use_any_aux_tasks = use_value_replay or use_pixel_control or use_reward_prediction
         self.use_memory = self.use_any_aux_tasks or self.use_off_policy_a3c
 
         # Make replay memory:
-        self.memory = Memory( self.replay_memory_size, self.rollout_length, self.rp_reward_threshold)
+        self.memory = Memory( self.replay_memory_size, self.replay_rollout_length, self.rp_reward_threshold)
 
         self.log.info(
             'U_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}, pc_lambda: {:1.8f}.'.
@@ -570,35 +585,41 @@ class Unreal(object):
                     #tf.summary.histogram('a3c/decayed_batch_reward', self.a3c_reward),
                 ]
 
-            if self.use_off_policy_a3c:
-                # Off-policy A3C loss, mirrors on-policy:
-                self.off_a3c_action_target = tf.placeholder(
-                    tf.float32, [None, env.action_space.n], name="off_a3c_action_pl")
-                self.off_a3c_advantage_target = tf.placeholder(
-                    tf.float32, [None], name="off_a3c_advantage_pl")
-                self.off_a3c_reward_target = tf.placeholder(
-                    tf.float32, [None], name="off_a3c_reward_pl")
+            # Off-policy batch size:
+            off_bs = tf.to_float(tf.shape(pi.off_a3c_state_in)[0])
 
+            if self.use_priority_replay:
+                # Simplified importance-sampling bias correction:
+                priority_replay_weight = self.priority_skewness / off_bs
+
+            else:
+                priority_replay_weight = 1.0
+
+            # Placeholders for off-policy training:
+            self.off_policy_action_target = tf.placeholder(
+                tf.float32, [None, env.action_space.n], name="off_policy_action_pl")
+            self.off_policy_advantage_target = tf.placeholder(
+                tf.float32, [None], name="off_policy_advantage_pl")
+            self.off_policy_reward_target = tf.placeholder(
+                tf.float32, [None], name="off_policy_reward_pl")
+
+            if self.use_off_policy_a3c:
+                # Off-policy A3C loss graph mirrors on-policy:
                 off_log_prob_tf = tf.nn.log_softmax(pi.off_a3c_logits)
                 off_prob_tf = tf.nn.softmax(pi.off_a3c_logits)
                 off_pi_loss = - tf.reduce_sum(
-                    tf.reduce_sum(off_log_prob_tf * self.off_a3c_action_target, [1]) * self.off_a3c_advantage_target)
+                    tf.reduce_sum(off_log_prob_tf * self.off_policy_action_target, [1]) * self.off_policy_advantage_target)
                 # loss of value function:
-                off_vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.off_a3c_vf - self.off_a3c_reward_target))
+                off_vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.off_a3c_vf - self.off_policy_reward_target))
                 off_entropy = - tf.reduce_sum(off_prob_tf * off_log_prob_tf)
-
-                off_bs = tf.to_float(tf.shape(pi.off_a3c_state_in)[0])  # off_ policy batch size
-
                 off_a3c_loss = off_pi_loss + 0.5 * off_vf_loss - off_entropy * self.model_beta
 
-                off_a3c_lambda = (1/0.5) / off_bs # Importance sampling bias correction
-
-                self.loss = self.loss + off_a3c_lambda * off_a3c_loss
+                self.loss = self.loss + self.off_a3c_lambda * priority_replay_weight * off_a3c_loss
 
                 model_summaries += [
                     tf.summary.scalar("off_a3c/policy_loss", off_pi_loss / off_bs),
                     tf.summary.scalar("off_a3c/value_loss", off_vf_loss / off_bs),
-                    tf.summary.scalar("off_a3c/entropy", off_entropy / off_bs),
+                    #tf.summary.scalar("off_a3c/entropy", off_entropy / off_bs),
                 ]
 
             if self.use_pixel_control:
@@ -610,19 +631,20 @@ class Unreal(object):
                 pc_q_action = tf.multiply(pi.pc_q, pc_action_reshaped)
                 pc_q_action = tf.reduce_sum(pc_q_action, axis=-1, keep_dims=False)
                 pc_loss = tf.nn.l2_loss(self.pc_target - pc_q_action)
-                pc_bs = tf.to_float(tf.shape(pi.pc_state_in)[0])  # batch size
+                #pc_bs = tf.to_float(tf.shape(pi.pc_state_in)[0])  # batch size
 
-                self.loss = self.loss + self.pc_lambda * pc_loss
+                self.loss = self.loss + self.pc_lambda * priority_replay_weight * pc_loss
                 # Add specific summary:
-                model_summaries += [tf.summary.scalar('pix_control/value_loss', pc_loss / pc_bs)]
+                model_summaries += [tf.summary.scalar('pix_control/value_loss', pc_loss / off_bs)]
 
             if self.use_value_replay:
                 # Value function replay loss:
                 self.vr_target_reward = tf.placeholder(tf.float32, [None], name="vr_target_reward")
                 vr_loss = tf.reduce_sum(tf.square(pi.vr_value - self.vr_target_reward))
-                vr_bs = tf.to_float(tf.shape(pi.vr_state_in)[0])  # batch size
-                self.loss = self.loss + self.vr_lambda * vr_loss
-                model_summaries += [tf.summary.scalar('v_replay/value_loss', vr_loss / vr_bs)]
+                #vr_bs = tf.to_float(tf.shape(pi.vr_state_in)[0])  # batch size
+
+                self.loss = self.loss + self.vr_lambda * priority_replay_weight * vr_loss
+                model_summaries += [tf.summary.scalar('v_replay/value_loss', vr_loss / off_bs)]
 
             if self.use_reward_prediction:
                 # Reward prediction loss:
@@ -633,7 +655,7 @@ class Unreal(object):
                 )[0]
                 self.loss = self.loss + self.rp_lambda * rp_loss
                 model_summaries += [tf.summary.scalar('r_predict/class_loss', rp_loss),
-                                    tf.summary.histogram("r_predict/logits", pi.rp_logits),]
+                                    tf.summary.histogram("r_predict/logits", pi.rp_logits)]
 
             grads = tf.gradients(self.loss, pi.var_list)
 
@@ -824,7 +846,7 @@ class Unreal(object):
         """
         Returns feed dictionary for `value replay` loss estimation subgraph.
         """
-        if not self.use_pixel_control:  # use single pass of lower part of network, on same off-policy batch
+        if not self.use_off_policy_a3c:  # use single pass of network on same off-policy batch
             feeder = {
                 pl: value for pl, value in zip(self.local_network.vr_lstm_state_pl_flatten, flatten_nested(batch.features))
             }  # ...passes lstm context
@@ -838,24 +860,27 @@ class Unreal(object):
                 }
             )
         else:
-            feeder = {self.vr_target_reward: batch.r}
+            feeder = {self.vr_target_reward: batch.r}  # redundant actually :)
         return feeder
 
     def process_pc(self, batch):
         """
         Returns feed dictionary for `pixel control` loss estimation subgraph.
         """
-        feeder = {
-            pl: value for pl, value in zip(self.local_network.pc_lstm_state_pl_flatten, flatten_nested(batch.features))
-        }
-        feeder.update(
-            {
-                self.local_network.pc_state_in: batch.si,
-                self.local_network.pc_a_r_in: batch.last_ar,
-                self.pc_action: batch.a,
-                self.pc_target: batch.pc
+        if not self.use_off_policy_a3c:  # use single pass of network on same off-policy batch
+            feeder = {
+                pl: value for pl, value in zip(self.local_network.pc_lstm_state_pl_flatten, flatten_nested(batch.features))
             }
-        )
+            feeder.update(
+                {
+                    self.local_network.pc_state_in: batch.si,
+                    self.local_network.pc_a_r_in: batch.last_ar,
+                    self.pc_action: batch.a,
+                    self.pc_target: batch.pc
+                }
+            )
+        else:
+            feeder = {self.pc_action: batch.a, self.pc_target: batch.pc}
         return feeder
 
     def fill_replay_memory(self, sess):
@@ -896,50 +921,49 @@ class Unreal(object):
                 self.local_network.train_phase: True,
             }
         )
-        if self.use_off_policy_a3c:
-            # Get prioritized rollout from replay memory, [half size of on_policy]:
-            priority_a3c_sample = self.memory.sample_priority(int(self.rollout_length / 2), exact_size=False)
-            off_a3c_rollout = PartialRollout()
-            off_a3c_rollout.add_memory_sample(priority_a3c_sample)
-            off_a3c_batch = process_rollout(off_a3c_rollout, gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
+
+        if self.use_off_policy_a3c or self.use_pixel_control or self.use_value_replay:
+            # Get sample from replay memory:
+            if self.use_priority_replay:
+                off_policy_sample = self.memory.sample_priority(self.replay_rollout_length,
+                                                                skewness=self.priority_skewness, exact_size=False)
+            else:
+                off_policy_sample = self.memory.sample_uniform(self.replay_rollout_length)
+
+            off_policy_rollout = PartialRollout()
+            off_policy_rollout.add_memory_sample(off_policy_sample)
+            off_policy_batch = process_rollout(off_policy_rollout, gamma=self.model_gamma,
+                                               gae_lambda=self.model_gae_lambda)
 
             # Feeder for off-policy A3C loss estimation graph:
-            off_a3c_feeder = {
+            off_policy_feeder = {
                 pl: value for pl, value in
-            zip(self.local_network.off_a3c_lstm_state_pl_flatten, flatten_nested(off_a3c_batch.features))
+            zip(self.local_network.off_a3c_lstm_state_pl_flatten, flatten_nested(off_policy_batch.features))
             }
-            off_a3c_feeder.update(
+            off_policy_feeder.update(
                 {
-                    self.local_network.off_a3c_state_in: off_a3c_batch.si,
-                    self.local_network.off_a3c_a_r_in: off_a3c_batch.last_ar,
-                    self.off_a3c_action_target: off_a3c_batch.a,
-                    self.off_a3c_advantage_target: off_a3c_batch.adv,
-                    self.off_a3c_reward_target: off_a3c_batch.r,
+                    self.local_network.off_a3c_state_in: off_policy_batch.si,
+                    self.local_network.off_a3c_a_r_in: off_policy_batch.last_ar,
+                    self.off_policy_action_target: off_policy_batch.a,
+                    self.off_policy_advantage_target: off_policy_batch.adv,
+                    self.off_policy_reward_target: off_policy_batch.r,
                 }
             )
-            feed_dict.update(off_a3c_feeder)
+            feed_dict.update(off_policy_feeder)
 
-        if self.use_any_aux_tasks:
-            # Uniformly sample for PC and VR:
-            uniform_sample = self.memory.sample_uniform(self.rollout_length)
-            # Convert memory sample to rollout to estimate GAE:
-            off_policy_rollout = PartialRollout()
-            off_policy_rollout.add_memory_sample(uniform_sample)
-            off_policy_batch = process_rollout(off_policy_rollout, gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
+        # Update with reward prediction subgraph:
+        if self.use_reward_prediction:
+            # Rebalanced 50/50 sample for RP:
+            rp_sample = self.memory.sample_priority(self.rp_sequence_size, skewness=2, exact_size=True)
+            feed_dict.update(self.process_rp(rp_sample))
 
-            # Update with reward prediction subgraph:
-            if self.use_reward_prediction:
-                # Priority-sample for RP:
-                priority_rp_sample = self.memory.sample_priority(self.rp_sequence_size, exact_size=True)
-                feed_dict.update(self.process_rp(priority_rp_sample))
+        # Pixel control ...
+        if self.use_pixel_control:
+            feed_dict.update(self.process_pc(off_policy_batch))
 
-            # Pixel control ...
-            if self.use_pixel_control:
-                feed_dict.update(self.process_pc(off_policy_batch))
-
-            # VR...
-            if self.use_value_replay:
-                feed_dict.update(self.process_vr(off_policy_batch))
+        # VR...
+        if self.use_value_replay:
+            feed_dict.update(self.process_vr(off_policy_batch))
 
         if self.use_memory:
             # Save on_policy_rollout to replay memory:

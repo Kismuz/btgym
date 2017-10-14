@@ -88,10 +88,14 @@ class Launcher():
     opt_epsilon = None
     rollout_length = None
     replay_memory_size = None
+    replay_rollout_length = None
     use_off_policy_a3c = None
     use_reward_prediction = None
     use_pixel_control = None
     use_value_replay = None
+    use_priority_replay = None
+    priority_skewness = None
+    off_a3c_lambda = None
     rp_lambda = None
     pc_lambda = None
     vr_lambda = None

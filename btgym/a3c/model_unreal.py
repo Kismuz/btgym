@@ -32,14 +32,14 @@ class BaseUnrealPolicy(object):
         self.a3c_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='a3c_state_in_pl')
         self.off_a3c_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='off_policy_a3c_state_in_pl')
         self.rp_state_in = tf.placeholder(tf.float32, [rp_sequence_size-1] + list(ob_space), name='rp_state_in_pl')
-        self.vr_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='vr_state_in_pl')
-        self.pc_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='pc_state_in_pl')
+        #self.vr_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='vr_state_in_pl')
+        #self.pc_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='pc_state_in_pl')
 
         # Placeholders for concatenated action [one-hot] and reward [scalar]:
         self.a3c_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='a3c_action_reward_in_pl')
         self.off_a3c_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='off_policy_a3c_action_reward_in_pl')
-        self.vr_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='vr_action_reward_in_pl')
-        self.pc_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='pc_action_reward_in_pl')
+        #self.vr_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='vr_action_reward_in_pl')
+        #self.pc_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='pc_action_reward_in_pl')
 
         # Base on-policy A3C network:
         # Conv. layers:
@@ -52,10 +52,10 @@ class BaseUnrealPolicy(object):
 
         # Off-policy A3C network (shared):
         off_a3c_x = self._conv_2D_network_constructor(self.off_a3c_state_in, ob_space, ac_space, reuse=True)
-        [off_a3c_x, _, _, self.off_a3c_lstm_state_pl_flatten] =\
+        [off_a3c_x_lstm_out, _, _, self.off_a3c_lstm_state_pl_flatten] =\
             self._lstm_network_constructor(off_a3c_x, self.off_a3c_a_r_in, lstm_class, lstm_layers, reuse=True)
         [self.off_a3c_logits, self.off_a3c_vf, _] =\
-            self._dense_a3c_network_constructor(off_a3c_x, ac_space, reuse=True)
+            self._dense_a3c_network_constructor(off_a3c_x_lstm_out, ac_space, reuse=True)
 
         # Aux1: `Pixel control` network:
         # Define pixels-change estimation function:
@@ -63,26 +63,32 @@ class BaseUnrealPolicy(object):
         [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
             self._pixel_change_2D_estimator_constructor(ob_space)
 
-        # Shared conv and lstm nets:
-        pc_x = self._conv_2D_network_constructor(self.pc_state_in, ob_space, ac_space, reuse=True)
-        [pc_x, _, _, self.pc_lstm_state_pl_flatten] =\
-            self._lstm_network_constructor(pc_x, self.pc_a_r_in, lstm_class, lstm_layers, reuse=True)
+        #pc_x = self._conv_2D_network_constructor(self.pc_state_in, ob_space, ac_space, reuse=True)
+        #[pc_x, _, _, self.pc_lstm_state_pl_flatten] =\
+        #    self._lstm_network_constructor(pc_x, self.pc_a_r_in, lstm_class, lstm_layers, reuse=True)
+        self.pc_state_in = self.off_a3c_state_in
+        self.pc_a_r_in = self.off_a3c_a_r_in
+        self.pc_lstm_state_pl_flatten = self.off_a3c_lstm_state_pl_flatten
+
+        # Shared conv and lstm nets, same off-policy batch:
+        pc_x = off_a3c_x_lstm_out
+
         # PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:
         self.pc_q = self._duelling_pc_network_constructor(pc_x)
 
         # Aux2: `Value function replay` network:
-        # VR network is fully shared with a3c net but with `value` only output:
-        # and has same forward-pass with conv-lstm PC network [because of same off-policy batch]:
+        # VR network is fully shared with a3c network but with `value` only output:
+        # and has same off-policy batch pass with off_a3c network:
 
         #vr_x = self._conv_2D_network_constructor(self.vr_state_in, ob_space, ac_space, reuse=True)
         #[vr_x, _, _, self.vr_lstm_state_pl_flatten] =\
         #    self._lstm_network_constructor(vr_x, lstm_class, lstm_layers, reuse=True)
-        self.vr_state_in = self.pc_state_in
-        self.vr_a_r_in = self.pc_a_r_in
-        vr_x = pc_x
-        self.vr_lstm_state_pl_flatten = self.pc_lstm_state_pl_flatten
-
-        [_, self.vr_value, _] = self._dense_a3c_network_constructor(vr_x, ac_space, reuse=True)
+        self.vr_state_in = self.off_a3c_state_in
+        self.vr_a_r_in = self.off_a3c_a_r_in
+        #vr_x = off_a3c_x
+        self.vr_lstm_state_pl_flatten = self.off_a3c_lstm_state_pl_flatten
+        #[_, self.vr_value, _] = self._dense_a3c_network_constructor(vr_x, ac_space, reuse=True)
+        self.vr_value = self.off_a3c_vf
 
         # Aux3: `Reward prediction` network:
         # Shared conv.:
