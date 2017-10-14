@@ -554,7 +554,7 @@ class Unreal(object):
             vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.a3c_vf - self.a3c_reward_target))
             entropy = - tf.reduce_sum(prob_tf * log_prob_tf)
 
-            bs = tf.to_float(tf.shape(pi.a3c_state_in)[0])  # batch size
+            a3c_bs = tf.to_float(tf.shape(pi.a3c_state_in)[0])  # batch size
 
             a3c_loss = pi_loss + 0.5 * vf_loss - entropy * self.model_beta
 
@@ -563,10 +563,10 @@ class Unreal(object):
 
             # Base summaries:
             model_summaries = [
-                    tf.summary.scalar("a3c/policy_loss", pi_loss / bs),
+                    tf.summary.scalar("a3c/policy_loss", pi_loss / a3c_bs),
                     tf.summary.histogram("a3c/logits", pi.a3c_logits),
-                    tf.summary.scalar("a3c/value_loss", vf_loss / bs),
-                    tf.summary.scalar("a3c/entropy", entropy / bs),
+                    tf.summary.scalar("a3c/value_loss", vf_loss / a3c_bs),
+                    tf.summary.scalar("a3c/entropy", entropy / a3c_bs),
                     #tf.summary.histogram('a3c/decayed_batch_reward', self.a3c_reward),
                 ]
 
@@ -610,18 +610,19 @@ class Unreal(object):
                 pc_q_action = tf.multiply(pi.pc_q, pc_action_reshaped)
                 pc_q_action = tf.reduce_sum(pc_q_action, axis=-1, keep_dims=False)
                 pc_loss = tf.nn.l2_loss(self.pc_target - pc_q_action)
+                pc_bs = tf.to_float(tf.shape(pi.pc_state_in)[0])  # batch size
 
                 self.loss = self.loss + self.pc_lambda * pc_loss
                 # Add specific summary:
-                model_summaries += [tf.summary.scalar('pix_control/value_loss', pc_loss / bs)]
+                model_summaries += [tf.summary.scalar('pix_control/value_loss', pc_loss / pc_bs)]
 
             if self.use_value_replay:
                 # Value function replay loss:
                 self.vr_target_reward = tf.placeholder(tf.float32, [None], name="vr_target_reward")
                 vr_loss = tf.reduce_sum(tf.square(pi.vr_value - self.vr_target_reward))
-
+                vr_bs = tf.to_float(tf.shape(pi.vr_state_in)[0])  # batch size
                 self.loss = self.loss + self.vr_lambda * vr_loss
-                model_summaries += [tf.summary.scalar('v_replay/value_loss', vr_loss / bs)]
+                model_summaries += [tf.summary.scalar('v_replay/value_loss', vr_loss / vr_bs)]
 
             if self.use_reward_prediction:
                 # Reward prediction loss:
@@ -631,7 +632,7 @@ class Unreal(object):
                     logits=pi.rp_logits
                 )[0]
                 self.loss = self.loss + self.rp_lambda * rp_loss
-                model_summaries += [tf.summary.scalar('r_predict/class_loss', rp_loss / bs),
+                model_summaries += [tf.summary.scalar('r_predict/class_loss', rp_loss),
                                     tf.summary.histogram("r_predict/logits", pi.rp_logits),]
 
             grads = tf.gradients(self.loss, pi.var_list)

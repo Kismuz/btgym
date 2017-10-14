@@ -18,7 +18,7 @@ from tensorflow.python.util.nest import flatten as flatten_nested
 
 class BaseUnrealPolicy(object):
     """
-    Base policy estimator.
+    Base CNN-LSTM policy estimator.
     """
 
     def __init__(self, ob_space, ac_space, rp_sequence_size, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,)):

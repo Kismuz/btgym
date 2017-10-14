@@ -31,15 +31,16 @@ class ExperienceFrame(object):
 
 class Memory(object):
     """
-    Replay memory.
-    Note: must be filled up before sampling attempts.
-    Args:
-        history_size:       number of experiences stored;
-        max_sample_size:    maximum allowed sample size;
-        reward_threshold:   if |experience.reward| > reward_threshold - experience is considered
-                            to be 'priority';
+    Replay memory with simplified form of prioritized replay.
+    Note: must be filled up before calling sampling methods.
     """
     def __init__(self, history_size, max_sample_size, reward_threshold=0.1):
+        """
+        Args:
+            history_size:       number of experiences stored;
+            max_sample_size:    maximum allowed sample size (e.g. off-policy rollout length);
+            reward_threshold:   if |experience.reward| > reward_threshold: experience is saved as 'prioritized';
+        """
         self._history_size = history_size
         self._frames = deque(maxlen=history_size)
         self.reward_threshold = reward_threshold
@@ -49,10 +50,13 @@ class Memory(object):
         # Indices for priority frames:
         self._non_zero_reward_indices = deque()
         self._top_frame_index = 0
+        # TODO: add logging
 
     def add_frame(self, frame):
         """
         Appends single frame to memory.
+        Args:
+            frame:  `ExperienceFrame` instance.
         """
         if frame.terminal and len(self._frames) > 0 and self._frames[-1].terminal:
             # Discard if terminal frame continues
@@ -91,6 +95,8 @@ class Memory(object):
     def add_rollout(self, rollout):
         """
         Adds frames from given rollout to memory with respect to episode continuation.
+        Args:
+            rollout:    `PartialRollout` instance.
         """
         # Check if current rollout is direct extension of last stored frame sequence:
         if len(self._frames) > 0 and not self._frames[-1].terminal:
@@ -129,11 +135,11 @@ class Memory(object):
 
     def sample_uniform(self, sequence_size):
         """
-        Uniformly samples sequence of successive frames of size `sequence_size` or less.
+        Uniformly samples sequence of successive frames of size `sequence_size` or less (~off-policy rollout).
         Args:
             sequence_size:  maximum sample size.
         Returns:
-            list of ExperienceFrame's of size <= sequence_size.
+            list of ExperienceFrame's of length <= sequence_size.
         """
         start_pos = np.random.randint(0, self._history_size - sequence_size - 1)
         # Shift by one if hit terminal frame:
@@ -152,16 +158,16 @@ class Memory(object):
 
     def sample_priority(self, size, exact_size=False, skewness=2, sample_attempts=100):
         """
-        Serves to implement simplified priority replay:
-        priority-samples sequence of successive frames, conditioned on last frame reward.
+        Implements simplified form of prioritized replay:
+        samples sequence of successive frames from distribution skewed by means of reward of last sample frame.
         Args:
             size:               sample size, must be <= self.max_sample_size;
             exact_size:         whether accept sample with size less than 'size'
-                                or re-sample to get sample of exact size (needed for reward prediction task);
-            skewness:           int, sampling probability denominator, such as probability of sampling
-                                prioritized experience, p[priority_experience] = 1/skewness;
+                                or re-sample to get sample of exact size (used for reward prediction task);
+            skewness:           int>=1, sampling probability denominator, such as probability of sampling sequence with
+                                last frame having non-zero reward is: p[non_zero]=1/skewness;
             sample_attempts:    if exact_size=True, sets number of re-sampling attempts
-                                to get sample of continuous experiences (no `Terminal` frames inside except last);
+                                to get sample of continuous experiences (no `Terminal` frames inside except last one);
                                 if number is reached - sample returned 'as is'.
         Returns:
             list of ExperienceFrame's.
@@ -169,6 +175,7 @@ class Memory(object):
         if size > self.max_sample_size:
             size = self.max_sample_size
 
+        # Toss skewed coin:
         if np.random.randint(int(skewness)) == 0:
             from_zero = False
         else:
