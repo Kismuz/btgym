@@ -1,6 +1,3 @@
-# This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
-# https://miyosuda.github.io/
-# https://github.com/miyosuda/unreal
 #
 # Original A3C code comes from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
@@ -205,7 +202,7 @@ def env_runner(sess,
                 terminal_end = True
                 #print("Episode finished. Sum of rewards: %d. Length: %d" % (rewards, length))
 
-                # All environment-related summaries are here due to fact
+                # All environment-specific summaries are here due to fact
                 # only runner allowed to interact with environment:
                 # Accumulate values for averaging:
                 total_r += rewards
@@ -329,7 +326,7 @@ def env_runner(sess,
         yield rollout
 
 
-class Unreal(object):
+class PPO(object):
     """____"""
     def __init__(self,
                  env,
@@ -370,7 +367,7 @@ class Unreal(object):
                  rp_sequence_size=4,  # r.prediction sampling
                  **kwargs):
         """
-        Implementation of the UNREAL algorithm.
+        Asymc. implementation of the PPO algorithm. FIRST ATTEMPT
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
         But overall, we'll define the model, specify its inputs, and describe how the policy gradients step
         should be computed.

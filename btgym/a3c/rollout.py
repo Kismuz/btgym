@@ -9,6 +9,13 @@
 # https://arxiv.org/abs/1602.01783
 # https://arxiv.org/abs/1611.05397
 
+import scipy.signal
+import numpy as np
+from collections import namedtuple
+
+Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features", "pc", "last_ar"])
+
+
 class PartialRollout(object):
     """
     Experience rollout.  We run our agent, and process its experience
@@ -66,6 +73,38 @@ class PartialRollout(object):
                 frame.pixel_change,
                 frame.last_action_reward
             )
+
+    def discount(self, x, gamma):
+        return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
+
+    def process(self, gamma, gae_lambda=1.0):
+        """
+        Computes rollout returns and the advantages.
+        """
+        batch_si = np.asarray(self.states)
+        batch_a = np.asarray(self.actions)
+        rewards = np.asarray(self.rewards)
+        batch_ar = np.asarray(self.last_actions_rewards)  # concatenated 'last action and reward' 's
+        pix_change = np.asarray(self.pixel_change)
+        rollout_R = self.r[-1][0]  # R, bootstrapped V or 0 if terminal
+        vpred_t = np.asarray(self.values + [rollout_R])
+        try:
+            rewards_plus_v = np.asarray(self.rewards + [rollout_R])
+        except:
+            print('rollout.r: ', type(self.r))
+            print('rollout.rewards[-1]: ', self.rewards[-1], type(self.rewards[-1]))
+            print('rollout_R:', rollout_R, rollout_R.shape, type(rollout_R))
+            raise RuntimeError('!!!')
+        batch_r = self.discount(rewards_plus_v, gamma)[:-1]  # total accumulated empirical returns
+        delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
+        # this formula for the advantage is (16) from "Generalized Advantage Estimation" paper:
+        # https://arxiv.org/abs/1506.02438
+        batch_adv = self.discount(delta_t, gamma * gae_lambda)
+        features = self.features[0]  # only first LSTM state is needed, others are for replay memory
+
+        return Batch(batch_si, batch_a, batch_adv, batch_r, self.terminal, features, pix_change, batch_ar)
+
+    Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features", "pc", "last_ar"])
 
     """
     def extend(self, other):

@@ -93,8 +93,8 @@ class Launcher():
     use_reward_prediction = None
     use_pixel_control = None
     use_value_replay = None
-    use_priority_replay = None
-    priority_skewness = None
+    use_rebalanced_replay = None
+    rebalance_skewness = None
     off_a3c_lambda = None
     rp_lambda = None
     pc_lambda = None

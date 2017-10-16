@@ -18,12 +18,17 @@
 ###############################################################################
 
 from .envs import create_env
-from .worker import Worker
-from .model import LSTMPolicy, LSTMPolicy2D, BaseLSTMPolicy
-from .model_unreal import BaseUnrealPolicy
-from .a3c import A3C
 from .rollout import PartialRollout
 from .memory import Memory, ExperienceFrame
+from .worker import Worker
+
+from .model import LSTMPolicy, LSTMPolicy2D, BaseLSTMPolicy
+from .model_unreal import BaseUnrealPolicy
+from .model_ppo import BasePpoPolicy
+
+from .a3c import A3C
 from .unreal import Unreal
+from .ppo import PPO
+
 from .launcher import Launcher
 
