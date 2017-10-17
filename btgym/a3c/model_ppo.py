@@ -1,10 +1,14 @@
-
-# Original A3C code comes from OpenAI repository under MIT licence:
+# Asynchronous implementation of Proximal Policy Optimization algorithm.
+# paper:
+# https://arxiv.org/pdf/1707.06347.pdf
+#
+# Based on PPO-SGD code from OpenAI `Baselines` repository under MIT licence:
+# https://github.com/openai/baselines
+#
+# Async. framework code comes from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
 #
-# Papers:
-# https://arxiv.org/abs/1602.01783
-# https://arxiv.org/abs/1611.05397
+
 
 import numpy as np
 import tensorflow as tf
@@ -26,33 +30,29 @@ class BasePpoPolicy(object):
         self.lstm_layers = lstm_layers
 
         # Placeholders for obs. state input:
-        self.a3c_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='a3c_state_in_pl')
-        self.off_a3c_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='off_policy_a3c_state_in_pl')
+        self.ppo_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='ppo_state_in_pl')
+        self.off_ppo_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='off_policy_ppo_state_in_pl')
         self.rp_state_in = tf.placeholder(tf.float32, [rp_sequence_size-1] + list(ob_space), name='rp_state_in_pl')
-        #self.vr_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='vr_state_in_pl')
-        #self.pc_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='pc_state_in_pl')
 
         # Placeholders for concatenated action [one-hot] and reward [scalar]:
-        self.a3c_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='a3c_action_reward_in_pl')
-        self.off_a3c_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='off_policy_a3c_action_reward_in_pl')
-        #self.vr_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='vr_action_reward_in_pl')
-        #self.pc_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='pc_action_reward_in_pl')
-
-        # Base on-policy A3C network:
+        self.ppo_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='ppo_action_reward_in_pl')
+        self.off_ppo_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='off_policy_ppo_action_reward_in_pl')
+ 
+        # Base on-policy ppo network:
         # Conv. layers:
-        a3c_x = self._conv_2D_network_constructor(self.a3c_state_in, ob_space, ac_space)
+        ppo_x = self._conv_2D_network_constructor(self.ppo_state_in, ob_space, ac_space)
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
-        [a3c_x, self.a3c_lstm_init_state, self.a3c_lstm_state_out, self.a3c_lstm_state_pl_flatten] =\
-            self._lstm_network_constructor(a3c_x, self.a3c_a_r_in, lstm_class, lstm_layers, )
-        # A3C policy and value outputs and action-sampling function:
-        [self.a3c_logits, self.a3c_vf, self.a3c_sample] = self._dense_a3c_network_constructor(a3c_x, ac_space)
+        [ppo_x, self.ppo_lstm_init_state, self.ppo_lstm_state_out, self.ppo_lstm_state_pl_flatten] =\
+            self._lstm_network_constructor(ppo_x, self.ppo_a_r_in, lstm_class, lstm_layers, )
+        # ppo policy and value outputs and action-sampling function:
+        [self.ppo_logits, self.ppo_vf, self.ppo_sample] = self._dense_ppo_network_constructor(ppo_x, ac_space)
 
-        # Off-policy A3C network (shared):
-        off_a3c_x = self._conv_2D_network_constructor(self.off_a3c_state_in, ob_space, ac_space, reuse=True)
-        [off_a3c_x_lstm_out, _, _, self.off_a3c_lstm_state_pl_flatten] =\
-            self._lstm_network_constructor(off_a3c_x, self.off_a3c_a_r_in, lstm_class, lstm_layers, reuse=True)
-        [self.off_a3c_logits, self.off_a3c_vf, _] =\
-            self._dense_a3c_network_constructor(off_a3c_x_lstm_out, ac_space, reuse=True)
+        # Off-policy ppo network (shared):
+        off_ppo_x = self._conv_2D_network_constructor(self.off_ppo_state_in, ob_space, ac_space, reuse=True)
+        [off_ppo_x_lstm_out, _, _, self.off_ppo_lstm_state_pl_flatten] =\
+            self._lstm_network_constructor(off_ppo_x, self.off_ppo_a_r_in, lstm_class, lstm_layers, reuse=True)
+        [self.off_ppo_logits, self.off_ppo_vf, _] =\
+            self._dense_ppo_network_constructor(off_ppo_x_lstm_out, ac_space, reuse=True)
 
         # Aux1: `Pixel control` network:
         # Define pixels-change estimation function:
@@ -60,32 +60,25 @@ class BasePpoPolicy(object):
         [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
             self._pixel_change_2D_estimator_constructor(ob_space)
 
-        #pc_x = self._conv_2D_network_constructor(self.pc_state_in, ob_space, ac_space, reuse=True)
-        #[pc_x, _, _, self.pc_lstm_state_pl_flatten] =\
-        #    self._lstm_network_constructor(pc_x, self.pc_a_r_in, lstm_class, lstm_layers, reuse=True)
-        self.pc_state_in = self.off_a3c_state_in
-        self.pc_a_r_in = self.off_a3c_a_r_in
-        self.pc_lstm_state_pl_flatten = self.off_a3c_lstm_state_pl_flatten
+        self.pc_state_in = self.off_ppo_state_in
+        self.pc_a_r_in = self.off_ppo_a_r_in
+        self.pc_lstm_state_pl_flatten = self.off_ppo_lstm_state_pl_flatten
 
         # Shared conv and lstm nets, same off-policy batch:
-        pc_x = off_a3c_x_lstm_out
+        pc_x = off_ppo_x_lstm_out
 
         # PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:
         self.pc_q = self._duelling_pc_network_constructor(pc_x)
 
         # Aux2: `Value function replay` network:
-        # VR network is fully shared with a3c network but with `value` only output:
-        # and has same off-policy batch pass with off_a3c network:
+        # VR network is fully shared with ppo network but with `value` only output:
+        # and has same off-policy batch pass with off_ppo network:
 
-        #vr_x = self._conv_2D_network_constructor(self.vr_state_in, ob_space, ac_space, reuse=True)
-        #[vr_x, _, _, self.vr_lstm_state_pl_flatten] =\
-        #    self._lstm_network_constructor(vr_x, lstm_class, lstm_layers, reuse=True)
-        self.vr_state_in = self.off_a3c_state_in
-        self.vr_a_r_in = self.off_a3c_a_r_in
-        #vr_x = off_a3c_x
-        self.vr_lstm_state_pl_flatten = self.off_a3c_lstm_state_pl_flatten
-        #[_, self.vr_value, _] = self._dense_a3c_network_constructor(vr_x, ac_space, reuse=True)
-        self.vr_value = self.off_a3c_vf
+        self.vr_state_in = self.off_ppo_state_in
+        self.vr_a_r_in = self.off_ppo_a_r_in
+
+        self.vr_lstm_state_pl_flatten = self.off_ppo_lstm_state_pl_flatten
+        self.vr_value = self.off_ppo_vf
 
         # Aux3: `Reward prediction` network:
         # Shared conv.:
@@ -115,44 +108,32 @@ class BasePpoPolicy(object):
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
         self.var_list += moving_var_list + renorm_var_list
 
-    def get_a3c_initial_features(self):
+    def get_initial_features(self):
         """Called by thread-runner. Returns LSTM zero-state."""
         sess = tf.get_default_session()
-        return sess.run(self.a3c_lstm_init_state)
+        return sess.run(self.ppo_lstm_init_state)
 
-    def flatten_homebrew(self, x):
-        """Not used."""
-        return tf.reshape(x, [-1, np.prod(x.get_shape().as_list()[1:])])
-
-    def a3c_act(self, observation, lstm_state, action_reward):
+    def act(self, observation, lstm_state, action_reward):
         """Called by thread-runner."""
         sess = tf.get_default_session()
-        feeder = {pl: value for pl, value in zip(self.a3c_lstm_state_pl_flatten, flatten_nested(lstm_state))}
+        feeder = {pl: value for pl, value in zip(self.ppo_lstm_state_pl_flatten, flatten_nested(lstm_state))}
         feeder.update(
-            {self.a3c_state_in: [observation],
-             self.a3c_a_r_in: [action_reward],
+            {self.ppo_state_in: [observation],
+             self.ppo_a_r_in: [action_reward],
              self.train_phase: False}
         )
-        return sess.run([self.a3c_sample, self.a3c_vf, self.a3c_lstm_state_out], feeder)
+        return sess.run([self.ppo_sample, self.ppo_vf, self.ppo_lstm_state_out], feeder)
 
-    def get_a3c_value(self, observation, lstm_state, action_reward):
+    def get_value(self, observation, lstm_state, action_reward):
         """Called by thread-runner."""
         sess = tf.get_default_session()
-        feeder = {pl: value for pl, value in zip(self.a3c_lstm_state_pl_flatten, flatten_nested(lstm_state))}
+        feeder = {pl: value for pl, value in zip(self.ppo_lstm_state_pl_flatten, flatten_nested(lstm_state))}
         feeder.update(
-            {self.a3c_state_in: [observation],
-             self.a3c_a_r_in: [action_reward],
+            {self.ppo_state_in: [observation],
+             self.ppo_a_r_in: [action_reward],
              self.train_phase: False}
         )
-        return sess.run(self.a3c_vf, feeder)[0]
-
-    def get_rp_prediction(self, ob, lstm_state):
-        """Not used."""
-        sess = tf.get_default_session()
-        #feeder = {pl: value for pl, value in zip(self.rp_lstm_state_pl_flatten, flatten_nested(lstm_state))}
-        #feeder.update({self.rp_state_in: [ob], self.train_phase: False})
-        feeder = {self.rp_state_in: [ob], self.train_phase: False}
-        return sess.run(self.rp_logits, feeder)[0]
+        return sess.run(self.ppo_vf, feeder)[0]
 
     def get_pc_target(self, state, last_state):
         """Called by thread-runner."""
@@ -180,7 +161,7 @@ class BasePpoPolicy(object):
 
     def rnn_placeholders(self, state):
         """
-        Given nested [multilayer] RNN state tensors, infers and returns state placeholders.
+        Given nested [multilayer] RNN state tensor, infers and returns state placeholders.
         """
         if isinstance(state, tf.contrib.rnn.LSTMStateTuple):
             c, h = state
@@ -220,7 +201,7 @@ class BasePpoPolicy(object):
     def deconv2d(self, x, output_channels, name, filter_size=(4, 4), stride=(2, 2),
                  dtype=tf.float32, collections=None, reuse=False):
         """
-        Deconvolutional layer, paper:
+        Deconvolution layer, paper:
         http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf
         """
         with tf.variable_scope(name, reuse=reuse):
@@ -273,7 +254,7 @@ class BasePpoPolicy(object):
             x = tf.nn.elu(
                 self.conv2d(x, num_filters, "conv2d_{}".format(i + 1), filter_size, stride, pad, dtype, collections, reuse)
             )
-        # Following original paper design:
+        # A3c/Unreal original paper design:
         #x = tf.nn.elu(self.conv2d(x, 16, 'conv2d_1', [8, 8], [4, 4], pad, dtype, collections, reuse))
         #x = tf.nn.elu(self.conv2d(x, 32, 'conv2d_2', [4, 4], [2, 2], pad, dtype, collections, reuse))
         #x = tf.nn.elu(
@@ -323,10 +304,10 @@ class BasePpoPolicy(object):
             x_out = tf.reshape(lstm_outputs, [-1, lstm_layers[-1]])
         return x_out, lstm_init_state, lstm_state_out, lstm_state_pl_flatten
 
-    def _dense_a3c_network_constructor(self, x, ac_space, reuse=False):
+    def _dense_ppo_network_constructor(self, x, ac_space, reuse=False):
         """
-        Stage3: from LSTM flattened output to a3c-specifc values.
-        Returns: A3C logits, value function and action sampling function.
+        Stage3: from LSTM flattened output to ppo-specifc values.
+        Returns: ppo logits, value function and action sampling function.
         """
         logits = self.linear(x, ac_space, "action", self.normalized_columns_initializer(0.01), reuse=reuse)
         vf = tf.reshape(self.linear(x, 1, "value", self.normalized_columns_initializer(1.0), reuse=reuse), [-1])
@@ -372,7 +353,7 @@ class BasePpoPolicy(object):
         pc_v = self.deconv2d(x, 1, 'pc_value_fn', [4, 4], [2, 2], reuse=reuse)  # [None, 20, 20, 1]
 
         # Q-value estimate using advantage mean,
-        # see (9) in "Dueling Network Architectures..." paper:
+        # as (9) in "Dueling Network Architectures..." paper:
         # https://arxiv.org/pdf/1511.06581.pdf
         pc_a_mean = tf.reduce_mean(pc_a, axis=3, keep_dims=True)
         pc_q = pc_v + pc_a - pc_a_mean  # [None, 20, 20, ac_size]

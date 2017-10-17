@@ -1,10 +1,13 @@
+# Asynchronous implementation of Proximal Policy Optimization algorithm.
+# paper:
+# https://arxiv.org/pdf/1707.06347.pdf
 #
-# Original A3C code comes from OpenAI repository under MIT licence:
+# Based on PPO-SGD code from OpenAI `Baselines` repository under MIT licence:
+# https://github.com/openai/baselines
+#
+# Async. framework code comes from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
 #
-# Papers:
-# https://arxiv.org/abs/1602.01783
-# https://arxiv.org/abs/1611.05397
 
 
 from __future__ import print_function
@@ -90,7 +93,7 @@ def env_runner(sess,
     if not test:
         last_state = last_state['model_input']
 
-    last_features = policy.get_a3c_initial_features()
+    last_features = policy.get_initial_features()
     length = 0
     local_episode = 0
     rewards = 0
@@ -111,7 +114,7 @@ def env_runner(sess,
         rollout = PartialRollout()
 
         # Partially collect first experience of rollout:
-        action, value_, features = policy.a3c_act(last_state, last_features, last_action_reward)
+        action, value_, features = policy.act(last_state, last_features, last_action_reward)
 
         # argmax to convert from one-hot:
         state, reward, terminal, info = env.step(action.argmax())
@@ -120,7 +123,7 @@ def env_runner(sess,
         # Estimate `pixel_change`:
         pixel_change = policy.get_pc_target(state, last_state)
 
-        # Collect the experience:
+        # Partially collect the experience:
         frame_position = {'episode': local_episode, 'step': length}
         last_experience = dict(
             position=frame_position,
@@ -131,7 +134,7 @@ def env_runner(sess,
             terminal=terminal,
             features=last_features,
             pixel_change=pixel_change,
-            last_action_reward=last_action_reward,  # as a[-1]
+            last_action_reward=last_action_reward,
         )
         length += 1
         rewards += reward
@@ -144,7 +147,7 @@ def env_runner(sess,
         for roll_step in range(1, num_local_steps):
             if not terminal:
                 # Continue adding experiences to rollout:
-                action, value_, features = policy.a3c_act(last_state, last_features, last_action_reward)
+                action, value_, features = policy.act(last_state, last_features, last_action_reward)
 
                 # argmax to convert from one-hot:
                 state, reward, terminal, info = env.step(action.argmax())
@@ -218,7 +221,6 @@ def env_runner(sess,
                 if local_episode % episode_summary_freq == 0:
                     if not test:
                         # BTgym:
-
                         fetched_episode_stat = sess.run(
                             ep_summary['stat_op'],
                             feed_dict={
@@ -273,7 +275,7 @@ def env_runner(sess,
                 if not test:
                     last_state = last_state['model_input']
 
-                last_features = policy.get_a3c_initial_features()
+                last_features = policy.get_initial_features()
                 length = 0
                 rewards = 0
                 last_action = np.zeros(env.action_space.n)
@@ -290,7 +292,7 @@ def env_runner(sess,
         if not terminal_end:
             #print('last_non_terminal_value_next_added')
             last_experience['value_next'] = np.asarray(
-                [policy.get_a3c_value(last_state, last_features, last_action_reward)]
+                [policy.get_value(last_state, last_features, last_action_reward)]
             )
 
         else:
@@ -367,7 +369,7 @@ class PPO(object):
                  rp_sequence_size=4,  # r.prediction sampling
                  **kwargs):
         """
-        Asymc. implementation of the PPO algorithm. FIRST ATTEMPT
+        Asymc. implementation of the PPO algorithm. FIRST ATTEMPT.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
         But overall, we'll define the model, specify its inputs, and describe how the policy gradients step
         should be computed.
@@ -507,6 +509,17 @@ class PPO(object):
                 pi.global_episode = self.global_episode
                 pi.inc_episode = inc_episode
 
+            with tf.variable_scope("local_old"):
+                self.local_network_old = pi_old = self.policy_class(
+                    model_input_shape,
+                    env.action_space.n,
+                    self.rp_sequence_size,
+                    **self.policy_config
+                )
+                pi_old.global_step = self.global_step
+                pi_old.global_episode = self.global_episode
+                pi_old.inc_episode = inc_episode
+
             # Meant for Batch-norm layers:
             pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
             self.log.debug('U_{}: local_network_upd_ops_collection:\n{}'.format(self.task, pi.update_ops))
@@ -515,44 +528,46 @@ class PPO(object):
             for v in pi.var_list:
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
-            # On-policy A3C loss definition:
-            self.a3c_action_target = tf.placeholder(tf.float32, [None, env.action_space.n], name="a3c_action_pl")
-            self.a3c_advantage_target = tf.placeholder(tf.float32, [None], name="a3c_advantage_pl")
-            self.a3c_reward_target = tf.placeholder(tf.float32, [None], name="a3c_reward_pl")
+            # On-policy PPO loss definition:
+            self.ppo_act_target = tf.placeholder(tf.float32, [None, env.action_space.n], name="ppo_action_pl")
+            self.ppo_adv_target = tf.placeholder(tf.float32, [None], name="ppo_advantage_pl")
+            self.ppo_r_target = tf.placeholder(tf.float32, [None], name="ppo_r_pl")
 
-            log_prob_tf = tf.nn.log_softmax(pi.a3c_logits)
-            prob_tf = tf.nn.softmax(pi.a3c_logits)
+            log_prob_tf = tf.nn.log_softmax(pi.ppo_logits)
+            prob_tf = tf.nn.softmax(pi.ppo_logits)
             # the "policy gradients" loss:  its derivative is precisely the policy gradient
-            # notice that `a3c_action_target` is a placeholder that is provided externally.
-            # `a3c_advantage_target` will contain the advantages, as calculated in process_rollout():
+            # notice that `action_target` is a placeholder that is provided externally.
+            # `advantage_target` will contain the advantages, as calculated in process_rollout():
             pi_loss = - tf.reduce_sum(
                 tf.reduce_sum(
-                    log_prob_tf * self.a3c_action_target,
+                    log_prob_tf * self.ppo_act_target,
                     [1]
-                ) * self.a3c_advantage_target
+                ) * self.ppo_adv_target
             )
             # loss of value function:
-            vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.a3c_vf - self.a3c_reward_target))
-            entropy = - tf.reduce_sum(prob_tf * log_prob_tf)
+            vf_loss = 0.5 * tf.reduce_mean(tf.square(pi.ppo_vf - self.ppo_r_target))
+            entropy = - tf.reduce_mean(self.cat_entropy(pi.ppo_logits))
 
-            a3c_bs = tf.to_float(tf.shape(pi.a3c_state_in)[0])  # on-policy batch size
+            on_bs = tf.to_float(tf.shape(pi.ppo_state_in)[0])  # on-policy batch size
 
-            a3c_loss = pi_loss + 0.5 * vf_loss - entropy * self.model_beta
+            __a3c_loss = pi_loss + 0.5 * vf_loss - entropy * self.model_beta
 
             # Start accumulating total loss:
             self.loss = a3c_loss
 
             # Base summaries:
             model_summaries = [
-                    tf.summary.scalar("a3c/policy_loss", pi_loss / a3c_bs),
-                    tf.summary.histogram("a3c/logits", pi.a3c_logits),
-                    tf.summary.scalar("a3c/value_loss", vf_loss / a3c_bs),
-                    tf.summary.scalar("a3c/entropy", entropy / a3c_bs),
+                    tf.summary.scalar("ppo/policy_loss", pi_loss / on_bs),
+                    tf.summary.histogram("ppo/logits", pi.a3c_logits),
+                    tf.summary.scalar("ppo/value_loss", vf_loss / on_bs),
+                    tf.summary.scalar("ppo/entropy", entropy / on_bs),
                     #tf.summary.histogram('a3c/decayed_batch_reward', self.a3c_reward),
                 ]
 
+            ######################## IGNORE ALL WAY DOWN TILL `grads`:
+
             # Off-policy batch size:
-            off_bs = tf.to_float(tf.shape(pi.off_a3c_state_in)[0])
+            off_bs = tf.to_float(tf.shape(pi.off_ppo_state_in)[0])
 
             if self.use_rebalanced_replay:
                 # Simplified importance-sampling bias correction:
@@ -633,6 +648,9 @@ class PPO(object):
 
             # copy weights from the parameter server to the local model
             self.sync = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
+
+            # copy weights from new model to old one:
+            self.copy_network = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_old.var_list)])
 
             grads_and_vars = list(zip(grads, self.network.var_list))
 
@@ -761,6 +779,14 @@ class PPO(object):
         else:
             return np.exp(v)[0]
 
+    def cat_entropy(self, logits):
+        a0 = logits - tf.reduce_max(logits, 1, keep_dims=True)
+        ea0 = tf.exp(a0)
+        z0 = tf.reduce_sum(ea0, 1, keep_dims=True)
+        p0 = ea0 / z0
+        return tf.reduce_sum(p0 * (tf.log(z0) - a0), 1)
+
+
     def start(self, sess, summary_writer):
         self.runner.start_runner(sess, summary_writer)  # starting runner thread
         self.summary_writer = summary_writer
@@ -883,9 +909,9 @@ class PPO(object):
             {
                 self.local_network.a3c_state_in: on_policy_batch.si,
                 self.local_network.a3c_a_r_in: on_policy_batch.last_ar,
-                self.a3c_action_target: on_policy_batch.a,
-                self.a3c_advantage_target: on_policy_batch.adv,
-                self.a3c_reward_target: on_policy_batch.r,
+                self.ppo_act_target: on_policy_batch.a,
+                self.ppo_adv_target: on_policy_batch.adv,
+                self.ppo_r_target: on_policy_batch.r,
                 self.local_network.train_phase: True,
             }
         )

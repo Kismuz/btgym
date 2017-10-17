@@ -519,39 +519,50 @@ class Unreal(object):
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
             # On-policy A3C loss definition:
-            self.a3c_action_target = tf.placeholder(tf.float32, [None, env.action_space.n], name="a3c_action_pl")
-            self.a3c_advantage_target = tf.placeholder(tf.float32, [None], name="a3c_advantage_pl")
-            self.a3c_reward_target = tf.placeholder(tf.float32, [None], name="a3c_reward_pl")
+            self.a3c_act_target = tf.placeholder(tf.float32, [None, env.action_space.n], name="a3c_action_pl")
+            self.a3c_adv_target = tf.placeholder(tf.float32, [None], name="a3c_advantage_pl")
+            self.a3c_r_target = tf.placeholder(tf.float32, [None], name="a3c_return_pl")
 
             log_prob_tf = tf.nn.log_softmax(pi.a3c_logits)
-            prob_tf = tf.nn.softmax(pi.a3c_logits)
+            prob_tf = tf.nn.softmax(pi.a3c_logits)  # summary only
             # the "policy gradients" loss:  its derivative is precisely the policy gradient
             # notice that `a3c_action_target` is a placeholder that is provided externally.
             # `a3c_advantage_target` will contain the advantages, as calculated in process_rollout():
-            pi_loss = - tf.reduce_sum(
-                tf.reduce_sum(
-                    log_prob_tf * self.a3c_action_target,
-                    [1]
-                ) * self.a3c_advantage_target
+
+            #pi_loss = - tf.reduce_mean(
+            #    tf.reduce_sum(
+            #        log_prob_tf * self.a3c_act_target,
+            #        [1]
+            #    ) * self.a3c_adv_target
+            #)
+
+            neg_log_prob_ac = tf.nn.softmax_cross_entropy_with_logits(
+                logits=pi.a3c_logits,
+                labels=self.a3c_act_target
             )
+            pi_loss = tf.reduce_mean(neg_log_prob_ac * self.a3c_adv_target)
+
             # loss of value function:
-            vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.a3c_vf - self.a3c_reward_target))
-            entropy = - tf.reduce_sum(prob_tf * log_prob_tf)
+            #vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.a3c_vf - self.a3c_reward_target))
+
+            vf_loss = 0.5 * tf.reduce_mean(tf.square(pi.a3c_vf - self.a3c_r_target))
+
+            #entropy = - tf.reduce_sum(prob_tf * log_prob_tf)
+            entropy = tf.reduce_mean(self.cat_entropy(pi.a3c_logits))
 
             a3c_bs = tf.to_float(tf.shape(pi.a3c_state_in)[0])  # on-policy batch size
 
-            a3c_loss = pi_loss + 0.5 * vf_loss - entropy * self.model_beta
+            a3c_loss = pi_loss + vf_loss - entropy * self.model_beta
 
             # Start accumulating total loss:
             self.loss = a3c_loss
 
             # Base summaries:
             model_summaries = [
-                    tf.summary.scalar("a3c/policy_loss", pi_loss / a3c_bs),
-                    tf.summary.histogram("a3c/logits", pi.a3c_logits),
-                    tf.summary.scalar("a3c/value_loss", vf_loss / a3c_bs),
-                    tf.summary.scalar("a3c/entropy", entropy / a3c_bs),
-                    #tf.summary.histogram('a3c/decayed_batch_reward', self.a3c_reward),
+                    tf.summary.scalar("a3c/policy_loss", pi_loss),
+                    tf.summary.histogram("a3c/pi_prob_d", prob_tf),
+                    tf.summary.scalar("a3c/value_loss", vf_loss),
+                    tf.summary.scalar("a3c/entropy", entropy),
                 ]
 
             # Off-policy batch size:
@@ -565,34 +576,38 @@ class Unreal(object):
                 rebalanced_replay_weight = 1.0
 
             # Placeholders for off-policy training:
-            self.off_policy_action_target = tf.placeholder(
+            self.off_policy_act_target = tf.placeholder(
                 tf.float32, [None, env.action_space.n], name="off_policy_action_pl")
-            self.off_policy_advantage_target = tf.placeholder(
+            self.off_policy_adv_target = tf.placeholder(
                 tf.float32, [None], name="off_policy_advantage_pl")
-            self.off_policy_reward_target = tf.placeholder(
-                tf.float32, [None], name="off_policy_reward_pl")
+            self.off_policy_r_target = tf.placeholder(
+                tf.float32, [None], name="off_policy_return_pl")
 
             if self.use_off_policy_a3c:
                 # Off-policy A3C loss graph mirrors on-policy:
-                off_log_prob_tf = tf.nn.log_softmax(pi.off_a3c_logits)
-                off_prob_tf = tf.nn.softmax(pi.off_a3c_logits)
-                off_pi_loss = - tf.reduce_sum(
-                    tf.reduce_sum(
-                        off_log_prob_tf * self.off_policy_action_target,
-                        [1]
-                    ) * self.off_policy_advantage_target
+                #off_log_prob_tf = tf.nn.log_softmax(pi.off_a3c_logits)
+                #off_prob_tf = tf.nn.softmax(pi.off_a3c_logits)
+                #off_pi_loss = - tf.reduce_sum(
+                #    tf.reduce_sum(
+                #        off_log_prob_tf * self.off_policy_action_target,
+                #        [1]
+                #    ) * self.off_policy_advantage_target
+                #)
+                off_neg_log_prob_ac = tf.nn.softmax_cross_entropy_with_logits(
+                    logits=pi.off_a3c_logits,
+                    labels=self.off_policy_act_target
                 )
+                off_pi_loss = tf.reduce_mean(off_neg_log_prob_ac * self.off_policy_adv_target)
                 # loss of value function:
-                off_vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.off_a3c_vf - self.off_policy_reward_target))
-                off_entropy = - tf.reduce_sum(off_prob_tf * off_log_prob_tf)
-                off_a3c_loss = off_pi_loss + 0.5 * off_vf_loss - off_entropy * self.model_beta
+                off_vf_loss = 0.5 * tf.reduce_mean(tf.square(pi.off_a3c_vf - self.off_policy_r_target))
+                off_entropy = tf.reduce_mean(self.cat_entropy(pi.off_a3c_logits))
+                off_a3c_loss = off_pi_loss + off_vf_loss - off_entropy * self.model_beta
 
                 self.loss = self.loss + self.off_a3c_lambda * rebalanced_replay_weight * off_a3c_loss
 
                 model_summaries += [
-                    tf.summary.scalar("off_a3c/policy_loss", off_pi_loss / off_bs),
-                    tf.summary.scalar("off_a3c/value_loss", off_vf_loss / off_bs),
-                    #tf.summary.scalar("off_a3c/entropy", off_entropy / off_bs),
+                    tf.summary.scalar("off_a3c/policy_loss", off_pi_loss),
+                    tf.summary.scalar("off_a3c/value_loss", off_vf_loss),
                 ]
 
             if self.use_pixel_control:
@@ -603,32 +618,31 @@ class Unreal(object):
                 pc_action_reshaped = tf.reshape(self.pc_action, [-1, 1, 1, env.action_space.n])
                 pc_q_action = tf.multiply(pi.pc_q, pc_action_reshaped)
                 pc_q_action = tf.reduce_sum(pc_q_action, axis=-1, keep_dims=False)
-                pc_loss = tf.nn.l2_loss(self.pc_target - pc_q_action)
-                #pc_bs = tf.to_float(tf.shape(pi.pc_state_in)[0])  # batch size
+                pc_loss = tf.reduce_sum(tf.square(self.pc_target - pc_q_action))  #sum all over
 
                 self.loss = self.loss + self.pc_lambda * rebalanced_replay_weight * pc_loss
                 # Add specific summary:
-                model_summaries += [tf.summary.scalar('pix_control/value_loss', pc_loss / off_bs)]
+                model_summaries += [tf.summary.scalar('pixel_control/q_loss', pc_loss)]
 
             if self.use_value_replay:
                 # Value function replay loss:
-                self.vr_target_reward = tf.placeholder(tf.float32, [None], name="vr_target_reward")
-                vr_loss = tf.reduce_sum(tf.square(pi.vr_value - self.vr_target_reward))
-                #vr_bs = tf.to_float(tf.shape(pi.vr_state_in)[0])  # batch size
+                self.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
+                vr_loss = tf.reduce_mean(tf.square(pi.vr_value - self.vr_target))
 
                 self.loss = self.loss + self.vr_lambda * rebalanced_replay_weight * vr_loss
-                model_summaries += [tf.summary.scalar('v_replay/value_loss', vr_loss / off_bs)]
+                model_summaries += [tf.summary.scalar('v_replay/value_loss', vr_loss)]
 
             if self.use_reward_prediction:
                 # Reward prediction loss:
                 self.rp_target = tf.placeholder(tf.float32, [1,3], name="rp_target")
-                rp_loss = tf.nn.softmax_cross_entropy_with_logits(
-                    labels=self.rp_target,
-                    logits=pi.rp_logits
-                )[0]
+                rp_loss = tf.reduce_mean(
+                    tf.nn.softmax_cross_entropy_with_logits(
+                        labels=self.rp_target,
+                        logits=pi.rp_logits
+                    )
+                )
                 self.loss = self.loss + self.rp_lambda * rp_loss
-                model_summaries += [tf.summary.scalar('r_predict/class_loss', rp_loss),
-                                    tf.summary.histogram("r_predict/logits", pi.rp_logits)]
+                model_summaries += [tf.summary.scalar('r_predict/class_loss', rp_loss)]
 
             grads = tf.gradients(self.loss, pi.var_list)
 
@@ -669,6 +683,7 @@ class Unreal(object):
                 tf.summary.scalar("global/grad_global_norm", tf.global_norm(grads)),
                 tf.summary.scalar("global/var_global_norm", tf.global_norm(pi.var_list)),
                 tf.summary.scalar("global/opt_learn_rate", learn_rate),
+                tf.summary.scalar("global/total_loss", self.loss),
             ]
 
             self.summary_writer = None
@@ -764,6 +779,13 @@ class Unreal(object):
         else:
             return np.exp(v)[0]
 
+    def cat_entropy(self, logits):
+        a0 = logits - tf.reduce_max(logits, 1, keep_dims=True)
+        ea0 = tf.exp(a0)
+        z0 = tf.reduce_sum(ea0, 1, keep_dims=True)
+        p0 = ea0 / z0
+        return tf.reduce_sum(p0 * (tf.log(z0) - a0), 1)
+
     def start(self, sess, summary_writer):
         self.runner.start_runner(sess, summary_writer)  # starting runner thread
         self.summary_writer = summary_writer
@@ -827,11 +849,11 @@ class Unreal(object):
                     self.local_network.vr_a_r_in: batch.last_ar,
                     #self.vr_action: batch.a,  # don't need those for value fn. estimation
                     #self.vr_advantage: batch.adv, # neither..
-                    self.vr_target_reward: batch.r,
+                    self.vr_target: batch.r,
                 }
             )
         else:
-            feeder = {self.vr_target_reward: batch.r}  # redundant actually :)
+            feeder = {self.vr_target: batch.r}  # redundant actually :)
         return feeder
 
     def process_pc(self, batch):
@@ -886,9 +908,9 @@ class Unreal(object):
             {
                 self.local_network.a3c_state_in: on_policy_batch.si,
                 self.local_network.a3c_a_r_in: on_policy_batch.last_ar,
-                self.a3c_action_target: on_policy_batch.a,
-                self.a3c_advantage_target: on_policy_batch.adv,
-                self.a3c_reward_target: on_policy_batch.r,
+                self.a3c_act_target: on_policy_batch.a,
+                self.a3c_adv_target: on_policy_batch.adv,
+                self.a3c_r_target: on_policy_batch.r,
                 self.local_network.train_phase: True,
             }
         )
@@ -914,9 +936,9 @@ class Unreal(object):
                 {
                     self.local_network.off_a3c_state_in: off_policy_batch.si,
                     self.local_network.off_a3c_a_r_in: off_policy_batch.last_ar,
-                    self.off_policy_action_target: off_policy_batch.a,
-                    self.off_policy_advantage_target: off_policy_batch.adv,
-                    self.off_policy_reward_target: off_policy_batch.r,
+                    self.off_policy_act_target: off_policy_batch.a,
+                    self.off_policy_adv_target: off_policy_batch.adv,
+                    self.off_policy_r_target: off_policy_batch.r,
                 }
             )
             feed_dict.update(off_policy_feeder)

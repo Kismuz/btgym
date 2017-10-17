@@ -31,7 +31,7 @@ class ExperienceFrame(object):
 
 class Memory(object):
     """
-    Replay memory with simplified form of prioritized replay.
+    Replay memory with rebalanced replay.
     Note: must be filled up before calling sampling methods.
     """
     def __init__(self, history_size, max_sample_size, reward_threshold=0.1):
@@ -158,7 +158,7 @@ class Memory(object):
 
     def sample_priority(self, size, exact_size=False, skewness=2, sample_attempts=100):
         """
-        Implements simplified form of prioritized replay:
+        Implements rebalanced replay:
         samples sequence of successive frames from distribution skewed by means of reward of last sample frame.
         Args:
             size:               sample size, must be <= self.max_sample_size;

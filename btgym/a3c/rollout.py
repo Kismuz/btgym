@@ -86,14 +86,14 @@ class PartialRollout(object):
         rewards = np.asarray(self.rewards)
         batch_ar = np.asarray(self.last_actions_rewards)  # concatenated 'last action and reward' 's
         pix_change = np.asarray(self.pixel_change)
-        rollout_R = self.r[-1][0]  # R, bootstrapped V or 0 if terminal
-        vpred_t = np.asarray(self.values + [rollout_R])
+        rollout_r = self.r[-1][0]  # R, bootstrapped V or 0 if terminal
+        vpred_t = np.asarray(self.values + [rollout_r])
         try:
-            rewards_plus_v = np.asarray(self.rewards + [rollout_R])
+            rewards_plus_v = np.asarray(self.rewards + [rollout_r])
         except:
             print('rollout.r: ', type(self.r))
             print('rollout.rewards[-1]: ', self.rewards[-1], type(self.rewards[-1]))
-            print('rollout_R:', rollout_R, rollout_R.shape, type(rollout_R))
+            print('rollout_R:', rollout_r, rollout_r.shape, type(rollout_r))
             raise RuntimeError('!!!')
         batch_r = self.discount(rewards_plus_v, gamma)[:-1]  # total accumulated empirical returns
         delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
