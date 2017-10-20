@@ -87,6 +87,8 @@ class Launcher():
     opt_momentum = None
     opt_epsilon = None
     rollout_length = None
+    pi_old_update_period = None
+    num_epochs = None
     replay_memory_size = None
     replay_rollout_length = None
     use_off_policy_a3c = None

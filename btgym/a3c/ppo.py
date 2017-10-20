@@ -121,7 +121,7 @@ def env_runner(sess,
         if not test:
             state = state['model_input']
         # Estimate `pixel_change`:
-        pixel_change = policy.get_pc_target(state, last_state)
+        pixel_change = None # policy.get_pc_target(state, last_state)
 
         # Partially collect the experience:
         frame_position = {'episode': local_episode, 'step': length}
@@ -153,7 +153,7 @@ def env_runner(sess,
                 state, reward, terminal, info = env.step(action.argmax())
                 if not test:
                         state = state['model_input']
-                pixel_change = policy.get_pc_target(state, last_state)
+                pixel_change = None # policy.get_pc_target(state, last_state)
 
                 # Partially collect next experience:
                 frame_position = {'episode': local_episode, 'step': length}
@@ -337,9 +337,10 @@ class PPO(object):
                  policy_config,
                  log,
                  random_seed=0,
-                 model_gamma=0.99,  # A3C decay
+                 model_gamma=0.99,  # decay
                  model_gae_lambda=1.00,  # GAE lambda
                  model_beta=0.01,  # entropy regularizer
+                 clip_epsilon=0.1,  # L^clip epsilon
                  opt_max_train_steps=10**7,
                  opt_decay_steps=None,
                  opt_end_learn_rate=None,
@@ -348,6 +349,8 @@ class PPO(object):
                  opt_momentum=0.0,
                  opt_epsilon=1e-10,
                  rollout_length=20,
+                 num_epochs=1,  # num epochs to run on a single train step
+                 pi_old_update_period=50,  # num train steps to run before pi_old update
                  episode_summary_freq=2,  # every i`th episode
                  env_render_freq=10,  # every i`th episode
                  model_summary_freq=100,  # every i`th local_step
@@ -390,6 +393,11 @@ class PPO(object):
         self.model_gamma = model_gamma  # decay
         self.model_gae_lambda = model_gae_lambda  # general advantage estimator lambda
         self.model_beta = self.log_uniform(model_beta, 1)  # entropy reg.
+
+        # PPO:
+        self.clip_epsilon = clip_epsilon
+        self.num_epochs = num_epochs
+        self.pi_old_update_period = pi_old_update_period
 
         # Optimizer
         self.opt_max_train_steps = opt_max_train_steps
@@ -528,40 +536,67 @@ class PPO(object):
             for v in pi.var_list:
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
+
+            # Anneal learning rate and L^clip epsilon:
+            learn_rate = tf.train.polynomial_decay(
+                self.opt_learn_rate,
+                self.global_step + 1,
+                self.opt_decay_steps,
+                self.opt_end_learn_rate,
+                power=1,
+                cycle=False,
+            )
+            clip_epsilon = tf.cast(self.clip_epsilon * learn_rate / self.opt_learn_rate, tf.float32)
+
             # On-policy PPO loss definition:
             self.ppo_act_target = tf.placeholder(tf.float32, [None, env.action_space.n], name="ppo_action_pl")
             self.ppo_adv_target = tf.placeholder(tf.float32, [None], name="ppo_advantage_pl")
             self.ppo_r_target = tf.placeholder(tf.float32, [None], name="ppo_r_pl")
 
-            log_prob_tf = tf.nn.log_softmax(pi.ppo_logits)
-            prob_tf = tf.nn.softmax(pi.ppo_logits)
-            # the "policy gradients" loss:  its derivative is precisely the policy gradient
-            # notice that `action_target` is a placeholder that is provided externally.
-            # `advantage_target` will contain the advantages, as calculated in process_rollout():
-            pi_loss = - tf.reduce_sum(
-                tf.reduce_sum(
-                    log_prob_tf * self.ppo_act_target,
-                    [1]
-                ) * self.ppo_adv_target
+            pi_log_prob = - tf.nn.softmax_cross_entropy_with_logits(
+                logits=pi.ppo_logits,
+                labels=self.ppo_act_target
             )
+            pi_old_log_prob = tf.stop_gradient(
+                - tf.nn.softmax_cross_entropy_with_logits(
+                    logits=pi_old.ppo_logits,
+                    labels=self.ppo_act_target
+                )
+            )
+            pi_ratio = tf.exp(pi_log_prob - pi_old_log_prob)
+
+            surr1 = pi_ratio * self.ppo_adv_target  # surrogate from conservative policy iteration
+            surr2 = tf.clip_by_value(pi_ratio, 1.0 - clip_epsilon, 1.0 + clip_epsilon) * self.ppo_adv_target
+
+            pi_loss = - tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
+
+            #prob_tf = tf.nn.softmax(pi.ppo_logits)
+            mean_pi_ratio = tf.reduce_mean(pi_ratio)
+            mean_vf = tf.reduce_mean(pi.ppo_vf)
+            #mean_adv_targ =  tf.reduce_mean(self.ppo_adv_target)
+            mean_kl_old_new = tf.reduce_mean(self.kl_divergence(pi_old.ppo_logits,pi.ppo_logits ))
+
             # loss of value function:
-            vf_loss = 0.5 * tf.reduce_mean(tf.square(pi.ppo_vf - self.ppo_r_target))
-            entropy = - tf.reduce_mean(self.cat_entropy(pi.ppo_logits))
+            vf_loss = tf.reduce_mean(tf.square(pi.ppo_vf - self.ppo_r_target))
+            entropy = tf.reduce_mean(self.cat_entropy(pi.ppo_logits))
 
-            on_bs = tf.to_float(tf.shape(pi.ppo_state_in)[0])  # on-policy batch size
+            #on_bs = tf.to_float(tf.shape(pi.ppo_state_in)[0])  # on-policy batch size
 
-            __a3c_loss = pi_loss + 0.5 * vf_loss - entropy * self.model_beta
+            ppo_loss = pi_loss + vf_loss - entropy * self.model_beta
 
             # Start accumulating total loss:
-            self.loss = a3c_loss
+            self.loss = ppo_loss
 
             # Base summaries:
             model_summaries = [
-                    tf.summary.scalar("ppo/policy_loss", pi_loss / on_bs),
-                    tf.summary.histogram("ppo/logits", pi.a3c_logits),
-                    tf.summary.scalar("ppo/value_loss", vf_loss / on_bs),
-                    tf.summary.scalar("ppo/entropy", entropy / on_bs),
-                    #tf.summary.histogram('a3c/decayed_batch_reward', self.a3c_reward),
+                tf.summary.scalar("ppo/surr_clip_loss", pi_loss),
+                #tf.summary.histogram("ppo/pi_prob_d", prob_tf),
+                tf.summary.scalar("ppo/value_loss", vf_loss),
+                tf.summary.scalar("ppo/entropy", entropy),
+                tf.summary.scalar("ppo/KL_old_new", mean_kl_old_new),
+                tf.summary.scalar("pi_ratio", mean_pi_ratio),
+                tf.summary.scalar("value_f", mean_vf),
+                #tf.summary.scalar("adv_target", mean_adv_targ),
                 ]
 
             ######################## IGNORE ALL WAY DOWN TILL `grads`:
@@ -648,26 +683,18 @@ class PPO(object):
 
             # copy weights from the parameter server to the local model
             self.sync = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
+            self.sync_pi_old = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi_old.var_list, self.network.var_list)])
 
             # copy weights from new model to old one:
-            self.copy_network = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_old.var_list)])
+            self.copy = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi_old.var_list, pi.var_list)])
 
             grads_and_vars = list(zip(grads, self.network.var_list))
 
-            inc_step = self.global_step.assign_add(tf.shape(pi.a3c_state_in)[0])
-
-            # Anneal learning rate:
-            learn_rate = tf.train.polynomial_decay(
-                self.opt_learn_rate,
-                self.global_step + 1,
-                self.opt_decay_steps,
-                self.opt_end_learn_rate,
-                power=1,
-                cycle=True,
-            )
+            self.inc_step = self.global_step.assign_add(tf.shape(pi.ppo_state_in)[0])
+            #self.inc_step = self.global_step.assign_add(1)
 
             # Each worker gets a different set of adam optimizer parameters
-            opt = tf.train.AdamOptimizer(learn_rate)
+            opt = tf.train.AdamOptimizer(learn_rate, epsilon=1e-5)
 
             #opt = tf.train.RMSPropOptimizer(
             #    learning_rate=learn_rate,
@@ -676,14 +703,16 @@ class PPO(object):
             #    epsilon=1e-8,
             #)
 
-            self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), inc_step)
-            #self.train_op = tf.group(opt.apply_gradients(grads_and_vars), inc_step)
+            #self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), self.inc_step)
+            #self.train_op = tf.group(opt.apply_gradients(grads_and_vars), self.inc_step)
+            self.train_op = opt.apply_gradients(grads_and_vars)
 
             # Add model-wide statistics:
             model_summaries += [
                 tf.summary.scalar("global/grad_global_norm", tf.global_norm(grads)),
                 tf.summary.scalar("global/var_global_norm", tf.global_norm(pi.var_list)),
                 tf.summary.scalar("global/opt_learn_rate", learn_rate),
+                tf.summary.scalar("global/total_loss", self.loss),
             ]
 
             self.summary_writer = None
@@ -785,6 +814,16 @@ class PPO(object):
         z0 = tf.reduce_sum(ea0, 1, keep_dims=True)
         p0 = ea0 / z0
         return tf.reduce_sum(p0 * (tf.log(z0) - a0), 1)
+
+    def kl_divergence(self, logits_1, logits_2):
+        a0 = logits_1 - tf.reduce_max(logits_1, axis=-1, keep_dims=True)
+        a1 = logits_2 - tf.reduce_max(logits_2, axis=-1, keep_dims=True)
+        ea0 = tf.exp(a0)
+        ea1 = tf.exp(a1)
+        z0 = tf.reduce_sum(ea0, axis=-1, keep_dims=True)
+        z1 = tf.reduce_sum(ea1, axis=-1, keep_dims=True)
+        p0 = ea0 / z0
+        return tf.reduce_sum(p0 * (a0 - tf.log(z0) - a1 + tf.log(z1)), axis=-1)
 
 
     def start(self, sess, summary_writer):
@@ -895,27 +934,39 @@ class PPO(object):
         samples off_policy rollout[s] from replay memory and updates the parameters.
         The update is then sent to the parameter server.
         """
-        sess.run(self.sync)  # copy weights from shared to local
 
-        # Get and process on_policy_rollout for A3C train step:
+        # Copy weights from shared to local old_policy:
+        if self.local_steps % self.pi_old_update_period == 0:
+            #sess.run(self.sync_pi_old)
+            sess.run(self.copy)
+
+        # Copy weights from shared to local new_policy:
+        sess.run(self.sync)
+
+        # Get and process on_policy_rollout for PPO train step:
         on_policy_rollout = self.pull_batch_from_queue()
         on_policy_batch = on_policy_rollout.process(gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
 
-        # Feeder for on-policy A3C loss estimation graph:
-        feed_dict = {
-            pl: value for pl, value in zip(self.local_network.a3c_lstm_state_pl_flatten, flatten_nested(on_policy_batch.features))
-        }  # ..passes lstm context
+        # Feeder for on-policy PPO loss estimation graph:
+        feed_dict = {pl: value for pl, value in
+                     zip(self.local_network.ppo_lstm_state_pl_flatten, flatten_nested(on_policy_batch.features))}
+        feed_dict.update(
+            {pl: value for pl, value in
+             zip(self.local_network_old.ppo_lstm_state_pl_flatten, flatten_nested(on_policy_batch.features))}
+        )
         feed_dict.update(
             {
-                self.local_network.a3c_state_in: on_policy_batch.si,
-                self.local_network.a3c_a_r_in: on_policy_batch.last_ar,
+                self.local_network.ppo_state_in: on_policy_batch.si,
+                self.local_network.ppo_a_r_in: on_policy_batch.last_ar,
+                self.local_network_old.ppo_state_in: on_policy_batch.si,
+                self.local_network_old.ppo_a_r_in: on_policy_batch.last_ar,
                 self.ppo_act_target: on_policy_batch.a,
                 self.ppo_adv_target: on_policy_batch.adv,
                 self.ppo_r_target: on_policy_batch.r,
                 self.local_network.train_phase: True,
             }
         )
-
+        ############# IGNORE EVERYTHING OFF-POLICY:
         if self.use_off_policy_a3c or self.use_pixel_control or self.use_value_replay:
             # Get sample from replay memory:
             if self.use_rebalanced_replay:
@@ -964,27 +1015,32 @@ class PPO(object):
 
         # Every worker writes model summaries:
         should_compute_summary =\
-            self.local_steps % self.model_summary_freq == 0   # self.task == 0 and
+            self.local_steps % self.model_summary_freq == 0
+
+        fetches = [self.train_op]
+
 
         if should_compute_summary:
-            fetches = [self.model_summary_op, self.train_op, self.global_step]
+            fetches_last = fetches + [self.model_summary_op, self.inc_step]
         else:
-            fetches = [self.train_op, self.global_step]
-
-        #print('TRAIN_FEED_DICT:\n', feed_dict)
-        #print('\n=======S=======\n')
-        #for key,value in feed_dict.items():
-        #    try:
-        #        print(key,':', value.shape,'\n')
-        #    except:
-        #        print(key, ':', value, '\n')
-        #print('\n=====E======\n')
+            fetches_last = fetches + [self.inc_step]
 
         # And finally...
-        fetched = sess.run(fetches, feed_dict=feed_dict)
+        for i in range(self.num_epochs - 1):
+            #print('epoch:', i)
+            fetched = sess.run(fetches, feed_dict=feed_dict)
+
+        fetched = sess.run(fetches_last, feed_dict=feed_dict)
+        #print('last_epoch, global_step: {}, summary: {}'.format(fetched[-1], should_compute_summary))
 
         if should_compute_summary:
-            self.summary_writer.add_summary(tf.Summary.FromString(fetched[0]), fetched[-1])
+            self.summary_writer.add_summary(tf.Summary.FromString(fetched[-2]), fetched[-1])
             self.summary_writer.flush()
 
         self.local_steps += 1
+
+        #for k, v in feed_dict.items():
+        #    try:
+        #        print(k, v.shape)
+        #    except:
+        #        print(k, type(v))

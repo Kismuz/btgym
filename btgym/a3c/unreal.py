@@ -540,12 +540,14 @@ class Unreal(object):
                 logits=pi.a3c_logits,
                 labels=self.a3c_act_target
             )
+            mean_neg_log_prob_ac = tf.reduce_mean(neg_log_prob_ac)
             pi_loss = tf.reduce_mean(neg_log_prob_ac * self.a3c_adv_target)
 
             # loss of value function:
-            #vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.a3c_vf - self.a3c_reward_target))
+            #vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.a3c_vf - self.a3c_r_target))
 
             vf_loss = 0.5 * tf.reduce_mean(tf.square(pi.a3c_vf - self.a3c_r_target))
+            mean_vf = tf.reduce_mean(pi.a3c_vf)
 
             #entropy = - tf.reduce_sum(prob_tf * log_prob_tf)
             entropy = tf.reduce_mean(self.cat_entropy(pi.a3c_logits))
@@ -559,11 +561,13 @@ class Unreal(object):
 
             # Base summaries:
             model_summaries = [
-                    tf.summary.scalar("a3c/policy_loss", pi_loss),
-                    tf.summary.histogram("a3c/pi_prob_d", prob_tf),
-                    tf.summary.scalar("a3c/value_loss", vf_loss),
-                    tf.summary.scalar("a3c/entropy", entropy),
-                ]
+                tf.summary.scalar("a3c/policy_loss", pi_loss),
+                #tf.summary.histogram("a3c/pi_prob_d", prob_tf),
+                tf.summary.scalar("a3c/value_loss", vf_loss),
+                tf.summary.scalar("a3c/entropy", entropy),
+                tf.summary.scalar("a3c/neg_log_pi", mean_neg_log_prob_ac),
+                tf.summary.scalar("a3c/vf", mean_vf),
+            ]
 
             # Off-policy batch size:
             off_bs = tf.to_float(tf.shape(pi.off_a3c_state_in)[0])
@@ -618,7 +622,7 @@ class Unreal(object):
                 pc_action_reshaped = tf.reshape(self.pc_action, [-1, 1, 1, env.action_space.n])
                 pc_q_action = tf.multiply(pi.pc_q, pc_action_reshaped)
                 pc_q_action = tf.reduce_sum(pc_q_action, axis=-1, keep_dims=False)
-                pc_loss = tf.reduce_sum(tf.square(self.pc_target - pc_q_action))  #sum all over
+                pc_loss = tf.reduce_sum(tf.square(self.pc_target - pc_q_action))  # sum all over
 
                 self.loss = self.loss + self.pc_lambda * rebalanced_replay_weight * pc_loss
                 # Add specific summary:
@@ -653,7 +657,8 @@ class Unreal(object):
 
             grads_and_vars = list(zip(grads, self.network.var_list))
 
-            inc_step = self.global_step.assign_add(tf.shape(pi.a3c_state_in)[0])
+            self.inc_step = self.global_step.assign_add(tf.shape(pi.a3c_state_in)[0])
+            #self.inc_step = self.global_step.assign_add(1)
 
             # Anneal learning rate:
             learn_rate = tf.train.polynomial_decay(
@@ -675,7 +680,7 @@ class Unreal(object):
             #    epsilon=1e-8,
             #)
 
-            self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), inc_step)
+            self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), self.inc_step)
             #self.train_op = tf.group(opt.apply_gradients(grads_and_vars), inc_step)
 
             # Add model-wide statistics:
