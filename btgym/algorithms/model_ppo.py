@@ -9,8 +9,8 @@
 # https://github.com/openai/universe-starter-agent
 #
 
-from btgym.a3c.model_util import *
-
+from btgym.algorithms.model_util import *
+import tensorflow as tf
 
 class BasePpoPolicy(object):
     """

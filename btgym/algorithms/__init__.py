@@ -17,9 +17,12 @@
 #
 ###############################################################################
 
+# Asynchronous  implementattion of several `advantage actor-critic`-style algorithms.
+
 from .envs import create_env
-from .rollout import PartialRollout
-from .memory import Memory, ExperienceFrame
+from .rollout import Rollout, ExperienceConfig
+from .memory import Memory
+from .runner import RunnerThread
 from .worker import Worker
 
 from .model import LSTMPolicy, LSTMPolicy2D, BaseLSTMPolicy

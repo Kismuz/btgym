@@ -17,7 +17,7 @@ from tensorflow.python.util.nest import flatten as flatten_nested
 import six.moves.queue as queue
 import threading
 
-from btgym.a3c import Memory, PartialRollout
+from btgym.algorithms import Memory, Rollout
 
 
 class RunnerThread(threading.Thread):
@@ -111,7 +111,7 @@ def env_runner(sess,
 
     while True:
         terminal_end = False
-        rollout = PartialRollout()
+        rollout = Rollout()
 
         # Partially collect first experience of rollout:
         action, value_, features = policy.a3c_act(last_state, last_features, last_action_reward)
@@ -928,7 +928,7 @@ class Unreal(object):
             else:
                 off_policy_sample = self.memory.sample_uniform(self.replay_rollout_length)
 
-            off_policy_rollout = PartialRollout()
+            off_policy_rollout = Rollout()
             off_policy_rollout.add_memory_sample(off_policy_sample)
             off_policy_batch = off_policy_rollout.process(gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
 

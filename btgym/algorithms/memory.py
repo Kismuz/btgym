@@ -4,29 +4,7 @@
 
 import numpy as np
 from collections import deque
-
-class ExperienceFrame(object):
-    def __init__(self,
-                 position,
-                 state,
-                 action,
-                 reward,
-                 value,
-                 r,
-                 terminal,
-                 features,
-                 pixel_change,
-                 last_action_reward):
-        self.position = position
-        self.state = state
-        self.action = action
-        self.reward = reward
-        self.value = value
-        self.r = r
-        self.terminal = terminal
-        self.features = features  # LSTM context
-        self.pixel_change = pixel_change
-        self.last_action_reward = last_action_reward
+from btgym.algorithms import ExperienceConfig
 
 
 class Memory(object):
@@ -34,7 +12,7 @@ class Memory(object):
     Replay memory with rebalanced replay.
     Note: must be filled up before calling sampling methods.
     """
-    def __init__(self, history_size, max_sample_size, reward_threshold=0.1):
+    def __init__(self, history_size, max_sample_size, log, reward_threshold=0.1, experience_config=ExperienceConfig):
         """
         Args:
             history_size:       number of experiences stored;
@@ -45,6 +23,8 @@ class Memory(object):
         self._frames = deque(maxlen=history_size)
         self.reward_threshold = reward_threshold
         self.max_sample_size = int(max_sample_size)
+        self.experience_config = experience_config
+        self.log = log
         # Indices for non-priority frames:
         self._zero_reward_indices = deque()
         # Indices for priority frames:
@@ -54,14 +34,14 @@ class Memory(object):
 
     def add_frame(self, frame):
         """
-        Appends single frame to memory.
+        Appends single experience frame to memory.
         Args:
-            frame:  `ExperienceFrame` instance.
+            frame:  dictionary of values, keys must be same as in `self.experience_config`.
         """
-        if frame.terminal and len(self._frames) > 0 and self._frames[-1].terminal:
+        if frame['terminal'] and len(self._frames) > 0 and self._frames[-1]['terminal']:
             # Discard if terminal frame continues
-            print("Sequential terminal frame encountered. Discarded.")
-            print(self._frames[-1].position, frame.position)
+            self.log.warning("Sequential terminal frame encountered. Discarded.")
+            self.log.warning('{} -- {}'.format(self._frames[-1]['position'], frame['position']))
             return
 
         frame_index = self._top_frame_index + len(self._frames)
@@ -72,7 +52,7 @@ class Memory(object):
 
         # Decide and append index:
         if frame_index >= self.max_sample_size - 1:
-            if abs(frame.reward) <= self.reward_threshold:
+            if abs(frame['reward']) <= self.reward_threshold:
                 self._zero_reward_indices.append(frame_index)
 
             else:
@@ -109,26 +89,13 @@ class Memory(object):
                 # Means part or tail of previously recorded episode is somehow lost,
                 # so we need to mark stored episode as 'ended':
                 self._frames[-1].terminal = True
-                print('***{} changed to terminal'.format(self._frames[-1].position))
-                print('*** stored: ', self._frames[-1].position, 'next: ', rollout.position[0])
+                self.log.warning('{} changed to terminal'.format(self._frames[-1].position))
                 # If we get a lot of such messages it is an indication something is going wrong.
         # Add experiences one by one:
-        # TODO: pain-slow. Vectorize?
+        # TODO: pain-slow.
         for i in range(len(rollout.position)):
-            self.add_frame(
-                ExperienceFrame(
-                    rollout.position[i],
-                    rollout.states[i],
-                    rollout.actions[i],
-                    rollout.rewards[i],
-                    rollout.values[i],
-                    rollout.r[i],
-                    rollout.terminal[i],
-                    rollout.features[i],
-                    rollout.pixel_change[i],
-                    rollout.last_actions_rewards[i],
-                )
-            )
+            frame = {key: rollout[key][i] for key in self.experience_config}
+            self.add_frame(frame)
 
     def is_full(self):
         return len(self._frames) >= self._history_size
@@ -209,7 +176,7 @@ class Memory(object):
             is_full = True
             if attempt == sample_attempts - 1:
                 check_sequence = False
-                print('Warning: failed to sample {} successive frames, sampled as is.'.format(size))
+                self.log.warning('Warning: failed to sample {} successive frames, sampled as is.'.format(size))
 
             for i in range(size - 1):
                 frame = self._frames[raw_start_frame_index + i]
