@@ -1,0 +1,237 @@
+# Original code comes from OpenAI repository under MIT licence:
+#
+# https://github.com/openai/universe-starter-agent
+# https://github.com/openai/baselines
+#
+
+import numpy as np
+import tensorflow as tf
+import tensorflow.contrib.rnn as rnn
+from tensorflow.contrib.layers import flatten as batch_flatten
+from tensorflow.python.util.nest import flatten as flatten_nested
+
+
+def normalized_columns_initializer(std=1.0):
+    def _initializer(shape, dtype=None, partition_info=None):
+        out = np.random.randn(*shape).astype(np.float32)
+        out *= std / np.sqrt(np.square(out).sum(axis=0, keepdims=True))
+        return tf.constant(out)
+    return _initializer
+
+
+def categorical_sample(logits, d):
+    value = tf.squeeze(tf.multinomial(logits - tf.reduce_max(logits, [1], keep_dims=True), 1), [1])
+    return tf.one_hot(value, d)
+
+
+def rnn_placeholders(state):
+    """
+    Given nested [multilayer] RNN state tensor, infers and returns state placeholders.
+    """
+    if isinstance(state, tf.contrib.rnn.LSTMStateTuple):
+        c, h = state
+        c = tf.placeholder(tf.float32, c.shape, c.op.name + '_c_pl')
+        h = tf.placeholder(tf.float32, h.shape, h.op.name + '_h_pl')
+        return tf.contrib.rnn.LSTMStateTuple(c, h)
+    elif isinstance(state, tf.Tensor):
+        h = state
+        h = tf.placeholder(tf.float32, h.shape, h.op.name + '_h_pl')
+        return h
+    else:
+        structure = [rnn_placeholders(x) for x in state]
+        return tuple(structure)
+
+
+def linear(x, size, name, initializer=None, bias_init=0, reuse=False):
+    with tf.variable_scope(name, reuse=reuse):
+        w = tf.get_variable("/w", [x.get_shape()[1], size], initializer=initializer)
+        b = tf.get_variable("/b", [size], initializer=tf.constant_initializer(bias_init))
+    return tf.matmul(x, w) + b
+
+
+def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", dtype=tf.float32,
+           collections=None, reuse=False):
+    with tf.variable_scope(name, reuse=reuse):
+        stride_shape = [1, stride[0], stride[1], 1]
+        filter_shape = [filter_size[0], filter_size[1], int(x.get_shape()[3]), num_filters]
+        # there are "num input feature maps * filter height * filter width"
+        # inputs to each hidden unit
+        fan_in = np.prod(filter_shape[:3])
+        # each unit in the lower layer receives a gradient from:
+        # "num output feature maps * filter height * filter width" /
+        #   pooling size
+        fan_out = np.prod(filter_shape[:2]) * num_filters
+        # initialize weights with random weights
+        w_bound = np.sqrt(6. / (fan_in + fan_out))
+
+        w = tf.get_variable("W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
+                            collections=collections)
+        b = tf.get_variable("b", [1, 1, 1, num_filters], initializer=tf.constant_initializer(0.0),
+                            collections=collections)
+        return tf.nn.conv2d(x, w, stride_shape, pad) + b
+
+
+def deconv2d(x, output_channels, name, filter_size=(4, 4), stride=(2, 2),
+             dtype=tf.float32, collections=None, reuse=False):
+    """
+    Deconvolution layer, paper:
+    http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf
+    """
+    with tf.variable_scope(name, reuse=reuse):
+        stride_shape = [1, stride[0], stride[1], 1]
+
+        batch_size = tf.shape(x)[0]
+        input_height = int(x.get_shape()[1])
+        input_width = int(x.get_shape()[2])
+        input_channels = int(x.get_shape()[3])
+
+        out_height = (input_height - 1) * stride[0] + filter_size[0]
+        out_width = (input_width - 1) * stride[1] + filter_size[1]
+
+        filter_shape = [filter_size[0], filter_size[1], output_channels, input_channels]
+        output_shape = tf.stack([batch_size, out_height, out_width, output_channels])
+
+        fan_in = np.prod(filter_shape[:2]) * input_channels
+        fan_out = np.prod(filter_shape[:2]) * output_channels
+        # initialize weights with random weights
+        w_bound = np.sqrt(6. / (fan_in + fan_out))
+
+        w = tf.get_variable("d_W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
+                            collections=collections)
+        b = tf.get_variable("d_b", [1, 1, 1, output_channels], initializer=tf.constant_initializer(0.0),
+                            collections=collections)
+
+        return tf.nn.conv2d_transpose(x, w, output_shape,
+                                      strides=stride_shape,
+                                      padding='VALID') + b
+
+
+def conv_2d_network_constructor(x,
+                                ob_space,
+                                ac_space,
+                                num_layers=4,
+                                num_filters=32,
+                                filter_size=(3, 3),
+                                stride=(2, 2),
+                                pad="SAME",
+                                dtype=tf.float32,
+                                collections=None,
+                                reuse=False):
+    """
+    Stage1 network: from preprocessed 2D input to estimated features.
+    Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.
+    Returns:
+        output tensor;
+    """
+    for i in range(num_layers):
+        x = tf.nn.elu(
+            conv2d(x, num_filters, "conv2d_{}".format(i + 1), filter_size, stride, pad, dtype, collections, reuse)
+        )
+    # A3c/Unreal original paper design:
+    # x = tf.nn.elu(conv2d(x, 16, 'conv2d_1', [8, 8], [4, 4], pad, dtype, collections, reuse))
+    # x = tf.nn.elu(conv2d(x, 32, 'conv2d_2', [4, 4], [2, 2], pad, dtype, collections, reuse))
+    # x = tf.nn.elu(
+    #    linear(batch_flatten(x), 256, 'conv_2d_dense', self.normalized_columns_initializer(0.01), reuse=reuse)
+    # )
+    return x
+
+
+def lstm_network_constructor(x, a_r, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse=False):
+    """
+    Stage2: from features to flattened LSTM output.
+    Defines [multi-layered] dynamic [possibly] shared LSTM network.
+    Returns:
+         batch-wise flattened output tensor;
+         lstm initial state tensor;
+         lstm state output tensor;
+         lstm flattened feed placeholders as tuple.
+    """
+    with tf.variable_scope('lstm', reuse=reuse):
+
+        # Flatten, add action/reward and expand with fake time dim to feed LSTM bank:
+        x = tf.concat([batch_flatten(x), a_r] ,axis=-1)
+        x = tf.expand_dims(x, [0])
+
+        # Define LSTM layers:
+        lstm = []
+        for size in lstm_layers:
+            lstm += [lstm_class(size, state_is_tuple=True)]
+
+        lstm = rnn.MultiRNNCell(lstm, state_is_tuple=True)
+        # Get time_dimension as [1]-shaped tensor:
+        step_size = tf.expand_dims(tf.shape(x)[1], [0])
+
+        lstm_init_state = lstm.zero_state(1, dtype=tf.float32)
+
+        lstm_state_pl = rnn_placeholders(lstm.zero_state(1, dtype=tf.float32))
+        lstm_state_pl_flatten = flatten_nested(lstm_state_pl)
+
+        lstm_outputs, lstm_state_out = tf.nn.dynamic_rnn(
+            lstm,
+            x,
+            initial_state=lstm_state_pl,
+            sequence_length=step_size,
+            time_major=False
+        )
+        x_out = tf.reshape(lstm_outputs, [-1, lstm_layers[-1]])
+    return x_out, lstm_init_state, lstm_state_out, lstm_state_pl_flatten
+
+
+def dense_aac_network_constructor(x, ac_space, reuse=False):
+    """
+    Stage3: from LSTM flattened output to advantage actor-critic.
+    Returns: logits, value function and action sampling function.
+    """
+    logits = linear(x, ac_space, "action", normalized_columns_initializer(0.01), reuse=reuse)
+    vf = tf.reshape(linear(x, 1, "value", normalized_columns_initializer(1.0), reuse=reuse), [-1])
+    sample = categorical_sample(logits, ac_space)[0, :]
+
+    return logits, vf, sample
+
+
+def dense_rp_network_constructor(x):
+    """
+    Stage3: From shared convolutions to reward-prediction task output.
+    """
+    # print('x_shape:', x.get_shape())
+    x = tf.reshape(x, [1, -1]) # flatten to pretend we got batch of size 1
+    # Fully connected x128 followed by 3-way classifier [with softmax], as in paper:
+    x = tf.nn.elu(linear(x, 128, 'rp_dense', normalized_columns_initializer(0.01)))
+    # print('x_shape2:', x.get_shape())
+    logits = linear(x, 3, 'rp_classifier', normalized_columns_initializer(0.01))
+    # Note:  softmax is actually not here but inside loss operation (see unreal.py)
+    return logits
+
+
+def pixel_change_2d_estimator_constructor(ob_space, stride=2):
+    """
+    Defines op for estimating `pixel change` as subsampled
+    absolute difference of two states.
+    """
+    input_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_state_in')
+    input_last_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_last_state_in')
+
+    x = tf.abs(tf.subtract(input_state, input_last_state))
+    x = tf.expand_dims(x, 0)[:, 1:-1, 1:-1, :]  # fake batch dim and crop
+    x = tf.reduce_mean(x, axis=-1, keep_dims=True)
+    # TODO: max_pool may be better?
+    x_out = tf.nn.avg_pool(x, [1 ,stride ,stride ,1], [1 ,stride ,stride ,1], 'SAME')
+    return input_state, input_last_state, x_out
+
+
+def duelling_pc_network_constructor(x, ac_space, reuse=False):
+    """
+    Stage3 network for `pixel control' task: from LSTM output to Q-aux. features.
+    """
+    x = tf.nn.elu(linear(x, 9* 9 * 32, 'pc_dense', normalized_columns_initializer(0.01), reuse=reuse))
+    x = tf.reshape(x, [-1, 9, 9, 32])
+    pc_a = deconv2d(x, ac_space, 'pc_advantage', [4, 4], [2, 2], reuse=reuse)  # [None, 20, 20, ac_size]
+    pc_v = deconv2d(x, 1, 'pc_value_fn', [4, 4], [2, 2], reuse=reuse)  # [None, 20, 20, 1]
+
+    # Q-value estimate using advantage mean,
+    # as (9) in "Dueling Network Architectures..." paper:
+    # https://arxiv.org/pdf/1511.06581.pdf
+    pc_a_mean = tf.reduce_mean(pc_a, axis=3, keep_dims=True)
+    pc_q = pc_v + pc_a - pc_a_mean  # [None, 20, 20, ac_size]
+
+    return pc_q

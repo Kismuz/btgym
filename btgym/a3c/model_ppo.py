@@ -9,12 +9,7 @@
 # https://github.com/openai/universe-starter-agent
 #
 
-
-import numpy as np
-import tensorflow as tf
-import tensorflow.contrib.rnn as rnn
-from tensorflow.contrib.layers import flatten as batch_flatten
-from tensorflow.python.util.nest import flatten as flatten_nested
+from btgym.a3c.model_util import *
 
 
 class BasePpoPolicy(object):
@@ -30,62 +25,62 @@ class BasePpoPolicy(object):
         self.lstm_layers = lstm_layers
 
         # Placeholders for obs. state input:
-        self.ppo_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='ppo_state_in_pl')
-        self.off_ppo_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='off_policy_ppo_state_in_pl')
+        self.on_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='on_policy_state_in_pl')
+        self.off_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='off_policy_state_in_pl')
         self.rp_state_in = tf.placeholder(tf.float32, [rp_sequence_size-1] + list(ob_space), name='rp_state_in_pl')
 
         # Placeholders for concatenated action [one-hot] and reward [scalar]:
-        self.ppo_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='ppo_action_reward_in_pl')
-        self.off_ppo_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='off_policy_ppo_action_reward_in_pl')
+        self.on_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='on_policy_action_reward_in_pl')
+        self.off_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='off_policy_action_reward_in_pl')
  
         # Base on-policy ppo network:
         # Conv. layers:
-        ppo_x = self._conv_2D_network_constructor(self.ppo_state_in, ob_space, ac_space)
+        ppo_x = conv_2d_network_constructor(self.on_state_in, ob_space, ac_space)
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
-        [ppo_x, self.ppo_lstm_init_state, self.ppo_lstm_state_out, self.ppo_lstm_state_pl_flatten] =\
-            self._lstm_network_constructor(ppo_x, self.ppo_a_r_in, lstm_class, lstm_layers, )
+        [ppo_x, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
+            lstm_network_constructor(ppo_x, self.on_a_r_in, lstm_class, lstm_layers, )
         # ppo policy and value outputs and action-sampling function:
-        [self.ppo_logits, self.ppo_vf, self.ppo_sample] = self._dense_ppo_network_constructor(ppo_x, ac_space)
+        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network_constructor(ppo_x, ac_space)
 
         # Off-policy ppo network (shared):
-        off_ppo_x = self._conv_2D_network_constructor(self.off_ppo_state_in, ob_space, ac_space, reuse=True)
-        [off_ppo_x_lstm_out, _, _, self.off_ppo_lstm_state_pl_flatten] =\
-            self._lstm_network_constructor(off_ppo_x, self.off_ppo_a_r_in, lstm_class, lstm_layers, reuse=True)
+        off_ppo_x = conv_2d_network_constructor(self.off_state_in, ob_space, ac_space, reuse=True)
+        [off_x_lstm_out, _, _, self.off_lstm_state_pl_flatten] =\
+            lstm_network_constructor(off_ppo_x, self.off_a_r_in, lstm_class, lstm_layers, reuse=True)
         [self.off_ppo_logits, self.off_ppo_vf, _] =\
-            self._dense_ppo_network_constructor(off_ppo_x_lstm_out, ac_space, reuse=True)
+            dense_aac_network_constructor(off_x_lstm_out, ac_space, reuse=True)
 
         # Aux1: `Pixel control` network:
         # Define pixels-change estimation function:
         # Yes, it rather env-specific but for atari case it is handy to do it here, see self.get_pc_target():
         [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
-            self._pixel_change_2D_estimator_constructor(ob_space)
+            pixel_change_2d_estimator_constructor(ob_space)
 
-        self.pc_state_in = self.off_ppo_state_in
-        self.pc_a_r_in = self.off_ppo_a_r_in
-        self.pc_lstm_state_pl_flatten = self.off_ppo_lstm_state_pl_flatten
+        self.pc_state_in = self.off_state_in
+        self.pc_a_r_in = self.off_a_r_in
+        self.pc_lstm_state_pl_flatten = self.off_lstm_state_pl_flatten
 
         # Shared conv and lstm nets, same off-policy batch:
-        pc_x = off_ppo_x_lstm_out
+        pc_x = off_x_lstm_out
 
         # PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:
-        self.pc_q = self._duelling_pc_network_constructor(pc_x)
+        self.pc_q = duelling_pc_network_constructor(pc_x, self.ac_space)
 
         # Aux2: `Value function replay` network:
         # VR network is fully shared with ppo network but with `value` only output:
         # and has same off-policy batch pass with off_ppo network:
 
-        self.vr_state_in = self.off_ppo_state_in
-        self.vr_a_r_in = self.off_ppo_a_r_in
+        self.vr_state_in = self.off_state_in
+        self.vr_a_r_in = self.off_a_r_in
 
-        self.vr_lstm_state_pl_flatten = self.off_ppo_lstm_state_pl_flatten
+        self.vr_lstm_state_pl_flatten = self.off_lstm_state_pl_flatten
         self.vr_value = self.off_ppo_vf
 
         # Aux3: `Reward prediction` network:
         # Shared conv.:
-        rp_x = self._conv_2D_network_constructor(self.rp_state_in, ob_space, ac_space, reuse=True)
+        rp_x = conv_2d_network_constructor(self.rp_state_in, ob_space, ac_space, reuse=True)
 
         # RP output:
-        self.rp_logits = self._dense_rp_network_constructor(rp_x)
+        self.rp_logits = dense_rp_network_constructor(rp_x)
 
         # Batch-norm related (useless, ignore):
         try:
@@ -111,29 +106,29 @@ class BasePpoPolicy(object):
     def get_initial_features(self):
         """Called by thread-runner. Returns LSTM zero-state."""
         sess = tf.get_default_session()
-        return sess.run(self.ppo_lstm_init_state)
+        return sess.run(self.on_lstm_init_state)
 
     def act(self, observation, lstm_state, action_reward):
         """Called by thread-runner."""
         sess = tf.get_default_session()
-        feeder = {pl: value for pl, value in zip(self.ppo_lstm_state_pl_flatten, flatten_nested(lstm_state))}
+        feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
         feeder.update(
-            {self.ppo_state_in: [observation],
-             self.ppo_a_r_in: [action_reward],
+            {self.on_state_in: [observation],
+             self.on_a_r_in: [action_reward],
              self.train_phase: False}
         )
-        return sess.run([self.ppo_sample, self.ppo_vf, self.ppo_lstm_state_out], feeder)
+        return sess.run([self.on_sample, self.on_vf, self.on_lstm_state_out], feeder)
 
     def get_value(self, observation, lstm_state, action_reward):
         """Called by thread-runner."""
         sess = tf.get_default_session()
-        feeder = {pl: value for pl, value in zip(self.ppo_lstm_state_pl_flatten, flatten_nested(lstm_state))}
+        feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
         feeder.update(
-            {self.ppo_state_in: [observation],
-             self.ppo_a_r_in: [action_reward],
+            {self.on_state_in: [observation],
+             self.on_a_r_in: [action_reward],
              self.train_phase: False}
         )
-        return sess.run(self.ppo_vf, feeder)[0]
+        return sess.run(self.on_vf, feeder)[0]
 
     def get_pc_target(self, state, last_state):
         """Called by thread-runner."""
@@ -141,221 +136,3 @@ class BasePpoPolicy(object):
         feeder = {self.pc_change_state_in: state, self.pc_change_last_state_in: last_state}
         return sess.run(self.pc_target, feeder)[0,...,0]
 
-    def normalized_columns_initializer(self, std=1.0):
-        def _initializer(shape, dtype=None, partition_info=None):
-            out = np.random.randn(*shape).astype(np.float32)
-            out *= std / np.sqrt(np.square(out).sum(axis=0, keepdims=True))
-            return tf.constant(out)
-        return _initializer
-
-    def linear(self, x, size, name, initializer=None, bias_init=0, reuse=False):
-        with tf.variable_scope(name, reuse=reuse):
-            w = tf.get_variable("/w", [x.get_shape()[1], size], initializer=initializer)
-            b = tf.get_variable("/b", [size], initializer=tf.constant_initializer(bias_init))
-        return tf.matmul(x, w) + b
-
-    def categorical_sample(self, logits, d):
-        """Called by thread-runner."""
-        value = tf.squeeze(tf.multinomial(logits - tf.reduce_max(logits, [1], keep_dims=True), 1), [1])
-        return tf.one_hot(value, d)
-
-    def rnn_placeholders(self, state):
-        """
-        Given nested [multilayer] RNN state tensor, infers and returns state placeholders.
-        """
-        if isinstance(state, tf.contrib.rnn.LSTMStateTuple):
-            c, h = state
-            c = tf.placeholder(tf.float32, c.shape, c.op.name + '_c_pl')
-            h = tf.placeholder(tf.float32, h.shape, h.op.name + '_h_pl')
-            return tf.contrib.rnn.LSTMStateTuple(c, h)
-        elif isinstance(state, tf.Tensor):
-            h = state
-            h = tf.placeholder(tf.float32, h.shape, h.op.name + '_h_pl')
-            return h
-        else:
-            structure = [self.rnn_placeholders(x) for x in state]
-            return tuple(structure)
-
-    def conv2d(self, x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", dtype=tf.float32,
-               collections=None, reuse=False):
-        with tf.variable_scope(name, reuse=reuse):
-            stride_shape = [1, stride[0], stride[1], 1]
-            filter_shape = [filter_size[0], filter_size[1], int(x.get_shape()[3]), num_filters]
-
-            # there are "num input feature maps * filter height * filter width"
-            # inputs to each hidden unit
-            fan_in = np.prod(filter_shape[:3])
-            # each unit in the lower layer receives a gradient from:
-            # "num output feature maps * filter height * filter width" /
-            #   pooling size
-            fan_out = np.prod(filter_shape[:2]) * num_filters
-            # initialize weights with random weights
-            w_bound = np.sqrt(6. / (fan_in + fan_out))
-
-            w = tf.get_variable("W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
-                                collections=collections)
-            b = tf.get_variable("b", [1, 1, 1, num_filters], initializer=tf.constant_initializer(0.0),
-                                collections=collections)
-            return tf.nn.conv2d(x, w, stride_shape, pad) + b
-
-    def deconv2d(self, x, output_channels, name, filter_size=(4, 4), stride=(2, 2),
-                 dtype=tf.float32, collections=None, reuse=False):
-        """
-        Deconvolution layer, paper:
-        http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf
-        """
-        with tf.variable_scope(name, reuse=reuse):
-            stride_shape = [1, stride[0], stride[1], 1]
-
-            batch_size = tf.shape(x)[0]
-            input_height = int(x.get_shape()[1])
-            input_width = int(x.get_shape()[2])
-            input_channels = int(x.get_shape()[3])
-
-            out_height = (input_height - 1) * stride[0] + filter_size[0]
-            out_width = (input_width - 1) * stride[1] + filter_size[1]
-
-            filter_shape = [filter_size[0], filter_size[1], output_channels, input_channels]
-            output_shape = tf.stack([batch_size, out_height, out_width, output_channels])
-
-            fan_in = np.prod(filter_shape[:2]) * input_channels
-            fan_out = np.prod(filter_shape[:2]) * output_channels
-            # initialize weights with random weights
-            w_bound = np.sqrt(6. / (fan_in + fan_out))
-
-            w = tf.get_variable("d_W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
-                                collections=collections)
-            b = tf.get_variable("d_b", [1, 1, 1, output_channels], initializer=tf.constant_initializer(0.0),
-                                collections=collections)
-
-            return tf.nn.conv2d_transpose(x, w, output_shape,
-                                          strides=stride_shape,
-                                          padding='VALID') + b
-
-    def _conv_2D_network_constructor(self,
-                                     x,
-                                     ob_space,
-                                     ac_space,
-                                     num_layers=4,
-                                     num_filters=32,
-                                     filter_size=(3, 3),
-                                     stride=(2, 2),
-                                     pad="SAME",
-                                     dtype=tf.float32,
-                                     collections=None,
-                                     reuse=False):
-        """
-        Stage1 network: from preprocessed 2D input to estimated features.
-        Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.
-        Returns:
-            output tensor;
-        """
-        for i in range(num_layers):
-            x = tf.nn.elu(
-                self.conv2d(x, num_filters, "conv2d_{}".format(i + 1), filter_size, stride, pad, dtype, collections, reuse)
-            )
-        # A3c/Unreal original paper design:
-        #x = tf.nn.elu(self.conv2d(x, 16, 'conv2d_1', [8, 8], [4, 4], pad, dtype, collections, reuse))
-        #x = tf.nn.elu(self.conv2d(x, 32, 'conv2d_2', [4, 4], [2, 2], pad, dtype, collections, reuse))
-        #x = tf.nn.elu(
-        #    self.linear(batch_flatten(x), 256, 'conv_2d_dense', self.normalized_columns_initializer(0.01), reuse=reuse)
-        #)
-        return x
-
-    def _lstm_network_constructor(self, x, a_r, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse=False):
-        """
-        Stage2: from features to flattened LSTM output.
-        Defines [multi-layered] dynamic [possibly] shared LSTM network.
-        Returns:
-             batch-wise flattened output tensor;
-             lstm initial state tensor;
-             lstm state output tensor;
-             lstm flattened feed placeholders as tuple.
-        """
-        with tf.variable_scope('lstm', reuse=reuse):
-
-            # Flatten, add action/reward and expand with fake time dim to feed LSTM bank:
-            x = tf.concat([batch_flatten(x), a_r],axis=-1)
-            x = tf.expand_dims(x, [0])
-
-            # Define LSTM layers:
-            lstm = []
-            for size in lstm_layers:
-                lstm += [lstm_class(size, state_is_tuple=True)]
-
-            lstm = rnn.MultiRNNCell(lstm, state_is_tuple=True)
-            # self.lstm = lstm[0]
-
-            # Get time_dimension as [1]-shaped tensor:
-            step_size = tf.expand_dims(tf.shape(x)[1], [0])
-
-            lstm_init_state = lstm.zero_state(1, dtype=tf.float32)
-
-            lstm_state_pl = self.rnn_placeholders(lstm.zero_state(1, dtype=tf.float32))
-            lstm_state_pl_flatten = flatten_nested(lstm_state_pl)
-
-            lstm_outputs, lstm_state_out = tf.nn.dynamic_rnn(
-                lstm,
-                x,
-                initial_state=lstm_state_pl,
-                sequence_length=step_size,
-                time_major=False
-            )
-            x_out = tf.reshape(lstm_outputs, [-1, lstm_layers[-1]])
-        return x_out, lstm_init_state, lstm_state_out, lstm_state_pl_flatten
-
-    def _dense_ppo_network_constructor(self, x, ac_space, reuse=False):
-        """
-        Stage3: from LSTM flattened output to ppo-specifc values.
-        Returns: ppo logits, value function and action sampling function.
-        """
-        logits = self.linear(x, ac_space, "action", self.normalized_columns_initializer(0.01), reuse=reuse)
-        vf = tf.reshape(self.linear(x, 1, "value", self.normalized_columns_initializer(1.0), reuse=reuse), [-1])
-        sample = self.categorical_sample(logits, ac_space)[0, :]
-
-        return logits, vf, sample
-
-    def _dense_rp_network_constructor(self, x):
-        """
-        Stage3: From shared convolutions to reward-prediction task output.
-        """
-        #print('x_shape:', x.get_shape())
-        x = tf.reshape(x, [1, -1]) # flatten to pretend we got batch of size 1
-        # Fully connected x128 followed by 3-way classifier [with softmax], as in paper,
-        x = tf.nn.elu(self.linear(x, 128, 'rp_dense', self.normalized_columns_initializer(0.01)))
-        #print('x_shape2:', x.get_shape())
-        logits = self.linear(x, 3, 'rp_classifier', self.normalized_columns_initializer(0.01))
-        # Note:  softmax is actually not here but inside loss operation (see unreal.py)
-        return logits
-
-    def _pixel_change_2D_estimator_constructor(self, ob_space, stride=2):
-        """
-        Defines op for estimating `pixel change` as subsampled
-        absolute difference of two states.
-        """
-        input_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_state_in')
-        input_last_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_last_state_in')
-
-        x = tf.abs(tf.subtract(input_state, input_last_state))
-        x = tf.expand_dims(x, 0)[:, 1:-1, 1:-1, :]  # fake batch dim and crop
-        x = tf.reduce_mean(x, axis=-1, keep_dims=True)
-        # TODO: max_pool may be better?
-        x_out = tf.nn.avg_pool(x, [1,stride,stride,1], [1,stride,stride,1], 'SAME')
-        return input_state, input_last_state, x_out
-
-    def _duelling_pc_network_constructor(self, x, reuse=False):
-        """
-        Stage3 network for `pixel control' task: from LSTM output to Q-aux. features.
-        """
-        x = tf.nn.elu(self.linear(x, 9*9*32, 'pc_dense', self.normalized_columns_initializer(0.01), reuse=reuse))
-        x = tf.reshape(x, [-1, 9, 9, 32])
-        pc_a = self.deconv2d(x, self.ac_space, 'pc_advantage', [4, 4], [2, 2], reuse=reuse) # [None, 20, 20, ac_size]
-        pc_v = self.deconv2d(x, 1, 'pc_value_fn', [4, 4], [2, 2], reuse=reuse)  # [None, 20, 20, 1]
-
-        # Q-value estimate using advantage mean,
-        # as (9) in "Dueling Network Architectures..." paper:
-        # https://arxiv.org/pdf/1511.06581.pdf
-        pc_a_mean = tf.reduce_mean(pc_a, axis=3, keep_dims=True)
-        pc_q = pc_v + pc_a - pc_a_mean  # [None, 20, 20, ac_size]
-
-        return pc_q
