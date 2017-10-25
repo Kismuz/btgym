@@ -106,17 +106,17 @@ def deconv2d(x, output_channels, name, filter_size=(4, 4), stride=(2, 2),
                                       padding='VALID') + b
 
 
-def conv_2d_network_constructor(x,
-                                ob_space,
-                                ac_space,
-                                num_layers=4,
-                                num_filters=32,
-                                filter_size=(3, 3),
-                                stride=(2, 2),
-                                pad="SAME",
-                                dtype=tf.float32,
-                                collections=None,
-                                reuse=False):
+def conv_2d_network(x,
+                    ob_space,
+                    ac_space,
+                    num_layers=4,
+                    num_filters=32,
+                    filter_size=(3, 3),
+                    stride=(2, 2),
+                    pad="SAME",
+                    dtype=tf.float32,
+                    collections=None,
+                    reuse=False):
     """
     Stage1 network: from preprocessed 2D input to estimated features.
     Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.
@@ -136,7 +136,7 @@ def conv_2d_network_constructor(x,
     return x
 
 
-def lstm_network_constructor(x, a_r, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse=False):
+def lstm_network(x, a_r, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse=False):
     """
     Stage2: from features to flattened LSTM output.
     Defines [multi-layered] dynamic [possibly] shared LSTM network.
@@ -177,7 +177,7 @@ def lstm_network_constructor(x, a_r, lstm_class=rnn.BasicLSTMCell, lstm_layers=(
     return x_out, lstm_init_state, lstm_state_out, lstm_state_pl_flatten
 
 
-def dense_aac_network_constructor(x, ac_space, reuse=False):
+def dense_aac_network(x, ac_space, reuse=False):
     """
     Stage3: from LSTM flattened output to advantage actor-critic.
     Returns: logits, value function and action sampling function.
@@ -189,7 +189,7 @@ def dense_aac_network_constructor(x, ac_space, reuse=False):
     return logits, vf, sample
 
 
-def dense_rp_network_constructor(x):
+def dense_rp_network(x):
     """
     Stage3: From shared convolutions to reward-prediction task output.
     """
@@ -203,7 +203,7 @@ def dense_rp_network_constructor(x):
     return logits
 
 
-def pixel_change_2d_estimator_constructor(ob_space, stride=2):
+def pixel_change_2d_estimator(ob_space, stride=2):
     """
     Defines op for estimating `pixel change` as subsampled
     absolute difference of two states.
@@ -219,7 +219,7 @@ def pixel_change_2d_estimator_constructor(ob_space, stride=2):
     return input_state, input_last_state, x_out
 
 
-def duelling_pc_network_constructor(x, ac_space, reuse=False):
+def duelling_pc_network(x, ac_space, reuse=False):
     """
     Stage3 network for `pixel control' task: from LSTM output to Q-aux. features.
     """

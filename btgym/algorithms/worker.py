@@ -186,14 +186,14 @@ class Worker(multiprocessing.Process):
                 sess.run(trainer.sync)
                 trainer.start(sess, summary_writer)
                 global_step = sess.run(trainer.global_step)
-                try:
-                    if not trainer.memory.is_full():
-                        trainer.fill_replay_memory(sess)
-                except:
-                    self.log.warning(
-                        "worker_{}: trainer {} does not uses replay memory.".
-                            format(self.task, self.trainer_class)
-                    )
+                #try:
+                if not trainer.memory.is_full():
+                    trainer.fill_replay_memory(sess)
+                #except:
+                #    self.log.warning(
+                #        "worker_{}: trainer {} does not uses replay memory.".
+                #            format(self.task, self.trainer_class)
+                #    )
 
                 self.log.warning("worker_{}: started training at step: {}".format(self.task, global_step))
                 while not sv.should_stop() and global_step < self.max_steps:

@@ -63,9 +63,9 @@ class BaseUnrealPolicy(object):
         [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
             self._pixel_change_2D_estimator_constructor(ob_space)
 
-        #pc_x = self.conv_2d_network_constructor(self.pc_state_in, ob_space, ac_space, reuse=True)
+        #pc_x = self.conv_2d_network(self.pc_state_in, ob_space, ac_space, reuse=True)
         #[pc_x, _, _, self.pc_lstm_state_pl_flatten] =\
-        #    self.lstm_network_constructor(pc_x, self.pc_a_r_in, lstm_class, lstm_layers, reuse=True)
+        #    self.lstm_network(pc_x, self.pc_a_r_in, lstm_class, lstm_layers, reuse=True)
         self.pc_state_in = self.off_a3c_state_in
         self.pc_a_r_in = self.off_a3c_a_r_in
         self.pc_lstm_state_pl_flatten = self.off_a3c_lstm_state_pl_flatten
@@ -80,9 +80,9 @@ class BaseUnrealPolicy(object):
         # VR network is fully shared with a3c network but with `value` only output:
         # and has same off-policy batch pass with off_a3c network:
 
-        #vr_x = self.conv_2d_network_constructor(self.vr_state_in, ob_space, ac_space, reuse=True)
+        #vr_x = self.conv_2d_network(self.vr_state_in, ob_space, ac_space, reuse=True)
         #[vr_x, _, _, self.vr_lstm_state_pl_flatten] =\
-        #    self.lstm_network_constructor(vr_x, lstm_class, lstm_layers, reuse=True)
+        #    self.lstm_network(vr_x, lstm_class, lstm_layers, reuse=True)
         self.vr_state_in = self.off_a3c_state_in
         self.vr_a_r_in = self.off_a3c_a_r_in
         #vr_x = off_a3c_x

@@ -102,29 +102,29 @@ def env_runner(sess,
         terminal_end = False
         rollout = Rollout()
 
-        # Partially collect first experience of rollout:
         action, value_, context = policy.act(last_state, last_context, last_action_reward)
 
         # argmax to convert from one-hot:
         state, reward, terminal, info = env.step(action.argmax())
         if not test:
             state = state['model_input']
-        # Estimate `pixel_change`:
-        pixel_change = None # policy.get_pc_target(state, last_state)
 
-        # Partially collect the experience:
-        frame_position = {'episode': local_episode, 'step': length}
-        last_experience = dict(
-            position=frame_position,
-            state=last_state,
-            action=action,
-            reward=reward,
-            value=value_,
-            terminal=terminal,
-            context=last_context,
-            pixel_change=pixel_change,
-            last_action_reward=last_action_reward,
-        )
+        # Partially collect first experience of rollout:
+        last_experience = {
+            'position': {'episode': local_episode, 'step': length},
+            'state': last_state,
+            'action': action,
+            'reward': reward,
+            'value': value_,
+            'terminal': terminal,
+            'context': last_context,
+            'last_action_reward': last_action_reward,
+            'pixel_change': policy._get_pc_target(state, last_state),
+        }
+        # Execute user-defined callbacks to policy, if any:
+        #for key, callback in policy.callback.items():
+        #    last_experience[key] = callback(**locals())
+
         length += 1
         rewards += reward
         last_state = state
@@ -138,62 +138,43 @@ def env_runner(sess,
                 # Continue adding experiences to rollout:
                 action, value_, context = policy.act(last_state, last_context, last_action_reward)
 
-                # argmax to convert from one-hot:
+                # Argmax to convert from one-hot:
                 state, reward, terminal, info = env.step(action.argmax())
                 if not test:
                         state = state['model_input']
-                pixel_change = None # policy.get_pc_target(state, last_state)
 
                 # Partially collect next experience:
-                frame_position = {'episode': local_episode, 'step': length}
-                experience = dict(
-                    position=frame_position,
-                    state=last_state,
-                    action=action,
-                    reward=reward,
-                    value=value_,
-                    terminal=terminal,
-                    context=last_context,
-                    pixel_change=pixel_change,
-                    last_action_reward=last_action_reward,
-                )
-                # Complete and push previous experience:
+                experience = {
+                    'position': {'episode': local_episode, 'step': length},
+                    'state': last_state,
+                    'action': action,
+                    'reward': reward,
+                    'value': value_,
+                    'terminal': terminal,
+                    'context': last_context,
+                    'last_action_reward': last_action_reward,
+                    'pixel_change': policy._get_pc_target(state, last_state),
+                }
+                #for key, callback in policy.callback.items():
+                #    experience[key] = callback(**locals())
+
+                # Bootstrap to complete and push previous experience:
                 last_experience['r'] = value_
                 rollout.add(last_experience)
 
-                #print ('last_experience {}'.format(last_experience['position']))
-                #for k,v in last_experience.items():
-                #    try:
-                #        print(k, 'shape: ', v.shape)
-                #    except:
-                #        try:
-                #            print(k, 'type: ', type(v), 'len: ', len(v))
-                #        except:
-                #            print(k, 'type: ', type(v), 'value: ', v)
-
-                #print('rollout_step: {}, last_exp/frame_pos: {}\nr: {}, v: {}, v_next: {}, t: {}'.
-                #    format(
-                #        length,
-                #        last_experience['position'],
-                #        last_experience['reward'],
-                #        last_experience['value'],
-                #        last_experience['value_next'],
-                #        last_experience['terminal']
-                #    )
-                #)
+                # Housekeeping:
                 length += 1
                 rewards += reward
                 last_state = state
                 last_context = context
                 last_action = action
                 last_reward = reward
+                last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
                 last_experience = experience
 
             if terminal:
                 # Finished episode within last taken step:
                 terminal_end = True
-                #print("Episode finished. Sum of rewards: %d. Length: %d" % (rewards, length))
-
                 # All environment-specific summaries are here due to fact
                 # only runner allowed to interact with environment:
                 # Accumulate values for averaging:
@@ -270,22 +251,22 @@ def env_runner(sess,
                 last_action = np.zeros(env.action_space.n)
                 last_action[0] = 1
                 last_reward = 0.0
+                last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
 
                 # Increment global and local episode counts:
                 sess.run(policy.inc_episode)
                 local_episode += 1
                 break
 
-        # After rolling `num_local_steps` or less (if got `terminal`)
+        # After rolling `rollout_length` or less (if got `terminal`)
         # complete final experience of the rollout:
         if not terminal_end:
-            #print('last_non_terminal_value_next_added')
+            # Bootstrap:
             last_experience['r'] = np.asarray(
                 [policy.get_value(last_state, last_context, last_action_reward)]
             )
 
         else:
-            #print('last_terminal_value_next_added')
             last_experience['r'] = np.asarray([0.0])
 
         rollout.add(last_experience)

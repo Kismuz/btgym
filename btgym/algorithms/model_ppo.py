@@ -23,6 +23,7 @@ class BasePpoPolicy(object):
         self.rp_sequence_size = rp_sequence_size
         self.lstm_class = lstm_class
         self.lstm_layers = lstm_layers
+        self.callback = {}
 
         # Placeholders for obs. state input:
         self.on_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='on_policy_state_in_pl')
@@ -35,25 +36,25 @@ class BasePpoPolicy(object):
  
         # Base on-policy ppo network:
         # Conv. layers:
-        ppo_x = conv_2d_network_constructor(self.on_state_in, ob_space, ac_space)
+        ppo_x = conv_2d_network(self.on_state_in, ob_space, ac_space)
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
         [ppo_x, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
-            lstm_network_constructor(ppo_x, self.on_a_r_in, lstm_class, lstm_layers, )
+            lstm_network(ppo_x, self.on_a_r_in, lstm_class, lstm_layers, )
         # ppo policy and value outputs and action-sampling function:
-        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network_constructor(ppo_x, ac_space)
+        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(ppo_x, ac_space)
 
         # Off-policy ppo network (shared):
-        off_ppo_x = conv_2d_network_constructor(self.off_state_in, ob_space, ac_space, reuse=True)
+        off_ppo_x = conv_2d_network(self.off_state_in, ob_space, ac_space, reuse=True)
         [off_x_lstm_out, _, _, self.off_lstm_state_pl_flatten] =\
-            lstm_network_constructor(off_ppo_x, self.off_a_r_in, lstm_class, lstm_layers, reuse=True)
+            lstm_network(off_ppo_x, self.off_a_r_in, lstm_class, lstm_layers, reuse=True)
         [self.off_ppo_logits, self.off_ppo_vf, _] =\
-            dense_aac_network_constructor(off_x_lstm_out, ac_space, reuse=True)
+            dense_aac_network(off_x_lstm_out, ac_space, reuse=True)
 
         # Aux1: `Pixel control` network:
         # Define pixels-change estimation function:
         # Yes, it rather env-specific but for atari case it is handy to do it here, see self.get_pc_target():
         [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
-            pixel_change_2d_estimator_constructor(ob_space)
+            pixel_change_2d_estimator(ob_space)
 
         self.pc_state_in = self.off_state_in
         self.pc_a_r_in = self.off_a_r_in
@@ -63,7 +64,7 @@ class BasePpoPolicy(object):
         pc_x = off_x_lstm_out
 
         # PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:
-        self.pc_q = duelling_pc_network_constructor(pc_x, self.ac_space)
+        self.pc_q = duelling_pc_network(pc_x, self.ac_space)
 
         # Aux2: `Value function replay` network:
         # VR network is fully shared with ppo network but with `value` only output:
@@ -77,10 +78,10 @@ class BasePpoPolicy(object):
 
         # Aux3: `Reward prediction` network:
         # Shared conv.:
-        rp_x = conv_2d_network_constructor(self.rp_state_in, ob_space, ac_space, reuse=True)
+        rp_x = conv_2d_network(self.rp_state_in, ob_space, ac_space, reuse=True)
 
         # RP output:
-        self.rp_logits = dense_rp_network_constructor(rp_x)
+        self.rp_logits = dense_rp_network(rp_x)
 
         # Batch-norm related (useless, ignore):
         try:
@@ -93,7 +94,6 @@ class BasePpoPolicy(object):
                 shape=(),
                 name='train_phase_flag_pl'
             )
-
         self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         # Add moving averages to save list:
         moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')
@@ -102,6 +102,9 @@ class BasePpoPolicy(object):
         # What to save:
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
         self.var_list += moving_var_list + renorm_var_list
+
+        # Callbacks:
+        self.callback['pixel_change'] = self._get_pc_target
 
     def get_initial_features(self):
         """Called by thread-runner. Returns LSTM zero-state."""
@@ -130,8 +133,8 @@ class BasePpoPolicy(object):
         )
         return sess.run(self.on_vf, feeder)[0]
 
-    def get_pc_target(self, state, last_state):
-        """Called by thread-runner."""
+    def _get_pc_target(self, state, last_state, **kwargs):
+        """Called-back by thread-runner."""
         sess = tf.get_default_session()
         feeder = {self.pc_change_state_in: state, self.pc_change_last_state_in: last_state}
         return sess.run(self.pc_target, feeder)[0,...,0]

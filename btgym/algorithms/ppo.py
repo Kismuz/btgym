@@ -17,6 +17,7 @@ from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.algorithms import Memory, Rollout, RunnerThread
 
+from btgym.algorithms.math_util import log_uniform, cat_entropy, kl_divergence
 
 class PPO(object):
     """____"""
@@ -26,7 +27,7 @@ class PPO(object):
                  policy_class,
                  policy_config,
                  log,
-                 random_seed=0,
+                 random_seed=None,
                  model_gamma=0.99,  # decay
                  model_gae_lambda=1.00,  # GAE lambda
                  model_beta=0.01,  # entropy regularizer
@@ -68,11 +69,12 @@ class PPO(object):
         should be computed.
         """
         self.log = log
-
         self.random_seed = random_seed
-        np.random.seed(self.random_seed)
-        self.log.debug('U_{}_rnd_seed:{}, log_u_sample_(0,1]x5: {}'.
-                       format(task, random_seed, self.log_uniform([1e-10,1], 5)))
+        if self.random_seed is not None:
+            np.random.seed(self.random_seed)
+            tf.set_random_seed(self.random_seed)
+        self.log.debug('AAC_{}_rnd_seed:{}, log_u_sample_(0,1]x5: {}'.
+                       format(task, random_seed, log_uniform([1e-10,1], 5)))
 
         self.env = env
         self.task = task
@@ -82,7 +84,7 @@ class PPO(object):
         # AAC specific:
         self.model_gamma = model_gamma  # decay
         self.model_gae_lambda = model_gae_lambda  # general advantage estimator lambda
-        self.model_beta = self.log_uniform(model_beta, 1)  # entropy reg.
+        self.model_beta = log_uniform(model_beta, 1)  # entropy reg.
 
         # PPO:
         self.clip_epsilon = clip_epsilon
@@ -91,7 +93,7 @@ class PPO(object):
 
         # Optimizer
         self.opt_max_train_steps = opt_max_train_steps
-        self.opt_learn_rate = self.log_uniform(opt_learn_rate, 1)
+        self.opt_learn_rate = log_uniform(opt_learn_rate, 1)
 
         if opt_end_learn_rate is None:
             self.opt_end_learn_rate = self.opt_learn_rate
@@ -119,7 +121,7 @@ class PPO(object):
         # UNREAL specific:
         self.off_aac_lambda = off_aac_lambda
         self.rp_lambda = rp_lambda
-        self.pc_lambda = self.log_uniform(pc_lambda, 1)
+        self.pc_lambda = log_uniform(pc_lambda, 1)
         self.vr_lambda = vr_lambda
         self.gamma_pc = gamma_pc
         self.replay_memory_size = replay_memory_size
@@ -151,11 +153,11 @@ class PPO(object):
                              log=self.log)
 
         self.log.info(
-            'U_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}, pc_lambda: {:1.8f}.'.
+            'AAC_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}, pc_lambda: {:1.8f}.'.
                 format(self.task, self.opt_learn_rate, self.model_beta, self.pc_lambda))
 
         #self.log.info(
-        #    'U_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
+        #    'AAC_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
         #        format(self.task, self.opt_max_train_steps, self.opt_decay_steps, self.opt_end_learn_rate))
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
@@ -223,14 +225,13 @@ class PPO(object):
 
             # Meant for Batch-norm layers:
             pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
-            self.log.debug('U_{}: local_network_upd_ops_collection:\n{}'.format(self.task, pi.update_ops))
+            self.log.debug('AAC_{}: local_network_upd_ops_collection:\n{}'.format(self.task, pi.update_ops))
 
-            self.log.debug('\nU_{}: local_network_var_list_to_save:'.format(self.task))
+            self.log.debug('\nAAC_{}: local_network_var_list_to_save:'.format(self.task))
             for v in pi.var_list:
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
-
-            #  Learning rate and L^clip epsilon annealing:
+            #  Learning rate and L^clip-epsilon annealing:
             learn_rate = tf.train.polynomial_decay(
                 self.opt_learn_rate,
                 self.global_step + 1,
@@ -265,11 +266,11 @@ class PPO(object):
 
             mean_pi_ratio = tf.reduce_mean(pi_ratio)
             mean_vf = tf.reduce_mean(pi.on_vf)
-            mean_kl_old_new = tf.reduce_mean(self.kl_divergence(pi_old.on_logits,pi.on_logits ))
+            mean_kl_old_new = tf.reduce_mean(kl_divergence(pi_old.on_logits,pi.on_logits ))
 
             # loss of value function:
             vf_loss = tf.reduce_mean(tf.square(pi.on_vf - self.on_pi_r_target))
-            entropy = tf.reduce_mean(self.cat_entropy(pi.on_logits))
+            entropy = tf.reduce_mean(cat_entropy(pi.on_logits))
 
             ppo_loss = pi_loss + vf_loss - entropy * self.model_beta
 
@@ -329,11 +330,11 @@ class PPO(object):
                 pc_action_reshaped = tf.reshape(self.pc_action, [-1, 1, 1, env.action_space.n])
                 pc_q_action = tf.multiply(pi.pc_q, pc_action_reshaped)
                 pc_q_action = tf.reduce_sum(pc_q_action, axis=-1, keep_dims=False)
-                pc_loss = tf.nn.l2_loss(self.pc_target - pc_q_action) # TODO: mean or sum????
+                pc_loss = tf.nn.l2_loss(self.pc_target - pc_q_action) / off_bs
 
                 self.loss = self.loss + self.pc_lambda * rebalanced_replay_weight * pc_loss
                 # Add specific summary:
-                model_summaries += [tf.summary.scalar('pixel_control/q_loss', pc_loss / off_bs)]
+                model_summaries += [tf.summary.scalar('pixel_control/q_loss', pc_loss)]
 
             if self.use_value_replay:
                 # Value function replay loss:
@@ -359,11 +360,17 @@ class PPO(object):
             grads, _ = tf.clip_by_global_norm(grads, 40.0)
 
             # Copy weights from the parameter server to the local model
-            self.sync = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
-            #self.sync_pi_old = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi_old.var_list, self.network.var_list)])
-
+            self.sync_pi = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
+            self.sync_pi_old = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi_old.var_list, self.network.var_list)])
+            self.sync = tf.group(self.sync_pi, self.sync_pi_old) # startup sync, called by parent worker
             # Copy weights from new policy model to old one:
             self.copy = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi_old.var_list, pi.var_list)])
+
+            # Soft-copy [alternative]:
+            self.tau = 0.1
+            self.pi_old_soft_copy = tf.group(
+                *[v1.assign(self.tau * v2 + (1 - self.tau)* v1) for v1, v2 in zip(pi_old.var_list, pi.var_list)]
+            )
 
             grads_and_vars = list(zip(grads, self.network.var_list))
 
@@ -395,7 +402,7 @@ class PPO(object):
             self.summary_writer = None
             self.local_steps = 0
 
-            self.log.debug('U_{}: train op defined'.format(self.task))
+            self.log.debug('AAC_{}: train op defined'.format(self.task))
 
             # Model stat. summary:
             self.model_summary_op = tf.summary.merge(model_summaries, name='model_summary')
@@ -459,48 +466,7 @@ class PPO(object):
                 self.test_mode,
                 self.ep_summary
             )
-            self.log.debug('U_{}: init() done'.format(self.task))
-
-    def log_uniform(self, lo_hi, size):
-        """
-        Samples from log-uniform distribution in range specified by `lo_hi`.
-        Takes:
-            lo_hi: either scalar or [low_value, high_value]
-            size: sample size
-        Returns:
-             np.array or np.float (if size=1).
-        """
-        r = np.asarray(lo_hi)
-        try:
-            lo = r[0]
-            hi = r[-1]
-        except:
-            lo = hi = r
-        x = np.random.random(size)
-        log_lo = np.log(lo)
-        log_hi = np.log(hi)
-        v = log_lo * (1 - x) + log_hi * x
-        if size > 1:
-            return np.exp(v)
-        else:
-            return np.exp(v)[0]
-
-    def cat_entropy(self, logits):
-        a0 = logits - tf.reduce_max(logits, 1, keep_dims=True)
-        ea0 = tf.exp(a0)
-        z0 = tf.reduce_sum(ea0, 1, keep_dims=True)
-        p0 = ea0 / z0
-        return tf.reduce_sum(p0 * (tf.log(z0) - a0), 1)
-
-    def kl_divergence(self, logits_1, logits_2):
-        a0 = logits_1 - tf.reduce_max(logits_1, axis=-1, keep_dims=True)
-        a1 = logits_2 - tf.reduce_max(logits_2, axis=-1, keep_dims=True)
-        ea0 = tf.exp(a0)
-        ea1 = tf.exp(a1)
-        z0 = tf.reduce_sum(ea0, axis=-1, keep_dims=True)
-        z1 = tf.reduce_sum(ea1, axis=-1, keep_dims=True)
-        p0 = ea0 / z0
-        return tf.reduce_sum(p0 * (a0 - tf.log(z0) - a1 + tf.log(z1)), axis=-1)
+            self.log.debug('AAC_{}: init() done'.format(self.task))
 
     def start(self, sess, summary_writer):
         self.runner.start_runner(sess, summary_writer)  # starting runner thread
@@ -511,18 +477,9 @@ class PPO(object):
         Self explanatory:  take a rollout from the queue of the thread runner.
         """
         rollout = self.runner.queue.get(timeout=600.0)
-
         #self.log.debug('Rollout position:{}\nactions:{}\nrewards:{}\nlast_action:{}\nlast_reward:{}\nterminal:{}\n'.
         #      format(rollout.position, rollout.actions,
         #             rollout.rewards, rollout.last_actions, rollout.last_rewards, rollout.terminal))
-        """
-        while not rollout.terminal:
-            try:
-                rollout.extend(self.runner.queue.get_nowait())
-            except queue.Empty:
-                break
-        return rollout
-        """
         return rollout
 
     def process_rp(self, rp_experience_frames):
@@ -534,10 +491,10 @@ class PPO(object):
         batch_rp_target = []
 
         for i in range(self.rp_sequence_size - 1):
-            batch_rp_state.append(rp_experience_frames[i].state)
+            batch_rp_state.append(rp_experience_frames[i]['state'])
 
         # One hot vector for target reward (i.e. reward taken from last of sampled frames):
-        r = rp_experience_frames[-1].reward
+        r = rp_experience_frames[-1]['reward']
         rp_t = [0.0, 0.0, 0.0]
         if r > self.rp_reward_threshold:
             rp_t[1] = 1.0  # positive [010]
@@ -548,7 +505,10 @@ class PPO(object):
         else:
             rp_t[0] = 1.0  # zero [100]
         batch_rp_target.append(rp_t)
-        feeder = {self.local_network.rp_state_in: batch_rp_state, self.rp_target: batch_rp_target}
+        feeder = {
+            self.local_network.rp_state_in: np.asarray(batch_rp_state),
+            self.rp_target: np.asarray(batch_rp_target)
+        }
         return feeder
 
     def process_vr(self, batch):
@@ -557,19 +517,17 @@ class PPO(object):
         """
         if not self.use_off_policy_aac:  # use single pass of network on same off-policy batch
             feeder = {
-                pl: value for pl, value in zip(self.local_network.vr_lstm_state_pl_flatten, flatten_nested(batch.features))
+                pl: value for pl, value in zip(self.local_network.vr_lstm_state_pl_flatten, flatten_nested(batch['context']))
             }  # ...passes lstm context
             feeder.update(
                 {
-                    self.local_network.vr_state_in: batch.si,
-                    self.local_network.vr_a_r_in: batch.last_ar,
-                    #self.vr_action: batch.a,  # don't need those for value fn. estimation
-                    #self.vr_advantage: batch.adv, # neither..
-                    self.vr_target: batch.r,
+                    self.local_network.vr_state_in: batch['state'],
+                    self.local_network.vr_a_r_in: batch['last_action_reward'],
+                    self.vr_target: batch['r'],
                 }
             )
         else:
-            feeder = {self.vr_target: batch.r}  # redundant actually :)
+            feeder = {self.vr_target: batch['r']}  # redundant actually :)
         return feeder
 
     def process_pc(self, batch):
@@ -578,14 +536,17 @@ class PPO(object):
         """
         if not self.use_off_policy_aac:  # use single pass of network on same off-policy batch
             feeder = {
-                pl: value for pl, value in zip(self.local_network.pc_lstm_state_pl_flatten, flatten_nested(batch.features))
+                pl: value for pl, value in zip(
+                    self.local_network.pc_lstm_state_pl_flatten,
+                    flatten_nested(batch['context'])
+                )
             }
             feeder.update(
                 {
-                    self.local_network.pc_state_in: batch.si,
-                    self.local_network.pc_a_r_in: batch.last_ar,
-                    self.pc_action: batch.a,
-                    self.pc_target: batch.pc
+                    self.local_network.pc_state_in: batch['state'],
+                    self.local_network.pc_a_r_in: batch['last_action_reward'],
+                    self.pc_action: batch['action'],
+                    self.pc_target: batch['pixel_change']
                 }
             )
         else:
@@ -598,11 +559,11 @@ class PPO(object):
         Supposed to be called by parent worker() just before training begins.
         """
         if self.use_memory:
-            sess.run(self.sync)
+            sess.run(self.sync_pi)
             while not self.memory.is_full():
                 rollout = self.pull_batch_from_queue()
                 self.memory.add_rollout(rollout)
-            self.log.info('U_{}: replay memory filled.'.format(self.task))
+            self.log.info('AAC_{}: replay memory filled.'.format(self.task))
 
     def process(self, sess):
         """
@@ -616,7 +577,10 @@ class PPO(object):
             sess.run(self.copy)
 
         # Copy weights from shared to local new_policy:
-        sess.run(self.sync)
+        sess.run(self.sync_pi)
+
+        # Update old_policy:
+        #sess.run(self.pi_old_soft_copy)
 
         # Get and process rollout for on-policy train step:
         on_policy_rollout = self.pull_batch_from_queue()
@@ -624,20 +588,20 @@ class PPO(object):
 
         # Feeder for on-policy AAC loss estimation graph:
         feed_dict = {pl: value for pl, value in
-                     zip(self.local_network.on_lstm_state_pl_flatten, flatten_nested(on_policy_batch.features))}
+                     zip(self.local_network.on_lstm_state_pl_flatten, flatten_nested(on_policy_batch['context']))}
         feed_dict.update(
             {pl: value for pl, value in
-             zip(self.local_network_old.on_lstm_state_pl_flatten, flatten_nested(on_policy_batch.features))}
+             zip(self.local_network_old.on_lstm_state_pl_flatten, flatten_nested(on_policy_batch['context']))}
         )
         feed_dict.update(
             {
-                self.local_network.on_state_in: on_policy_batch.si,
-                self.local_network.on_a_r_in: on_policy_batch.last_ar,
-                self.local_network_old.on_state_in: on_policy_batch.si,
-                self.local_network_old.on_a_r_in: on_policy_batch.last_ar,
-                self.on_pi_act_target: on_policy_batch.a,
-                self.on_pi_adv_target: on_policy_batch.adv,
-                self.on_pi_r_target: on_policy_batch.r,
+                self.local_network.on_state_in: on_policy_batch['state'],
+                self.local_network.on_a_r_in: on_policy_batch['last_action_reward'],
+                self.local_network_old.on_state_in: on_policy_batch['state'],
+                self.local_network_old.on_a_r_in: on_policy_batch['last_action_reward'],
+                self.on_pi_act_target: on_policy_batch['action'],
+                self.on_pi_adv_target: on_policy_batch['advantage'],
+                self.on_pi_r_target: on_policy_batch['r'],
                 self.local_network.train_phase: True,
             }
         )
@@ -660,15 +624,15 @@ class PPO(object):
             # Feeder for off-policy AAC loss estimation graph:
             off_policy_feeder = {
                 pl: value for pl, value in
-            zip(self.local_network.off_a3c_lstm_state_pl_flatten, flatten_nested(off_policy_batch.features))
+            zip(self.local_network.off_lstm_state_pl_flatten, flatten_nested(off_policy_batch['context']))
             }
             off_policy_feeder.update(
                 {
-                    self.local_network.off_state_in: off_policy_batch.si,
-                    self.local_network.off_a_r_in: off_policy_batch.last_ar,
-                    self.off_policy_action_target: off_policy_batch.a,
-                    self.off_policy_advantage_target: off_policy_batch.adv,
-                    self.off_policy_reward_target: off_policy_batch.r,
+                    self.local_network.off_state_in: off_policy_batch['state'],
+                    self.local_network.off_a_r_in: off_policy_batch['last_action_reward'],
+                    self.off_policy_action_target: off_policy_batch['action'],
+                    self.off_policy_advantage_target: off_policy_batch['advantage'],
+                    self.off_policy_reward_target: off_policy_batch['r'],
                 }
             )
             feed_dict.update(off_policy_feeder)
@@ -704,7 +668,6 @@ class PPO(object):
 
         # Do a number of SGD train steps:
         for i in range(self.num_epochs - 1):
-            #print('epoch:', i)
             fetched = sess.run(fetches, feed_dict=feed_dict)
 
         fetched = sess.run(fetches_last, feed_dict=feed_dict)

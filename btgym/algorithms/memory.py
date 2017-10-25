@@ -4,7 +4,6 @@
 
 import numpy as np
 from collections import deque
-from btgym.algorithms import ExperienceConfig
 
 
 class Memory(object):
@@ -12,7 +11,7 @@ class Memory(object):
     Replay memory with rebalanced replay.
     Note: must be filled up before calling sampling methods.
     """
-    def __init__(self, history_size, max_sample_size, log, reward_threshold=0.1, experience_config=ExperienceConfig):
+    def __init__(self, history_size, max_sample_size, log, reward_threshold=0.1):
         """
         Args:
             history_size:       number of experiences stored;
@@ -23,7 +22,6 @@ class Memory(object):
         self._frames = deque(maxlen=history_size)
         self.reward_threshold = reward_threshold
         self.max_sample_size = int(max_sample_size)
-        self.experience_config = experience_config
         self.log = log
         # Indices for non-priority frames:
         self._zero_reward_indices = deque()
@@ -36,7 +34,7 @@ class Memory(object):
         """
         Appends single experience frame to memory.
         Args:
-            frame:  dictionary of values, keys must be same as in `self.experience_config`.
+            frame:  dictionary of values.
         """
         if frame['terminal'] and len(self._frames) > 0 and self._frames[-1]['terminal']:
             # Discard if terminal frame continues
@@ -76,25 +74,25 @@ class Memory(object):
         """
         Adds frames from given rollout to memory with respect to episode continuation.
         Args:
-            rollout:    `PartialRollout` instance.
+            rollout:    `Rollout` instance.
         """
         # Check if current rollout is direct extension of last stored frame sequence:
-        if len(self._frames) > 0 and not self._frames[-1].terminal:
+        if len(self._frames) > 0 and not self._frames[-1]['terminal']:
             # E.g. check if it is same local episode and successive frame order:
-            if self._frames[-1].position['episode'] == rollout.position[0]['episode'] and \
-                    self._frames[-1].position['step'] + 1 == rollout.position[0]['step']:
+            if self._frames[-1]['position']['episode'] == rollout['position'][0]['episode'] and \
+                    self._frames[-1]['position']['step'] + 1 == rollout['position'][0]['step']:
                 # Means it is ok to just extend previously stored episode
                 pass
             else:
                 # Means part or tail of previously recorded episode is somehow lost,
                 # so we need to mark stored episode as 'ended':
-                self._frames[-1].terminal = True
-                self.log.warning('{} changed to terminal'.format(self._frames[-1].position))
+                self._frames[-1]['terminal'] = True
+                self.log.warning('{} changed to terminal'.format(self._frames[-1]['position']))
                 # If we get a lot of such messages it is an indication something is going wrong.
         # Add experiences one by one:
         # TODO: pain-slow.
-        for i in range(len(rollout.position)):
-            frame = {key: rollout[key][i] for key in self.experience_config}
+        for i in range(len(rollout['position'])):
+            frame = {key: rollout[key][i] for key in rollout.keys()}
             self.add_frame(frame)
 
     def is_full(self):
@@ -110,7 +108,7 @@ class Memory(object):
         """
         start_pos = np.random.randint(0, self._history_size - sequence_size - 1)
         # Shift by one if hit terminal frame:
-        if self._frames[start_pos].terminal:
+        if self._frames[start_pos]['terminal']:
             start_pos += 1  # assuming that there are no successive terminal frames.
 
         sampled_frames = []
@@ -118,7 +116,7 @@ class Memory(object):
         for i in range(sequence_size):
             frame = self._frames[start_pos + i]
             sampled_frames.append(frame)
-            if frame.terminal:
+            if frame['terminal']:
                 break  # it's ok to return less than `sequence_size` frames if `terminal` frame encountered.
 
         return sampled_frames
@@ -182,11 +180,11 @@ class Memory(object):
                 frame = self._frames[raw_start_frame_index + i]
                 sampled_frames.append(frame)
                 if check_sequence:
-                    if frame.terminal:
+                    if frame['terminal']:
                         if exact_size:
                             is_full = False
                         #print('attempt:', attempt)
-                        #print('frame.terminal:', frame.terminal)
+                        #print('frame.terminal:', frame['terminal'])
                         break
             # Last frame can be terminal anyway:
             frame = self._frames[raw_start_frame_index + size - 1]

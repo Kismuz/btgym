@@ -9,20 +9,20 @@
 # https://arxiv.org/abs/1602.01783
 # https://arxiv.org/abs/1611.05397
 
-import scipy.signal
+
 import numpy as np
-from collections import namedtuple
 
+from btgym.algorithms.math_util import discount
+
+# Info:
 ExperienceConfig = ['position', 'state', 'action', 'reward', 'value', 'terminal', 'r', 'context',
-                    'pixel_change', 'last_action_reward']
-
-Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features", "pc", "last_ar"])
+                    'last_action_reward', 'pixel_change']
 
 
 class Rollout(dict):
     """
-    Experience rollout as dictionary of lists of values.  We run our agent, and process its experience
-    once it has processed enough steps.
+    Experience rollout as dictionary of lists of values.
+    We run our agent, and process its experience once it has processed enough steps.
     """
     def __init__(self, experience_config=ExperienceConfig):
         """
@@ -30,17 +30,20 @@ class Rollout(dict):
             experience_config:  list of experience fields to store.
         """
         super(Rollout, self).__init__()
-        for key in experience_config:
-            self[key] = []
+        #for key in experience_config:
+        #    self[key] = []
 
     def add(self, values_dict):
         """
         Adds single experience to rollout.
         Args:
-            values_dict:    dictionary of values, keys must be consistent with self.experience_config.
+            values_dict:    dictionary of values.
         """
-        for key in self.keys():
-            self[key] += [values_dict[key]]
+        for key in values_dict.keys():
+            try:
+                self[key] += [values_dict[key]]
+            except:
+                self[key] = [values_dict[key]]
 
     def add_memory_sample(self, sample):
         """
@@ -50,48 +53,37 @@ class Rollout(dict):
         for frame in sample:
             self.add(frame)
 
-    def discount(self, x, gamma):
-        return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
-
     def process(self, gamma, gae_lambda=1.0):
         """
+        Converts rollout to dictionary of ready-to-feed arrays.
         Computes rollout returns and the advantages.
-        Returns: named tuple.
+        Returns: dictionary of batched data.
         """
-        batch_si = np.asarray(self['state'])
-        batch_a = np.asarray(self['action'])
+        #self._check_it()
+        batch = dict()
+        for key in self.keys() - {'context', 'reward', 'r', 'value', 'position'}:
+            batch[key] = np.asarray(self[key])
+
+        batch['context'] = self['context'][0]  # rollout initial LSTM state
+
+        # Total accumulated empirical return:
         rewards = np.asarray(self['reward'])
-        batch_ar = np.asarray(self['last_action_reward'])  # concatenated 'last action and reward' 's
-        pix_change = np.asarray(self['pixel_change'])
         rollout_r = self['r'][-1][0]  # bootstrapped V_next or 0 if terminal
         vpred_t = np.asarray(self['value'] + [rollout_r])
-        #try:
         rewards_plus_v = np.asarray(self['reward'] + [rollout_r])
-        #except:
-        #    print('rollout.r: ', type(self.r))
-        #    print('rollout.rewards[-1]: ', self.rewards[-1], type(self.rewards[-1]))
-        #    print('rollout_R:', rollout_r, rollout_r.shape, type(rollout_r))
-        #    raise RuntimeError('!!!')
-        batch_r = self.discount(rewards_plus_v, gamma)[:-1]  # total accumulated empirical returns
-        delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
-        # this formula for the advantage is (16) from "Generalized Advantage Estimation" paper:
+        batch['r'] = discount(rewards_plus_v, gamma)[:-1]
+
+        # This formula for the advantage is (16) from "Generalized Advantage Estimation" paper:
         # https://arxiv.org/abs/1506.02438
-        batch_adv = self.discount(delta_t, gamma * gae_lambda)
-        init_context = self['context'][0]  # rollout initial LSTM state
+        delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
+        batch['advantage'] = discount(delta_t, gamma * gae_lambda)
 
-        return Batch(batch_si, batch_a, batch_adv, batch_r, self['terminal'], init_context, pix_change, batch_ar)
+        return batch
 
-    """
-    def extend(self, other):
-        assert not self.terminal
-        self.states.extend(other.states)
-        self.actions.extend(other.actions)
-        self.rewards.extend(other.rewards)
-        self.values.extend(other.values)
-        self.r = other.r  # !!
-        self.state_next = other.state_next
-        self.terminal = other.terminal
-        self.features = other.features
-        self.pixel_change.extend(other.pixel_change)
-        self.last_actions_rewards = other.last_action_reward
-    """
+    def _check_it(self):
+        for key, list in self.items():
+            try:
+                print('{}: length {}, type {}, shape {}\n'.format(key, len(list), type(list[0]), list[0].shape))
+            except:
+                print('{}: length {}, type {}\n'.format(key, len(list), type(list[0])))
+
