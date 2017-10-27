@@ -168,43 +168,36 @@ class _BTgymAnalyzer(bt.Analyzer):
 
 
 class BTgymServer(multiprocessing.Process):
-    """
-    Backtrader server class.
+    """Backtrader server class.
 
     Expects to receive dictionary, containing at least 'action' field.
 
-    Control mode IN:
-    dict(action=<control action, type=str>,), where
-    control action is:
-    '_reset' - rewinds backtrader engine and runs new episode;
-    '_getstat' - retrieve episode results and statistics;
-    '_stop' - server shut-down.
+    Control mode IN::
+        dict(action=<control action, type=str>,), where
+        control action is:
+        '_reset' - rewinds backtrader engine and runs new episode;
+        '_getstat' - retrieve episode results and statistics;
+        '_stop' - server shut-down.
 
-    OUT:
-    <string message> - reports current server status;
-    <statisic dict> - last run episode statisics.  NotImplemented.
+    Control mode OUT::
+        <string message> - reports current server status;
+        <statisic dict> - last run episode statisics.  NotImplemented.
 
-    Within-episode signals:
-    Episode mode IN:
-    dict(action=<agent_action, type=str>,), where
-    agent_action is:
-    {'buy', 'sell', 'hold', 'close', '_done'} - agent or service actions; '_done' - stops current episode;
+        Within-episode signals:
+        Episode mode IN:
+        dict(action=<agent_action, type=str>,), where
+        agent_action is:
+        {'buy', 'sell', 'hold', 'close', '_done'} - agent or service actions; '_done' - stops current episode;
 
-    OUT:
-    response  <tuple>: observation, <array> - observation of the current environment state,
-                                             could be any tensor; default is:
-                                             [4,m] array of <fl32>, where:
-                                             m - num. of last datafeed values,
-                                             4 - num. of data features (Lines);
-                       reward, <any> - current portfolio statistics for environment reward estimation;
-                       done, <bool> - episode termination flag;
-                       info, <list> - auxiliary information.
-
-    Parameters:
-    ;
-    cerebro -  bt.Cerebro engine subclass;
-    network_address - <str>, network address to bind to;
-    verbose - verbosity mode: 0 - silent, 1 - info level, 2 - debugging level
+    Episode mode OUT::
+        response  <tuple>: observation, <array> - observation of the current environment state,
+                                                 could be any tensor; default is:
+                                                 [4,m] array of <fl32>, where:
+                                                 m - num. of last datafeed values,
+                                                 4 - num. of data features (Lines);
+                           reward, <any> - current portfolio statistics for environment reward estimation;
+                           done, <bool> - episode termination flag;
+                           info, <list> - auxiliary information.
     """
     data_server_response = None
 
@@ -216,8 +209,16 @@ class BTgymServer(multiprocessing.Process):
                  connect_timeout=60,
                  log=None):
         """
-        Configures BT server instance.
+
+        Args:
+            cerebro:                backtrader.cerebro engine class.
+            render:                 render class
+            network_address:        environmnet communication, str
+            data_network_address:   data communication, str
+            connect_timeout:        seconds, int
+            log:                    none
         """
+
         super(BTgymServer, self).__init__()
 
         # To log or not to log:
@@ -238,7 +239,8 @@ class BTgymServer(multiprocessing.Process):
     def _comm_with_timeout(self, socket, message, timeout, connect_timeout_step=0.01,):
         """
         Exchanges messages via socket with timeout.
-        # Returns:
+
+        Returns:
             dictionary:
                 status: communication result;
                 message: received message, if any.

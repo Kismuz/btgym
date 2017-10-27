@@ -511,7 +511,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
 ****
 ### <a name="roadmap"></a> [TODO's and Road Map:](#title)
  - [x] refine logic for parameters applying priority (engine vs strategy vs kwargs vs defaults);
- - [ ] full reference docs;
+ - [X] API reference;
  - [ ] examples;
  - [x] frame-skipping feature;
  - [ ] dataset tr/cv/t splitting feature;
@@ -523,7 +523,8 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  - [x] dedicated data server;
  - [x] multi-modal observation space shape;
  - [x] A3C implementation for BTgym;
- - [ ] UNREAL implementation for BTgym;
+ - [x] UNREAL implementation for BTgym;
+ - [x] PPO implementation for BTgym;
  - [ ] risk-sensitive agents implementation;
  - [ ] sequential and sliding time-window sampling;
  - [ ] multiply instruments trading;

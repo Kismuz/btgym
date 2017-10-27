@@ -25,8 +25,12 @@ def categorical_sample(logits, d):
 
 
 def rnn_placeholders(state):
-    """
-    Given nested [multilayer] RNN state tensor, infers and returns state placeholders.
+    """Given nested [multilayer] RNN state tensor, infers and returns state placeholders.
+
+    Args:
+        state:  tf.nn.lstm zero-state tuple.
+
+    Returns:    tf.contrib.rnn.LSTMStateTuple of placeholders
     """
     if isinstance(state, tf.contrib.rnn.LSTMStateTuple):
         c, h = state
@@ -43,6 +47,7 @@ def rnn_placeholders(state):
 
 
 def linear(x, size, name, initializer=None, bias_init=0, reuse=False):
+    """Linear network layer."""
     with tf.variable_scope(name, reuse=reuse):
         w = tf.get_variable("/w", [x.get_shape()[1], size], initializer=initializer)
         b = tf.get_variable("/b", [size], initializer=tf.constant_initializer(bias_init))
@@ -51,6 +56,7 @@ def linear(x, size, name, initializer=None, bias_init=0, reuse=False):
 
 def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", dtype=tf.float32,
            collections=None, reuse=False):
+    """2D convolution layer."""
     with tf.variable_scope(name, reuse=reuse):
         stride_shape = [1, stride[0], stride[1], 1]
         filter_shape = [filter_size[0], filter_size[1], int(x.get_shape()[3]), num_filters]
@@ -117,11 +123,11 @@ def conv_2d_network(x,
                     dtype=tf.float32,
                     collections=None,
                     reuse=False):
-    """
-    Stage1 network: from preprocessed 2D input to estimated features.
+    """Stage1 network: from preprocessed 2D input to estimated features.
     Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.
+
     Returns:
-        output tensor;
+        tensor holding state features;
     """
     for i in range(num_layers):
         x = tf.nn.elu(
@@ -137,9 +143,9 @@ def conv_2d_network(x,
 
 
 def lstm_network(x, a_r, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse=False):
-    """
-    Stage2: from features to flattened LSTM output.
-    Defines [multi-layered] dynamic [possibly] shared LSTM network.
+    """Stage2 network: from features to flattened LSTM output.
+    Defines [multi-layered] dynamic [possibly shared] LSTM network.
+
     Returns:
          batch-wise flattened output tensor;
          lstm initial state tensor;
@@ -147,7 +153,6 @@ def lstm_network(x, a_r, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse
          lstm flattened feed placeholders as tuple.
     """
     with tf.variable_scope('lstm', reuse=reuse):
-
         # Flatten, add action/reward and expand with fake time dim to feed LSTM bank:
         x = tf.concat([batch_flatten(x), a_r] ,axis=-1)
         x = tf.expand_dims(x, [0])
@@ -178,9 +183,12 @@ def lstm_network(x, a_r, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse
 
 
 def dense_aac_network(x, ac_space, reuse=False):
-    """
-    Stage3: from LSTM flattened output to advantage actor-critic.
-    Returns: logits, value function and action sampling function.
+    """Stage3 network: from LSTM flattened output to advantage actor-critic.
+
+    Returns:
+        logits tensor
+        value function tensor
+        action sampling function.
     """
     logits = linear(x, ac_space, "action", normalized_columns_initializer(0.01), reuse=reuse)
     vf = tf.reshape(linear(x, 1, "value", normalized_columns_initializer(1.0), reuse=reuse), [-1])
@@ -190,8 +198,7 @@ def dense_aac_network(x, ac_space, reuse=False):
 
 
 def dense_rp_network(x):
-    """
-    Stage3: From shared convolutions to reward-prediction task output.
+    """Stage3 network: From shared convolutions to reward-prediction task output tensor.
     """
     # print('x_shape:', x.get_shape())
     x = tf.reshape(x, [1, -1]) # flatten to pretend we got batch of size 1
@@ -204,24 +211,21 @@ def dense_rp_network(x):
 
 
 def pixel_change_2d_estimator(ob_space, stride=2):
-    """
-    Defines op for estimating `pixel change` as subsampled
-    absolute difference of two states.
+    """Defines tf op for estimating `pixel change` as subsampled absolute difference of two states.
     """
     input_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_state_in')
     input_last_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_last_state_in')
 
-    x = tf.abs(tf.subtract(input_state, input_last_state))
+    x = tf.abs(tf.subtract(input_state, input_last_state)) # TODO: tf.square?
     x = tf.expand_dims(x, 0)[:, 1:-1, 1:-1, :]  # fake batch dim and crop
     x = tf.reduce_mean(x, axis=-1, keep_dims=True)
     # TODO: max_pool may be better?
-    x_out = tf.nn.avg_pool(x, [1 ,stride ,stride ,1], [1 ,stride ,stride ,1], 'SAME')
+    x_out = tf.nn.max_pool(x, [1, stride, stride, 1], [1, stride, stride, 1], 'SAME')
     return input_state, input_last_state, x_out
 
 
 def duelling_pc_network(x, ac_space, reuse=False):
-    """
-    Stage3 network for `pixel control' task: from LSTM output to Q-aux. features.
+    """Stage3 network for `pixel control' task: from LSTM output to Q-aux. features tensor.
     """
     x = tf.nn.elu(linear(x, 9* 9 * 32, 'pc_dense', normalized_columns_initializer(0.01), reuse=reuse))
     x = tf.reshape(x, [-1, 9, 9, 32])

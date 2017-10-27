@@ -17,10 +17,22 @@ from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.algorithms import Memory, Rollout, RunnerThread
 
-from btgym.algorithms.math_util import log_uniform, cat_entropy, kl_divergence
+from btgym.algorithms.math_util import log_uniform
+from btgym.algorithms.losses import ppo_loss_def, value_fn_loss_def, rp_loss_def, pc_loss_def
 
 class PPO(object):
-    """____"""
+    """Asynchronous implementation of Proximal Policy Optimization algorithm,
+    augmented with auxiliary Unreal-style tasks.
+
+    paper:
+    https://arxiv.org/pdf/1707.06347.pdf
+
+    Based on PPO-SGD code from OpenAI `Baselines` repository under MIT licence:
+    https://github.com/openai/baselines
+
+    Async. framework code comes from OpenAI repository under MIT licence:
+    https://github.com/openai/universe-starter-agent
+"""
     def __init__(self,
                  env,
                  task,
@@ -41,10 +53,10 @@ class PPO(object):
                  opt_epsilon=1e-10,
                  rollout_length=20,
                  num_epochs=1,  # num epochs to run on a single train step
-                 pi_old_update_period=50,  # num train steps to run before pi_old update
-                 episode_summary_freq=2,  # every i`th episode
-                 env_render_freq=10,  # every i`th episode
-                 model_summary_freq=100,  # every i`th local_step
+                 pi_old_update_period=10,  # number of algorithm iterations to run before pi_old update
+                 episode_summary_freq=2,  # every i`th environment episode
+                 env_render_freq=10,  # every i`th environment episode
+                 model_summary_freq=100,  # every i`th algorithm iteration
                  test_mode=False,  # gym_atari test mode
                  replay_memory_size=2000,
                  replay_rollout_length=None,
@@ -63,10 +75,48 @@ class PPO(object):
                  rp_sequence_size=4,  # r.prediction sampling
                  **kwargs):
         """
-        Asymc. implementation of the PPO algorithm. FIRST ATTEMPT.
-        Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
-        But overall, we'll define the model, specify its inputs, and describe how the policy gradients step
-        should be computed.
+
+        Args:
+            env:                    envirionment instance.
+            task:                   int
+            policy_class:           policy estimator class
+            policy_config:          config dictionary
+            log:                    parent log
+            random_seed:
+            model_gamma:            gamma discount factor
+            model_gae_lambda:       GAE lambda
+            model_beta:             entropy regularization beta
+            clip_epsilon:           PPO surrogate L^clip epsilon
+            opt_max_train_steps:    train steps to run
+            opt_decay_steps:        learn ratio decay steps
+            opt_end_learn_rate:     final lerarn rate
+            opt_learn_rate:         start learn rate
+            opt_decay:              optimizer decay, if apll.
+            opt_momentum:           optimizer momentum, if apll.
+            opt_epsilon:            optimizer epsilon
+            rollout_length:         on-policy rollout length
+            num_epochs:             number epochs to run on every train step
+            pi_old_update_period:   int, PPO pi to pi old update period in number of train steps
+            episode_summary_freq:   int, write episode summary for every i'th episode
+            env_render_freq:        int, write environment rendering summary for every i'th train step
+            model_summary_freq:     int, write model summary for every i'th train step
+            test_mode:              True: Atari, False: BTGym
+            replay_memory_size:     in number of experiences
+            replay_rollout_length:  off-policy rollout length
+            use_off_policy_aac:     use full AAC off policy training
+            use_reward_prediction:  use aux. off-policy reward prediction task
+            use_pixel_control:      use aux. off-policy pixel control task
+            use_value_replay:       use aux. off-policy value replay task (not used, if use_off_policy_aac=True)
+            use_rebalanced_replay:  NOT USED
+            rebalance_skewness:     NOT USED
+            rp_lambda:              reward prediction loss weight
+            pc_lambda:              pixel control loss weight
+            vr_lambda:              value replay loss weight
+            off_aac_lambda:         off-policy AAC loss weight
+            gamma_pc:               NOT USED
+            rp_reward_threshold:    reward prediction task classification threshold, above which reward is 'non-zero'
+            rp_sequence_size:       reward prediction sample size, in number of experiences
+            **kwargs:               NOT USED
         """
         self.log = log
         self.random_seed = random_seed
@@ -213,6 +263,7 @@ class PPO(object):
                 pi.inc_episode = inc_episode
 
             with tf.variable_scope("local_old"):
+                # PPO specific, second local policy network:
                 self.local_network_old = pi_old = self.policy_class(
                     model_input_shape,
                     env.action_space.n,
@@ -247,48 +298,22 @@ class PPO(object):
             self.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
             self.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
 
-            pi_log_prob = - tf.nn.softmax_cross_entropy_with_logits(
-                logits=pi.on_logits,
-                labels=self.on_pi_act_target
+            ppo_loss, ppo_summaries = ppo_loss_def(
+                act_target=self.on_pi_act_target,
+                adv_target=self.on_pi_adv_target,
+                r_target=self.on_pi_r_target,
+                pi_logits=pi.on_logits,
+                pi_vf=pi.on_vf,
+                pi_old_logits=pi_old.on_logits,
+                entropy_beta=self.model_beta,
+                epsilon=clip_epsilon,
+                name='on_policy/ppo',
+                verbose=True
             )
-            pi_old_log_prob = tf.stop_gradient(
-                - tf.nn.softmax_cross_entropy_with_logits(
-                    logits=pi_old.on_logits,
-                    labels=self.on_pi_act_target
-                )
-            )
-            pi_ratio = tf.exp(pi_log_prob - pi_old_log_prob)
-
-            surr1 = pi_ratio * self.on_pi_adv_target  # surrogate from conservative policy iteration
-            surr2 = tf.clip_by_value(pi_ratio, 1.0 - clip_epsilon, 1.0 + clip_epsilon) * self.on_pi_adv_target
-
-            pi_loss = - tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
-
-            mean_pi_ratio = tf.reduce_mean(pi_ratio)
-            mean_vf = tf.reduce_mean(pi.on_vf)
-            mean_kl_old_new = tf.reduce_mean(kl_divergence(pi_old.on_logits,pi.on_logits ))
-
-            # loss of value function:
-            vf_loss = tf.reduce_mean(tf.square(pi.on_vf - self.on_pi_r_target))
-            entropy = tf.reduce_mean(cat_entropy(pi.on_logits))
-
-            ppo_loss = pi_loss + vf_loss - entropy * self.model_beta
 
             # Start accumulating total loss:
             self.loss = ppo_loss
-
-            # Base summaries:
-            model_summaries = [
-                tf.summary.scalar("ppo/pi_surr_clip_loss", pi_loss),
-                #tf.summary.histogram("ppo/pi_prob_d", prob_tf),
-                tf.summary.scalar("ppo/value_loss", vf_loss),
-                tf.summary.scalar("ppo/entropy", entropy),
-                tf.summary.scalar("ppo/Dkl_old_new", mean_kl_old_new),
-                tf.summary.scalar("pi_ratio", mean_pi_ratio),
-                tf.summary.scalar("value_f", mean_vf),
-                ]
-
-            ######################## IGNORE ALL WAY DOWN TILL `grads`:
+            model_summaries = ppo_summaries
 
             # Off-policy batch size:
             off_bs = tf.to_float(tf.shape(pi.off_state_in)[0])
@@ -300,63 +325,73 @@ class PPO(object):
             else:
                 rebalanced_replay_weight = 1.0
 
-            # Placeholders for off-policy training:
-            self.off_policy_action_target = tf.placeholder(
+            # Off policy training:
+            self.off_pi_act_target = tf.placeholder(
                 tf.float32, [None, env.action_space.n], name="off_policy_action_pl")
-            self.off_policy_advantage_target = tf.placeholder(
+            self.off_pi_adv_target = tf.placeholder(
                 tf.float32, [None], name="off_policy_advantage_pl")
-            self.off_policy_reward_target = tf.placeholder(
-                tf.float32, [None], name="off_policy_reward_pl")
+            self.off_pi_r_target = tf.placeholder(
+                tf.float32, [None], name="off_policy_return_pl")
 
             if self.use_off_policy_aac:
                 # Off-policy PPO loss graph mirrors on-policy:
-                ########### TODO
-                off_pi_loss = 0
-                off_vf_loss = 0
-                off_ppo_loss = 0 # off_pi_loss + 0.5 * off_vf_loss - off_entropy * self.model_beta
-
+                off_ppo_loss, off_ppo_summaries = ppo_loss_def(
+                    act_target=self.off_pi_act_target,
+                    adv_target=self.off_pi_adv_target,
+                    r_target=self.off_pi_r_target,
+                    pi_logits=pi.off_logits,
+                    pi_vf=pi.off_vf,
+                    pi_old_logits=pi_old.off_logits,
+                    entropy_beta=self.model_beta,
+                    epsilon=clip_epsilon,
+                    name='off_policy/ppo',
+                    verbose=False
+                )
                 self.loss = self.loss + self.off_aac_lambda * rebalanced_replay_weight * off_ppo_loss
-
-                model_summaries += [
-                    tf.summary.scalar("off_a3c/policy_loss", off_pi_loss),
-                    tf.summary.scalar("off_a3c/value_loss", off_vf_loss ),
-                ]
+                model_summaries += off_ppo_summaries
 
             if self.use_pixel_control:
-                # Pixel control loss
+                # Pixel control loss:
                 self.pc_action = tf.placeholder(tf.float32, [None, env.action_space.n], name="pc_action")
                 self.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
-                # Get Q-value features for actions been taken and define loss:
-                pc_action_reshaped = tf.reshape(self.pc_action, [-1, 1, 1, env.action_space.n])
-                pc_q_action = tf.multiply(pi.pc_q, pc_action_reshaped)
-                pc_q_action = tf.reduce_sum(pc_q_action, axis=-1, keep_dims=False)
-                pc_loss = tf.nn.l2_loss(self.pc_target - pc_q_action) / off_bs
 
+                pc_loss, pc_summaries = pc_loss_def(
+                    actions=self.pc_action,
+                    targets=self.pc_target,
+                    pi_pc_q=pi.pc_q,
+                    name='off_policy/pixel_control',
+                    verbose=True
+                )
                 self.loss = self.loss + self.pc_lambda * rebalanced_replay_weight * pc_loss
                 # Add specific summary:
-                model_summaries += [tf.summary.scalar('pixel_control/q_loss', pc_loss)]
+                model_summaries += pc_summaries
 
             if self.use_value_replay:
                 # Value function replay loss:
                 self.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
-                vr_loss = tf.reduce_mean(tf.square(pi.vr_value - self.vr_target))
-
+                vr_loss, vr_summaries = value_fn_loss_def(
+                    r_target=self.vr_target,
+                    pi_vf=pi.vr_value,
+                    name='off_policy/value_replay',
+                    verbose=True
+                )
                 self.loss = self.loss + self.vr_lambda * rebalanced_replay_weight * vr_loss
-                model_summaries += [tf.summary.scalar('v_replay/value_loss', vr_loss)]
+                model_summaries += vr_summaries
 
             if self.use_reward_prediction:
                 # Reward prediction loss:
                 self.rp_target = tf.placeholder(tf.float32, [1,3], name="rp_target")
-                rp_loss = tf.nn.softmax_cross_entropy_with_logits(
-                    labels=self.rp_target,
-                    logits=pi.rp_logits
-                )[0]
+
+                rp_loss, rp_summaries = rp_loss_def(
+                    rp_targets=self.rp_target,
+                    pi_rp_logits=pi.rp_logits,
+                    name='off_policy/reward_prediction',
+                    verbose=True
+                )
                 self.loss = self.loss + self.rp_lambda * rp_loss
-                model_summaries += [tf.summary.scalar('r_predict/class_loss', rp_loss),]
-                                    #tf.summary.histogram("r_predict/logits", pi.rp_logits)]
+                model_summaries += rp_summaries
 
             grads = tf.gradients(self.loss, pi.var_list)
-
             grads, _ = tf.clip_by_global_norm(grads, 40.0)
 
             # Copy weights from the parameter server to the local model
@@ -392,12 +427,13 @@ class PPO(object):
             self.train_op = opt.apply_gradients(grads_and_vars)
 
             # Add model-wide statistics:
-            model_summaries += [
-                tf.summary.scalar("global/grad_global_norm", tf.global_norm(grads)),
-                tf.summary.scalar("global/var_global_norm", tf.global_norm(pi.var_list)),
-                tf.summary.scalar("global/opt_learn_rate", learn_rate),
-                tf.summary.scalar("global/total_loss", self.loss),
-            ]
+            with tf.name_scope('model'):
+                model_summaries += [
+                    tf.summary.scalar("grad_global_norm", tf.global_norm(grads)),
+                    tf.summary.scalar("var_global_norm", tf.global_norm(pi.var_list)),
+                    tf.summary.scalar("learn_rate", learn_rate),
+                    tf.summary.scalar("total_loss", self.loss),
+                ]
 
             self.summary_writer = None
             self.local_steps = 0
@@ -550,7 +586,7 @@ class PPO(object):
                 }
             )
         else:
-            feeder = {self.pc_action: batch.a, self.pc_target: batch.pc}
+            feeder = {self.pc_action: batch['action'], self.pc_target: batch['pixel_change']}
         return feeder
 
     def fill_replay_memory(self, sess):
@@ -589,6 +625,7 @@ class PPO(object):
         # Feeder for on-policy AAC loss estimation graph:
         feed_dict = {pl: value for pl, value in
                      zip(self.local_network.on_lstm_state_pl_flatten, flatten_nested(on_policy_batch['context']))}
+        # PPO specific:
         feed_dict.update(
             {pl: value for pl, value in
              zip(self.local_network_old.on_lstm_state_pl_flatten, flatten_nested(on_policy_batch['context']))}
@@ -605,7 +642,7 @@ class PPO(object):
                 self.local_network.train_phase: True,
             }
         )
-        ############# IGNORE EVERYTHING OFF-POLICY:
+
         if self.use_off_policy_aac or self.use_pixel_control or self.use_value_replay:
             # Get sample from replay memory:
             if self.use_rebalanced_replay:
@@ -626,13 +663,20 @@ class PPO(object):
                 pl: value for pl, value in
             zip(self.local_network.off_lstm_state_pl_flatten, flatten_nested(off_policy_batch['context']))
             }
+            # PPO specific:
+            off_policy_feeder.update(
+                {pl: value for pl, value in
+                 zip(self.local_network_old.off_lstm_state_pl_flatten, flatten_nested(off_policy_batch['context']))}
+            )
             off_policy_feeder.update(
                 {
                     self.local_network.off_state_in: off_policy_batch['state'],
                     self.local_network.off_a_r_in: off_policy_batch['last_action_reward'],
-                    self.off_policy_action_target: off_policy_batch['action'],
-                    self.off_policy_advantage_target: off_policy_batch['advantage'],
-                    self.off_policy_reward_target: off_policy_batch['r'],
+                    self.local_network_old.off_state_in: off_policy_batch['state'],
+                    self.local_network_old.off_a_r_in: off_policy_batch['last_action_reward'],
+                    self.off_pi_act_target: off_policy_batch['action'],
+                    self.off_pi_adv_target: off_policy_batch['advantage'],
+                    self.off_pi_r_target: off_policy_batch['r'],
                 }
             )
             feed_dict.update(off_policy_feeder)

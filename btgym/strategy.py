@@ -29,8 +29,7 @@ import numpy as np
 
 
 class BTgymStrategy(bt.Strategy):
-    """
-    Controls Environment inner dynamics and backtesting logic.
+    """Controls Environment inner dynamics and backtesting logic.
     Any State, Reward and Info computation logic can be implemented by
     subclassing BTgymStrategy and overriding at least get_state(), get_reward(),
     get_info(), is_done() and set_datalines() methods.
@@ -39,8 +38,10 @@ class BTgymStrategy(bt.Strategy):
     Since it is bt.Strategy subclass, see:
     https://www.backtrader.com/docu/strategy.html
     for more information.
-    Note: bt.observers.DrawDown observer will be automatically added [by server process]
-    to BTgymStrategy instance at runtime.
+
+    Note:
+        bt.observers.DrawDown observer will be automatically added [by server process]
+        to BTgymStrategy instance at runtime.
     """
 
     # Set-list. We don't to fiddle with subclassing bt.Cerebro(),
@@ -81,6 +82,34 @@ class BTgymStrategy(bt.Strategy):
     )
 
     def __init__(self, **kwargs):
+        """
+
+        Args:
+            **kwargs:
+                params = dict(
+                    # Observation state shape is dictionary of Gym spaces,
+                    # at least should contain `raw_state` field.
+                    # By convention first dimension of every Gym Box space is time embedding one;
+                    # one can define any shape; should match env.observation_space.shape.
+                    # observation space state min/max values,
+                    # For `raw_state' - absolute min/max values from BTgymDataset will be used.
+                    state_shape=dict(
+                        raw_state=spaces.Box(
+                            shape=(10, 4),
+                            low=-100, # will get overridden.
+                            high=100,
+                        )
+                    ),
+                    drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.
+                    target_call=10,  # finish episode when reaching profit target, in percent.
+                    dataset_stat=None,  # Summary descriptive statistics for entire dataset and
+                    episode_stat=None,  # current episode. Got updated by server.
+                    portfolio_actions=('hold', 'buy', 'sell', 'close'),  # possible agent actions.
+                    skip_frame=1,  # Number of environment steps to skip before returning next response,
+                                   # e.g. if set to 10 -- agent will interact with environment every 10th episode step;
+                                   # Every other step agent action is assumed to be 'hold'.
+                    )
+        """
         # Inherit logger from cerebro:
         self.log = self.env._log
 

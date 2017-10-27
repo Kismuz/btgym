@@ -41,7 +41,10 @@ class FastSaver(tf.train.Saver):
                                     False)
 
 class Worker(multiprocessing.Process):
-    """___"""
+    """Distributed tf worker class.
+
+    Sets up environment, trainer and starts training process in supervised session.
+    """
     env = None
 
     def __init__(self,
@@ -59,7 +62,24 @@ class Worker(multiprocessing.Process):
                  max_steps=1000000000,
                  test_mode=False,
                  **kwargs):
-        """___"""
+        """
+
+        Args:
+            env_class:      environment class to use.
+            env_config:     configuration dictionary.
+            policy_class:   model policy estimator class to use.
+            policy_config:  configuration dictionary.
+            trainer_class:  algorithm class to use.
+            cluster_spec:   tf.cluster specification.
+            job_name:       worker or parameter server.
+            task:           integer number, 0 is chief worker.
+            log_dir:        for tb summaries and checkpoints.
+            log:
+            log_level:
+            max_steps:      number of train steps
+            test_mode:      if True - use Atari mode, BTGym otherwise.
+            **kwargs:       args passed to trainer.
+        """
         super(Worker, self).__init__()
         self.env_class = env_class
         self.env_config = env_config
@@ -79,8 +99,7 @@ class Worker(multiprocessing.Process):
         self.test_mode = test_mode
 
     def run(self):
-        """
-        Worker runtime body.
+        """Worker runtime body.
         """
         tf.reset_default_graph()
 
@@ -186,14 +205,14 @@ class Worker(multiprocessing.Process):
                 sess.run(trainer.sync)
                 trainer.start(sess, summary_writer)
                 global_step = sess.run(trainer.global_step)
-                #try:
-                if not trainer.memory.is_full():
-                    trainer.fill_replay_memory(sess)
-                #except:
-                #    self.log.warning(
-                #        "worker_{}: trainer {} does not uses replay memory.".
-                #            format(self.task, self.trainer_class)
-                #    )
+                try:
+                    if not trainer.memory.is_full():
+                        trainer.fill_replay_memory(sess)
+                except:
+                    self.log.warning(
+                        "worker_{}: trainer {} does not uses replay memory.".
+                            format(self.task, self.trainer_class)
+                    )
 
                 self.log.warning("worker_{}: started training at step: {}".format(self.task, global_step))
                 while not sv.should_stop() and global_step < self.max_steps:
@@ -206,20 +225,4 @@ class Worker(multiprocessing.Process):
             self.log.warning('worker_{}: reached {} steps, exiting.'.format(self.task, global_step))
 
 
-class TestTrainer():
-    """Dummy trainer class."""
-    global_step = 0
-
-    def __init__(self, worker_id):
-        self.worker_id = worker_id
-
-    def start(self):
-        print('Trainer_{} started.'.format(self.worker_id))
-
-    def sync(self):
-        print('Trainer_{}: sync`ed.'.format(self.worker_id))
-
-    def process(self):
-        print('Traner_{}: processed step {}'.format(self.worker_id, self.global_step))
-        self.global_step += 1
 

@@ -21,7 +21,7 @@ from gym import Space
 
 class BTgymMultiSpace(Space):
     """
-    Defines space as [non recursive] dictionary of simplier spaces.
+    Defines space as [non recursive] dictionary of simplier Gym spaces.
     """
 
     def __init__(self, spaces_dict):

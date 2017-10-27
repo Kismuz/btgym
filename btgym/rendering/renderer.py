@@ -25,7 +25,9 @@ from .plotter import DrawCerebro
 class BTgymRendering():
     """
     Handles BTgym Environment rendering.
-    Important: Call `initialize_pyplot()` method before first render() call!
+
+    Note:
+        Call `initialize_pyplot()` method before first render() call!
     """
     # Here we'll keep last rendered image for each rendering mode:
     rgb_dict = dict()
@@ -53,7 +55,23 @@ class BTgymRendering():
 
     def __init__(self, render_modes, **kwargs):
         """
-        pass
+        Plotting controls, can be passed as kwargs:
+        render_state_as_image=True,
+        render_state_channel=0,
+        render_size_human=(6, 3.5),
+        render_size_state=(7, 3.5),
+        render_size_episode=(12,8),
+        render_dpi=75,
+        render_plotstyle='seaborn',
+        render_cmap='PRGn',
+        render_xlabel='Relative timesteps',
+        render_ylabel='Value',
+        render_title='local step: {}, state observation min: {:.4f}, max: {:.4f}',
+        render_boxtext=dict(fontsize=12,
+                            fontweight='bold',
+                            color='w',
+                            bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
+                            )
         """
         # Update parameters with relevant kwargs:
         for key, value in kwargs.items():
@@ -82,8 +100,7 @@ class BTgymRendering():
             self.rgb_dict[mode] = self.rgb_empty()
 
     def initialize_pyplot(self):
-        """
-        Call me before use!
+        """Call me before use!
         [Supposed to be done inside already running server process]
         """
         from multiprocessing import Pipe

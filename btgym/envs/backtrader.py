@@ -40,8 +40,7 @@ from btgym.rendering import BTgymNullRendering
 
 
 class BTgymEnv(gym.Env):
-    """
-    OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
+    """OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
     """
     # Datafeed Server management:
     data_master = True
@@ -125,7 +124,9 @@ class BTgymEnv(gym.Env):
                     override corresponding dataset parameter;
 
         If any <other> kwarg is given:
-            override corr. default parameter.
+            override corresponding default parameter.
+
+
         """
 
         # Parameters and default values:
@@ -358,14 +359,15 @@ class BTgymEnv(gym.Env):
         self.log.info('Environment is ready.')
 
     def _comm_with_timeout(self, socket, message, timeout, connect_timeout_step=0.01,):
-        """
-        Exchanges messages via socket, timeout sensitive.
-        # Args:
+        """Exchanges messages via socket, timeout sensitive.
+
+        Args:
             socket: zmq connected socket to communicate via;
             message: message to send;
             timeout: max time to wait for response;
             connect_timeout_step: time increments between retries.
-        # Returns:
+
+        Returns:
             dictionary:
                 status: communication result;
                 message: received message if status == `ok` or None;
@@ -397,8 +399,7 @@ class BTgymEnv(gym.Env):
         return response
 
     def _start_server(self):
-        """
-        Configures backtrader REQ/REP server instance and starts server process.
+        """Configures backtrader REQ/REP server instance and starts server process.
         """
 
         # Ensure network resources:
@@ -448,8 +449,7 @@ class BTgymEnv(gym.Env):
         self._closed = False
 
     def _stop_server(self):
-        """
-        Stops BT server process, releases network resources.
+        """Stops BT server process, releases network resources.
         """
         if self.server:
 
@@ -471,8 +471,7 @@ class BTgymEnv(gym.Env):
             self.context.destroy()
 
     def _force_control_mode(self):
-        """
-        Puts BT server to control mode.
+        """Puts BT server to control mode.
         """
         # Check is there any faults with server process and connection?
         network_error = [
@@ -498,8 +497,7 @@ class BTgymEnv(gym.Env):
             return True
 
     def _assert_response(self, response):
-        """
-        Simple watcher:
+        """Simple watcher:
         roughly checks if we really talking to environment (== episode is running).
         Rises exception if response given is not as expected.
         """
@@ -514,8 +512,7 @@ class BTgymEnv(gym.Env):
                        format(response, type(response)))
 
     def _reset(self, state_only=True):  # By default, returns only initial state observation (Gym convention).
-        """
-        Implementation of OpenAI Gym env.reset method.
+        """Implementation of OpenAI Gym env.reset method.
         'Rewinds' backtrader server and starts new episode
         within randomly selected time period.
         """
@@ -590,8 +587,7 @@ class BTgymEnv(gym.Env):
             raise ChildProcessError(msg)
 
     def _step(self, action):
-        """
-        Implementation of OpenAI Gym env.step method.
+        """Implementation of OpenAI Gym env.step method.
         Relies on remote backtrader server for actual environment dynamics computing.
         """
         # Are you in the list, ready to go and all that?
@@ -632,8 +628,7 @@ class BTgymEnv(gym.Env):
         return self.env_response
 
     def _close(self):
-        """
-        Implementation of OpenAI Gym env.close method.
+        """Implementation of OpenAI Gym env.close method.
         Puts BTgym server in Control Mode:
         """
         self._stop_server()
@@ -641,9 +636,10 @@ class BTgymEnv(gym.Env):
         self.log.info('Environment closed.')
 
     def get_stat(self):
-        """
-        Returns last episode statistics.
-        Note: when invoked, forces running episode to terminate.
+        """Returns last run episode statistics.
+
+        Note:
+            when invoked, forces running episode to terminate.
         """
         if self._force_control_mode():
             self.socket.send_pyobj({'ctrl': '_getstat'})
@@ -653,13 +649,13 @@ class BTgymEnv(gym.Env):
             return self.server_response
 
     def _render(self, mode='other_mode', close=False):
-        """
-        Implementation of OpenAI Gym env.render method.
+        """Implementation of OpenAI Gym env.render method.
         Visualises current environment state.
-        Takes `mode` key argument, returns image as rgb_array :
-        `human` - current state observation as price lines;
-        `agent` - current processed observation state as RL agent sees it;
-        `episode` - plotted results of last completed episode.
+        Args:
+            `mode` key argument, returns image as rgb_array :
+                `human` - current state observation as price lines;
+                `agent` - current processed observation state as RL agent sees it;
+                `episode` - plotted results of last completed episode.
         """
         if close:
             return None
@@ -692,16 +688,13 @@ class BTgymEnv(gym.Env):
         return self.rendered_rgb[mode]
 
     def stop(self):
-        """
-        Finishes current episode if any, does nothing otherwise.
-        Leaves server running.
+        """Finishes current episode if any, does nothing otherwise. Leaves server running.
         """
         if self._force_control_mode():
             self.log.info('Episode stop forced.')
 
     def _restart_server(self):
-        """
-        Restarts server.
+        """Restarts server.
         """
         self._stop_server()
         self._start_server()
@@ -711,6 +704,7 @@ class BTgymEnv(gym.Env):
         """
         For data_master environment:
             - configures backtrader REQ/REP server instance and starts server process.
+
         For others:
             - establishes network connection to existing data_server.
         """
@@ -788,15 +782,13 @@ class BTgymEnv(gym.Env):
         #    self.data_socket = None
 
     def _restart_data_server(self):
-        """
-        Restarts data_server.
+        """Restarts data_server.
         """
         self._stop_data_server()
         self._start_data_server()
 
     def _get_dataset_info(self):
-        """
-        Retrieves dataset descriptive statistic'.
+        """Retrieves dataset descriptive statistic.
         """
         self.data_socket.send_pyobj({'ctrl': '_get_info'})
         self.data_server_response = self.data_socket.recv_pyobj()

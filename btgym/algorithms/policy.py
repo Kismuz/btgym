@@ -9,20 +9,39 @@
 # https://github.com/openai/universe-starter-agent
 #
 
-from btgym.algorithms.model_util import *
+from btgym.algorithms.nnet_util import *
 import tensorflow as tf
 
-class BasePpoPolicy(object):
-    """
-    Base CNN-LSTM policy estimator.
+
+class BaseAacPolicy(object):
+    """ Base advantage actor-critic LSTM policy estimator with auxiliary control tasks.
+
+    Papers:
+    https://arxiv.org/abs/1602.01783
+
+    https://arxiv.org/abs/1611.05397
     """
 
-    def __init__(self, ob_space, ac_space, rp_sequence_size, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,)):
+    def __init__(self, ob_space, ac_space, rp_sequence_size,
+                 lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), pix_change=True):
+        """
+        Defines [partially shared] on/off-policy networks for estimating  actions logits, value function,
+        reward and state 'pixel_change' predictions.
+
+        Args:
+            ob_space:           observation state shape
+            ac_space:           discrete action space shape (length)
+            rp_sequence_size:   reward prediction sample length
+            lstm_class:         tf.nn.lstm class
+            lstm_layers:        tuple of sizes of LSTM layers
+            pix_change:         (bool), if True - add `pix_change` estimation graph to callbacks dictionary.
+        """
         self.ob_space = ob_space
         self.ac_space = ac_space
         self.rp_sequence_size = rp_sequence_size
         self.lstm_class = lstm_class
         self.lstm_layers = lstm_layers
+        self.pix_change = pix_change
         self.callback = {}
 
         # Placeholders for obs. state input:
@@ -34,20 +53,20 @@ class BasePpoPolicy(object):
         self.on_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='on_policy_action_reward_in_pl')
         self.off_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='off_policy_action_reward_in_pl')
  
-        # Base on-policy ppo network:
+        # Base on-policy AAC network:
         # Conv. layers:
-        ppo_x = conv_2d_network(self.on_state_in, ob_space, ac_space)
+        on_aac_x = conv_2d_network(self.on_state_in, ob_space, ac_space)
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
-        [ppo_x, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
-            lstm_network(ppo_x, self.on_a_r_in, lstm_class, lstm_layers, )
+        [on_aac_x, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
+            lstm_network(on_aac_x, self.on_a_r_in, lstm_class, lstm_layers, )
         # ppo policy and value outputs and action-sampling function:
-        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(ppo_x, ac_space)
+        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(on_aac_x, ac_space)
 
-        # Off-policy ppo network (shared):
-        off_ppo_x = conv_2d_network(self.off_state_in, ob_space, ac_space, reuse=True)
+        # Off-policy AAC network (shared):
+        off_aac_x = conv_2d_network(self.off_state_in, ob_space, ac_space, reuse=True)
         [off_x_lstm_out, _, _, self.off_lstm_state_pl_flatten] =\
-            lstm_network(off_ppo_x, self.off_a_r_in, lstm_class, lstm_layers, reuse=True)
-        [self.off_ppo_logits, self.off_ppo_vf, _] =\
+            lstm_network(off_aac_x, self.off_a_r_in, lstm_class, lstm_layers, reuse=True)
+        [self.off_logits, self.off_vf, _] =\
             dense_aac_network(off_x_lstm_out, ac_space, reuse=True)
 
         # Aux1: `Pixel control` network:
@@ -74,7 +93,7 @@ class BasePpoPolicy(object):
         self.vr_a_r_in = self.off_a_r_in
 
         self.vr_lstm_state_pl_flatten = self.off_lstm_state_pl_flatten
-        self.vr_value = self.off_ppo_vf
+        self.vr_value = self.off_vf
 
         # Aux3: `Reward prediction` network:
         # Shared conv.:
@@ -104,15 +123,30 @@ class BasePpoPolicy(object):
         self.var_list += moving_var_list + renorm_var_list
 
         # Callbacks:
-        self.callback['pixel_change'] = self._get_pc_target
+        if self.pix_change:
+            self.callback['pixel_change'] = self.get_pc_target
 
     def get_initial_features(self):
-        """Called by thread-runner. Returns LSTM zero-state."""
+        """Returns initial context.
+
+        Returns:
+            LSTM zero-state tuple.
+        """
         sess = tf.get_default_session()
         return sess.run(self.on_lstm_init_state)
 
     def act(self, observation, lstm_state, action_reward):
-        """Called by thread-runner."""
+        """
+        Predicts action.
+
+        Args:
+            observation:    single observation value
+            lstm_state:     lstm context value
+            action_reward:  concatenated last action-reward value
+
+        Returns:
+            Action value, one-hot.
+        """
         sess = tf.get_default_session()
         feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
         feeder.update(
@@ -123,7 +157,17 @@ class BasePpoPolicy(object):
         return sess.run([self.on_sample, self.on_vf, self.on_lstm_state_out], feeder)
 
     def get_value(self, observation, lstm_state, action_reward):
-        """Called by thread-runner."""
+        """
+        Estimates policy V-function.
+
+        Args:
+            observation:    single observation value
+            lstm_state:     lstm context value
+            action_reward:  concatenated last action-reward value
+
+        Returns:
+            Policy V-function estimated value
+        """
         sess = tf.get_default_session()
         feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
         feeder.update(
@@ -133,9 +177,20 @@ class BasePpoPolicy(object):
         )
         return sess.run(self.on_vf, feeder)[0]
 
-    def _get_pc_target(self, state, last_state, **kwargs):
-        """Called-back by thread-runner."""
+    def get_pc_target(self, state, last_state, **kwargs):
+        """
+        Estimates pixel-control task target.
+
+        Args:
+            state:      single observation value
+            last_state: single observation value
+            **kwargs:   not used
+
+        Returns:
+            Estimated absolute difference between two subsampled states.
+        """
         sess = tf.get_default_session()
         feeder = {self.pc_change_state_in: state, self.pc_change_last_state_in: last_state}
         return sess.run(self.pc_target, feeder)[0,...,0]
+
 

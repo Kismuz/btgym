@@ -11,13 +11,29 @@ from btgym.algorithms import Rollout
 
 class RunnerThread(threading.Thread):
     """
+    Async. framework code comes from OpenAI repository under MIT licence:
+    https://github.com/openai/universe-starter-agent
+
     Despite the fact BTgym is not real-time environment [yet], thread-runner approach is still here.
+
     From original `universe-starter-agent`:
     ...One of the key distinctions between a normal environment and a universe environment
     is that a universe environment is _real time_.  This means that there should be a thread
     that would constantly interact with the environment and tell it what to do.  This thread is here.
     """
     def __init__(self, env, policy, task, rollout_length, episode_summary_freq, env_render_freq, test, ep_summary):
+        """
+
+        Args:
+            env:                    environment instance
+            policy:                 policy instance
+            task:                   int
+            rollout_length:         int
+            episode_summary_freq:   int
+            env_render_freq:        int
+            test:                   Atari or BTGyn
+            ep_summary:             tf.summary
+        """
         threading.Thread.__init__(self)
         self.queue = queue.Queue(5)
         self.rollout_length = rollout_length
@@ -39,6 +55,7 @@ class RunnerThread(threading.Thread):
         self.start()
 
     def run(self):
+        """Just keep running."""
         with self.sess.as_default():
             self._run()
 
@@ -73,10 +90,23 @@ def env_runner(sess,
                env_render_freq,
                test,
                ep_summary):
-    """
-    The logic of the thread runner.  In brief, it constantly keeps on running
+    """The logic of the thread runner.
+    In brief, it constantly keeps on running
     the policy, and as long as the rollout exceeds a certain length, the thread
     runner appends the rollout to the queue.
+
+    Args:
+        env:                    environment instance
+        policy:                 policy instance
+        task:                   int
+        rollout_length:         int
+        episode_summary_freq:   int
+        env_render_freq:        int
+        test:                   Atari or BTGyn
+        ep_summary:             tf.summary
+
+    Yelds:
+        rollout instance
     """
     last_state = env.reset()
     if not test:
@@ -119,11 +149,11 @@ def env_runner(sess,
             'terminal': terminal,
             'context': last_context,
             'last_action_reward': last_action_reward,
-            'pixel_change': policy._get_pc_target(state, last_state),
+            #'pixel_change': 0 #policy.get_pc_target(state, last_state),
         }
         # Execute user-defined callbacks to policy, if any:
-        #for key, callback in policy.callback.items():
-        #    last_experience[key] = callback(**locals())
+        for key, callback in policy.callback.items():
+            last_experience[key] = callback(**locals())
 
         length += 1
         rewards += reward
@@ -153,10 +183,10 @@ def env_runner(sess,
                     'terminal': terminal,
                     'context': last_context,
                     'last_action_reward': last_action_reward,
-                    'pixel_change': policy._get_pc_target(state, last_state),
+                    #'pixel_change': 0 #policy.get_pc_target(state, last_state),
                 }
-                #for key, callback in policy.callback.items():
-                #    experience[key] = callback(**locals())
+                for key, callback in policy.callback.items():
+                    experience[key] = callback(**locals())
 
                 # Bootstrap to complete and push previous experience:
                 last_experience['r'] = value_

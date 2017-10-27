@@ -25,9 +25,9 @@ from .memory import Memory
 from .runner import RunnerThread
 from .worker import Worker
 
-from .model import LSTMPolicy, LSTMPolicy2D, BaseLSTMPolicy
-from .model_unreal import BaseUnrealPolicy
-from .model_ppo import BasePpoPolicy
+#from .model import LSTMPolicy, LSTMPolicy2D, BaseLSTMPolicy
+#from .model_unreal import BaseUnrealPolicy
+from .policy import BaseAacPolicy
 
 from .a3c import A3C
 from .unreal import Unreal

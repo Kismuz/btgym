@@ -24,8 +24,7 @@ from backtrader.plot import Plot_OldSync
 
 
 class BTgymPlotter(Plot_OldSync):
-    """
-    Hacky way to get cerebro.plot() renderings.
+    """Hacky way to get cerebro.plot() renderings.
     Overrides default backtrader plotter behaviour.
     """
 
@@ -46,8 +45,7 @@ class BTgymPlotter(Plot_OldSync):
         fig.canvas.draw()
 
 class DrawCerebro(multiprocessing.Process):
-    """
-    That's the way we plot it...
+    """That's the way we plot it...
     """
     def __init__(self, cerebro, width, height, dpi, result_pipe, use=None, ):
         super(DrawCerebro, self).__init__()
@@ -61,7 +59,9 @@ class DrawCerebro(multiprocessing.Process):
 
     def run(self):
         """
-        Returns rgb_array.
+
+        Returns:
+             rgb_array.
         """
         fig = self.cerebro.plot(plotter=self.plotter,  # Modified above plotter class, doesnt actually saves anything.
                                 savefig=True,

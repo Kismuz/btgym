@@ -20,12 +20,11 @@ ExperienceConfig = ['position', 'state', 'action', 'reward', 'value', 'terminal'
 
 
 class Rollout(dict):
-    """
-    Experience rollout as dictionary of lists of values.
-    We run our agent, and process its experience once it has processed enough steps.
+    """Experience rollout as dictionary of lists of values.
     """
     def __init__(self, experience_config=ExperienceConfig):
         """
+
         Args:
             experience_config:  list of experience fields to store.
         """
@@ -36,6 +35,7 @@ class Rollout(dict):
     def add(self, values_dict):
         """
         Adds single experience to rollout.
+
         Args:
             values_dict:    dictionary of values.
         """
@@ -57,7 +57,9 @@ class Rollout(dict):
         """
         Converts rollout to dictionary of ready-to-feed arrays.
         Computes rollout returns and the advantages.
-        Returns: dictionary of batched data.
+
+        Returns:
+            dictionary of batched data.
         """
         #self._check_it()
         batch = dict()

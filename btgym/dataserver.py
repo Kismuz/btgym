@@ -39,10 +39,11 @@ class BTgymDataFeedServer(multiprocessing.Process):
     def __init__(self, dataset=None, network_address=None, log=None):
         """
         Configures data server instance.
-        # Args:
-            dataset: BTgymDataset instance;
-            network_address: ...to bind to.
-            log: parent logger.
+
+        Args:
+            dataset:            BTgymDataset instance;
+            network_address:    ...to bind to.
+            log:                parent logger.
         """
         super(BTgymDataFeedServer, self).__init__()
 

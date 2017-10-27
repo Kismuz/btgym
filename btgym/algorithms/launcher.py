@@ -17,16 +17,10 @@
 #
 ###############################################################################
 #
-# This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
-# https://miyosuda.github.io/
-# https://github.com/miyosuda/unreal
-#
-# Original A3C code comes from OpenAI repository under MIT licence:
+# Original asynchronous framework code comes from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
 #
-# Papers:
-# https://arxiv.org/abs/1602.01783
-# https://arxiv.org/abs/1611.05397
+
 
 
 import sys
@@ -42,14 +36,16 @@ import numpy as np
 
 from .worker import Worker
 from .a3c import A3C
-from .model import LSTMPolicy2D
+from .policy import BaseAacPolicy
 
 
 
 class Launcher():
+    """Configures and starts distributed TF training session with workers
+    running separate instances of BTgym/Atari environment.
+
     """
-    Starts distributed TF training session with workers running separate instances of BTgym environment.
-    """
+    # "Register" legal kwargs:
     env_class = None
     env_config = dict(
         port=5000,
@@ -63,16 +59,15 @@ class Launcher():
         num_ps=1,
         log_dir='./tmp/a3c_log',
     )
-    policy_class = LSTMPolicy2D
+    policy_class = BaseAacPolicy
     policy_config = dict(
         lstm_layers=(256,),
+        pix_change=True,
     )
     trainer_class = A3C
     verbose = 0
     test_mode = False
 
-    # Other legal kwargs:
-    root_random_seed = None
     train_steps = None
     model_summary_freq = None
     episode_summary_freq = None
@@ -91,13 +86,13 @@ class Launcher():
     num_epochs = None
     replay_memory_size = None
     replay_rollout_length = None
-    use_off_policy_a3c = None
+    use_off_policy_aac = None
     use_reward_prediction = None
     use_pixel_control = None
     use_value_replay = None
     use_rebalanced_replay = None
     rebalance_skewness = None
-    off_a3c_lambda = None
+    off_aac_lambda = None
     rp_lambda = None
     pc_lambda = None
     vr_lambda = None
@@ -108,8 +103,15 @@ class Launcher():
 
     ports_to_use = []
 
-    def __init__(self, **kwargs):
-        """_____"""
+    def __init__(self, root_random_seed=None, **kwargs):
+        """
+
+        Args:
+            root_random_seed:   int, random seed.
+            **kwargs:           passed to worker, trainer, environment runner.
+        """
+        self.root_random_seed = root_random_seed
+
         # Update attrs with kwargs:
         self.kwargs = kwargs
         for key, value in kwargs.items():
@@ -199,8 +201,7 @@ class Launcher():
         self.log.debug('Launcher ready.')
 
     def make_cluster_spec(self, config):
-        """
-        Composes cluster specification dictionary. Clears ports to use btw.
+        """Composes cluster specification dictionary.
         """
         cluster = {}
         all_ps = []
@@ -233,10 +234,9 @@ class Launcher():
             self.log.info('port {} cleared'.format(port))
 
     def run(self):
-        """
-        Launches processes:
+        """Launches processes:
             tf distributed workers;
-            tf parameter_server
+            tf parameter_server.
         """
         workers_list = []
         p_servers_list = []

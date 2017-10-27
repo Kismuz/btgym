@@ -7,12 +7,14 @@ from collections import deque
 
 
 class Memory(object):
-    """
-    Replay memory with rebalanced replay.
-    Note: must be filled up before calling sampling methods.
+    """Replay memory with rebalanced replay.
+
+    Note:
+        must be filled up before calling sampling methods.
     """
     def __init__(self, history_size, max_sample_size, log, reward_threshold=0.1):
         """
+
         Args:
             history_size:       number of experiences stored;
             max_sample_size:    maximum allowed sample size (e.g. off-policy rollout length);
@@ -31,8 +33,8 @@ class Memory(object):
         # TODO: add logging
 
     def add_frame(self, frame):
-        """
-        Appends single experience frame to memory.
+        """Appends single experience frame to memory.
+
         Args:
             frame:  dictionary of values.
         """
@@ -71,8 +73,8 @@ class Memory(object):
                 self._non_zero_reward_indices.popleft()
 
     def add_rollout(self, rollout):
-        """
-        Adds frames from given rollout to memory with respect to episode continuation.
+        """ Adds frames from given rollout to memory with respect to episode continuation.
+
         Args:
             rollout:    `Rollout` instance.
         """
@@ -99,8 +101,8 @@ class Memory(object):
         return len(self._frames) >= self._history_size
 
     def sample_uniform(self, sequence_size):
-        """
-        Uniformly samples sequence of successive frames of size `sequence_size` or less (~off-policy rollout).
+        """Uniformly samples sequence of successive frames of size `sequence_size` or less (~off-policy rollout).
+
         Args:
             sequence_size:  maximum sample size.
         Returns:
@@ -122,9 +124,9 @@ class Memory(object):
         return sampled_frames
 
     def sample_priority(self, size, exact_size=False, skewness=2, sample_attempts=100):
-        """
-        Implements rebalanced replay:
+        """ Implements rebalanced replay;
         samples sequence of successive frames from distribution skewed by means of reward of last sample frame.
+
         Args:
             size:               sample size, must be <= self.max_sample_size;
             exact_size:         whether accept sample with size less than 'size'
