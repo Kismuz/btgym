@@ -89,13 +89,14 @@
 
 
 <div class="viewcode-block" id="Launcher"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.launcher.Launcher">[docs]</a><span class="k">class</span> <span class="nc">Launcher</span><span class="p">():</span>
-    <span class="sd">&quot;&quot;&quot;Configures and starts distributed TF training session with workers</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Configures and starts distributed TF training session with workers</span>
 <span class="sd">    running separate instances of BTgym/Atari environment.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># All possible legal kwargs:</span>
-    <span class="n">env_class</span> <span class="o">=</span> <span class="kc">None</span>
+
     <span class="n">env_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">env_class</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">port</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span>
         <span class="n">data_port</span><span class="o">=</span><span class="mi">4999</span><span class="p">,</span>
         <span class="n">gym_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -105,119 +106,62 @@
         <span class="n">port</span><span class="o">=</span><span class="mi">12222</span><span class="p">,</span>
         <span class="n">num_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
         <span class="n">num_ps</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-        <span class="n">log_dir</span><span class="o">=</span><span class="s1">&#39;./tmp/a3c_log&#39;</span><span class="p">,</span>
+        <span class="n">log_dir</span><span class="o">=</span><span class="s1">&#39;./tmp/btgym_aac_log&#39;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">policy_class</span> <span class="o">=</span> <span class="n">BaseAacAuxPolicy</span>
     <span class="n">policy_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">policy_class</span><span class="o">=</span><span class="n">BaseAacAuxPolicy</span><span class="p">,</span>
         <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,),</span>
     <span class="p">)</span>
-    <span class="n">trainer_class</span> <span class="o">=</span> <span class="n">A3C</span>
+    <span class="n">trainer_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">trainer_class</span><span class="o">=</span><span class="n">A3C</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">max_train_steps</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">**</span> <span class="mi">6</span>
     <span class="n">verbose</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">test_mode</span> <span class="o">=</span> <span class="kc">False</span>
-
-    <span class="n">train_steps</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">model_summary_freq</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">episode_summary_freq</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">env_render_freq</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">model_gamma</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">model_gae_lambda</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">model_beta</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">opt_learn_rate</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">opt_end_learn_rate</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">opt_decay_steps</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">opt_decay</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">opt_momentum</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">opt_epsilon</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">rollout_length</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">pi_old_update_period</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">num_epochs</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">replay_memory_size</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">replay_rollout_length</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">use_off_policy_aac</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">use_reward_prediction</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">use_pixel_control</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">use_value_replay</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">use_rebalanced_replay</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">rebalance_skewness</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">off_aac_lambda</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">rp_lambda</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">pc_lambda</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">vr_lambda</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">gamma_pc</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">rp_reward_threshold</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">rp_sequence_size</span> <span class="o">=</span> <span class="kc">None</span>
-
-
     <span class="n">ports_to_use</span> <span class="o">=</span> <span class="p">[]</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root_random_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">env_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">cluster_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">policy_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">trainer_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">max_train_steps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">root_random_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">test_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            root_random_seed:   int, random seed.</span>
-<span class="sd">            **kwargs:           any worker(), trainer() and environment() legal keyword argument will be passed along::</span>
-
-<span class="sd">                env_class = None</span>
-
-<span class="sd">                env_config = dict(port=5000, data_port=4999, gym_id=None,)</span>
-
-<span class="sd">                cluster_config = dict(host=&#39;127.0.0.1&#39;,port=12222, num_workers=1, num_ps=1, log_dir=&#39;./tmp/aac_log&#39;,)</span>
-
-<span class="sd">                policy_class = BaseAacAuxPolicy</span>
-
-<span class="sd">                policy_config = dict(lstm_layers=(256,),)</span>
-
-<span class="sd">                trainer_class = A3C</span>
-
-<span class="sd">                verbose = 0</span>
-<span class="sd">                test_mode = False</span>
-<span class="sd">                train_steps = None</span>
-<span class="sd">                model_summary_freq = None</span>
-<span class="sd">                episode_summary_freq = None</span>
-<span class="sd">                env_render_freq = None</span>
-<span class="sd">                model_gamma = None</span>
-<span class="sd">                model_gae_lambda = None</span>
-<span class="sd">                model_beta = None</span>
-<span class="sd">                opt_learn_rate = None</span>
-<span class="sd">                opt_end_learn_rate = None</span>
-<span class="sd">                opt_decay_steps = None</span>
-<span class="sd">                opt_decay = None</span>
-<span class="sd">                opt_momentum = None</span>
-<span class="sd">                opt_epsilon = None</span>
-<span class="sd">                rollout_length = None</span>
-<span class="sd">                pi_old_update_period = None</span>
-<span class="sd">                num_epochs = None</span>
-<span class="sd">                replay_memory_size = None</span>
-<span class="sd">                replay_rollout_length = None</span>
-<span class="sd">                use_off_policy_aac = None</span>
-<span class="sd">                use_reward_prediction = None</span>
-<span class="sd">                use_pixel_control = None</span>
-<span class="sd">                use_value_replay = None</span>
-<span class="sd">                use_rebalanced_replay = None</span>
-<span class="sd">                rebalance_skewness = None</span>
-<span class="sd">                off_aac_lambda = None</span>
-<span class="sd">                rp_lambda = None</span>
-<span class="sd">                pc_lambda = None</span>
-<span class="sd">                vr_lambda = None</span>
-<span class="sd">                gamma_pc = None</span>
-<span class="sd">                rp_reward_threshold = None</span>
-<span class="sd">                rp_sequence_size = None</span>
+<span class="sd">            env_config:         dictionary containing &#39;env_class&#39; key and env_kwargs, or key &#39;gym_id&#39;</span>
+<span class="sd">            cluster_config:     dictionary containing keys: &#39;host&#39;, &#39;port&#39;, &#39;num_workers&#39;, &#39;num_ps&#39;=1, &#39;log_dir&#39;</span>
+<span class="sd">            policy_config:      dictionary containing &#39;policy_class&#39; key and policy_kwargs</span>
+<span class="sd">            trainer_config:     dictionary containing &#39;trainer_class&#39; keys and trainer_kwargs</span>
+<span class="sd">            max_train_steps:    number of train steps to run</span>
+<span class="sd">            root_random_seed:   int or None</span>
+<span class="sd">            test_mode:          if True - use Atari gym env., BTGym otherwise.</span>
+<span class="sd">            verbose:            0 - silent, 1 - info, 3 - debug level</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">root_random_seed</span> <span class="o">=</span> <span class="n">root_random_seed</span>
 
-        <span class="c1"># Update attrs with kwargs:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-                <span class="n">self_value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
-                <span class="c1"># Partial dict attr update (only flats, no nested dict&#39;s!):</span>
-                <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">self_value</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span><span class="p">:</span>
-                    <span class="n">self_value</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-                    <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">self_value</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s1">&#39;Unexpected key argument: </span><span class="si">{}</span><span class="s1">=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">root_random_seed</span> <span class="o">=</span> <span class="n">root_random_seed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span> <span class="o">=</span> <span class="n">test_mode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+
+        <span class="k">if</span> <span class="n">max_train_steps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">max_train_steps</span> <span class="o">=</span> <span class="n">max_train_steps</span>
+
+        <span class="k">if</span> <span class="n">env_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">env_config</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">cluster_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">cluster_config</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">policy_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">policy_config</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">trainer_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trainer_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">trainer_config</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">trainer_config</span><span class="p">[</span><span class="s1">&#39;test_mode&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span>
 
         <span class="c1"># Logging config:</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">()</span>
@@ -245,7 +189,7 @@
             <span class="c1"># We should have those to proceed with BTgym env.:</span>
             <span class="k">assert</span> <span class="s1">&#39;port&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
             <span class="k">assert</span> <span class="s1">&#39;data_port&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
-            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;env_class&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
         <span class="c1"># Make cluster specification dict:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_cluster_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="p">)</span>
@@ -258,7 +202,6 @@
             <span class="k">for</span> <span class="n">worker_id</span> <span class="ow">in</span> <span class="n">spec_list</span><span class="p">:</span>
                 <span class="n">env_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
                 <span class="n">worker_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-                <span class="n">worker_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
                 <span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="s1">&#39;worker&#39;</span><span class="p">:</span>
                     <span class="c1"># Configure  worker BTgym environment:</span>
@@ -271,16 +214,15 @@
                         <span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;render_enabled&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># disable rendering for all but chief</span>
                 <span class="n">worker_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
                     <span class="p">{</span>
-                        <span class="s1">&#39;env_class&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">,</span>
                         <span class="s1">&#39;env_config&#39;</span><span class="p">:</span> <span class="n">env_config</span><span class="p">,</span>
-                        <span class="s1">&#39;policy_class&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span><span class="p">,</span>
                         <span class="s1">&#39;policy_config&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span><span class="p">,</span>
-                        <span class="s1">&#39;trainer_class&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span><span class="p">,</span>
+                        <span class="s1">&#39;trainer_config&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer_config</span><span class="p">,</span>
                         <span class="s1">&#39;cluster_spec&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span><span class="p">,</span>
                         <span class="s1">&#39;job_name&#39;</span><span class="p">:</span> <span class="n">key</span><span class="p">,</span>
                         <span class="s1">&#39;task&#39;</span><span class="p">:</span> <span class="n">task_index</span><span class="p">,</span>
+                        <span class="s1">&#39;test_mode&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">,</span>
                         <span class="s1">&#39;log_dir&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="p">[</span><span class="s1">&#39;log_dir&#39;</span><span class="p">],</span>
-                        <span class="s1">&#39;max_steps&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_steps</span><span class="p">,</span>
+                        <span class="s1">&#39;max_train_steps&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_train_steps</span><span class="p">,</span>
                         <span class="s1">&#39;log&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
                         <span class="s1">&#39;log_level&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">getEffectiveLevel</span><span class="p">(),</span>
                         <span class="s1">&#39;random_seed&#39;</span><span class="p">:</span> <span class="n">workers_rnd_seeds</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
@@ -348,7 +290,6 @@
             <span class="n">stop_worker</span><span class="p">([</span><span class="n">chief_worker</span><span class="p">])</span>
             <span class="n">stop_worker</span><span class="p">(</span><span class="n">p_servers_list</span><span class="p">)</span>
 
-
         <span class="c1"># Start workers:</span>
         <span class="k">for</span> <span class="n">worker_config</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workers_config_list</span><span class="p">:</span>
             <span class="c1"># Make:</span>
@@ -374,7 +315,7 @@
         <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">signal_handler</span><span class="p">)</span>
 
         <span class="c1"># Halt here:</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Press `Ctrl-C` to stop training and close launcher.&#39;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Press `Ctrl-C` or [Kernel]-&gt;[Interrupt] to stop training and close launcher.&#39;</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="n">signal</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>

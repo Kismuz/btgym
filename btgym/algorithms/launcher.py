@@ -41,13 +41,14 @@ from .policy import BaseAacAuxPolicy
 
 
 class Launcher():
-    """Configures and starts distributed TF training session with workers
+    """
+    Configures and starts distributed TF training session with workers
     running separate instances of BTgym/Atari environment.
 
     """
-    # All possible legal kwargs:
-    env_class = None
+
     env_config = dict(
+        env_class=None,
         port=5000,
         data_port=4999,
         gym_id=None,
@@ -57,119 +58,62 @@ class Launcher():
         port=12222,
         num_workers=1,
         num_ps=1,
-        log_dir='./tmp/a3c_log',
+        log_dir='./tmp/btgym_aac_log',
     )
-    policy_class = BaseAacAuxPolicy
     policy_config = dict(
+        policy_class=BaseAacAuxPolicy,
         lstm_layers=(256,),
     )
-    trainer_class = A3C
+    trainer_config = dict(
+        trainer_class=A3C,
+    )
+    max_train_steps = 10 * 10 ** 6
     verbose = 0
     test_mode = False
-
-    train_steps = None
-    model_summary_freq = None
-    episode_summary_freq = None
-    env_render_freq = None
-    model_gamma = None
-    model_gae_lambda = None
-    model_beta = None
-    opt_learn_rate = None
-    opt_end_learn_rate = None
-    opt_decay_steps = None
-    opt_decay = None
-    opt_momentum = None
-    opt_epsilon = None
-    rollout_length = None
-    pi_old_update_period = None
-    num_epochs = None
-    replay_memory_size = None
-    replay_rollout_length = None
-    use_off_policy_aac = None
-    use_reward_prediction = None
-    use_pixel_control = None
-    use_value_replay = None
-    use_rebalanced_replay = None
-    rebalance_skewness = None
-    off_aac_lambda = None
-    rp_lambda = None
-    pc_lambda = None
-    vr_lambda = None
-    gamma_pc = None
-    rp_reward_threshold = None
-    rp_sequence_size = None
-
-
     ports_to_use = []
 
-    def __init__(self, root_random_seed=None, **kwargs):
+    def __init__(self,
+                 env_config=None,
+                 cluster_config=None,
+                 policy_config=None,
+                 trainer_config=None,
+                 max_train_steps=None,
+                 root_random_seed=None,
+                 test_mode=False,
+                 verbose=0):
         """
 
         Args:
-            root_random_seed:   int, random seed.
-            **kwargs:           any worker(), trainer() and environment() legal keyword argument will be passed along::
-
-                env_class = None
-
-                env_config = dict(port=5000, data_port=4999, gym_id=None,)
-
-                cluster_config = dict(host='127.0.0.1',port=12222, num_workers=1, num_ps=1, log_dir='./tmp/aac_log',)
-
-                policy_class = BaseAacAuxPolicy
-
-                policy_config = dict(lstm_layers=(256,),)
-
-                trainer_class = A3C
-
-                verbose = 0
-                test_mode = False
-                train_steps = None
-                model_summary_freq = None
-                episode_summary_freq = None
-                env_render_freq = None
-                model_gamma = None
-                model_gae_lambda = None
-                model_beta = None
-                opt_learn_rate = None
-                opt_end_learn_rate = None
-                opt_decay_steps = None
-                opt_decay = None
-                opt_momentum = None
-                opt_epsilon = None
-                rollout_length = None
-                pi_old_update_period = None
-                num_epochs = None
-                replay_memory_size = None
-                replay_rollout_length = None
-                use_off_policy_aac = None
-                use_reward_prediction = None
-                use_pixel_control = None
-                use_value_replay = None
-                use_rebalanced_replay = None
-                rebalance_skewness = None
-                off_aac_lambda = None
-                rp_lambda = None
-                pc_lambda = None
-                vr_lambda = None
-                gamma_pc = None
-                rp_reward_threshold = None
-                rp_sequence_size = None
+            env_config:         dictionary containing 'env_class' key and env_kwargs, or key 'gym_id'
+            cluster_config:     dictionary containing keys: 'host', 'port', 'num_workers', 'num_ps'=1, 'log_dir'
+            policy_config:      dictionary containing 'policy_class' key and policy_kwargs
+            trainer_config:     dictionary containing 'trainer_class' keys and trainer_kwargs
+            max_train_steps:    number of train steps to run
+            root_random_seed:   int or None
+            test_mode:          if True - use Atari gym env., BTGym otherwise.
+            verbose:            0 - silent, 1 - info, 3 - debug level
         """
-        self.root_random_seed = root_random_seed
 
-        # Update attrs with kwargs:
-        self.kwargs = kwargs
-        for key, value in kwargs.items():
-            if key in dir(self):
-                self_value = getattr(self, key)
-                # Partial dict attr update (only flats, no nested dict's!):
-                if type(self_value) == dict:
-                    self_value.update(value)
-                    setattr(self, key, self_value)
-                else:
-                    setattr(self, key, value)
-            else:
-                raise KeyError('Unexpected key argument: {}={}'.format(key, value))
+        self.root_random_seed = root_random_seed
+        self.test_mode = test_mode
+        self.verbose = verbose
+
+        if max_train_steps is not None:
+            self.max_train_steps = max_train_steps
+
+        if env_config is not None:
+            self.env_config.update(env_config)
+
+        if cluster_config is not None:
+            self.cluster_config.update(cluster_config)
+
+        if policy_config is not None:
+            self.policy_config.update(policy_config)
+
+        if trainer_config is not None:
+            self.trainer_config.update(trainer_config)
+
+        self.trainer_config['test_mode'] = self.test_mode
 
         # Logging config:
         logging.basicConfig()
@@ -197,7 +141,7 @@ class Launcher():
             # We should have those to proceed with BTgym env.:
             assert 'port' in self.env_config.keys()
             assert 'data_port' in self.env_config.keys()
-            assert self.env_class is not None
+            assert self.env_config['env_class'] is not None
 
         # Make cluster specification dict:
         self.cluster_spec = self.make_cluster_spec(self.cluster_config)
@@ -210,7 +154,6 @@ class Launcher():
             for worker_id in spec_list:
                 env_config = dict()
                 worker_config = dict()
-                worker_config.update(self.kwargs)
                 env_config.update(self.env_config)
                 if key in 'worker':
                     # Configure  worker BTgym environment:
@@ -223,16 +166,15 @@ class Launcher():
                         env_config['render_enabled'] = False  # disable rendering for all but chief
                 worker_config.update(
                     {
-                        'env_class': self.env_class,
                         'env_config': env_config,
-                        'policy_class': self.policy_class,
                         'policy_config': self.policy_config,
-                        'trainer_class': self.trainer_class,
+                        'trainer_config': self.trainer_config,
                         'cluster_spec': self.cluster_spec,
                         'job_name': key,
                         'task': task_index,
+                        'test_mode': self.test_mode,
                         'log_dir': self.cluster_config['log_dir'],
-                        'max_steps': self.train_steps,
+                        'max_train_steps': self.max_train_steps,
                         'log': self.log,
                         'log_level': self.log.getEffectiveLevel(),
                         'random_seed': workers_rnd_seeds.pop()
@@ -300,7 +242,6 @@ class Launcher():
             stop_worker([chief_worker])
             stop_worker(p_servers_list)
 
-
         # Start workers:
         for worker_config in self.workers_config_list:
             # Make:
@@ -326,7 +267,7 @@ class Launcher():
         signal.signal(signal.SIGINT, signal_handler)
 
         # Halt here:
-        msg = 'Press `Ctrl-C` to stop training and close launcher.'
+        msg = 'Press `Ctrl-C` or [Kernel]->[Interrupt] to stop training and close launcher.'
         print(msg)
         self.log.info(msg)
         signal.pause()

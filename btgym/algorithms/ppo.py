@@ -37,7 +37,6 @@ class PPO(object):
     def __init__(self,
                  env,
                  task,
-                 policy_class,
                  policy_config,
                  log,
                  random_seed=None,
@@ -73,17 +72,16 @@ class PPO(object):
                  off_aac_lambda=1,
                  gamma_pc=0.9,  # pixel change gamma-decay - not used
                  rp_reward_threshold=0.1,  # r.prediction: abs.rewards values bigger than this are considered non-zero
-                 rp_sequence_size=3,  # r.prediction sampling
-                 **kwargs):
+                 rp_sequence_size=3,):  # r.prediction sampling
+
         """
 
         Args:
             env:                    envirionment instance.
             task:                   int
-            policy_class:           policy estimator class
-            policy_config:          config dictionary
+            policy_config:          policy estimator class and configuration dictionary
             log:                    parent log
-            random_seed:
+            random_seed:            int or None
             model_gamma:            gamma discount factor
             model_gae_lambda:       GAE lambda
             model_beta:             entropy regularization beta
@@ -96,7 +94,7 @@ class PPO(object):
             opt_momentum:           optimizer momentum, if apll.
             opt_epsilon:            optimizer epsilon
             rollout_length:         on-policy rollout length
-            num_epochs:             number epochs to run on every train step
+            num_epochs:             num. of SGD runs for every train step
             pi_old_update_period:   int, PPO pi to pi old update period in number of train steps
             episode_summary_freq:   int, write episode summary for every i'th episode
             env_render_freq:        int, write environment rendering summary for every i'th train step
@@ -117,7 +115,6 @@ class PPO(object):
             gamma_pc:               NOT USED
             rp_reward_threshold:    reward prediction task classification threshold, above which reward is 'non-zero'
             rp_sequence_size:       reward prediction sample size, in number of experiences
-            **kwargs:               NOT USED
         """
         self.log = log
         self.random_seed = random_seed
@@ -129,8 +126,8 @@ class PPO(object):
 
         self.env = env
         self.task = task
-        self.policy_class = policy_class
-        self.policy_config = policy_config
+        self.policy_class = policy_config['policy_class']
+        self.policy_config = {key: policy_config[key] for key in policy_config if key!='policy_class'}
 
         # AAC specific:
         self.model_gamma = model_gamma  # decay

@@ -48,55 +48,50 @@ class Worker(multiprocessing.Process):
     env = None
 
     def __init__(self,
-                 env_class,
                  env_config,
-                 policy_class,
                  policy_config,
-                 trainer_class,
+                 trainer_config,
                  cluster_spec,
                  job_name,
                  task,
                  log_dir,
                  log,
                  log_level,
-                 max_steps=1000000000,
-                 test_mode=False,
-                 **kwargs):
+                 max_train_steps,
+                 random_seed=None,
+                 test_mode=False):
         """
 
         Args:
-            env_class:      environment class to use.
-            env_config:     configuration dictionary.
-            policy_class:   model policy estimator class to use.
-            policy_config:  configuration dictionary.
-            trainer_class:  algorithm class to use.
+            env_config:     environment class and configuration dictionary.
+            policy_config:  model policy estimator class and configuration dictionary.
+            trainer_config: algorithm class and configuration dictionary.
             cluster_spec:   tf.cluster specification.
             job_name:       worker or parameter server.
             task:           integer number, 0 is chief worker.
             log_dir:        for tb summaries and checkpoints.
-            log:
-            log_level:
+            log:            parent logger
+            log_level:      --
             max_steps:      number of train steps
             test_mode:      if True - use Atari mode, BTGym otherwise.
-            **kwargs:       args passed to trainer.
         """
         super(Worker, self).__init__()
-        self.env_class = env_class
+        self.env_class = env_config['env_class']
         self.env_config = env_config
-        self.policy_class = policy_class
         self.policy_config = policy_config
-        self.trainer_class = trainer_class
+        self.trainer_class = trainer_config['trainer_class']
+        self.trainer_config = {key: trainer_config[key] for key in trainer_config if key!='trainer_class'}
         self.cluster_spec = cluster_spec
         self.job_name = job_name
         self.task = task
         self.log_dir = log_dir
-        self.max_steps = max_steps
+        self.max_train_steps = max_train_steps
         self.log = log
         logging.basicConfig()
         self.log = logging.getLogger('{}_{}'.format(self.job_name, self.task))
         self.log.setLevel(log_level)
-        self.kwargs = kwargs
         self.test_mode = test_mode
+        self.random_seed = random_seed
 
     def run(self):
         """Worker runtime body.
@@ -156,12 +151,11 @@ class Worker(multiprocessing.Process):
             trainer = self.trainer_class(
                 env=self.env,
                 task=self.task,
-                policy_class=self.policy_class,
                 policy_config=self.policy_config,
-                test_mode=self.test_mode,
-                opt_max_train_steps=self.max_steps,
                 log=self.log,
-                **self.kwargs)
+                random_seed=self.random_seed,
+                **self.trainer_config,
+            )
 
             self.log.debug('worker_{}:trainer ok.'.format(self.task))
 
@@ -210,7 +204,7 @@ class Worker(multiprocessing.Process):
                         trainer.fill_replay_memory(sess)
 
                 self.log.warning("worker_{}: started training at step: {}".format(self.task, global_step))
-                while not sv.should_stop() and global_step < self.max_steps:
+                while not sv.should_stop() and global_step < self.max_train_steps:
                     trainer.process(sess)
                     global_step = sess.run(trainer.global_step)
 

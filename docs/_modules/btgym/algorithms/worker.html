@@ -96,55 +96,50 @@
     <span class="n">env</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">env_class</span><span class="p">,</span>
                  <span class="n">env_config</span><span class="p">,</span>
-                 <span class="n">policy_class</span><span class="p">,</span>
                  <span class="n">policy_config</span><span class="p">,</span>
-                 <span class="n">trainer_class</span><span class="p">,</span>
+                 <span class="n">trainer_config</span><span class="p">,</span>
                  <span class="n">cluster_spec</span><span class="p">,</span>
                  <span class="n">job_name</span><span class="p">,</span>
                  <span class="n">task</span><span class="p">,</span>
                  <span class="n">log_dir</span><span class="p">,</span>
                  <span class="n">log</span><span class="p">,</span>
                  <span class="n">log_level</span><span class="p">,</span>
-                 <span class="n">max_steps</span><span class="o">=</span><span class="mi">1000000000</span><span class="p">,</span>
-                 <span class="n">test_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                 <span class="n">max_train_steps</span><span class="p">,</span>
+                 <span class="n">random_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">test_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            env_class:      environment class to use.</span>
-<span class="sd">            env_config:     configuration dictionary.</span>
-<span class="sd">            policy_class:   model policy estimator class to use.</span>
-<span class="sd">            policy_config:  configuration dictionary.</span>
-<span class="sd">            trainer_class:  algorithm class to use.</span>
+<span class="sd">            env_config:     environment class and configuration dictionary.</span>
+<span class="sd">            policy_config:  model policy estimator class and configuration dictionary.</span>
+<span class="sd">            trainer_config: algorithm class and configuration dictionary.</span>
 <span class="sd">            cluster_spec:   tf.cluster specification.</span>
 <span class="sd">            job_name:       worker or parameter server.</span>
 <span class="sd">            task:           integer number, 0 is chief worker.</span>
 <span class="sd">            log_dir:        for tb summaries and checkpoints.</span>
-<span class="sd">            log:</span>
-<span class="sd">            log_level:</span>
+<span class="sd">            log:            parent logger</span>
+<span class="sd">            log_level:      --</span>
 <span class="sd">            max_steps:      number of train steps</span>
 <span class="sd">            test_mode:      if True - use Atari mode, BTGym otherwise.</span>
-<span class="sd">            **kwargs:       args passed to trainer.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">Worker</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span> <span class="o">=</span> <span class="n">env_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span> <span class="o">=</span> <span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;env_class&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span> <span class="o">=</span> <span class="n">env_config</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_class</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span> <span class="o">=</span> <span class="n">policy_config</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span> <span class="o">=</span> <span class="n">trainer_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span> <span class="o">=</span> <span class="n">trainer_config</span><span class="p">[</span><span class="s1">&#39;trainer_class&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trainer_config</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">trainer_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">trainer_config</span> <span class="k">if</span> <span class="n">key</span><span class="o">!=</span><span class="s1">&#39;trainer_class&#39;</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span> <span class="o">=</span> <span class="n">cluster_spec</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">job_name</span> <span class="o">=</span> <span class="n">job_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">=</span> <span class="n">log_dir</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span> <span class="o">=</span> <span class="n">max_steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_train_steps</span> <span class="o">=</span> <span class="n">max_train_steps</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">job_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span> <span class="o">=</span> <span class="n">test_mode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="o">=</span> <span class="n">random_seed</span>
 
 <div class="viewcode-block" id="Worker.run"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.worker.Worker.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Worker runtime body.</span>
@@ -204,12 +199,11 @@
             <span class="n">trainer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span><span class="p">(</span>
                 <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span>
                 <span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
-                <span class="n">policy_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span><span class="p">,</span>
                 <span class="n">policy_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span><span class="p">,</span>
-                <span class="n">test_mode</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">,</span>
-                <span class="n">opt_max_train_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span><span class="p">,</span>
                 <span class="n">log</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
-                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="n">random_seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">,</span>
+                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer_config</span><span class="p">,</span>
+            <span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">:trainer ok.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
 
@@ -258,7 +252,7 @@
                         <span class="n">trainer</span><span class="o">.</span><span class="n">fill_replay_memory</span><span class="p">(</span><span class="n">sess</span><span class="p">)</span>
 
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;worker_</span><span class="si">{}</span><span class="s2">: started training at step: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">global_step</span><span class="p">))</span>
-                <span class="k">while</span> <span class="ow">not</span> <span class="n">sv</span><span class="o">.</span><span class="n">should_stop</span><span class="p">()</span> <span class="ow">and</span> <span class="n">global_step</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span><span class="p">:</span>
+                <span class="k">while</span> <span class="ow">not</span> <span class="n">sv</span><span class="o">.</span><span class="n">should_stop</span><span class="p">()</span> <span class="ow">and</span> <span class="n">global_step</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_train_steps</span><span class="p">:</span>
                     <span class="n">trainer</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">sess</span><span class="p">)</span>
                     <span class="n">global_step</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span>
 

@@ -12,7 +12,7 @@ from btgym.algorithms.losses import aac_loss_def
 
 class A3C(object):
     """
-    Asynchronous Advantage Actor Critic.
+    Asynchronous Advantage Actor Critic algorithm.
 
     Original code is taken from OpenAI repository under MIT licence:
     https://github.com/openai/universe-starter-agent
@@ -22,7 +22,6 @@ class A3C(object):
     def __init__(self,
                  env,
                  task,
-                 policy_class,
                  policy_config,
                  log,
                  random_seed=None,
@@ -40,15 +39,13 @@ class A3C(object):
                  episode_summary_freq=2,  # every i`th environment episode
                  env_render_freq=10,  # every i`th environment episode
                  model_summary_freq=100,  # every i`th algorithm iteration
-                 test_mode=False,  # gym_atari test mode
-                 **kwargs):
+                 test_mode=False,):  # gym_atari test mode
         """
 
         Args:
-            env:                    envirionment instance.
+            env:                    envirionment instance
             task:                   int
-            policy_class:           policy estimator class
-            policy_config:          config dictionary
+            policy_config:          policy estimator class and configuration dictionary
             log:                    parent log
             random_seed:            int or None
             model_gamma:            gamma discount factor
@@ -66,7 +63,6 @@ class A3C(object):
             env_render_freq:        int, write environment rendering summary for every i'th train step
             model_summary_freq:     int, write model summary for every i'th train step
             test_mode:              True: Atari, False: BTGym
-            **kwargs:               NOT USED
         """
         self.log = log
         self.random_seed = random_seed
@@ -78,8 +74,8 @@ class A3C(object):
 
         self.env = env
         self.task = task
-        self.policy_class = policy_class
-        self.policy_config = policy_config
+        self.policy_class = policy_config['policy_class']
+        self.policy_config = {key: policy_config[key] for key in policy_config if key!='policy_class'}
 
         # AAC specific:
         self.model_gamma = model_gamma  # decay

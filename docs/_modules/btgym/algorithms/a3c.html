@@ -58,9 +58,9 @@
 <span class="kn">from</span> <span class="nn">btgym.algorithms.losses</span> <span class="k">import</span> <span class="n">aac_loss_def</span>
 
 
-<div class="viewcode-block" id="A3C"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.launcher.A3C">[docs]</a><span class="k">class</span> <span class="nc">A3C</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="A3C"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.a3c.A3C">[docs]</a><span class="k">class</span> <span class="nc">A3C</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Asynchronous Advantage Actor Critic.</span>
+<span class="sd">    Asynchronous Advantage Actor Critic algorithm.</span>
 
 <span class="sd">    Original code is taken from OpenAI repository under MIT licence:</span>
 <span class="sd">    https://github.com/openai/universe-starter-agent</span>
@@ -70,7 +70,6 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">env</span><span class="p">,</span>
                  <span class="n">task</span><span class="p">,</span>
-                 <span class="n">policy_class</span><span class="p">,</span>
                  <span class="n">policy_config</span><span class="p">,</span>
                  <span class="n">log</span><span class="p">,</span>
                  <span class="n">random_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -88,15 +87,13 @@
                  <span class="n">episode_summary_freq</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>  <span class="c1"># every i`th environment episode</span>
                  <span class="n">env_render_freq</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># every i`th environment episode</span>
                  <span class="n">model_summary_freq</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>  <span class="c1"># every i`th algorithm iteration</span>
-                 <span class="n">test_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># gym_atari test mode</span>
-                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                 <span class="n">test_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">,):</span>  <span class="c1"># gym_atari test mode</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            env:                    envirionment instance.</span>
+<span class="sd">            env:                    envirionment instance</span>
 <span class="sd">            task:                   int</span>
-<span class="sd">            policy_class:           policy estimator class</span>
-<span class="sd">            policy_config:          config dictionary</span>
+<span class="sd">            policy_config:          policy estimator class and configuration dictionary</span>
 <span class="sd">            log:                    parent log</span>
 <span class="sd">            random_seed:            int or None</span>
 <span class="sd">            model_gamma:            gamma discount factor</span>
@@ -114,7 +111,6 @@
 <span class="sd">            env_render_freq:        int, write environment rendering summary for every i&#39;th train step</span>
 <span class="sd">            model_summary_freq:     int, write model summary for every i&#39;th train step</span>
 <span class="sd">            test_mode:              True: Atari, False: BTGym</span>
-<span class="sd">            **kwargs:               NOT USED</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="o">=</span> <span class="n">random_seed</span>
@@ -126,8 +122,8 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_class</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span> <span class="o">=</span> <span class="n">policy_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;policy_class&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">policy_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">policy_config</span> <span class="k">if</span> <span class="n">key</span><span class="o">!=</span><span class="s1">&#39;policy_class&#39;</span><span class="p">}</span>
 
         <span class="c1"># AAC specific:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model_gamma</span> <span class="o">=</span> <span class="n">model_gamma</span>  <span class="c1"># decay</span>
@@ -347,7 +343,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">runner</span><span class="o">.</span><span class="n">start_runner</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">)</span>  <span class="c1"># starting runner thread</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="n">summary_writer</span>
 
-<div class="viewcode-block" id="A3C.pull_batch_from_queue"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.launcher.A3C.pull_batch_from_queue">[docs]</a>    <span class="k">def</span> <span class="nf">pull_batch_from_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="A3C.pull_batch_from_queue"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.a3c.A3C.pull_batch_from_queue">[docs]</a>    <span class="k">def</span> <span class="nf">pull_batch_from_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Self explanatory:  take a rollout from the queue of the thread runner.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -357,7 +353,7 @@
         <span class="c1">#             rollout.rewards, rollout.last_actions, rollout.last_rewards, rollout.terminal))</span>
         <span class="k">return</span> <span class="n">rollout</span></div>
 
-<div class="viewcode-block" id="A3C.process"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.launcher.A3C.process">[docs]</a>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">):</span>
+<div class="viewcode-block" id="A3C.process"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.a3c.A3C.process">[docs]</a>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Grabs a on_policy_rollout that&#39;s been produced by the thread runner,</span>
 <span class="sd">        samples off_policy rollout[s] from replay memory and updates the parameters.</span>

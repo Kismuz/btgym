@@ -54,7 +54,7 @@
 <span id="btgym-algorithms-launcher-module"></span><h2>btgym.algorithms.launcher module<a class="headerlink" href="#module-btgym.algorithms.launcher" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.launcher.Launcher">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.launcher.</code><code class="descname">Launcher</code><span class="sig-paren">(</span><em>root_random_seed=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.launcher.</code><code class="descname">Launcher</code><span class="sig-paren">(</span><em>env_config=None</em>, <em>cluster_config=None</em>, <em>policy_config=None</em>, <em>trainer_config=None</em>, <em>max_train_steps=None</em>, <em>root_random_seed=None</em>, <em>test_mode=False</em>, <em>verbose=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher" title="Permalink to this definition">¶</a></dt>
 <dd><p>Configures and starts distributed TF training session with workers
 running separate instances of BTgym/Atari environment.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -62,65 +62,19 @@ running separate instances of BTgym/Atari environment.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>root_random_seed</strong> – int, random seed.</li>
-<li><strong>**kwargs</strong> – <p>any worker(), trainer() and environment() legal keyword argument will be passed along:</p>
-<p>env_class = None</p>
-<p>env_config = dict(port=5000, data_port=4999, gym_id=None,)</p>
-<p>cluster_config = dict(host=‘127.0.0.1’,port=12222, num_workers=1, num_ps=1, log_dir=’./tmp/aac_log’,)</p>
-<p>policy_class = BaseAacAuxPolicy</p>
-<p>policy_config = dict(lstm_layers=(256,),)</p>
-<p>trainer_class = A3C</p>
-<p>verbose = 0
-test_mode = False
-train_steps = None
-model_summary_freq = None
-episode_summary_freq = None
-env_render_freq = None
-model_gamma = None
-model_gae_lambda = None
-model_beta = None
-opt_learn_rate = None
-opt_end_learn_rate = None
-opt_decay_steps = None
-opt_decay = None
-opt_momentum = None
-opt_epsilon = None
-rollout_length = None
-pi_old_update_period = None
-num_epochs = None
-replay_memory_size = None
-replay_rollout_length = None
-use_off_policy_aac = None
-use_reward_prediction = None
-use_pixel_control = None
-use_value_replay = None
-use_rebalanced_replay = None
-rebalance_skewness = None
-off_aac_lambda = None
-rp_lambda = None
-pc_lambda = None
-vr_lambda = None
-gamma_pc = None
-rp_reward_threshold = None
-rp_sequence_size = None</p>
-</li>
+<li><strong>env_config</strong> – dictionary containing ‘env_class’ key and env_kwargs, or key ‘gym_id’</li>
+<li><strong>cluster_config</strong> – dictionary containing keys: ‘host’, ‘port’, ‘num_workers’, ‘num_ps’=1, ‘log_dir’</li>
+<li><strong>policy_config</strong> – dictionary containing ‘policy_class’ key and policy_kwargs</li>
+<li><strong>trainer_config</strong> – dictionary containing ‘trainer_class’ keys and trainer_kwargs</li>
+<li><strong>max_train_steps</strong> – number of train steps to run</li>
+<li><strong>root_random_seed</strong> – int or None</li>
+<li><strong>test_mode</strong> – if True - use Atari gym env., BTGym otherwise.</li>
+<li><strong>verbose</strong> – 0 - silent, 1 - info, 3 - debug level</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
-<dl class="attribute">
-<dt id="btgym.algorithms.launcher.Launcher.policy_class">
-<code class="descname">policy_class</code><a class="headerlink" href="#btgym.algorithms.launcher.Launcher.policy_class" title="Permalink to this definition">¶</a></dt>
-<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">BaseAacAuxPolicy</span></code></p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="btgym.algorithms.launcher.Launcher.trainer_class">
-<code class="descname">trainer_class</code><a class="headerlink" href="#btgym.algorithms.launcher.Launcher.trainer_class" title="Permalink to this definition">¶</a></dt>
-<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">A3C</span></code></p>
-</dd></dl>
-
 <dl class="method">
 <dt id="btgym.algorithms.launcher.Launcher.make_cluster_spec">
 <code class="descname">make_cluster_spec</code><span class="sig-paren">(</span><em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher.make_cluster_spec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher.make_cluster_spec" title="Permalink to this definition">¶</a></dt>
@@ -239,7 +193,7 @@ loading/saving.</li>
 
 <dl class="class">
 <dt id="btgym.algorithms.worker.Worker">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.worker.</code><code class="descname">Worker</code><span class="sig-paren">(</span><em>env_class</em>, <em>env_config</em>, <em>policy_class</em>, <em>policy_config</em>, <em>trainer_class</em>, <em>cluster_spec</em>, <em>job_name</em>, <em>task</em>, <em>log_dir</em>, <em>log</em>, <em>log_level</em>, <em>max_steps=1000000000</em>, <em>test_mode=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/worker.html#Worker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.worker.Worker" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.worker.</code><code class="descname">Worker</code><span class="sig-paren">(</span><em>env_config</em>, <em>policy_config</em>, <em>trainer_config</em>, <em>cluster_spec</em>, <em>job_name</em>, <em>task</em>, <em>log_dir</em>, <em>log</em>, <em>log_level</em>, <em>max_train_steps</em>, <em>random_seed=None</em>, <em>test_mode=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/worker.html#Worker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.worker.Worker" title="Permalink to this definition">¶</a></dt>
 <dd><p>Distributed tf worker class.</p>
 <p>Sets up environment, trainer and starts training process in supervised session.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -247,20 +201,18 @@ loading/saving.</li>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env_class</strong> – environment class to use.</li>
-<li><strong>env_config</strong> – configuration dictionary.</li>
-<li><strong>policy_class</strong> – model policy estimator class to use.</li>
-<li><strong>policy_config</strong> – configuration dictionary.</li>
-<li><strong>trainer_class</strong> – algorithm class to use.</li>
+<li><strong>env_config</strong> – environment class and configuration dictionary.</li>
+<li><strong>policy_config</strong> – model policy estimator class and configuration dictionary.</li>
+<li><strong>trainer_config</strong> – algorithm class and configuration dictionary.</li>
 <li><strong>cluster_spec</strong> – tf.cluster specification.</li>
 <li><strong>job_name</strong> – worker or parameter server.</li>
 <li><strong>task</strong> – integer number, 0 is chief worker.</li>
 <li><strong>log_dir</strong> – for tb summaries and checkpoints.</li>
-<li><strong>log</strong> – </li>
-<li><strong>log_level</strong> – </li>
+<li><strong>log</strong> – parent logger</li>
+<li><strong>log_level</strong> – <p>–</p>
+</li>
 <li><strong>max_steps</strong> – number of train steps</li>
 <li><strong>test_mode</strong> – if True - use Atari mode, BTGym otherwise.</li>
-<li><strong>**kwargs</strong> – args passed to trainer.</li>
 </ul>
 </td>
 </tr>
@@ -349,8 +301,8 @@ runner appends the rollout to the queue.</p>
 <span id="btgym-algorithms-a3c-module"></span><h2>btgym.algorithms.a3c module<a class="headerlink" href="#module-btgym.algorithms.a3c" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.a3c.A3C">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.a3c.</code><code class="descname">A3C</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_class</em>, <em>policy_config</em>, <em>log</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-10</em>, <em>rollout_length=20</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/a3c.html#A3C"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.a3c.A3C" title="Permalink to this definition">¶</a></dt>
-<dd><p>Asynchronous Advantage Actor Critic.</p>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.a3c.</code><code class="descname">A3C</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-10</em>, <em>rollout_length=20</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/a3c.html#A3C"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.a3c.A3C" title="Permalink to this definition">¶</a></dt>
+<dd><p>Asynchronous Advantage Actor Critic algorithm.</p>
 <p>Original code is taken from OpenAI repository under MIT licence:
 <a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
 <p>Paper: <a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a></p>
@@ -359,10 +311,9 @@ runner appends the rollout to the queue.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env</strong> – envirionment instance.</li>
+<li><strong>env</strong> – envirionment instance</li>
 <li><strong>task</strong> – int</li>
-<li><strong>policy_class</strong> – policy estimator class</li>
-<li><strong>policy_config</strong> – config dictionary</li>
+<li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
 <li><strong>log</strong> – parent log</li>
 <li><strong>random_seed</strong> – int or None</li>
 <li><strong>model_gamma</strong> – gamma discount factor</li>
@@ -380,7 +331,6 @@ runner appends the rollout to the queue.</p>
 <li><strong>env_render_freq</strong> – int, write environment rendering summary for every i’th train step</li>
 <li><strong>model_summary_freq</strong> – int, write model summary for every i’th train step</li>
 <li><strong>test_mode</strong> – True: Atari, False: BTGym</li>
-<li><strong>**kwargs</strong> – NOT USED</li>
 </ul>
 </td>
 </tr>
@@ -809,7 +759,7 @@ action sampling function.</td>
 <span id="btgym-algorithms-ppo-module"></span><h2>btgym.algorithms.ppo module<a class="headerlink" href="#module-btgym.algorithms.ppo" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.ppo.PPO">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.ppo.</code><code class="descname">PPO</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_class</em>, <em>policy_config</em>, <em>log</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>clip_epsilon=0.1</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-10</em>, <em>rollout_length=20</em>, <em>num_epochs=1</em>, <em>pi_old_update_period=10</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>use_rebalanced_replay=False</em>, <em>rebalance_skewness=2</em>, <em>rp_lambda=1</em>, <em>pc_lambda=0.1</em>, <em>vr_lambda=1</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.ppo.</code><code class="descname">PPO</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>clip_epsilon=0.1</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-10</em>, <em>rollout_length=20</em>, <em>num_epochs=1</em>, <em>pi_old_update_period=10</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>use_rebalanced_replay=False</em>, <em>rebalance_skewness=2</em>, <em>rp_lambda=1</em>, <em>pc_lambda=0.1</em>, <em>vr_lambda=1</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Asynchronous implementation of Proximal Policy Optimization algorithm,
 augmented with auxiliary Unreal-style tasks.</p>
 <p>paper:
@@ -825,10 +775,9 @@ augmented with auxiliary Unreal-style tasks.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>env</strong> – envirionment instance.</li>
 <li><strong>task</strong> – int</li>
-<li><strong>policy_class</strong> – policy estimator class</li>
-<li><strong>policy_config</strong> – config dictionary</li>
+<li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
 <li><strong>log</strong> – parent log</li>
-<li><strong>random_seed</strong> – </li>
+<li><strong>random_seed</strong> – int or None</li>
 <li><strong>model_gamma</strong> – gamma discount factor</li>
 <li><strong>model_gae_lambda</strong> – GAE lambda</li>
 <li><strong>model_beta</strong> – entropy regularization beta</li>
@@ -841,7 +790,7 @@ augmented with auxiliary Unreal-style tasks.</p>
 <li><strong>opt_momentum</strong> – optimizer momentum, if apll.</li>
 <li><strong>opt_epsilon</strong> – optimizer epsilon</li>
 <li><strong>rollout_length</strong> – on-policy rollout length</li>
-<li><strong>num_epochs</strong> – number epochs to run on every train step</li>
+<li><strong>num_epochs</strong> – num. of SGD runs for every train step</li>
 <li><strong>pi_old_update_period</strong> – int, PPO pi to pi old update period in number of train steps</li>
 <li><strong>episode_summary_freq</strong> – int, write episode summary for every i’th episode</li>
 <li><strong>env_render_freq</strong> – int, write environment rendering summary for every i’th train step</li>
@@ -862,7 +811,6 @@ augmented with auxiliary Unreal-style tasks.</p>
 <li><strong>gamma_pc</strong> – NOT USED</li>
 <li><strong>rp_reward_threshold</strong> – reward prediction task classification threshold, above which reward is ‘non-zero’</li>
 <li><strong>rp_sequence_size</strong> – reward prediction sample size, in number of experiences</li>
-<li><strong>**kwargs</strong> – NOT USED</li>
 </ul>
 </td>
 </tr>
@@ -976,7 +924,7 @@ Computes rollout returns and the advantages.</p>
 <span id="btgym-algorithms-unreal-module"></span><h2>btgym.algorithms.unreal module<a class="headerlink" href="#module-btgym.algorithms.unreal" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.unreal.Unreal">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.unreal.</code><code class="descname">Unreal</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_class</em>, <em>policy_config</em>, <em>log</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-10</em>, <em>rollout_length=20</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>use_rebalanced_replay=False</em>, <em>rebalance_skewness=2</em>, <em>rp_lambda=1</em>, <em>pc_lambda=0.1</em>, <em>vr_lambda=1</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#Unreal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.Unreal" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.unreal.</code><code class="descname">Unreal</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-10</em>, <em>rollout_length=20</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>use_rebalanced_replay=False</em>, <em>rebalance_skewness=2</em>, <em>rp_lambda=1</em>, <em>pc_lambda=0.1</em>, <em>vr_lambda=1</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#Unreal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.Unreal" title="Permalink to this definition">¶</a></dt>
 <dd><p>Asynchronous Advantage Actor Critic with auxiliary control tasks.</p>
 <p>This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
 <a class="reference external" href="https://miyosuda.github.io/">https://miyosuda.github.io/</a>
@@ -993,8 +941,7 @@ Computes rollout returns and the advantages.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>env</strong> – envirionment instance.</li>
 <li><strong>task</strong> – int</li>
-<li><strong>policy_class</strong> – policy estimator class</li>
-<li><strong>policy_config</strong> – config dictionary</li>
+<li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
 <li><strong>log</strong> – parent log</li>
 <li><strong>random_seed</strong> – int or None</li>
 <li><strong>model_gamma</strong> – gamma discount factor</li>
@@ -1027,7 +974,6 @@ Computes rollout returns and the advantages.</p>
 <li><strong>gamma_pc</strong> – NOT USED</li>
 <li><strong>rp_reward_threshold</strong> – reward prediction task classification threshold, above which reward is ‘non-zero’</li>
 <li><strong>rp_sequence_size</strong> – reward prediction sample size, in number of experiences</li>
-<li><strong>**kwargs</strong> – NOT USED</li>
 </ul>
 </td>
 </tr>

@@ -85,7 +85,6 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">env</span><span class="p">,</span>
                  <span class="n">task</span><span class="p">,</span>
-                 <span class="n">policy_class</span><span class="p">,</span>
                  <span class="n">policy_config</span><span class="p">,</span>
                  <span class="n">log</span><span class="p">,</span>
                  <span class="n">random_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -121,17 +120,16 @@
                  <span class="n">off_aac_lambda</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                  <span class="n">gamma_pc</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>  <span class="c1"># pixel change gamma-decay - not used</span>
                  <span class="n">rp_reward_threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>  <span class="c1"># r.prediction: abs.rewards values bigger than this are considered non-zero</span>
-                 <span class="n">rp_sequence_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>  <span class="c1"># r.prediction sampling</span>
-                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                 <span class="n">rp_sequence_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,):</span>  <span class="c1"># r.prediction sampling</span>
+
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            env:                    envirionment instance.</span>
 <span class="sd">            task:                   int</span>
-<span class="sd">            policy_class:           policy estimator class</span>
-<span class="sd">            policy_config:          config dictionary</span>
+<span class="sd">            policy_config:          policy estimator class and configuration dictionary</span>
 <span class="sd">            log:                    parent log</span>
-<span class="sd">            random_seed:</span>
+<span class="sd">            random_seed:            int or None</span>
 <span class="sd">            model_gamma:            gamma discount factor</span>
 <span class="sd">            model_gae_lambda:       GAE lambda</span>
 <span class="sd">            model_beta:             entropy regularization beta</span>
@@ -144,7 +142,7 @@
 <span class="sd">            opt_momentum:           optimizer momentum, if apll.</span>
 <span class="sd">            opt_epsilon:            optimizer epsilon</span>
 <span class="sd">            rollout_length:         on-policy rollout length</span>
-<span class="sd">            num_epochs:             number epochs to run on every train step</span>
+<span class="sd">            num_epochs:             num. of SGD runs for every train step</span>
 <span class="sd">            pi_old_update_period:   int, PPO pi to pi old update period in number of train steps</span>
 <span class="sd">            episode_summary_freq:   int, write episode summary for every i&#39;th episode</span>
 <span class="sd">            env_render_freq:        int, write environment rendering summary for every i&#39;th train step</span>
@@ -165,7 +163,6 @@
 <span class="sd">            gamma_pc:               NOT USED</span>
 <span class="sd">            rp_reward_threshold:    reward prediction task classification threshold, above which reward is &#39;non-zero&#39;</span>
 <span class="sd">            rp_sequence_size:       reward prediction sample size, in number of experiences</span>
-<span class="sd">            **kwargs:               NOT USED</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="o">=</span> <span class="n">random_seed</span>
@@ -177,8 +174,8 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_class</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span> <span class="o">=</span> <span class="n">policy_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;policy_class&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">policy_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">policy_config</span> <span class="k">if</span> <span class="n">key</span><span class="o">!=</span><span class="s1">&#39;policy_class&#39;</span><span class="p">}</span>
 
         <span class="c1"># AAC specific:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model_gamma</span> <span class="o">=</span> <span class="n">model_gamma</span>  <span class="c1"># decay</span>
