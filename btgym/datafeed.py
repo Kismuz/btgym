@@ -31,10 +31,12 @@ import pandas as pd
 class BTgymDataset:
     """
     Backtrader.feeds class wrapper.
-    Currently pipes CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine.
+    Currently pipes CSV[source]->pandas[for efficient sampling]->bt.feeds routine.
+
     Implements random episode data sampling.
 
     Suggested usage::
+
         ---user defined ---
         Dataset = BTgymDataset(<filename>,<params>)
         ---inner BTgymServer routine---
@@ -92,36 +94,39 @@ class BTgymDataset:
             **kwargs:
                 filename=None,  # Str or list of str, should be given either here  or when calling read_csv()
 
-                # Default parameters for source-specific CSV datafeed class,
-                # correctly parses 1 minute Forex generic ASCII
-                # data files from www.HistData.com:
+                Default parameters for source-specific CSV datafeed class,
+                correctly parses 1 minute Forex generic ASCII
+                data files from www.HistData.com:
 
-                # CSV to Pandas params.
-                sep=';',
-                header=0,
-                index_col=0,
-                parse_dates=True,
-                names=['open', 'high', 'low', 'close', 'volume'],
+                CSV to Pandas params:
 
-                # Pandas to BT.feeds params:
-                timeframe=1,  # 1 minute.
-                datetime=0,
-                open=1,
-                high=2,
-                low=3,
-                close=4,
-                volume=-1,
-                openinterest=-1,
+                    sep=';',
+                    header=0,
+                    index_col=0,
+                    parse_dates=True,
+                    names=['open', 'high', 'low', 'close', 'volume'],
 
-                # Random-sampling params:
-                start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
-                start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
-                episode_len_days=1,  # Maximum episode time duration in days, hours, minutes:
-                episode_len_hours=23,
-                episode_len_minutes=55,
-                time_gap_days=0,  # Maximum data time gap allowed within sample in days, hours. Thereby,
-                time_gap_hours=5,  # if set to be < 1 day,
-                    samples containing weekends and holidays gaps will be rejected.
+                Pandas to BT.feeds params:
+
+                    timeframe=1,  # 1 minute.
+                    datetime=0,
+                    open=1,
+                    high=2,
+                    low=3,
+                    close=4,
+                    volume=-1,
+                    openinterest=-1,
+
+                Random-sampling params:
+
+                    start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
+                    start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
+                    episode_len_days=1,  # Maximum episode time duration in days, hours, minutes:
+                    episode_len_hours=23,
+                    episode_len_minutes=55,
+                    time_gap_days=0,  # Maximum data time gap allowed within sample in days, hours. Thereby,
+                    time_gap_hours=5,  # if set to be < 1 day,
+                        samples containing weekends and holidays gaps will be rejected.
         """
         # Update parameters with relevant kwargs:
         for key, value in kwargs.items():

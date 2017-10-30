@@ -1,4 +1,7 @@
-### A3C implementation for BTgym.
+### 30.10.17: TEMPORARILY BROKEN please do not use 
+#####due to package restructuring, these examples will not work for some time. Take a look at `atari_tests` folder for now.
+
+A3C implementation for BTgym.
 
 ****
 ###### This implementation is based on `Universal Starter Agent` from `OPenAI`: https://github.com/openai/universe-starter-agent

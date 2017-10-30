@@ -5,14 +5,15 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 
+from btgym.spaces import BTgymMultiSpace
 from btgym.algorithms import Memory, Rollout, RunnerThread
-
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def
 
 
 class Unreal(object):
-    """Asynchronous Advantage Actor Critic with auxiliary control tasks.
+    """
+    Asynchronous Advantage Actor Critic with auxiliary control tasks.
 
     This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
     https://miyosuda.github.io/
@@ -24,7 +25,7 @@ class Unreal(object):
     Papers:
     https://arxiv.org/abs/1602.01783
     https://arxiv.org/abs/1611.05397
-"""
+    """
     def __init__(self,
                  env,
                  task,
@@ -61,7 +62,7 @@ class Unreal(object):
                  off_aac_lambda=1,
                  gamma_pc=0.9,  # pixel change gamma-decay - not used
                  rp_reward_threshold=0.1,  # r.prediction: abs.rewards values bigger than this are considered non-zero
-                 rp_sequence_size=4,  # r.prediction sampling
+                 rp_sequence_size=3,  # r.prediction sampling
                  **kwargs):
         """
 
@@ -193,19 +194,20 @@ class Unreal(object):
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
-        if self.test_mode:
-            model_input_shape = env.observation_space.shape
+        # Infer observation space shape:
+        if type(env.observation_space) == BTgymMultiSpace:
+            model_input_shape = env.observation_space.get_shapes()
 
         else:
-            model_input_shape = env.observation_space.spaces['model_input'].shape
+            model_input_shape = env.observation_space.shape
 
         # Start building graph:
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
                 self.network = self.policy_class(
-                    model_input_shape,
-                    env.action_space.n,
-                    self.rp_sequence_size,
+                    ob_space=model_input_shape,
+                    ac_space=env.action_space.n,
+                    rp_sequence_size=self.rp_sequence_size,
                     **self.policy_config
                 )
                 self.global_step = tf.get_variable(
@@ -234,9 +236,9 @@ class Unreal(object):
         with tf.device(worker_device):
             with tf.variable_scope("local"):
                 self.local_network = pi = self.policy_class(
-                    model_input_shape,
-                    env.action_space.n,
-                    self.rp_sequence_size,
+                    ob_space=model_input_shape,
+                    ac_space=env.action_space.n,
+                    rp_sequence_size=self.rp_sequence_size,
                     **self.policy_config
                 )
                 pi.global_step = self.global_step

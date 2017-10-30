@@ -36,7 +36,7 @@ import numpy as np
 
 from .worker import Worker
 from .a3c import A3C
-from .policy import BaseAacPolicy
+from .policy import BaseAacAuxPolicy
 
 
 
@@ -45,7 +45,7 @@ class Launcher():
     running separate instances of BTgym/Atari environment.
 
     """
-    # "Register" legal kwargs:
+    # All possible legal kwargs:
     env_class = None
     env_config = dict(
         port=5000,
@@ -59,10 +59,9 @@ class Launcher():
         num_ps=1,
         log_dir='./tmp/a3c_log',
     )
-    policy_class = BaseAacPolicy
+    policy_class = BaseAacAuxPolicy
     policy_config = dict(
         lstm_layers=(256,),
-        pix_change=True,
     )
     trainer_class = A3C
     verbose = 0
@@ -117,7 +116,7 @@ class Launcher():
         for key, value in kwargs.items():
             if key in dir(self):
                 self_value = getattr(self, key)
-                # Partial dict attr update (only first level, no nested dict!):
+                # Partial dict attr update (only flats, no nested dict's!):
                 if type(self_value) == dict:
                     self_value.update(value)
                     setattr(self, key, self_value)

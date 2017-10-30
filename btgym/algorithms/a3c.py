@@ -4,19 +4,21 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 
+from btgym.spaces import BTgymMultiSpace
 from btgym.algorithms import RunnerThread
-
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import aac_loss_def
 
+
 class A3C(object):
-    """ Asynchronous Advantage Actor Critic.
+    """
+    Asynchronous Advantage Actor Critic.
 
     Original code is taken from OpenAI repository under MIT licence:
     https://github.com/openai/universe-starter-agent
 
     Paper: https://arxiv.org/abs/1602.01783
-"""
+    """
     def __init__(self,
                  env,
                  task,
@@ -113,19 +115,23 @@ class A3C(object):
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
-        if self.test_mode:
-            model_input_shape = env.observation_space.shape
+        # Infer observation space shape:
+        if type(env.observation_space) == BTgymMultiSpace:
+            model_input_shape = env.observation_space.get_shapes()
 
         else:
-            model_input_shape = env.observation_space.spaces['model_input'].shape
+            model_input_shape = env.observation_space.shape
+
+        self.log.info(
+            'AAC_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}.'.
+                format(self.task, self.opt_learn_rate, self.model_beta))
 
         # Start building graph:
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
                 self.network = self.policy_class(
-                    model_input_shape,
-                    env.action_space.n,
-                    3,
+                    ob_space=model_input_shape,
+                    ac_space=env.action_space.n,
                     **self.policy_config
                 )
                 self.global_step = tf.get_variable(
@@ -154,9 +160,8 @@ class A3C(object):
         with tf.device(worker_device):
             with tf.variable_scope("local"):
                 self.local_network = pi = self.policy_class(
-                    model_input_shape,
-                    env.action_space.n,
-                    3,
+                    ob_space=model_input_shape,
+                    ac_space=env.action_space.n,
                     **self.policy_config
                 )
                 pi.global_step = self.global_step

@@ -15,13 +15,14 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 
+from btgym.spaces import BTgymMultiSpace
 from btgym.algorithms import Memory, Rollout, RunnerThread
-
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import ppo_loss_def, value_fn_loss_def, rp_loss_def, pc_loss_def
 
 class PPO(object):
-    """Asynchronous implementation of Proximal Policy Optimization algorithm,
+    """
+    Asynchronous implementation of Proximal Policy Optimization algorithm,
     augmented with auxiliary Unreal-style tasks.
 
     paper:
@@ -32,7 +33,7 @@ class PPO(object):
 
     Async. framework code comes from OpenAI repository under MIT licence:
     https://github.com/openai/universe-starter-agent
-"""
+    """
     def __init__(self,
                  env,
                  task,
@@ -72,7 +73,7 @@ class PPO(object):
                  off_aac_lambda=1,
                  gamma_pc=0.9,  # pixel change gamma-decay - not used
                  rp_reward_threshold=0.1,  # r.prediction: abs.rewards values bigger than this are considered non-zero
-                 rp_sequence_size=4,  # r.prediction sampling
+                 rp_sequence_size=3,  # r.prediction sampling
                  **kwargs):
         """
 
@@ -212,19 +213,20 @@ class PPO(object):
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
-        if self.test_mode:
-            model_input_shape = env.observation_space.shape
+        # Infer observation space shape:
+        if type(env.observation_space) == BTgymMultiSpace:
+            model_input_shape = env.observation_space.get_shapes()
 
         else:
-            model_input_shape = env.observation_space.spaces['model_input'].shape
+            model_input_shape = env.observation_space.shape
 
         # Start building graph:
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
                 self.network = self.policy_class(
-                    model_input_shape,
-                    env.action_space.n,
-                    self.rp_sequence_size,
+                    ob_space=model_input_shape,
+                    ac_space=env.action_space.n,
+                    rp_sequence_size=self.rp_sequence_size,
                     **self.policy_config
                 )
                 self.global_step = tf.get_variable(
@@ -253,9 +255,9 @@ class PPO(object):
         with tf.device(worker_device):
             with tf.variable_scope("local"):
                 self.local_network = pi = self.policy_class(
-                    model_input_shape,
-                    env.action_space.n,
-                    self.rp_sequence_size,
+                    ob_space=model_input_shape,
+                    ac_space=env.action_space.n,
+                    rp_sequence_size=self.rp_sequence_size,
                     **self.policy_config
                 )
                 pi.global_step = self.global_step
@@ -265,9 +267,9 @@ class PPO(object):
             with tf.variable_scope("local_old"):
                 # PPO specific, second local policy network:
                 self.local_network_old = pi_old = self.policy_class(
-                    model_input_shape,
-                    env.action_space.n,
-                    self.rp_sequence_size,
+                    ob_space=model_input_shape,
+                    ac_space=env.action_space.n,
+                    rp_sequence_size=self.rp_sequence_size,
                     **self.policy_config
                 )
                 pi_old.global_step = self.global_step

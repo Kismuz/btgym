@@ -13,7 +13,7 @@ from btgym.algorithms.nnet_util import *
 import tensorflow as tf
 
 
-class BaseAacPolicy(object):
+class BaseAacAuxPolicy(object):
     """ Base advantage actor-critic LSTM policy estimator with auxiliary control tasks.
 
     Papers:
@@ -23,25 +23,27 @@ class BaseAacPolicy(object):
     """
 
     def __init__(self, ob_space, ac_space, rp_sequence_size,
-                 lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), pix_change=True):
+                 lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), aux_estimate=True, **kwargs):
         """
-        Defines [partially shared] on/off-policy networks for estimating  actions logits, value function,
+        Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,
         reward and state 'pixel_change' predictions.
+        Expects uni-modal observation as array of shape `ob_space`.
 
         Args:
             ob_space:           observation state shape
             ac_space:           discrete action space shape (length)
             rp_sequence_size:   reward prediction sample length
             lstm_class:         tf.nn.lstm class
-            lstm_layers:        tuple of sizes of LSTM layers
-            pix_change:         (bool), if True - add `pix_change` estimation graph to callbacks dictionary.
+            lstm_layers:        tuple of LSTM layers sizes
+            aux_estimate:       (bool), if True - add auxiliary tasks estimations to callbacks dictionary.
+            **kwargs            not used
         """
         self.ob_space = ob_space
         self.ac_space = ac_space
         self.rp_sequence_size = rp_sequence_size
         self.lstm_class = lstm_class
         self.lstm_layers = lstm_layers
-        self.pix_change = pix_change
+        self.aux_estimate = aux_estimate
         self.callback = {}
 
         # Placeholders for obs. state input:
@@ -123,7 +125,7 @@ class BaseAacPolicy(object):
         self.var_list += moving_var_list + renorm_var_list
 
         # Callbacks:
-        if self.pix_change:
+        if self.aux_estimate:
             self.callback['pixel_change'] = self.get_pc_target
 
     def get_initial_features(self):
@@ -192,5 +194,45 @@ class BaseAacPolicy(object):
         sess = tf.get_default_session()
         feeder = {self.pc_change_state_in: state, self.pc_change_last_state_in: last_state}
         return sess.run(self.pc_target, feeder)[0,...,0]
+
+
+class BaseAacPolicy(BaseAacAuxPolicy):
+    """
+    Vanilla advantage actor-critic LSTM policy estimator.
+    """
+
+    def __init__(self, ob_space, ac_space, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), **kwargs):
+        """
+        Defines network for estimating  actions, logits and value function.
+        In fact, it's just truncated `BaseAacAuxPolicy` to gain some execution speed.
+        Expects uni-modal observation as array of shape `ob_space`.
+
+        Args:
+            ob_space:           observation state shape
+            ac_space:           discrete action space shape (length)
+            rp_sequence_size:   reward prediction sample length
+            lstm_class:         tf.nn.lstm class
+            lstm_layers:        tuple of LSTM layers sizes
+            **kwargs
+        """
+        #print('kwargs:', kwargs)
+        kwargs['rp_sequence_size'] = 3
+        kwargs['aux_estimate'] = False
+        super(BaseAacPolicy, self).__init__(
+            ob_space=ob_space,
+            ac_space=ac_space,
+            lstm_class=lstm_class,
+            lstm_layers=lstm_layers,
+            **kwargs
+        )
+
+
+AacAuxPolicy = BaseAacAuxPolicy
+
+AacPolicy = BaseAacPolicy
+
+PpoPolicy = BaseAacPolicy
+
+
 
 

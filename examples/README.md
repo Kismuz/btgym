@@ -1,9 +1,10 @@
 ### BTgym examples and how-to's.
-****
-###### UNDER CONSTRUCTION
+
 ****
 
-- **[A3C for BTgym](./a3c)**: big RL-solver goes trading.
+- **[Atari tests](./atari_tests)**: Gym-Atari tests for A3C, Unreal, PPO.
+
+- **[A3C for BTgym](./a3c)**: TEMPORARILY OUT OF SERVICE
 
 - **[BTgym setup for asynchronous training](./async_btgym_workers.ipynb)**: getting ready for A3C.
 

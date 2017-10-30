@@ -81,8 +81,8 @@ class Memory(object):
         # Check if current rollout is direct extension of last stored frame sequence:
         if len(self._frames) > 0 and not self._frames[-1]['terminal']:
             # E.g. check if it is same local episode and successive frame order:
-            if self._frames[-1]['position']['episode'] == rollout['position'][0]['episode'] and \
-                    self._frames[-1]['position']['step'] + 1 == rollout['position'][0]['step']:
+            if self._frames[-1]['position']['episode'] == rollout['position']['episode'][0] and \
+                    self._frames[-1]['position']['step'] + 1 == rollout['position']['step'][0]:
                 # Means it is ok to just extend previously stored episode
                 pass
             else:
@@ -93,8 +93,8 @@ class Memory(object):
                 # If we get a lot of such messages it is an indication something is going wrong.
         # Add experiences one by one:
         # TODO: pain-slow.
-        for i in range(len(rollout['position'])):
-            frame = {key: rollout[key][i] for key in rollout.keys()}
+        for i in range(len(rollout['terminal'])):
+            frame = rollout.extract(i)
             self.add_frame(frame)
 
     def is_full(self):

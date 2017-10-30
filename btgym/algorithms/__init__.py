@@ -17,7 +17,7 @@
 #
 ###############################################################################
 
-# Asynchronous  implementattion of several `advantage actor-critic`-style algorithms.
+# Asynchronous  implementation of several `advantage actor-critic`-style algorithms.
 
 from .envs import create_env
 from .rollout import Rollout, ExperienceConfig
@@ -25,9 +25,7 @@ from .memory import Memory
 from .runner import RunnerThread
 from .worker import Worker
 
-#from .model import LSTMPolicy, LSTMPolicy2D, BaseLSTMPolicy
-#from .model_unreal import BaseUnrealPolicy
-from .policy import BaseAacPolicy
+from .policy import BaseAacAuxPolicy, AacAuxPolicy, BaseAacPolicy, AacPolicy
 
 from .a3c import A3C
 from .unreal import Unreal

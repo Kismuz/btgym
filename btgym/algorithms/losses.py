@@ -138,9 +138,13 @@ def value_fn_loss_def(r_target, pi_vf, name='value_replay', verbose=False):
 def pc_loss_def(actions, targets, pi_pc_q, name='pixel_control', verbose=False):
     """
     Pixel control auxiliary task loss definition.
+
     Paper: https://arxiv.org/abs/1611.05397
+
     Borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+
     https://miyosuda.github.io/
+
     https://github.com/miyosuda/unreal
 
     Args:
@@ -176,10 +180,15 @@ def pc_loss_def(actions, targets, pi_pc_q, name='pixel_control', verbose=False):
 def rp_loss_def(rp_targets, pi_rp_logits, name='reward_prediction', verbose=False):
     """
     Reward prediction auxillary task loss definition.
+
     Paper: https://arxiv.org/abs/1611.05397
+
     Borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+
     https://miyosuda.github.io/
+
     https://github.com/miyosuda/unreal
+
 
     Args:
         targets         tensor holding reward prediction target;
@@ -210,7 +219,7 @@ def aac_ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_old_
     """
 
     Note:
-        IGNORE!!
+        IGNORE!! Do not use this loss.
 
     Args:
         act_target      tensor holding policy actions targets;

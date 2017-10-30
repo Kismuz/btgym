@@ -21,21 +21,26 @@ from gym import Space
 
 class BTgymMultiSpace(Space):
     """
-    Defines space as [non recursive] dictionary of simplier Gym spaces.
+    Multi-modal observation space wrapper.
+    Defines space as flat [not nested] dictionary of spaces.
     """
 
     def __init__(self, spaces_dict):
+        """
+
+        Args:
+            spaces_dict:    dictionary of core Gym spaces.
+        """
         self.spaces = spaces_dict
 
     def sample(self):
         """
-        Uniformly randomly sample a random element of this space
-        """
-        sample = dict()
-        for key, space in self.spaces.items():
-            sample[key] = space.sample()
+        Uniformly randomly sample a random element of this space.
 
-        return sample
+        Returns:
+            dictionary of samples
+        """
+        return {key: space.sample() for key, space in self.spaces.items()}
 
     def contains(self, x):
         """
@@ -50,6 +55,16 @@ class BTgymMultiSpace(Space):
 
         except:
             return False
+
+    def get_shapes(self):
+        """
+        Get shapes for every space included.
+
+        Returns:
+            dictionary of shapes
+
+        """
+        return {key: self.spaces[key].shape for key in self.spaces.keys()}
 
     def to_jsonable(self, sample_n):
         """Convert a batch of samples from this space to a JSONable data type."""

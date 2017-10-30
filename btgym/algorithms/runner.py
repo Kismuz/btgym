@@ -136,8 +136,8 @@ def env_runner(sess,
 
         # argmax to convert from one-hot:
         state, reward, terminal, info = env.step(action.argmax())
-        if not test:
-            state = state['model_input']
+        #if not test:
+        #    state = state['model_input']
 
         # Partially collect first experience of rollout:
         last_experience = {
@@ -170,8 +170,8 @@ def env_runner(sess,
 
                 # Argmax to convert from one-hot:
                 state, reward, terminal, info = env.step(action.argmax())
-                if not test:
-                        state = state['model_input']
+                #if not test:
+                #        state = state['model_input']
 
                 # Partially collect next experience:
                 experience = {
@@ -272,8 +272,8 @@ def env_runner(sess,
 
                 # New episode:
                 last_state = env.reset()
-                if not test:
-                    last_state = last_state['model_input']
+                #if not test:
+                #    last_state = last_state['model_input']
 
                 last_context = policy.get_initial_features()
                 length = 0

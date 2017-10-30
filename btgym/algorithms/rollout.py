@@ -20,30 +20,33 @@ ExperienceConfig = ['position', 'state', 'action', 'reward', 'value', 'terminal'
 
 
 class Rollout(dict):
-    """Experience rollout as dictionary of lists of values.
+    """Experience rollout as [nested] dictionary of lists.
     """
-    def __init__(self, experience_config=ExperienceConfig):
-        """
 
-        Args:
-            experience_config:  list of experience fields to store.
-        """
+    def __init__(self):
         super(Rollout, self).__init__()
-        #for key in experience_config:
-        #    self[key] = []
 
-    def add(self, values_dict):
+    def add(self, values_dict, _dict=None):
         """
-        Adds single experience to rollout.
+        Adds single experience to rollout by appending values to dictionary of lists.
 
         Args:
-            values_dict:    dictionary of values.
+            values_dict:    [nested] dictionary of values.
         """
-        for key in values_dict.keys():
-            try:
-                self[key] += [values_dict[key]]
-            except:
-                self[key] = [values_dict[key]]
+        if _dict is None:
+            _dict = self
+        for key, value in values_dict.items():
+            if type(value) == dict:
+                if key not in _dict.keys():
+                    _dict[key] = {}
+                self.add(value, _dict=_dict[key])
+
+            else:
+                if key in _dict.keys():
+                    _dict[key] += [value]
+
+                else:
+                    _dict[key] = [value]
 
     def add_memory_sample(self, sample):
         """
@@ -59,12 +62,12 @@ class Rollout(dict):
         Computes rollout returns and the advantages.
 
         Returns:
-            dictionary of batched data.
+            batch as [nested] dictionary.
         """
-        #self._check_it()
+        # self._check_it()
         batch = dict()
         for key in self.keys() - {'context', 'reward', 'r', 'value', 'position'}:
-            batch[key] = np.asarray(self[key])
+            batch[key] = self.as_array(self[key])
 
         batch['context'] = self['context'][0]  # rollout initial LSTM state
 
@@ -82,10 +85,48 @@ class Rollout(dict):
 
         return batch
 
-    def _check_it(self):
-        for key, list in self.items():
-            try:
-                print('{}: length {}, type {}, shape {}\n'.format(key, len(list), type(list[0]), list[0].shape))
-            except:
-                print('{}: length {}, type {}\n'.format(key, len(list), type(list[0])))
+    def extract(self, idx, _struct=None):
+        """
+        Extracts single experience from rollout.
 
+        Args:
+            idx:    experience position
+
+        Returns:
+            [nested] dictionary
+        """
+        # No idx range checks here!
+        if _struct is None:
+            _struct = self
+
+        if type(_struct) == dict or type(_struct) == type(self):
+            frame = {}
+            for key, value in _struct.items():
+                frame[key] = self.extract(idx, _struct=value)
+            return frame
+
+        else:
+            return _struct[idx]
+
+    def as_array(self, struct):
+        if type(struct) == dict:
+            out = {}
+            for key, value in struct.items():
+                out[key] = self.as_array(value)
+            return out
+
+        else:
+            return np.asarray(struct)
+
+    def _check_it(self, _struct=None):
+        if _struct is None:
+            _struct = self
+        if type(_struct) == dict or type(_struct) == type(self):
+            for key, value in _struct.items():
+                print(key, ':')
+                self._check_it(_struct=value)
+        else:
+            try:
+                print('length {}, type {}, shape {}\n'.format(len(_struct), type(_struct[0]), _struct[0].shape))
+            except:
+                print('length {}, type {}\n'.format(len(_struct), type(_struct[0])))

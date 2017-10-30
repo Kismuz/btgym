@@ -327,169 +327,7 @@ Repeat until received message '_stop':
 ****
    
     
-### <a name="reference"></a> [Reference*](#contents)
-###### *- very incomplete, refer to source files!
-
-### class BTgymEnv(gym.Env, args):
-   OpenAI Gym environment wrapper for Backtrader framework.
-   See source code comments for parameters definitions.
-#### Methods:
-
-#### reset():
-Implementation of OpenAI Gym `env.reset()` method.
-'Rewinds' backtrader server and starts new episode
-within randomly selected time period. Returns initial environment observation.
-
-#### step(action):
-Implementation of OpenAI Gym `env.step()` method.
-Relies on remote backtrader server for actual environment dynamics computing.
-Accepts:
-`'buy', 'sell', 'hold', 'close'` - actions;
-Returns:
-- response - `tuple (O, R, D, I)`:
-    - `OBSERVATION` - observation of the current environment state, could be any tensor;
-        default is [n,4] array of < fl32 >, where:
-        - n - num. of last datafeed values,
-        - 4 - num. of data features (O, H, L, C  price values).
-    - `REWARD` - current portfolio statistics for environment reward estimation;
-    - `DONE` - episode termination flag;
-    - `INFO` - auxiliary information.
-
-#### close():
-Implementation of OpenAI Gym `env.close()` method.
-Stops BTgym server process. Environment instance can be 're-opened' by simply calling `env.reset()`
-
-#### get_stat():
-Returns last episode statistics.
-Currently, returns `dict` of results, obtained from calling all
-attached to `Cerebro()` analyzers by their `get_analysis()` methods.
-See backtrader docs for analyzers reference: https://www.backtrader.com/docu/analyzers/analyzers.html
-- Note: when invoked, this method forces running episode to terminate.
-
-### class BTgymStrategy():
-Controls Environment inner dynamics and backtesting logic.
-Any `State`, `Reward` and `Info` computation logic can be implemented by
-subclassing `BTgymStrategy()` and overriding at least `get_state()`, `get_reward()`,
-`get_info()`, `is_done()` and `set_datalines()` methods.
-- One can always 'go deeper' and override `init()` and `next()` methods for desired
-server cerebro engine behaviour, including order execution management logic etc.
-- Since it is `bt.Strategy()` subclass, see:
-https://www.backtrader.com/docu/strategy.html
-for more information.
-- Note: `bt.observers.DrawDown` observer will be automatically added [by server process]
-to `BTgymStrategy` instance at runtime.
-
-#### Methods*:
-*- specific to BTgym, for general reference see:
-   https://www.backtrader.com/docu/strategy.html 
-
-#### set_datalines():
-Default datalines are: `Open`, `Low`, `High`, `Close` [no `Volume`**] (see Backtrader docs).
-Any other custom data lines, indicators, etc.
-should be explicitly defined by overriding this method.
-Invoked once by Strategy `init()`.
-- This is just a convention method.
-- ** - FX data contains no `Volume` information.
-
-#### get_state():
-Default state observation composer.
-- Returns time-embedded environment state observation as [n,m] numpy matrix, where
-    - m - number of signal features [ == `env.state_dim_1`, default is 4 ],
-    - n - time-embedding length.
-- One can override this method,
-defining necessary calculations and returning arbitrary shaped tensor.
-It's possible either to compute entire featurized environment state
-or just pass raw price `data` to RL algorithm featurizer module.
-- Note: `data` referes to `bt.startegy datafeeds` and should be treated as such.
-Data Lines that are not default to `BTgymStrategy` should be explicitly defined by
-`define_datalines()`.
-
-#### get_reward():
-Default reward estimator.
-- Default implementation: Computes reward as log utility of current to initial portfolio value ratio.
-- Returns scalar <reward, type=float>.
-- Same as for state composer applies. Can return raw portfolio
-performance statictics or enclose entire reward estimation module.
-
-#### get_info():
-Composes information part of environment response, by default returns `dict`, but can be any string/object, 
-- Override to own taste.
-
-#### get_done():
-Episode termination estimator,
-defines any trading logic conditions episode stop is called upon.
-- It is just a structural a convention method.
-- Expected to return tuple `(<is_done, type=bool>, <message, type=str>)`,
-  e.g.: `(True, 'OMG! Stop it, we became too rich!')`
-- Default method is empty.
-
-#### _get_done():
-Default episode termination method,
-checks base conditions episode stop is called upon:
-1. Reached maximum episode duration. Need to check it explicitly, because `is_done` flag
-   is sent as part of environment response.
-2. Got `_done` signal from outside. E.g. via `env.reset()` method invoked by outer RL algorithm.
-3. Hit drawdown threshold.
-4. Reached profit target. 
- 
-This method shouldn't be overridden or called explicitly.
-```
-Runtime execution logic is:
-    terminate episode if:
-        get_done() returned (True, 'something')
-        OR
-        ANY _get_done() default condition is met.
-```
-
-#### next():
-Default implementation for `BTgymStrategy` exists.
-- Defines one step environment routine for server 'Episode mode'.
-- At least, it should handle order execution logic according to action received.
-
-### class BTgymDataset():
-`Backtrader.CSVfeeds()` class wrapper.
-- Pipes `CSV`[source]-->`pandas`[for efficient sampling]-->`bt.feeds` routine.
-- Supports random episode data sampling.
-- Default parameters are set to correctly parse 1 minute Forex generic ASCII
-data files from www.HistData.com:
-- See source code comments for parameters definitions.
-- Suggested usage:
-```
----user defined ---
-Dataset = BTgymDataset(<filename>,<params>)
----inner BTgymServer routine---
-Dataset.read_csv(<filename>)
-Repeat until bored:
-    EpisodeDataset = Dataset.get_sample()
-    DataFeed = EpisodeDataset.to_btfeed()
-    Engine = bt.Cerebro()
-    Engine.adddata(DataFeed)
-    Engine.run()
-```
-#### Methods:
-#### read_csv(filename):
-Populates instance by loading data from [list of] CSV files[s].
-
-#### sample_random():
-Randomly samples continuous subset of data.
-- Returns `BTgymDataset` instance, holding single episode data with
-number of records ~ max_episode_len.
-
-#### to_btfeed():
-Performs `BTgymDataset`-->`bt.feed` conversion.
-- Returns Cerebro-ready `bt.datafeed` instance.
-
-#### describe():
-Returns summary dataset statisitc [for every column] as pandas dataframe. Useful for preprocessing.
-- records count,
-- data mean,
-- data std dev,
-- min value,
-- 25% percentile,
-- 50% percentile,
-- 75% percentile,
-- max value.
-****
+### <a name="reference"></a> [DOCs and API Reference](./docs/build/index.html)
 
 ****
 ### <a name="issues"></a> [Current issues and limitations:](#title)
@@ -498,6 +336,7 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
   before btgym import. It's recommended to import btacktrader and btgym first to ensure proper backend
   choice.
 - not tested with Python < 3.5;
+- doesn't seem to work under Windows;
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
 - no built-in dataset splitting to training/cv/testing subsets;
@@ -531,6 +370,14 @@ Returns summary dataset statisitc [for every column] as pandas dataframe. Useful
  
  
 ### <a name="news"></a>[News and updates:](#title)
+-30.10.17: Major update, some backward incompatibility:
+   - BTGym now can be thougt as two-part package: one is environment itself and the other one is
+      RL algoritms tuned for solving algo-trading tasks. Some basic work on shaping of later is done. Three advantage
+      actor-critic style algorithms are implemented: A3C itself, it's UNREAL extension and PPO. Core logic of these seems
+      to be implemented correctly but further extensive BTGym-tuning is ahead.
+      For now one can check [atari tests](./examples/atari_tests).
+   - Basic [documentation and API reference](./docs/build/index.html) is now available.
+
 - 27.09.17: A3C [test_4.2](./examples/a3c/a3c_test_4_2_no_feature_signal_conv1d.ipynb) added:
     - some progress on estimator architecture search, state and reward shaping;
 
