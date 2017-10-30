@@ -25,7 +25,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="btgym.envs package" href="btgym.envs.html" />
-    <link rel="prev" title="Welcome to BTgym!" href="index.html" /> 
+    <link rel="prev" title="BTGym DOCs" href="index.html" /> 
   </head>
   <body>
     <div class="related" role="navigation" aria-label="related navigation">
@@ -41,7 +41,7 @@
           <a href="btgym.envs.html" title="btgym.envs package"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to BTgym!"
+          <a href="index.html" title="BTGym DOCs"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">BTgym 0.0.6 documentation</a> &#187;</li> 
       </ul>
@@ -172,6 +172,156 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
 </pre></div>
 </div>
 </div>
+<div class="section" id="environment-engine-description">
+<h1>Environment engine description<a class="headerlink" href="#environment-engine-description" title="Permalink to this headline">¶</a></h1>
+<blockquote>
+<div><dl class="docutils">
+<dt>BTgym uses Backtrader framework for actual environment computations, for extensive documentation see:</dt>
+<dd><a class="reference external" href="https://www.backtrader.com/docu/index.html">https://www.backtrader.com/docu/index.html</a>.</dd>
+</dl>
+</div></blockquote>
+<p>In short:</p>
+<ul class="simple">
+<li>User defines backtrading engine parameters by composing <cite>Backtrader.Cerebro()</cite> subclass,
+provides historic prices dataset as <cite>BTgymDataset()</cite> instance and passes it as arguments when making BTgym environment.
+See <a class="reference external" href="https://www.backtrader.com/docu/concepts.html">https://www.backtrader.com/docu/concepts.html</a> for general Backtrader concepts descriptions.</li>
+<li>Environment starts separate server process responsible for rendering gym environment
+queries like <cite>env.reset()</cite> and <cite>env.step()</cite> by repeatedly sampling episodes form given dataset and running
+backtesting <cite>Cerebro</cite> engine on it. See OpenAI Gym documentation for details: <a class="reference external" href="https://gym.openai.com/docs">https://gym.openai.com/docs</a></li>
+</ul>
+<hr class="docutils" />
+<p><strong>Data flow</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>`
+            BTgym Environment                                 RL Framework
+                                           +-+
+   (episode mode)  +&lt;-----&lt;action&gt;--- -----| |&lt;--------------------------------------+
+          |        |                       |e|                                       |
+          +&lt;------&gt;+------&lt;       state &gt;-&gt;|n|---&gt;[feature *]---&gt;&lt;state&gt;--+-&gt;[agent]-+
+          |        |      &lt; observation &gt;  |v|    [estimator]             |     |
+          |        |                       |.|                            |     |
+    [Backtrader]   +-----&lt;  portfolio &gt;---&gt;|s|---&gt;[reward  *]---&gt;&lt;reward&gt;-+     |
+    [Server    ]   |     &lt; statistics &gt;    |t|    [estimator]                   |
+       |           |                       |e|                                  |
+       |           +------&lt;is_done&gt;-------&gt;|p|--+&gt;[runner **]&lt;-----------------&gt;+
+  (control mode)   |                       | |  |    |
+       |           +------&lt;aux.info&gt;--- --&gt;| |--+    |
+       |                                   +-+       |
+       +--&lt;&#39;_stop&#39;&gt;&lt;-------------------&gt;|env._stop|--+
+       |                                             |
+       +--&lt;&#39;_reset&#39;&gt;&lt;------------------&gt;|env.reset|--+
+
+* - can be done on server side;
+** - RL framework specific module;
+`
+</pre></div>
+</div>
+<p><strong>Workflow sample</strong>:</p>
+<ol class="arabic simple">
+<li><dl class="first docutils">
+<dt>Define backtesting <cite>BTgymStrategy(bt.Strategy)</cite>, which will control Environment inner dynamics and backtesting logic.</dt>
+<dd><ul class="first last">
+<li>For RL-specific part, any <cite>STATE</cite>, <cite>REWARD</cite>, <cite>DONE</cite> and <cite>INFO</cite> computation logic can be implemented
+by overriding <cite>get_state()</cite>, <cite>get_reward()</cite>, <cite>get_info()</cite>, <cite>is_done()</cite> and <cite>set_datalines()</cite> methods.</li>
+<li>For Broker/Trading specific part, custom order execution logic, stake sizing,
+analytics tracking can be implemented as for regular <cite>bt.Strategy()</cite>.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li>Instantiate <cite>Cerbro()</cite>, add <cite>BTgymStrategy()</cite>, backtrader <cite>Sizers</cite>, <cite>Analyzers</cite> and <cite>Observers</cite> (if needed).</li>
+<li><dl class="first docutils">
+<dt>Define dataset by passing CSV datafile and parameters to BTgymDataset instance.</dt>
+<dd><ul class="first last">
+<li><cite>BTgymDataset()</cite> is simply <cite>Backtrader.feeds</cite> class wrapper,
+which pipes <cite>CSV`[source]-&gt;`pandas`[for efficient sampling]-&gt;`bt.feeds</cite> routine
+and implements random episode data sampling.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li>Initialize (or register and <cite>make()</cite>) gym environment with <cite>Cerebro()</cite> and <cite>BTgymDataset()</cite> along with other kwargs.</li>
+<li><dl class="first docutils">
+<dt>Run your favorite RL algorithm:</dt>
+<dd><ul class="first last">
+<li>start episode by calling <cite>env.reset()</cite>;</li>
+<li>advance one step of episode by calling <cite>env.step()</cite>, perform agent training or testing;</li>
+<li>after single episode is finished, retrieve agent performance statistic by <cite>env.get_stat()</cite>.</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+<hr class="docutils" />
+<p><strong>Server operation details:</strong></p>
+<p>Backtrader server starts when <cite>env.reset()</cite> method is called for first time , runs as separate process, follows
+simple Request/Reply pattern (every request should be paired with reply message) and operates one of two modes:</p>
+<blockquote>
+<div><ul>
+<li><p class="first">Control mode: initial mode, accepts only <cite>_reset</cite>, <cite>_stop</cite> and <cite>_getstat</cite> messages. Any other message is ignored
+and replied with simple info messge. Shuts down upon recieving <cite>_stop</cite> via <cite>env._stop_server()</cite> method,
+goes to episode mode upon <cite>_reset</cite> (via <cite>env.reset()</cite>) and send last run episode statistic (if any) upon <cite>_getstat</cite>
+via <cite>env.get_stat()</cite>.</p>
+</li>
+<li><p class="first">Episode mode: runs episode according <cite>BtGymStrategy()</cite> logic. Accepts <cite>action</cite> messages,
+returns <cite>tuple</cite>: <cite>([state observation], [reward], [is_done], [aux.info])</cite>.
+Finishes episode upon recieving <cite>action`==`_done</cite> or according to strategy termination rules, than falls
+back to control mode.</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="first docutils">
+<dt>Before every episode start, BTserver samples episode data and adds it to <cite>bt.Cerebro()</cite> instance</dt>
+<dd><dl class="first last docutils">
+<dt>along with specific <cite>_BTgymAnalyzer</cite>. The service of this hidden Analyzer is twofold:</dt>
+<dd><ul class="first last">
+<li><dl class="first docutils">
+<dt>enables strategy-environment communication by calling RL-related <cite>BTgymStrategy</cite> methods:</dt>
+<dd><cite>get_state()</cite>, <cite>get_reward()</cite>, <cite>get_info()</cite> and <cite>is_done()</cite> [see below];</dd>
+</dl>
+</li>
+<li>controls episode termination conditions.</li>
+</ul>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li>Episode runtime: after preparing environment initial state by running <cite>BTgymStrategy</cite> <cite>start()</cite>, <cite>prenext()</cite>
+methods, server halts and waits for incoming agent <cite>action</cite>. Upon receiving <cite>action</cite>, server performs all
+necessary <cite>next()</cite> computations (e.g. issues orders, computes broker values etc.), composes environment
+response and sends it back to agent ( via <cite>_BTgymAnalyzer</cite>). Actually, since ‘no market impact’ is assumed,
+all state computations are performed one step ahead:</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+<hr class="docutils" />
+<p><strong>Server loop</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">pseudocode</span>
+<span class="n">Initialize</span> <span class="n">by</span> <span class="n">receiving</span> <span class="n">engine</span> <span class="p">[</span><span class="n">bt</span><span class="o">.</span><span class="n">Cerebro</span><span class="p">()]</span> <span class="ow">and</span> <span class="n">dataset</span> <span class="p">[</span><span class="n">BTgymDataset</span><span class="p">()]</span>
+<span class="n">Repeat</span> <span class="n">until</span> <span class="n">received</span> <span class="n">message</span> <span class="s1">&#39;_stop&#39;</span><span class="p">:</span>
+    <span class="n">Wait</span> <span class="k">for</span> <span class="n">incoming</span> <span class="n">message</span>
+    <span class="n">If</span> <span class="n">message</span> <span class="ow">is</span> <span class="s1">&#39;_getstat&#39;</span><span class="p">:</span>
+        <span class="n">send</span> <span class="n">episode</span> <span class="n">statistics</span>
+    <span class="n">If</span> <span class="n">message</span> <span class="ow">is</span> <span class="s1">&#39;_reset&#39;</span><span class="p">:</span>
+        <span class="n">Randomly</span> <span class="n">sample</span> <span class="n">episode</span> <span class="n">data</span> <span class="kn">from</span> <span class="nn">BTgymDataset</span>
+        <span class="n">Add</span> <span class="n">episode</span> <span class="n">data</span> <span class="n">to</span> <span class="n">bt</span><span class="o">.</span><span class="n">Cerebro</span><span class="p">()</span>
+        <span class="n">Add</span> <span class="n">service</span> <span class="n">_BTgymAnalyzer</span><span class="p">()</span> <span class="n">to</span> <span class="n">bt</span><span class="o">.</span><span class="n">Cerebro</span><span class="p">()</span>
+        <span class="n">Add</span> <span class="n">DrawDown</span> <span class="n">observer</span> <span class="n">to</span> <span class="n">bt</span><span class="o">.</span><span class="n">Cerebro</span><span class="p">(),</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">already</span> <span class="n">present</span>
+        <span class="n">Prepare</span> <span class="n">BTgymStrategy</span> <span class="n">initial</span> <span class="n">state</span>
+        <span class="n">Set</span> <span class="n">agent</span> <span class="o">&lt;</span><span class="n">action</span><span class="o">&gt;</span> <span class="n">to</span> <span class="s1">&#39;hold&#39;</span>
+        <span class="n">Repeat</span> <span class="n">until</span> <span class="n">episode</span> <span class="n">termination</span> <span class="n">conditions</span> <span class="n">are</span> <span class="n">met</span><span class="p">:</span>
+            <span class="n">Issue</span> <span class="ow">and</span> <span class="n">process</span> <span class="n">orders</span> <span class="n">according</span> <span class="n">to</span> <span class="n">recieved</span> <span class="n">agent</span> <span class="n">action</span>
+            <span class="n">Perform</span> <span class="nb">all</span> <span class="n">backtesting</span> <span class="n">engine</span> <span class="n">computations</span>
+            <span class="n">Estimate</span> <span class="n">state</span> <span class="n">observation</span>
+            <span class="n">Eestimate</span> <span class="n">env</span><span class="o">.</span> <span class="n">reward</span>
+            <span class="n">Compose</span> <span class="n">aux</span><span class="o">.</span> <span class="n">information</span>
+            <span class="n">Check</span> <span class="n">episode</span> <span class="n">termination</span> <span class="n">conditions</span>
+            <span class="n">Wait</span> <span class="k">for</span> <span class="n">incoming</span> <span class="o">&lt;</span><span class="n">action</span><span class="o">&gt;</span> <span class="n">message</span>
+            <span class="n">Send</span> <span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span><span class="p">)</span> <span class="n">response</span>
+</pre></div>
+</div>
+</div>
 
 
           </div>
@@ -181,7 +331,7 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
   <p class="topless"><a href="index.html"
-                        title="previous chapter">Welcome to BTgym!</a></p>
+                        title="previous chapter">BTGym DOCs</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="btgym.envs.html"
                         title="next chapter">btgym.envs package</a></p>
@@ -212,7 +362,7 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
           <a href="btgym.envs.html" title="btgym.envs package"
              >next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to BTgym!"
+          <a href="index.html" title="BTGym DOCs"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">BTgym 0.0.6 documentation</a> &#187;</li> 
       </ul>

@@ -9,14 +9,14 @@ def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, entropy_bet
     Paper: https://arxiv.org/abs/1602.01783
 
     Args:
-        act_target      tensor holding policy actions targets;
-        adv_target      tensor holding policy estimated advantages targets;
-        r_target        tensor holding policy empirical returns targets;
-        pi__logits      policy logits output tensor;
-        pi_vf           policy value function output tensor; 
-        entropy_beta    entropy regularization constant;
-        name            scope;
-        verbose         summary level.
+        act_target:      tensor holding policy actions targets;
+        adv_target:      tensor holding policy estimated advantages targets;
+        r_target:        tensor holding policy empirical returns targets;
+        pi_logits:       policy logits output tensor;
+        pi_vf:           policy value function output tensor;
+        entropy_beta:    entropy regularization constant;
+        name:            scope;
+        verbose:         summary level.
 
     Returns:
         tensor holding estimated AAC loss;
@@ -49,16 +49,16 @@ def ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_old_logi
     PPO clipped surrogate loss definition, as (7) in https://arxiv.org/pdf/1707.06347.pdf
 
     Args:
-        act_target      tensor holding policy actions targets;
-        adv_target      tensor holding policy estimated advantages targets;
-        r_target        tensor holding policy empirical returns targets;
-        pi__logits      policy logits output tensor;
-        pi_vf           policy value function output tensor;       
-        pi_old_logits   old_policy logits output tensor;
-        entropy_beta    entropy regularization constant
-        epsilon         L^Clip epsilon tensor;
-        name            scope;
-        verbose         summary level.
+        act_target:      tensor holding policy actions targets;
+        adv_target:      tensor holding policy estimated advantages targets;
+        r_target:        tensor holding policy empirical returns targets;
+        pi_logits:       policy logits output tensor;
+        pi_vf:           policy value function output tensor;
+        pi_old_logits:   old_policy logits output tensor;
+        entropy_beta:    entropy regularization constant
+        epsilon:         L^Clip epsilon tensor;
+        name:            scope;
+        verbose:         summary level.
 
     Returns:
         tensor holding estimated PPO L^Clip loss;
@@ -114,10 +114,10 @@ def value_fn_loss_def(r_target, pi_vf, name='value_replay', verbose=False):
     Value function loss.
 
     Args:
-        r_target        tensor holding policy empirical returns targets;
-        pi_vf           policy value function output tensor;
-        name            scope;
-        verbose         summary level.
+        r_target:        tensor holding policy empirical returns targets;
+        pi_vf:           policy value function output tensor;
+        name:            scope;
+        verbose:         summary level.
 
     Returns:
         tensor holding estimated value fn. loss;
@@ -148,11 +148,11 @@ def pc_loss_def(actions, targets, pi_pc_q, name='pixel_control', verbose=False):
     https://github.com/miyosuda/unreal
 
     Args:
-        actions     tensor holding policy actions;
-        targets     tensor holding estimated pixel-change targets;
-        pi_pc_q     policy Q-value features output tensor;
-        name        scope;
-        verbose     summary level.
+        actions:     tensor holding policy actions;
+        targets:     tensor holding estimated pixel-change targets;
+        pi_pc_q:     policy Q-value features output tensor;
+        name:        scope;
+        verbose:     summary level.
 
     Returns:
         tensor holding estimated pc loss;
@@ -191,10 +191,10 @@ def rp_loss_def(rp_targets, pi_rp_logits, name='reward_prediction', verbose=Fals
 
 
     Args:
-        targets         tensor holding reward prediction target;
-        pi_rp_logits    policy reward predictions tensor;
-        name             scope;
-        verbose          summary level.
+        targets:         tensor holding reward prediction target;
+        pi_rp_logits:    policy reward predictions tensor;
+        name:             scope;
+        verbose:          summary level.
 
     Returns:
         tensor holding estimated rp loss;

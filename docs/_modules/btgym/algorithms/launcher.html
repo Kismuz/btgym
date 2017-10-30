@@ -155,7 +155,53 @@
 
 <span class="sd">        Args:</span>
 <span class="sd">            root_random_seed:   int, random seed.</span>
-<span class="sd">            **kwargs:           passed to worker, trainer, environment runner.</span>
+<span class="sd">            **kwargs:           any worker(), trainer() and environment() legal keyword argument will be passed along::</span>
+
+<span class="sd">                env_class = None</span>
+
+<span class="sd">                env_config = dict(port=5000, data_port=4999, gym_id=None,)</span>
+
+<span class="sd">                cluster_config = dict(host=&#39;127.0.0.1&#39;,port=12222, num_workers=1, num_ps=1, log_dir=&#39;./tmp/aac_log&#39;,)</span>
+
+<span class="sd">                policy_class = BaseAacAuxPolicy</span>
+
+<span class="sd">                policy_config = dict(lstm_layers=(256,),)</span>
+
+<span class="sd">                trainer_class = A3C</span>
+
+<span class="sd">                verbose = 0</span>
+<span class="sd">                test_mode = False</span>
+<span class="sd">                train_steps = None</span>
+<span class="sd">                model_summary_freq = None</span>
+<span class="sd">                episode_summary_freq = None</span>
+<span class="sd">                env_render_freq = None</span>
+<span class="sd">                model_gamma = None</span>
+<span class="sd">                model_gae_lambda = None</span>
+<span class="sd">                model_beta = None</span>
+<span class="sd">                opt_learn_rate = None</span>
+<span class="sd">                opt_end_learn_rate = None</span>
+<span class="sd">                opt_decay_steps = None</span>
+<span class="sd">                opt_decay = None</span>
+<span class="sd">                opt_momentum = None</span>
+<span class="sd">                opt_epsilon = None</span>
+<span class="sd">                rollout_length = None</span>
+<span class="sd">                pi_old_update_period = None</span>
+<span class="sd">                num_epochs = None</span>
+<span class="sd">                replay_memory_size = None</span>
+<span class="sd">                replay_rollout_length = None</span>
+<span class="sd">                use_off_policy_aac = None</span>
+<span class="sd">                use_reward_prediction = None</span>
+<span class="sd">                use_pixel_control = None</span>
+<span class="sd">                use_value_replay = None</span>
+<span class="sd">                use_rebalanced_replay = None</span>
+<span class="sd">                rebalance_skewness = None</span>
+<span class="sd">                off_aac_lambda = None</span>
+<span class="sd">                rp_lambda = None</span>
+<span class="sd">                pc_lambda = None</span>
+<span class="sd">                vr_lambda = None</span>
+<span class="sd">                gamma_pc = None</span>
+<span class="sd">                rp_reward_threshold = None</span>
+<span class="sd">                rp_sequence_size = None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">root_random_seed</span> <span class="o">=</span> <span class="n">root_random_seed</span>
 

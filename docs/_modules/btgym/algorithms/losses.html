@@ -57,14 +57,14 @@
 <span class="sd">    Paper: https://arxiv.org/abs/1602.01783</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        act_target      tensor holding policy actions targets;</span>
-<span class="sd">        adv_target      tensor holding policy estimated advantages targets;</span>
-<span class="sd">        r_target        tensor holding policy empirical returns targets;</span>
-<span class="sd">        pi__logits      policy logits output tensor;</span>
-<span class="sd">        pi_vf           policy value function output tensor; </span>
-<span class="sd">        entropy_beta    entropy regularization constant;</span>
-<span class="sd">        name            scope;</span>
-<span class="sd">        verbose         summary level.</span>
+<span class="sd">        act_target:      tensor holding policy actions targets;</span>
+<span class="sd">        adv_target:      tensor holding policy estimated advantages targets;</span>
+<span class="sd">        r_target:        tensor holding policy empirical returns targets;</span>
+<span class="sd">        pi_logits:       policy logits output tensor;</span>
+<span class="sd">        pi_vf:           policy value function output tensor;</span>
+<span class="sd">        entropy_beta:    entropy regularization constant;</span>
+<span class="sd">        name:            scope;</span>
+<span class="sd">        verbose:         summary level.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        tensor holding estimated AAC loss;</span>
@@ -97,16 +97,16 @@
 <span class="sd">    PPO clipped surrogate loss definition, as (7) in https://arxiv.org/pdf/1707.06347.pdf</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        act_target      tensor holding policy actions targets;</span>
-<span class="sd">        adv_target      tensor holding policy estimated advantages targets;</span>
-<span class="sd">        r_target        tensor holding policy empirical returns targets;</span>
-<span class="sd">        pi__logits      policy logits output tensor;</span>
-<span class="sd">        pi_vf           policy value function output tensor;       </span>
-<span class="sd">        pi_old_logits   old_policy logits output tensor;</span>
-<span class="sd">        entropy_beta    entropy regularization constant</span>
-<span class="sd">        epsilon         L^Clip epsilon tensor;</span>
-<span class="sd">        name            scope;</span>
-<span class="sd">        verbose         summary level.</span>
+<span class="sd">        act_target:      tensor holding policy actions targets;</span>
+<span class="sd">        adv_target:      tensor holding policy estimated advantages targets;</span>
+<span class="sd">        r_target:        tensor holding policy empirical returns targets;</span>
+<span class="sd">        pi_logits:       policy logits output tensor;</span>
+<span class="sd">        pi_vf:           policy value function output tensor;</span>
+<span class="sd">        pi_old_logits:   old_policy logits output tensor;</span>
+<span class="sd">        entropy_beta:    entropy regularization constant</span>
+<span class="sd">        epsilon:         L^Clip epsilon tensor;</span>
+<span class="sd">        name:            scope;</span>
+<span class="sd">        verbose:         summary level.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        tensor holding estimated PPO L^Clip loss;</span>
@@ -162,10 +162,10 @@
 <span class="sd">    Value function loss.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        r_target        tensor holding policy empirical returns targets;</span>
-<span class="sd">        pi_vf           policy value function output tensor;</span>
-<span class="sd">        name            scope;</span>
-<span class="sd">        verbose         summary level.</span>
+<span class="sd">        r_target:        tensor holding policy empirical returns targets;</span>
+<span class="sd">        pi_vf:           policy value function output tensor;</span>
+<span class="sd">        name:            scope;</span>
+<span class="sd">        verbose:         summary level.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        tensor holding estimated value fn. loss;</span>
@@ -196,11 +196,11 @@
 <span class="sd">    https://github.com/miyosuda/unreal</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        actions     tensor holding policy actions;</span>
-<span class="sd">        targets     tensor holding estimated pixel-change targets;</span>
-<span class="sd">        pi_pc_q     policy Q-value features output tensor;</span>
-<span class="sd">        name        scope;</span>
-<span class="sd">        verbose     summary level.</span>
+<span class="sd">        actions:     tensor holding policy actions;</span>
+<span class="sd">        targets:     tensor holding estimated pixel-change targets;</span>
+<span class="sd">        pi_pc_q:     policy Q-value features output tensor;</span>
+<span class="sd">        name:        scope;</span>
+<span class="sd">        verbose:     summary level.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        tensor holding estimated pc loss;</span>
@@ -239,10 +239,10 @@
 
 
 <span class="sd">    Args:</span>
-<span class="sd">        targets         tensor holding reward prediction target;</span>
-<span class="sd">        pi_rp_logits    policy reward predictions tensor;</span>
-<span class="sd">        name             scope;</span>
-<span class="sd">        verbose          summary level.</span>
+<span class="sd">        targets:         tensor holding reward prediction target;</span>
+<span class="sd">        pi_rp_logits:    policy reward predictions tensor;</span>
+<span class="sd">        name:             scope;</span>
+<span class="sd">        verbose:          summary level.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        tensor holding estimated rp loss;</span>

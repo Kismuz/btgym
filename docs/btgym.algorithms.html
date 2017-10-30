@@ -63,7 +63,47 @@ running separate instances of BTgym/Atari environment.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>root_random_seed</strong> – int, random seed.</li>
-<li><strong>**kwargs</strong> – passed to worker, trainer, environment runner.</li>
+<li><strong>**kwargs</strong> – <p>any worker(), trainer() and environment() legal keyword argument will be passed along:</p>
+<p>env_class = None</p>
+<p>env_config = dict(port=5000, data_port=4999, gym_id=None,)</p>
+<p>cluster_config = dict(host=‘127.0.0.1’,port=12222, num_workers=1, num_ps=1, log_dir=’./tmp/aac_log’,)</p>
+<p>policy_class = BaseAacAuxPolicy</p>
+<p>policy_config = dict(lstm_layers=(256,),)</p>
+<p>trainer_class = A3C</p>
+<p>verbose = 0
+test_mode = False
+train_steps = None
+model_summary_freq = None
+episode_summary_freq = None
+env_render_freq = None
+model_gamma = None
+model_gae_lambda = None
+model_beta = None
+opt_learn_rate = None
+opt_end_learn_rate = None
+opt_decay_steps = None
+opt_decay = None
+opt_momentum = None
+opt_epsilon = None
+rollout_length = None
+pi_old_update_period = None
+num_epochs = None
+replay_memory_size = None
+replay_rollout_length = None
+use_off_policy_aac = None
+use_reward_prediction = None
+use_pixel_control = None
+use_value_replay = None
+use_rebalanced_replay = None
+rebalance_skewness = None
+off_aac_lambda = None
+rp_lambda = None
+pc_lambda = None
+vr_lambda = None
+gamma_pc = None
+rp_reward_threshold = None
+rp_sequence_size = None</p>
+</li>
 </ul>
 </td>
 </tr>
@@ -384,14 +424,14 @@ Paper: <a class="reference external" href="https://arxiv.org/abs/1602.01783">htt
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>tensor holding policy actions targets;</strong> (<em>act_target</em>) – </li>
-<li><strong>tensor holding policy estimated advantages targets;</strong> (<em>adv_target</em>) – </li>
-<li><strong>tensor holding policy empirical returns targets;</strong> (<em>r_target</em>) – </li>
-<li><strong>policy logits output tensor;</strong> (<em>pi__logits</em>) – </li>
-<li><strong>policy value function output tensor;</strong> (<em>pi_vf</em>) – </li>
-<li><strong>entropy regularization constant;</strong> (<em>entropy_beta</em>) – </li>
-<li><strong>scope;</strong> (<em>name</em>) – </li>
-<li><strong>summary level.</strong> (<em>verbose</em>) – </li>
+<li><strong>act_target</strong> – tensor holding policy actions targets;</li>
+<li><strong>adv_target</strong> – tensor holding policy estimated advantages targets;</li>
+<li><strong>r_target</strong> – tensor holding policy empirical returns targets;</li>
+<li><strong>pi_logits</strong> – policy logits output tensor;</li>
+<li><strong>pi_vf</strong> – policy value function output tensor;</li>
+<li><strong>entropy_beta</strong> – entropy regularization constant;</li>
+<li><strong>name</strong> – scope;</li>
+<li><strong>verbose</strong> – summary level.</li>
 </ul>
 </td>
 </tr>
@@ -412,16 +452,16 @@ list of related tensorboard summaries.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>tensor holding policy actions targets;</strong> (<em>act_target</em>) – </li>
-<li><strong>tensor holding policy estimated advantages targets;</strong> (<em>adv_target</em>) – </li>
-<li><strong>tensor holding policy empirical returns targets;</strong> (<em>r_target</em>) – </li>
-<li><strong>policy logits output tensor;</strong> (<em>pi__logits</em>) – </li>
-<li><strong>policy value function output tensor;</strong> (<em>pi_vf</em>) – </li>
-<li><strong>old_policy logits output tensor;</strong> (<em>pi_old_logits</em>) – </li>
-<li><strong>entropy regularization constant</strong> (<em>entropy_beta</em>) – </li>
-<li><strong>L^Clip epsilon tensor;</strong> (<em>epsilon</em>) – </li>
-<li><strong>scope;</strong> (<em>name</em>) – </li>
-<li><strong>summary level.</strong> (<em>verbose</em>) – </li>
+<li><strong>act_target</strong> – tensor holding policy actions targets;</li>
+<li><strong>adv_target</strong> – tensor holding policy estimated advantages targets;</li>
+<li><strong>r_target</strong> – tensor holding policy empirical returns targets;</li>
+<li><strong>pi_logits</strong> – policy logits output tensor;</li>
+<li><strong>pi_vf</strong> – policy value function output tensor;</li>
+<li><strong>pi_old_logits</strong> – old_policy logits output tensor;</li>
+<li><strong>entropy_beta</strong> – entropy regularization constant</li>
+<li><strong>epsilon</strong> – L^Clip epsilon tensor;</li>
+<li><strong>name</strong> – scope;</li>
+<li><strong>verbose</strong> – summary level.</li>
 </ul>
 </td>
 </tr>
@@ -442,10 +482,10 @@ list of related tensorboard summaries.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>tensor holding policy empirical returns targets;</strong> (<em>r_target</em>) – </li>
-<li><strong>policy value function output tensor;</strong> (<em>pi_vf</em>) – </li>
-<li><strong>scope;</strong> (<em>name</em>) – </li>
-<li><strong>summary level.</strong> (<em>verbose</em>) – </li>
+<li><strong>r_target</strong> – tensor holding policy empirical returns targets;</li>
+<li><strong>pi_vf</strong> – policy value function output tensor;</li>
+<li><strong>name</strong> – scope;</li>
+<li><strong>verbose</strong> – summary level.</li>
 </ul>
 </td>
 </tr>
@@ -470,11 +510,11 @@ list of related tensorboard summaries.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>tensor holding policy actions;</strong> (<em>actions</em>) – </li>
-<li><strong>tensor holding estimated pixel-change targets;</strong> (<em>targets</em>) – </li>
-<li><strong>policy Q-value features output tensor;</strong> (<em>pi_pc_q</em>) – </li>
-<li><strong>scope;</strong> (<em>name</em>) – </li>
-<li><strong>summary level.</strong> (<em>verbose</em>) – </li>
+<li><strong>actions</strong> – tensor holding policy actions;</li>
+<li><strong>targets</strong> – tensor holding estimated pixel-change targets;</li>
+<li><strong>pi_pc_q</strong> – policy Q-value features output tensor;</li>
+<li><strong>name</strong> – scope;</li>
+<li><strong>verbose</strong> – summary level.</li>
 </ul>
 </td>
 </tr>
@@ -499,10 +539,10 @@ list of related tensorboard summaries.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>tensor holding reward prediction target;</strong> (<em>targets</em>) – </li>
-<li><strong>policy reward predictions tensor;</strong> (<em>pi_rp_logits</em>) – </li>
-<li><strong>scope;</strong> (<em>name</em>) – </li>
-<li><strong>summary level.</strong> (<em>verbose</em>) – </li>
+<li><strong>targets</strong> – tensor holding reward prediction target;</li>
+<li><strong>pi_rp_logits</strong> – policy reward predictions tensor;</li>
+<li><strong>name</strong> – scope;</li>
+<li><strong>verbose</strong> – summary level.</li>
 </ul>
 </td>
 </tr>

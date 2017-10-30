@@ -107,7 +107,53 @@ class Launcher():
 
         Args:
             root_random_seed:   int, random seed.
-            **kwargs:           passed to worker, trainer, environment runner.
+            **kwargs:           any worker(), trainer() and environment() legal keyword argument will be passed along::
+
+                env_class = None
+
+                env_config = dict(port=5000, data_port=4999, gym_id=None,)
+
+                cluster_config = dict(host='127.0.0.1',port=12222, num_workers=1, num_ps=1, log_dir='./tmp/aac_log',)
+
+                policy_class = BaseAacAuxPolicy
+
+                policy_config = dict(lstm_layers=(256,),)
+
+                trainer_class = A3C
+
+                verbose = 0
+                test_mode = False
+                train_steps = None
+                model_summary_freq = None
+                episode_summary_freq = None
+                env_render_freq = None
+                model_gamma = None
+                model_gae_lambda = None
+                model_beta = None
+                opt_learn_rate = None
+                opt_end_learn_rate = None
+                opt_decay_steps = None
+                opt_decay = None
+                opt_momentum = None
+                opt_epsilon = None
+                rollout_length = None
+                pi_old_update_period = None
+                num_epochs = None
+                replay_memory_size = None
+                replay_rollout_length = None
+                use_off_policy_aac = None
+                use_reward_prediction = None
+                use_pixel_control = None
+                use_value_replay = None
+                use_rebalanced_replay = None
+                rebalance_skewness = None
+                off_aac_lambda = None
+                rp_lambda = None
+                pc_lambda = None
+                vr_lambda = None
+                gamma_pc = None
+                rp_reward_threshold = None
+                rp_sequence_size = None
         """
         self.root_random_seed = root_random_seed
 
