@@ -1,0 +1,394 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>btgym.algorithms.launcher &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for btgym.algorithms.launcher</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2017 Andrew Muzikin</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Original asynchronous framework code comes from OpenAI repository under MIT licence:</span>
+<span class="c1"># https://github.com/openai/universe-starter-agent</span>
+<span class="c1">#</span>
+
+
+
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="s1">&#39;..&#39;</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">psutil</span>
+<span class="kn">from</span> <span class="nn">subprocess</span> <span class="k">import</span> <span class="n">PIPE</span>
+<span class="kn">import</span> <span class="nn">signal</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">.worker</span> <span class="k">import</span> <span class="n">Worker</span>
+<span class="kn">from</span> <span class="nn">.a3c</span> <span class="k">import</span> <span class="n">A3C</span>
+<span class="kn">from</span> <span class="nn">.policy</span> <span class="k">import</span> <span class="n">BaseAacAuxPolicy</span>
+
+
+
+<div class="viewcode-block" id="Launcher"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.launcher.Launcher">[docs]</a><span class="k">class</span> <span class="nc">Launcher</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Configures and starts distributed TF training session with workers</span>
+<span class="sd">    running separate instances of BTgym/Atari environment.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># All possible legal kwargs:</span>
+    <span class="n">env_class</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">env_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">port</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span>
+        <span class="n">data_port</span><span class="o">=</span><span class="mi">4999</span><span class="p">,</span>
+        <span class="n">gym_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">cluster_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">host</span><span class="o">=</span><span class="s1">&#39;127.0.0.1&#39;</span><span class="p">,</span>
+        <span class="n">port</span><span class="o">=</span><span class="mi">12222</span><span class="p">,</span>
+        <span class="n">num_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">num_ps</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">log_dir</span><span class="o">=</span><span class="s1">&#39;./tmp/a3c_log&#39;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">policy_class</span> <span class="o">=</span> <span class="n">BaseAacAuxPolicy</span>
+    <span class="n">policy_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,),</span>
+    <span class="p">)</span>
+    <span class="n">trainer_class</span> <span class="o">=</span> <span class="n">A3C</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">test_mode</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">train_steps</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">model_summary_freq</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">episode_summary_freq</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">env_render_freq</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">model_gamma</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">model_gae_lambda</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">model_beta</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">opt_learn_rate</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">opt_end_learn_rate</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">opt_decay_steps</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">opt_decay</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">opt_momentum</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">opt_epsilon</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">rollout_length</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">pi_old_update_period</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">num_epochs</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">replay_memory_size</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">replay_rollout_length</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">use_off_policy_aac</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">use_reward_prediction</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">use_pixel_control</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">use_value_replay</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">use_rebalanced_replay</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">rebalance_skewness</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">off_aac_lambda</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">rp_lambda</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">pc_lambda</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">vr_lambda</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">gamma_pc</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">rp_reward_threshold</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">rp_sequence_size</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+    <span class="n">ports_to_use</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root_random_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            root_random_seed:   int, random seed.</span>
+<span class="sd">            **kwargs:           passed to worker, trainer, environment runner.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">root_random_seed</span> <span class="o">=</span> <span class="n">root_random_seed</span>
+
+        <span class="c1"># Update attrs with kwargs:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="n">self_value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+                <span class="c1"># Partial dict attr update (only flats, no nested dict&#39;s!):</span>
+                <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">self_value</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span><span class="p">:</span>
+                    <span class="n">self_value</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">self_value</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s1">&#39;Unexpected key argument: </span><span class="si">{}</span><span class="s1">=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+        <span class="c1"># Logging config:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;Launcher&#39;</span><span class="p">)</span>
+        <span class="n">log_levels</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;WARNING&#39;</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;INFO&#39;</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;DEBUG&#39;</span><span class="p">),]</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">level</span> <span class="ow">in</span> <span class="n">log_levels</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">level</span><span class="p">)</span>
+
+        <span class="c1"># Seeding:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_random_seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root_random_seed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Random seed: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root_random_seed</span><span class="p">))</span>
+
+        <span class="c1"># Seeding for workers:</span>
+        <span class="n">workers_rnd_seeds</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">**</span><span class="mi">30</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="p">[</span><span class="s1">&#39;num_workers&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="p">[</span><span class="s1">&#39;num_ps&#39;</span><span class="p">])</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="p">[</span><span class="s1">&#39;log_dir&#39;</span><span class="p">]):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="p">[</span><span class="s1">&#39;log_dir&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> created.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="p">[</span><span class="s1">&#39;log_dir&#39;</span><span class="p">]))</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
+            <span class="c1"># We should have those to proceed with BTgym env.:</span>
+            <span class="k">assert</span> <span class="s1">&#39;port&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="k">assert</span> <span class="s1">&#39;data_port&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="c1"># Make cluster specification dict:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_cluster_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="p">)</span>
+
+        <span class="c1"># Configure workers:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workers_config_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">spec_list</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">task_index</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">worker_id</span> <span class="ow">in</span> <span class="n">spec_list</span><span class="p">:</span>
+                <span class="n">env_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+                <span class="n">worker_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+                <span class="n">worker_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="s1">&#39;worker&#39;</span><span class="p">:</span>
+                    <span class="c1"># Configure  worker BTgym environment:</span>
+                    <span class="k">if</span> <span class="n">task_index</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;data_master&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># set worker_0 as chief and data_master</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;data_master&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                        <span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;port&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">task_index</span>  <span class="c1"># increment connection port</span>
+
+                        <span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;render_enabled&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># disable rendering for all but chief</span>
+                <span class="n">worker_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s1">&#39;env_class&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">,</span>
+                        <span class="s1">&#39;env_config&#39;</span><span class="p">:</span> <span class="n">env_config</span><span class="p">,</span>
+                        <span class="s1">&#39;policy_class&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span><span class="p">,</span>
+                        <span class="s1">&#39;policy_config&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span><span class="p">,</span>
+                        <span class="s1">&#39;trainer_class&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span><span class="p">,</span>
+                        <span class="s1">&#39;cluster_spec&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span><span class="p">,</span>
+                        <span class="s1">&#39;job_name&#39;</span><span class="p">:</span> <span class="n">key</span><span class="p">,</span>
+                        <span class="s1">&#39;task&#39;</span><span class="p">:</span> <span class="n">task_index</span><span class="p">,</span>
+                        <span class="s1">&#39;log_dir&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="p">[</span><span class="s1">&#39;log_dir&#39;</span><span class="p">],</span>
+                        <span class="s1">&#39;max_steps&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_steps</span><span class="p">,</span>
+                        <span class="s1">&#39;log&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
+                        <span class="s1">&#39;log_level&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">getEffectiveLevel</span><span class="p">(),</span>
+                        <span class="s1">&#39;random_seed&#39;</span><span class="p">:</span> <span class="n">workers_rnd_seeds</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">clear_port</span><span class="p">(</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;port&#39;</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">workers_config_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">worker_config</span><span class="p">)</span>
+                <span class="n">task_index</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">clear_port</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;data_port&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Launcher ready.&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Launcher.make_cluster_spec"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.launcher.Launcher.make_cluster_spec">[docs]</a>    <span class="k">def</span> <span class="nf">make_cluster_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Composes cluster specification dictionary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cluster</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">all_ps</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">port</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;port&#39;</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;num_ps&#39;</span><span class="p">]):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">clear_port</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ports_to_use</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+            <span class="n">all_ps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;host&#39;</span><span class="p">],</span> <span class="n">port</span><span class="p">))</span>
+            <span class="n">port</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">cluster</span><span class="p">[</span><span class="s1">&#39;ps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_ps</span>
+
+        <span class="n">all_workers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;num_workers&#39;</span><span class="p">]):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">clear_port</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ports_to_use</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+            <span class="n">all_workers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;host&#39;</span><span class="p">],</span> <span class="n">port</span><span class="p">))</span>
+            <span class="n">port</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">cluster</span><span class="p">[</span><span class="s1">&#39;worker&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_workers</span>
+        <span class="k">return</span> <span class="n">cluster</span></div>
+
+<div class="viewcode-block" id="Launcher.clear_port"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.launcher.Launcher.clear_port">[docs]</a>    <span class="k">def</span> <span class="nf">clear_port</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">port</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Kills process on specified port, if any.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Popen</span><span class="p">([</span><span class="s1">&#39;lsof&#39;</span><span class="p">,</span> <span class="s1">&#39;-i:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">),</span> <span class="s1">&#39;-t&#39;</span><span class="p">],</span> <span class="n">stdout</span><span class="o">=</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">PIPE</span><span class="p">)</span>
+        <span class="n">pid</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">communicate</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">()[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># retrieving PID</span>
+        <span class="k">if</span> <span class="n">pid</span> <span class="ow">is</span> <span class="ow">not</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Popen</span><span class="p">([</span><span class="s1">&#39;kill&#39;</span><span class="p">,</span> <span class="n">pid</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;port </span><span class="si">{}</span><span class="s1"> cleared&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Launcher.run"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.launcher.Launcher.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Launches processes:</span>
+<span class="sd">            tf distributed workers;</span>
+<span class="sd">            tf parameter_server.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">workers_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">p_servers_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">chief_worker</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">def</span> <span class="nf">signal_handler</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+            <span class="k">nonlocal</span> <span class="n">workers_list</span>
+            <span class="k">nonlocal</span> <span class="n">chief_worker</span>
+            <span class="k">nonlocal</span> <span class="n">p_servers_list</span>
+
+            <span class="k">def</span> <span class="nf">stop_worker</span><span class="p">(</span><span class="n">worker_list</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">worker</span> <span class="ow">in</span> <span class="n">worker_list</span><span class="p">:</span>
+                    <span class="n">worker</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+
+            <span class="n">stop_worker</span><span class="p">(</span><span class="n">workers_list</span><span class="p">)</span>
+            <span class="n">stop_worker</span><span class="p">([</span><span class="n">chief_worker</span><span class="p">])</span>
+            <span class="n">stop_worker</span><span class="p">(</span><span class="n">p_servers_list</span><span class="p">)</span>
+
+
+        <span class="c1"># Start workers:</span>
+        <span class="k">for</span> <span class="n">worker_config</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workers_config_list</span><span class="p">:</span>
+            <span class="c1"># Make:</span>
+            <span class="n">worker</span> <span class="o">=</span> <span class="n">Worker</span><span class="p">(</span><span class="o">**</span><span class="n">worker_config</span><span class="p">)</span>
+            <span class="c1"># Launch:</span>
+            <span class="n">worker</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">worker</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">worker</span><span class="o">.</span><span class="n">job_name</span> <span class="ow">in</span> <span class="s1">&#39;worker&#39;</span><span class="p">:</span>
+                <span class="c1"># Allow data-master to launch datafeed_server:</span>
+                <span class="k">if</span> <span class="n">worker_config</span><span class="p">[</span><span class="s1">&#39;env_config&#39;</span><span class="p">][</span><span class="s1">&#39;data_master&#39;</span><span class="p">]:</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+                    <span class="n">chief_worker</span> <span class="o">=</span> <span class="n">worker</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">workers_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">p_servers_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
+
+        <span class="c1"># TODO: launch tensorboard</span>
+
+        <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">signal_handler</span><span class="p">)</span>
+
+        <span class="c1"># Halt here:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Press `Ctrl-C` to stop training and close launcher.&#39;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="n">signal</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+
+        <span class="c1"># Wait every worker to finish:</span>
+        <span class="k">for</span> <span class="n">worker</span> <span class="ow">in</span> <span class="n">workers_list</span><span class="p">:</span>
+            <span class="n">worker</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1"> has joined.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">worker</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+
+        <span class="n">chief_worker</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;chief_worker_</span><span class="si">{}</span><span class="s1"> has joined.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">chief_worker</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">ps</span> <span class="ow">in</span> <span class="n">p_servers_list</span><span class="p">:</span>
+            <span class="n">ps</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;parameter_server_</span><span class="si">{}</span><span class="s1"> has joined.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+
+        <span class="c1"># TODO: close tensorboard</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Launcher closed.&#39;</span><span class="p">)</span></div></div>
+
+
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>
