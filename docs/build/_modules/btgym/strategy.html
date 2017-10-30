@@ -1,0 +1,391 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>btgym.strategy &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for btgym.strategy</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2017 Andrew Muzikin</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">###############################################################################</span>
+
+<span class="kn">import</span> <span class="nn">backtrader</span> <span class="k">as</span> <span class="nn">bt</span>
+<span class="kn">import</span> <span class="nn">backtrader.indicators</span> <span class="k">as</span> <span class="nn">btind</span>
+
+<span class="kn">from</span> <span class="nn">gym</span> <span class="k">import</span> <span class="n">spaces</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<span class="c1">############################## Base BTgymStrategy Class ###################</span>
+
+
+<div class="viewcode-block" id="BTgymStrategy"><a class="viewcode-back" href="../../btgym.html#btgym.strategy.BTgymStrategy">[docs]</a><span class="k">class</span> <span class="nc">BTgymStrategy</span><span class="p">(</span><span class="n">bt</span><span class="o">.</span><span class="n">Strategy</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Controls Environment inner dynamics and backtesting logic.</span>
+<span class="sd">    Any State, Reward and Info computation logic can be implemented by</span>
+<span class="sd">    subclassing BTgymStrategy and overriding at least get_state(), get_reward(),</span>
+<span class="sd">    get_info(), is_done() and set_datalines() methods.</span>
+<span class="sd">    One can always go deeper and override __init__ () and next() methods for desired</span>
+<span class="sd">    server cerebro engine behaviour, including order execution etc.</span>
+<span class="sd">    Since it is bt.Strategy subclass, see:</span>
+<span class="sd">    https://www.backtrader.com/docu/strategy.html</span>
+<span class="sd">    for more information.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        bt.observers.DrawDown observer will be automatically added [by server process]</span>
+<span class="sd">        to BTgymStrategy instance at runtime.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Set-list. We don&#39;t to fiddle with subclassing bt.Cerebro(),</span>
+    <span class="c1"># so BTgymStrategy will contain all backtrading engine parameters</span>
+    <span class="c1"># and attributes one can need at runtime:</span>
+    <span class="n">log</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">iteration</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">inner_embedding</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">is_done</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">action</span> <span class="o">=</span> <span class="s1">&#39;hold&#39;</span>
+    <span class="n">order</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">order_failed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;-&#39;</span>
+    <span class="n">raw_state</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="c1"># Observation state shape is dictionary of Gym spaces,</span>
+        <span class="c1"># at least should contain `raw_state` field.</span>
+        <span class="c1"># By convention first dimension of every Gym Box space is time embedding one;</span>
+        <span class="c1"># one can define any shape; should match env.observation_space.shape.</span>
+        <span class="c1"># observation space state min/max values,</span>
+        <span class="c1"># For `raw_state&#39; - absolute min/max values from BTgymDataset will be used.</span>
+        <span class="n">state_shape</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+            <span class="n">raw_state</span><span class="o">=</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+                <span class="n">low</span><span class="o">=-</span><span class="mi">100</span><span class="p">,</span> <span class="c1"># will get overridden.</span>
+                <span class="n">high</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">),</span>
+        <span class="n">drawdown_call</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># finish episode when hitting drawdown treshghold , in percent.</span>
+        <span class="n">target_call</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># finish episode when reaching profit target, in percent.</span>
+        <span class="n">dataset_stat</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Summary descriptive statistics for entire dataset and</span>
+        <span class="n">episode_stat</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># current episode. Got updated by server.</span>
+        <span class="n">portfolio_actions</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;buy&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">),</span>  <span class="c1"># possible agent actions.</span>
+        <span class="n">skip_frame</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># Number of environment steps to skip before returning next response,</span>
+                       <span class="c1"># e.g. if set to 10 -- agent will interact with environment every 10th episode step;</span>
+                       <span class="c1"># Every other step agent action is assumed to be &#39;hold&#39;.</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            **kwargs:</span>
+<span class="sd">                params = dict(</span>
+<span class="sd">                    # Observation state shape is dictionary of Gym spaces,</span>
+<span class="sd">                    # at least should contain `raw_state` field.</span>
+<span class="sd">                    # By convention first dimension of every Gym Box space is time embedding one;</span>
+<span class="sd">                    # one can define any shape; should match env.observation_space.shape.</span>
+<span class="sd">                    # observation space state min/max values,</span>
+<span class="sd">                    # For `raw_state&#39; - absolute min/max values from BTgymDataset will be used.</span>
+<span class="sd">                    state_shape=dict(</span>
+<span class="sd">                        raw_state=spaces.Box(</span>
+<span class="sd">                            shape=(10, 4),</span>
+<span class="sd">                            low=-100, # will get overridden.</span>
+<span class="sd">                            high=100,</span>
+<span class="sd">                        )</span>
+<span class="sd">                    ),</span>
+<span class="sd">                    drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.</span>
+<span class="sd">                    target_call=10,  # finish episode when reaching profit target, in percent.</span>
+<span class="sd">                    dataset_stat=None,  # Summary descriptive statistics for entire dataset and</span>
+<span class="sd">                    episode_stat=None,  # current episode. Got updated by server.</span>
+<span class="sd">                    portfolio_actions=(&#39;hold&#39;, &#39;buy&#39;, &#39;sell&#39;, &#39;close&#39;),  # possible agent actions.</span>
+<span class="sd">                    skip_frame=1,  # Number of environment steps to skip before returning next response,</span>
+<span class="sd">                                   # e.g. if set to 10 -- agent will interact with environment every 10th episode step;</span>
+<span class="sd">                                   # Every other step agent action is assumed to be &#39;hold&#39;.</span>
+<span class="sd">                    )</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Inherit logger from cerebro:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">_log</span>
+
+        <span class="c1"># A wacky way to define strategy &#39;minimum period&#39;</span>
+        <span class="c1"># for proper time-embedded state composition:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">dim_sma</span> <span class="o">=</span> <span class="n">btind</span><span class="o">.</span><span class="n">SimpleMovingAverage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datas</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                                      <span class="n">period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_shape</span><span class="p">[</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">dim_sma</span><span class="o">.</span><span class="n">plotinfo</span><span class="o">.</span><span class="n">plot</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">target_call</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>
+
+        <span class="c1"># Add custom data Lines if any (just a convenience wrapper):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_datalines</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Kwargs:</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">nextstart</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">close</span><span class="o">.</span><span class="n">buflen</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Inner time embedding: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span><span class="p">))</span>
+
+<div class="viewcode-block" id="BTgymStrategy.set_datalines"><a class="viewcode-back" href="../../btgym.html#btgym.strategy.BTgymStrategy.set_datalines">[docs]</a>    <span class="k">def</span> <span class="nf">set_datalines</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Default datalines are: Open, Low, High, Close, Volume.</span>
+<span class="sd">        Any other custom data lines, indicators, etc.</span>
+<span class="sd">        should be explicitly defined by overriding this method [convention].</span>
+<span class="sd">        Invoked once by Strategy.__init__().</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+        <span class="c1">#self.log.warning(&#39;Deprecated method. Use __init__  with Super(..., self).__init__(**kwargs) instead.&#39;)</span>
+
+    <span class="k">def</span> <span class="nf">_get_raw_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Default state observation composer.</span>
+<span class="sd">        Returns time-embedded environment state observation as [n,4] numpy matrix, where</span>
+<span class="sd">        4 - number of signal features  == state_shape[1],</span>
+<span class="sd">        n - time-embedding length  == state_shape[0] == &lt;set by user&gt;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">raw_state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">row_stack</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">open</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_shape</span><span class="p">[</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">high</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_shape</span><span class="p">[</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">low</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_shape</span><span class="p">[</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">close</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_shape</span><span class="p">[</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])),</span>
+            <span class="p">)</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_state</span>
+
+<div class="viewcode-block" id="BTgymStrategy.get_state"><a class="viewcode-back" href="../../btgym.html#btgym.strategy.BTgymStrategy.get_state">[docs]</a>    <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        One can override this method,</span>
+<span class="sd">        defining necessary calculations and return arbitrary shaped tensor.</span>
+<span class="sd">        It&#39;s possible either to compute entire featurized environment state</span>
+<span class="sd">        or just pass raw price data to RL algorithm featurizer module.</span>
+<span class="sd">        Note1: &#39;data&#39; referes to bt.startegy datafeeds and should be treated as such.</span>
+<span class="sd">        Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in</span>
+<span class="sd">        define_datalines().</span>
+<span class="sd">        NOTE: while iterating, ._get_raw_state() method is called just before this one,</span>
+<span class="sd">        so variable `self.raw_state` is fresh and ready to use.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_state</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span></div>
+
+<div class="viewcode-block" id="BTgymStrategy.get_reward"><a class="viewcode-back" href="../../btgym.html#btgym.strategy.BTgymStrategy.get_reward">[docs]</a>    <span class="k">def</span> <span class="nf">get_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Default reward estimator.</span>
+<span class="sd">        Computes reward as log utility of current to initial portfolio value ratio.</span>
+<span class="sd">        Returns scalar &lt;reward, type=float&gt;.</span>
+<span class="sd">        Same principles as for state composer apply. Can return raw portfolio</span>
+<span class="sd">        performance statistics or enclose entire reward estimation algorithm.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="BTgymStrategy.get_info"><a class="viewcode-back" href="../../btgym.html#btgym.strategy.BTgymStrategy.get_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Composes information part of environment response,</span>
+<span class="sd">        can be any object. Override to own taste.</span>
+<span class="sd">        Note: Due to &#39;skip_frame&#39; feature,</span>
+<span class="sd">        INFO part of environment response will be a list of all skipped frame&#39;s info objects,</span>
+<span class="sd">        i.e. [info[-9], info[-8], ..., info[0].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">iteration</span><span class="p">,</span>
+            <span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(),</span>
+            <span class="n">action</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">action</span><span class="p">,</span>
+            <span class="n">broker_message</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span><span class="p">,</span>
+            <span class="n">broker_cash</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">cash</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">broker_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">drawdown</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">drawdown</span><span class="o">.</span><span class="n">drawdown</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">max_drawdown</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">drawdown</span><span class="o">.</span><span class="n">maxdrawdown</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymStrategy.get_done"><a class="viewcode-back" href="../../btgym.html#btgym.strategy.BTgymStrategy.get_done">[docs]</a>    <span class="k">def</span> <span class="nf">get_done</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Episode termination estimator,</span>
+<span class="sd">        defines any trading logic conditions episode stop is called upon,</span>
+<span class="sd">        e.g. &lt;OMG! Stop it, we became too rich!&gt; .</span>
+<span class="sd">        It is just a structural a convention method.</span>
+<span class="sd">        Default method is empty.</span>
+<span class="sd">        Expected to return tuple (&lt;is_done, type=bool&gt;, &lt;message, type=str&gt;).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span></div>
+
+    <span class="k">def</span> <span class="nf">_get_done</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Default episode termination method,</span>
+<span class="sd">        checks base conditions episode stop is called upon:</span>
+<span class="sd">        1. Reached maximum episode duration. Need to check it explicitly, because &lt;self.is_done&gt; flag</span>
+<span class="sd">           is sent as part of environment response.</span>
+<span class="sd">        2. Got &#39;_done&#39; signal from outside. E.g. via env.reset() method invoked by outer RL algorithm.</span>
+<span class="sd">        3. Hit drawdown threshold.</span>
+<span class="sd">        4. Hit target profit treshhold.</span>
+
+<span class="sd">        This method shouldn&#39;t be overridden or called explicitly.</span>
+
+<span class="sd">        Runtime execution logic is:</span>
+<span class="sd">            terminate episode if:</span>
+<span class="sd">            get_done() returned (True, &#39;something&#39;)</span>
+<span class="sd">            OR</span>
+<span class="sd">            ANY _get_done() default condition is met.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Base episode termination rules:</span>
+        <span class="n">is_done_rules</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="c1"># Will it be last step of the episode?:</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iteration</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numrecords</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span><span class="p">,</span> <span class="s1">&#39;END OF DATA!&#39;</span><span class="p">),</span>
+            <span class="c1"># Any money left?:</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">drawdown</span><span class="o">.</span><span class="n">maxdrawdown</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">drawdown_call</span><span class="p">,</span> <span class="s1">&#39;DRAWDOWN CALL!&#39;</span><span class="p">),</span>
+            <span class="c1"># Party time?</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span><span class="p">,</span> <span class="s1">&#39;TARGET REACHED!&#39;</span><span class="p">),</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Append custom get_done() results, if any:</span>
+        <span class="n">is_done_rules</span> <span class="o">+=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_done</span><span class="p">()]</span>
+
+        <span class="c1"># Sweep through rules:</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span> <span class="ow">in</span> <span class="n">is_done_rules</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">condition</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">is_done</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="n">message</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_done</span>
+
+<div class="viewcode-block" id="BTgymStrategy.notify_order"><a class="viewcode-back" href="../../btgym.html#btgym.strategy.BTgymStrategy.notify_order">[docs]</a>    <span class="k">def</span> <span class="nf">notify_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Shamelessly taken from backtrader tutorial.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">order</span><span class="o">.</span><span class="n">status</span> <span class="ow">in</span> <span class="p">[</span><span class="n">order</span><span class="o">.</span><span class="n">Submitted</span><span class="p">,</span> <span class="n">order</span><span class="o">.</span><span class="n">Accepted</span><span class="p">]:</span>
+            <span class="c1"># Buy/Sell order submitted/accepted to/by broker - Nothing to do</span>
+            <span class="k">return</span>
+        <span class="c1"># Check if an order has been completed</span>
+        <span class="c1"># Attention: broker could reject order if not enough cash</span>
+        <span class="k">if</span> <span class="n">order</span><span class="o">.</span><span class="n">status</span> <span class="ow">in</span> <span class="p">[</span><span class="n">order</span><span class="o">.</span><span class="n">Completed</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">order</span><span class="o">.</span><span class="n">isbuy</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;BUY executed,</span><span class="se">\n</span><span class="s1">Price: </span><span class="si">{:.5f}</span><span class="s1">, Cost: </span><span class="si">{:.4f}</span><span class="s1">, Comm: </span><span class="si">{:.4f}</span><span class="s1">&#39;</span><span class="o">.</span> \
+                    <span class="nb">format</span><span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">executed</span><span class="o">.</span><span class="n">price</span><span class="p">,</span>
+                           <span class="n">order</span><span class="o">.</span><span class="n">executed</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                           <span class="n">order</span><span class="o">.</span><span class="n">executed</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">buyprice</span> <span class="o">=</span> <span class="n">order</span><span class="o">.</span><span class="n">executed</span><span class="o">.</span><span class="n">price</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">buycomm</span> <span class="o">=</span> <span class="n">order</span><span class="o">.</span><span class="n">executed</span><span class="o">.</span><span class="n">comm</span>
+
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># Sell</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;SELL executed,</span><span class="se">\n</span><span class="s1">Price: </span><span class="si">{:.5f}</span><span class="s1">, Cost: </span><span class="si">{:.4f}</span><span class="s1">, Comm: </span><span class="si">{:.4f}</span><span class="s1">&#39;</span><span class="o">.</span> \
+                    <span class="nb">format</span><span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">executed</span><span class="o">.</span><span class="n">price</span><span class="p">,</span>
+                           <span class="n">order</span><span class="o">.</span><span class="n">executed</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                           <span class="n">order</span><span class="o">.</span><span class="n">executed</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bar_executed</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">order</span><span class="o">.</span><span class="n">status</span> <span class="ow">in</span> <span class="p">[</span><span class="n">order</span><span class="o">.</span><span class="n">Canceled</span><span class="p">,</span> <span class="n">order</span><span class="o">.</span><span class="n">Margin</span><span class="p">,</span> <span class="n">order</span><span class="o">.</span><span class="n">Rejected</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;ORDER FAILED with status: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">getstatusname</span><span class="p">())</span>
+            <span class="c1"># Rise order_failed flag until get_reward() will [hopefully] use and reset it:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">order_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="BTgymStrategy.next"><a class="viewcode-back" href="../../btgym.html#btgym.strategy.BTgymStrategy.next">[docs]</a>    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Default implementation.</span>
+<span class="sd">        Defines one step environment routine for server &#39;Episode mode&#39;;</span>
+<span class="sd">        At least, it should handle order execution logic according to action received.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Simple action-to-order logic:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;hold&#39;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;buy&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">buy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;New BUY created; &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;sell&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sell</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;New SELL created; &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;close&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;New CLOSE created; &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span></div></div>
+
+        <span class="c1"># Somewhere after this point, server-side _BTgymAnalyzer() is exchanging information with environment wrapper,</span>
+        <span class="c1"># obtaining &lt;self.action&gt; , composing and sending &lt;state,reward,done,info&gt; etc... never mind.</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

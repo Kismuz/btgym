@@ -1,0 +1,516 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>btgym.rendering.renderer &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for btgym.rendering.renderer</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2017 Andrew Muzikin</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">###############################################################################</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="c1">#from .plotter import BTgymPlotter</span>
+<span class="kn">from</span> <span class="nn">.plotter</span> <span class="k">import</span> <span class="n">DrawCerebro</span>
+
+<div class="viewcode-block" id="BTgymRendering"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering">[docs]</a><span class="k">class</span> <span class="nc">BTgymRendering</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Handles BTgym Environment rendering.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Call `initialize_pyplot()` method before first render() call!</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Here we&#39;ll keep last rendered image for each rendering mode:</span>
+    <span class="n">rgb_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="n">render_modes</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;episode&#39;</span><span class="p">,</span> <span class="s1">&#39;human&#39;</span><span class="p">]</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="c1"># Plotting controls, can be passed as kwargs:</span>
+        <span class="n">render_state_as_image</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">render_state_channel</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">render_size_human</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">),</span>
+        <span class="n">render_size_state</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">),</span>
+        <span class="n">render_size_episode</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">8</span><span class="p">),</span>
+        <span class="n">render_dpi</span><span class="o">=</span><span class="mi">75</span><span class="p">,</span>
+        <span class="n">render_plotstyle</span><span class="o">=</span><span class="s1">&#39;seaborn&#39;</span><span class="p">,</span>
+        <span class="n">render_cmap</span><span class="o">=</span><span class="s1">&#39;PRGn&#39;</span><span class="p">,</span>
+        <span class="n">render_xlabel</span><span class="o">=</span><span class="s1">&#39;Relative timesteps&#39;</span><span class="p">,</span>
+        <span class="n">render_ylabel</span><span class="o">=</span><span class="s1">&#39;Value&#39;</span><span class="p">,</span>
+        <span class="n">render_title</span><span class="o">=</span><span class="s1">&#39;local step: </span><span class="si">{}</span><span class="s1">, state observation min: </span><span class="si">{:.4f}</span><span class="s1">, max: </span><span class="si">{:.4f}</span><span class="s1">&#39;</span><span class="p">,</span>
+        <span class="n">render_boxtext</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+                            <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span>
+                            <span class="n">color</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span>
+                            <span class="n">bbox</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;facecolor&#39;</span><span class="p">:</span> <span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="s1">&#39;alpha&#39;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s1">&#39;pad&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
+                            <span class="p">),</span>
+        <span class="n">plt_backend</span><span class="o">=</span><span class="s1">&#39;Agg&#39;</span><span class="p">,</span>  <span class="c1"># Not used.</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">render_modes</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plotting controls, can be passed as kwargs:</span>
+<span class="sd">        render_state_as_image=True,</span>
+<span class="sd">        render_state_channel=0,</span>
+<span class="sd">        render_size_human=(6, 3.5),</span>
+<span class="sd">        render_size_state=(7, 3.5),</span>
+<span class="sd">        render_size_episode=(12,8),</span>
+<span class="sd">        render_dpi=75,</span>
+<span class="sd">        render_plotstyle=&#39;seaborn&#39;,</span>
+<span class="sd">        render_cmap=&#39;PRGn&#39;,</span>
+<span class="sd">        render_xlabel=&#39;Relative timesteps&#39;,</span>
+<span class="sd">        render_ylabel=&#39;Value&#39;,</span>
+<span class="sd">        render_title=&#39;local step: {}, state observation min: {:.4f}, max: {:.4f}&#39;,</span>
+<span class="sd">        render_boxtext=dict(fontsize=12,</span>
+<span class="sd">                            fontweight=&#39;bold&#39;,</span>
+<span class="sd">                            color=&#39;w&#39;,</span>
+<span class="sd">                            bbox={&#39;facecolor&#39;: &#39;k&#39;, &#39;alpha&#39;: 0.3, &#39;pad&#39;: 3},</span>
+<span class="sd">                            )</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Update parameters with relevant kwargs:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c1"># Unpack it as attributes:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># To log or not:</span>
+        <span class="k">if</span> <span class="s1">&#39;log&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;dummy&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">NullHandler</span><span class="p">())</span>
+
+        <span class="c1">#from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas</span>
+        <span class="c1">#self.FigureCanvas = FigureCanvas</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Will set it inside server process when calling initialize_pyplot().</span>
+
+        <span class="c1">#self.plotter = BTgymPlotter() # Modified bt.Cerebro() plotter, to get episode renderings.</span>
+
+        <span class="c1"># Set empty plugs for each render mode:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_modes</span> <span class="o">=</span> <span class="n">render_modes</span>
+        <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_modes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rgb_dict</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rgb_empty</span><span class="p">()</span>
+
+<div class="viewcode-block" id="BTgymRendering.initialize_pyplot"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.initialize_pyplot">[docs]</a>    <span class="k">def</span> <span class="nf">initialize_pyplot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Call me before use!</span>
+<span class="sd">        [Supposed to be done inside already running server process]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="k">import</span> <span class="n">Pipe</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">out_pipe</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_pipe</span> <span class="o">=</span> <span class="n">Pipe</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">matplotlib</span>
+            <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plt_backend</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span> <span class="o">=</span> <span class="n">plt</span></div>
+
+<div class="viewcode-block" id="BTgymRendering.to_string"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.to_string">[docs]</a>    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="n">excluded</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Converts given dictionary to more-or-less good looking `text block` string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dictionary</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+                    <span class="n">v</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{:.4f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">text</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">text</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="BTgymRendering.rgb_empty"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.rgb_empty">[docs]</a>    <span class="k">def</span> <span class="nf">rgb_empty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns empty &#39;plug&#39; image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymRendering.parse_response"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.parse_response">[docs]</a>    <span class="k">def</span> <span class="nf">parse_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">done</span><span class="p">,):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Converts environment response to plotting attributes:</span>
+<span class="sd">        state, title, text.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">][:,</span> <span class="p">:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_state_channel</span><span class="p">])</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="s1">&#39;2D rendering can be done for obs. state tensor with rank &lt;= 3; &#39;</span> <span class="o">+</span>\
+                <span class="s1">&#39;state shape received: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">])</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+
+        <span class="c1"># Figure out how to deal with info output:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="nb">dict</span>
+            <span class="n">info_dict</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">info</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span>
+                <span class="n">info_dict</span> <span class="o">=</span> <span class="n">info</span>
+
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">info_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;info&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="nb">dict</span><span class="p">)}</span>
+
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">info_dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Add records:</span>
+        <span class="n">info_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">reward</span><span class="o">=</span><span class="n">reward</span><span class="p">,</span> <span class="n">is_done</span><span class="o">=</span><span class="n">done</span><span class="p">,)</span>
+
+        <span class="c1"># Try to get step information:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_step</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;step&#39;</span><span class="p">]</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">current_step</span> <span class="o">=</span> <span class="s1">&#39;--&#39;</span>
+
+        <span class="c1"># Set box text, excluding redundant fields:</span>
+        <span class="n">box_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">info_dict</span><span class="p">,</span> <span class="n">excluded</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;step&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Set title output:</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_title</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">current_step</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">state</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="n">state</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">box_text</span></div>
+
+<div class="viewcode-block" id="BTgymRendering.render"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode_list</span><span class="p">,</span> <span class="n">cerebro</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">step_to_render</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">send_img</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Renders given mode if possible, else</span>
+<span class="sd">        just passes last already rendered image.</span>
+<span class="sd">        Returns rgb image as numpy array.</span>
+<span class="sd">        Logic:</span>
+<span class="sd">            If `cerebro` arg is received:</span>
+<span class="sd">                render entire episode, using built-in backtrader plotting feature,</span>
+<span class="sd">                update stored `episode` image.</span>
+
+<span class="sd">            If `step_to_render&#39; arg is received:</span>
+<span class="sd">                if mode = &#39;raw_state&#39;:</span>
+<span class="sd">                    render current state observation in conventional &#39;price&#39; format,</span>
+<span class="sd">                    update stored `raw_state` image;</span>
+<span class="sd">                if mode = something_else&#39;:</span>
+<span class="sd">                    visualise observation as &#39;seen&#39; by agent,</span>
+<span class="sd">                    update stored &#39;agent&#39; image.</span>
+
+<span class="sd">            Return `mode` image.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            It can actually return several modes in a single dict.</span>
+<span class="sd">            It prevented by Gym modes convention, but done internally at the end of the episode.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">mode_list</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">mode_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">mode_list</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">cerebro</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rgb_dict</span><span class="p">[</span><span class="s1">&#39;episode&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">draw_episode</span><span class="p">(</span><span class="n">cerebro</span><span class="p">)</span>
+            <span class="c1"># Try to render given episode:</span>
+            <span class="c1">#try:</span>
+                <span class="c1"># Get picture of entire episode:</span>
+            <span class="c1">#fig = cerebro.plot(plotter=self.plotter,  # Modified plotter class, doesnt actually save anything.</span>
+            <span class="c1">#                   savefig=True,</span>
+            <span class="c1">#                   width=self.render_size_episode[0],</span>
+            <span class="c1">#                   height=self.render_size_episode[1],</span>
+            <span class="c1">#                   dpi=self.render_dpi,</span>
+            <span class="c1">#                   use=None, #self.plt_backend,</span>
+            <span class="c1">#                   iplot=False,</span>
+            <span class="c1">#                   figfilename=&#39;_tmp_btgym_render.png&#39;,</span>
+            <span class="c1">#                   )[0][0]</span>
+
+            <span class="c1">#fig.canvas.draw()</span>
+            <span class="c1">#rgb_array = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep=&#39;&#39;)</span>
+            <span class="c1">#self.rgb_dict[&#39;episode&#39;] = rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))</span>
+            <span class="c1"># Clean up:</span>
+            <span class="c1">#self.plt.gcf().clear()</span>
+            <span class="c1">#self.plt.close(fig)</span>
+
+            <span class="c1">#except:</span>
+                <span class="c1"># Just keep previous rendering</span>
+             <span class="c1">#   pass</span>
+
+        <span class="k">if</span> <span class="n">step_to_render</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Perform step rendering:</span>
+
+            <span class="c1"># Unpack:</span>
+            <span class="n">raw_state</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">step_to_render</span>
+
+            <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="n">mode_list</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_modes</span> <span class="ow">and</span> <span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;episode&#39;</span><span class="p">,</span> <span class="s1">&#39;human&#39;</span><span class="p">]:</span>
+                    <span class="c1"># Render user-defined (former agent) mode state:</span>
+                    <span class="n">agent_state</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">box_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_response</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">done</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_state_as_image</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">rgb_dict</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">draw_image</span><span class="p">(</span><span class="n">agent_state</span><span class="p">,</span>
+                                                                 <span class="n">figsize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_size_state</span><span class="p">,</span>
+                                                                 <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+                                                                 <span class="n">box_text</span><span class="o">=</span><span class="n">box_text</span><span class="p">,</span>
+                                                                 <span class="n">ylabel</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_ylabel</span><span class="p">,</span>
+                                                                 <span class="n">xlabel</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_xlabel</span><span class="p">,</span>
+                                                                 <span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">rgb_dict</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">draw_plot</span><span class="p">(</span><span class="n">agent_state</span><span class="p">,</span>
+                                                                <span class="n">figsize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_size_state</span><span class="p">,</span>
+                                                                <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+                                                                <span class="n">box_text</span><span class="o">=</span><span class="n">box_text</span><span class="p">,</span>
+                                                                <span class="n">ylabel</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_ylabel</span><span class="p">,</span>
+                                                                <span class="n">xlabel</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_xlabel</span><span class="p">,</span>
+                                                                <span class="p">)</span>
+
+                <span class="k">if</span> <span class="s1">&#39;human&#39;</span> <span class="ow">in</span> <span class="n">mode</span><span class="p">:</span>
+                    <span class="c1"># Render `human` state:</span>
+                    <span class="n">human_state</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">box_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_response</span><span class="p">(</span><span class="n">raw_state</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">done</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">rgb_dict</span><span class="p">[</span><span class="s1">&#39;human&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">draw_plot</span><span class="p">(</span><span class="n">human_state</span><span class="p">,</span>
+                                                            <span class="n">figsize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_size_human</span><span class="p">,</span>
+                                                            <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+                                                            <span class="n">box_text</span><span class="o">=</span><span class="n">box_text</span><span class="p">,</span>
+                                                            <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;Price&#39;</span><span class="p">,</span>
+                                                            <span class="n">xlabel</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_xlabel</span><span class="p">,</span>
+                                                            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">send_img</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rgb_dict</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># this case is for internal use only;</span>
+            <span class="c1"># now `mode` supposed to contain several modes, let&#39;s return dictionary of arrays:</span>
+            <span class="n">return_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">mode_list</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rgb_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="c1"># ...and it is legal:</span>
+                    <span class="n">return_dict</span><span class="p">[</span><span class="n">entry</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rgb_dict</span><span class="p">[</span><span class="n">entry</span><span class="p">]</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">return_dict</span><span class="p">[</span><span class="n">entry</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rgb_empty</span><span class="p">()</span>
+
+            <span class="k">return</span> <span class="n">return_dict</span></div>
+
+<div class="viewcode-block" id="BTgymRendering.draw_plot"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.draw_plot">[docs]</a>    <span class="k">def</span> <span class="nf">draw_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">box_text</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s1">&#39;X&#39;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;Y&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Visualises environment state as 2d line plot.</span>
+<span class="sd">        Retrurns image as rgb_array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_dpi</span><span class="p">,</span> <span class="p">)</span>
+        <span class="c1">#ax = fig.add_subplot(111)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">render_plotstyle</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+
+        <span class="c1"># Plot x axis as reversed time-step embedding:</span>
+        <span class="n">xticks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="n">xticks</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="p">(</span><span class="o">-</span> <span class="n">xticks</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">visible</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Set every 5th tick label visible:</span>
+        <span class="k">for</span> <span class="n">tick</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">()[</span><span class="mi">1</span><span class="p">][::</span><span class="mi">5</span><span class="p">]:</span>
+            <span class="n">tick</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Switch off antialiasing:</span>
+        <span class="c1">#self.plt.setp([ax.get_xticklines() + ax.get_yticklines() + ax.get_xgridlines() + ax.get_ygridlines()],antialiased=False)</span>
+        <span class="c1">#self.plt.rcParams[&#39;text.antialiased&#39;]=False</span>
+
+        <span class="c1"># Add Info box:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">box_text</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">render_boxtext</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+        <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+
+        <span class="c1"># Save it to a numpy array:</span>
+        <span class="n">rgb_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">tostring_rgb</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Clean up:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+        <span class="c1">#self.plt.gcf().clear()</span>
+
+        <span class="k">return</span> <span class="n">rgb_array</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">get_width_height</span><span class="p">()[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">3</span><span class="p">,))</span></div>
+
+<div class="viewcode-block" id="BTgymRendering.draw_image"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.draw_image">[docs]</a>    <span class="k">def</span> <span class="nf">draw_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">box_text</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s1">&#39;X&#39;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;Y&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Visualises environment state as image.</span>
+<span class="sd">        Returns rgb_array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_dpi</span><span class="p">,</span> <span class="p">)</span>
+        <span class="c1">#ax = fig.add_subplot(111)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">render_plotstyle</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+
+        <span class="c1"># Plot x axis as reversed time-step embedding:</span>
+        <span class="n">xticks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="n">xticks</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="p">(</span><span class="o">-</span> <span class="n">xticks</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">visible</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Set every 5th tick label visible:</span>
+        <span class="k">for</span> <span class="n">tick</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">()[</span><span class="mi">1</span><span class="p">][::</span><span class="mi">5</span><span class="p">]:</span>
+            <span class="n">tick</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1">#self.plt.yticks(visible=False)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Switch off antialiasing:</span>
+        <span class="c1"># self.plt.setp([ax.get_xticklines() + ax.get_yticklines() + ax.get_xgridlines() + ax.get_ygridlines()],antialiased=False)</span>
+        <span class="c1"># self.plt.rcParams[&#39;text.antialiased&#39;]=False</span>
+        <span class="c1">#self.log.warning(&#39;render_data_shape:{}&#39;.format(data.shape))</span>
+
+        <span class="c1"># Add Info box:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">box_text</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">render_boxtext</span><span class="p">)</span>
+
+        <span class="n">im</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_cmap</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">use_gridspec</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+        <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+
+        <span class="c1"># Save it to a numpy array:</span>
+        <span class="n">rgb_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">tostring_rgb</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Clean up:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+        <span class="c1">#self.plt.gcf().clear()</span>
+
+        <span class="c1">#ax.cla()</span>
+        <span class="k">return</span> <span class="n">rgb_array</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">get_width_height</span><span class="p">()[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">3</span><span class="p">,))</span></div>
+
+
+<div class="viewcode-block" id="BTgymRendering.draw_episode"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.draw_episode">[docs]</a>    <span class="k">def</span> <span class="nf">draw_episode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cerebro</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Monstrous way to render episode.</span>
+<span class="sd">        Due to storage leaks have to encapsulate it in separate process.</span>
+<span class="sd">        Strange but reliable. PID&#39;s are driving crazy.</span>
+<span class="sd">        Takes cerebro instance, returns rgb array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">draw_process</span> <span class="o">=</span> <span class="n">DrawCerebro</span><span class="p">(</span><span class="n">cerebro</span><span class="o">=</span><span class="n">cerebro</span><span class="p">,</span>
+                                   <span class="n">width</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_size_episode</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                   <span class="n">height</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_size_episode</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                   <span class="n">dpi</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_dpi</span><span class="p">,</span>
+                                   <span class="n">result_pipe</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">in_pipe</span><span class="p">,</span>
+                                   <span class="p">)</span>
+
+        <span class="n">draw_process</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="c1">#print(&#39;Plotter PID: {}&#39;.format(draw_process.pid))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">rgb_array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_pipe</span><span class="o">.</span><span class="n">recv</span><span class="p">()</span>
+
+            <span class="n">draw_process</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+            <span class="n">draw_process</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+            <span class="k">return</span> <span class="n">rgb_array</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rgb_empty</span><span class="p">()</span></div></div>
+
+
+<div class="viewcode-block" id="BTgymNullRendering"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymNullRendering">[docs]</a><span class="k">class</span> <span class="nc">BTgymNullRendering</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Empty renderer to use when resources are concern.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plug</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;rendering&#39;</span><span class="p">:</span> <span class="s1">&#39;disabled&#39;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_modes</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">initialize_pyplot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plug</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,311 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>btgym.algorithms.worker &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for btgym.algorithms.worker</h1><div class="highlight"><pre>
+<span></span><span class="c1"># This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:</span>
+<span class="c1"># https://miyosuda.github.io/</span>
+<span class="c1"># https://github.com/miyosuda/unreal</span>
+<span class="c1">#</span>
+<span class="c1"># Original A3C code comes from OpenAI repository under MIT licence:</span>
+<span class="c1"># https://github.com/openai/universe-starter-agent</span>
+<span class="c1">#</span>
+<span class="c1"># Papers:</span>
+<span class="c1"># https://arxiv.org/abs/1602.01783</span>
+<span class="c1"># https://arxiv.org/abs/1611.05397</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="s1">&#39;..&#39;</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">multiprocessing</span>
+
+<span class="kn">import</span> <span class="nn">cv2</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">.envs</span> <span class="k">import</span> <span class="n">create_env</span>
+
+<div class="viewcode-block" id="FastSaver"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.worker.FastSaver">[docs]</a><span class="k">class</span> <span class="nc">FastSaver</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Saver</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Disables write_meta_graph argument,</span>
+<span class="sd">    which freezes entire process and is mostly useless.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+             <span class="n">sess</span><span class="p">,</span>
+             <span class="n">save_path</span><span class="p">,</span>
+             <span class="n">global_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">latest_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">meta_graph_suffix</span><span class="o">=</span><span class="s2">&quot;meta&quot;</span><span class="p">,</span>
+             <span class="n">write_meta_graph</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">FastSaver</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span>
+                                    <span class="n">save_path</span><span class="p">,</span>
+                                    <span class="n">global_step</span><span class="p">,</span>
+                                    <span class="n">latest_filename</span><span class="p">,</span>
+                                    <span class="n">meta_graph_suffix</span><span class="p">,</span>
+                                    <span class="kc">False</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Worker"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.worker.Worker">[docs]</a><span class="k">class</span> <span class="nc">Worker</span><span class="p">(</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">Process</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Distributed tf worker class.</span>
+
+<span class="sd">    Sets up environment, trainer and starts training process in supervised session.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">env_class</span><span class="p">,</span>
+                 <span class="n">env_config</span><span class="p">,</span>
+                 <span class="n">policy_class</span><span class="p">,</span>
+                 <span class="n">policy_config</span><span class="p">,</span>
+                 <span class="n">trainer_class</span><span class="p">,</span>
+                 <span class="n">cluster_spec</span><span class="p">,</span>
+                 <span class="n">job_name</span><span class="p">,</span>
+                 <span class="n">task</span><span class="p">,</span>
+                 <span class="n">log_dir</span><span class="p">,</span>
+                 <span class="n">log</span><span class="p">,</span>
+                 <span class="n">log_level</span><span class="p">,</span>
+                 <span class="n">max_steps</span><span class="o">=</span><span class="mi">1000000000</span><span class="p">,</span>
+                 <span class="n">test_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env_class:      environment class to use.</span>
+<span class="sd">            env_config:     configuration dictionary.</span>
+<span class="sd">            policy_class:   model policy estimator class to use.</span>
+<span class="sd">            policy_config:  configuration dictionary.</span>
+<span class="sd">            trainer_class:  algorithm class to use.</span>
+<span class="sd">            cluster_spec:   tf.cluster specification.</span>
+<span class="sd">            job_name:       worker or parameter server.</span>
+<span class="sd">            task:           integer number, 0 is chief worker.</span>
+<span class="sd">            log_dir:        for tb summaries and checkpoints.</span>
+<span class="sd">            log:</span>
+<span class="sd">            log_level:</span>
+<span class="sd">            max_steps:      number of train steps</span>
+<span class="sd">            test_mode:      if True - use Atari mode, BTGym otherwise.</span>
+<span class="sd">            **kwargs:       args passed to trainer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Worker</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span> <span class="o">=</span> <span class="n">env_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span> <span class="o">=</span> <span class="n">env_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span> <span class="o">=</span> <span class="n">policy_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span> <span class="o">=</span> <span class="n">trainer_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span> <span class="o">=</span> <span class="n">cluster_spec</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">job_name</span> <span class="o">=</span> <span class="n">job_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">=</span> <span class="n">log_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span> <span class="o">=</span> <span class="n">max_steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">job_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span> <span class="o">=</span> <span class="n">test_mode</span>
+
+<div class="viewcode-block" id="Worker.run"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.worker.Worker.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Worker runtime body.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">reset_default_graph</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">gym</span>
+
+        <span class="c1"># Define cluster:</span>
+        <span class="n">cluster</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">ClusterSpec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span><span class="p">)</span><span class="o">.</span><span class="n">as_cluster_def</span><span class="p">()</span>
+
+        <span class="c1"># Start tf.server:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">job_name</span> <span class="ow">in</span> <span class="s1">&#39;ps&#39;</span><span class="p">:</span>
+            <span class="n">server</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Server</span><span class="p">(</span>
+                <span class="n">cluster</span><span class="p">,</span>
+                <span class="n">job_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">job_name</span><span class="p">,</span>
+                <span class="n">task_index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
+                <span class="n">config</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span><span class="n">device_filters</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;/job:ps&quot;</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;parameters_server started.&#39;</span><span class="p">)</span>
+            <span class="c1"># Just block here:</span>
+            <span class="n">server</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">server</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Server</span><span class="p">(</span>
+                <span class="n">cluster</span><span class="p">,</span>
+                <span class="n">job_name</span><span class="o">=</span><span class="s1">&#39;worker&#39;</span><span class="p">,</span>
+                <span class="n">task_index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
+                <span class="n">config</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span>
+                    <span class="n">intra_op_parallelism_threads</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># original was: 1</span>
+                    <span class="n">inter_op_parallelism_threads</span><span class="o">=</span><span class="mi">2</span>  <span class="c1"># original was: 2</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1"> tf.server started.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;making environment.&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
+                <span class="c1"># Assume BTgym env. class:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1"> is data_master: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;data_master&#39;</span><span class="p">]))</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">)</span>
+
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39; Worker_</span><span class="si">{}</span><span class="s1"> failed to make BTgym environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Assume atari testing:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">create_env</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;gym_id&#39;</span><span class="p">])</span>
+
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39; Worker_</span><span class="si">{}</span><span class="s1"> failed to make Atari Gym environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">:envronment ok.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+            <span class="c1"># Define trainer:</span>
+            <span class="n">trainer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span><span class="p">(</span>
+                <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span>
+                <span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
+                <span class="n">policy_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span><span class="p">,</span>
+                <span class="n">policy_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span><span class="p">,</span>
+                <span class="n">test_mode</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">,</span>
+                <span class="n">opt_max_train_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span><span class="p">,</span>
+                <span class="n">log</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
+                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">:trainer ok.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+
+            <span class="c1"># Saver-related:</span>
+            <span class="n">variables_to_save</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;local&quot;</span><span class="p">)]</span>
+            <span class="n">init_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">variables_initializer</span><span class="p">(</span><span class="n">variables_to_save</span><span class="p">)</span>
+            <span class="n">init_all_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables_initializer</span><span class="p">()</span>
+
+            <span class="n">saver</span> <span class="o">=</span> <span class="n">FastSaver</span><span class="p">(</span><span class="n">variables_to_save</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">: vars_to_save:&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">variables_to_save</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()))</span>
+
+            <span class="k">def</span> <span class="nf">init_fn</span><span class="p">(</span><span class="n">ses</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Initializing all parameters.&quot;</span><span class="p">)</span>
+                <span class="n">ses</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">init_all_op</span><span class="p">)</span>
+
+            <span class="n">config</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span><span class="n">device_filters</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;/job:ps&quot;</span><span class="p">,</span> <span class="s2">&quot;/job:worker/task:</span><span class="si">{}</span><span class="s2">/cpu:0&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)])</span>
+            <span class="n">logdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span><span class="p">,</span> <span class="s1">&#39;train&#39;</span><span class="p">)</span>
+            <span class="n">summary_dir</span> <span class="o">=</span> <span class="n">logdir</span> <span class="o">+</span> <span class="s2">&quot;_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+
+            <span class="n">summary_writer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">FileWriter</span><span class="p">(</span><span class="n">summary_dir</span><span class="p">)</span>
+
+            <span class="n">sv</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Supervisor</span><span class="p">(</span>
+                <span class="n">is_chief</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">logdir</span><span class="o">=</span><span class="n">logdir</span><span class="p">,</span>
+                <span class="n">saver</span><span class="o">=</span><span class="n">saver</span><span class="p">,</span>
+                <span class="n">summary_op</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">init_op</span><span class="o">=</span><span class="n">init_op</span><span class="p">,</span>
+                <span class="n">init_fn</span><span class="o">=</span><span class="n">init_fn</span><span class="p">,</span>
+                <span class="c1">#summary_writer=summary_writer,</span>
+                <span class="n">ready_op</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">report_uninitialized_variables</span><span class="p">(</span><span class="n">variables_to_save</span><span class="p">),</span>
+                <span class="n">global_step</span><span class="o">=</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">,</span>
+                <span class="n">save_model_secs</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;worker_</span><span class="si">{}</span><span class="s2">: connecting to the parameter server... &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+
+            <span class="k">with</span> <span class="n">sv</span><span class="o">.</span><span class="n">managed_session</span><span class="p">(</span><span class="n">server</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span> <span class="k">as</span> <span class="n">sess</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
+                <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">sync</span><span class="p">)</span>
+                <span class="n">trainer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">)</span>
+                <span class="n">global_step</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span>
+                <span class="c1"># Fill replay memory, id any:</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span><span class="s1">&#39;memory&#39;</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">trainer</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">is_full</span><span class="p">():</span>
+                        <span class="n">trainer</span><span class="o">.</span><span class="n">fill_replay_memory</span><span class="p">(</span><span class="n">sess</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;worker_</span><span class="si">{}</span><span class="s2">: started training at step: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">global_step</span><span class="p">))</span>
+                <span class="k">while</span> <span class="ow">not</span> <span class="n">sv</span><span class="o">.</span><span class="n">should_stop</span><span class="p">()</span> <span class="ow">and</span> <span class="n">global_step</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span><span class="p">:</span>
+                    <span class="n">trainer</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">sess</span><span class="p">)</span>
+                    <span class="n">global_step</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span>
+
+                <span class="c1"># Ask for all the services to stop:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                <span class="n">sv</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">: reached </span><span class="si">{}</span><span class="s1"> steps, exiting.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">global_step</span><span class="p">))</span></div></div>
+
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

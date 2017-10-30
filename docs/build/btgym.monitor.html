@@ -1,0 +1,188 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>btgym.monitor package &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="btgym.rendering package" href="btgym.rendering.html" />
+    <link rel="prev" title="btgym.datafeed module" href="btgym.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="btgym.rendering.html" title="btgym.rendering package"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="btgym.html" title="btgym.datafeed module"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">BTgym 0.0.6 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="btgym-monitor-package">
+<h1>btgym.monitor package<a class="headerlink" href="#btgym-monitor-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-btgym.monitor.tensorboard">
+<span id="btgym-monitor-tensorboard-module"></span><h2>btgym.monitor.tensorboard module<a class="headerlink" href="#module-btgym.monitor.tensorboard" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.monitor.tensorboard.BTgymMonitor">
+<em class="property">class </em><code class="descclassname">btgym.monitor.tensorboard.</code><code class="descname">BTgymMonitor</code><span class="sig-paren">(</span><em>scalars={}</em>, <em>images={}</em>, <em>histograms={}</em>, <em>text={}</em>, <em>logdir='./tb_log'</em>, <em>subdir='/'</em>, <em>purge_previous=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/monitor/tensorboard.html#BTgymMonitor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.monitor.tensorboard.BTgymMonitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Light tensorflow ‘summaries’ wrapper for convenient tensorboard logging.</p>
+<p>Monitor parameters:
+Sets of names for every value category: scalars, images, histograms ant text.
+logdir - tensorboard log directory;
+subdir - this monitor log subdirectory;
+port - localhost webpage addr to look at;
+reload - web page refresh rate.
+purge_previous - delete previous logs in logdir/subdir if found.</p>
+<dl class="method">
+<dt id="btgym.monitor.tensorboard.BTgymMonitor.write">
+<code class="descname">write</code><span class="sig-paren">(</span><em>feed_dict</em>, <em>global_step</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/monitor/tensorboard.html#BTgymMonitor.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.monitor.tensorboard.BTgymMonitor.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Updates monitor with provided data.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.monitor.tensorboard.Tensorboard">
+<em class="property">class </em><code class="descclassname">btgym.monitor.tensorboard.</code><code class="descname">Tensorboard</code><span class="sig-paren">(</span><em>logdir='./btgym_log'</em>, <em>port=6006</em>, <em>reload=30</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/monitor/tensorboard.html#Tensorboard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.monitor.tensorboard.Tensorboard" title="Permalink to this definition">¶</a></dt>
+<dd><p>Utility class to start/stop tensorboard server.</p>
+<dl class="method">
+<dt id="btgym.monitor.tensorboard.Tensorboard.start">
+<code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/monitor/tensorboard.html#Tensorboard.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.monitor.tensorboard.Tensorboard.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Launches Tensorboard app.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.monitor.tensorboard.Tensorboard.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/monitor/tensorboard.html#Tensorboard.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.monitor.tensorboard.Tensorboard.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Closes tensorboard server.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.monitor.tensorboard2">
+<span id="btgym-monitor-tensorboard2-module"></span><h2>btgym.monitor.tensorboard2 module<a class="headerlink" href="#module-btgym.monitor.tensorboard2" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.monitor.tensorboard2.BTgymMonitor2">
+<em class="property">class </em><code class="descclassname">btgym.monitor.tensorboard2.</code><code class="descname">BTgymMonitor2</code><span class="sig-paren">(</span><em>scalars={}</em>, <em>images={}</em>, <em>histograms={}</em>, <em>text={}</em>, <em>logdir='./tb_log'</em>, <em>subdir='/'</em>, <em>purge_previous=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/monitor/tensorboard2.html#BTgymMonitor2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.monitor.tensorboard2.BTgymMonitor2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Light tensorflow ‘summaries’ wrapper for convenient tensorboard logging.</p>
+<p>Monitor parameters:
+Sets of names for every value category: scalars, images, histograms ant text.
+logdir - tensorboard log directory;
+subdir - this monitor log subdirectory;
+port - localhost webpage addr to look at;
+reload - web page refresh rate.
+purge_previous - delete previous logs in logdir/subdir if found.</p>
+<dl class="method">
+<dt id="btgym.monitor.tensorboard2.BTgymMonitor2.write">
+<code class="descname">write</code><span class="sig-paren">(</span><em>sess</em>, <em>feed_dict</em>, <em>global_step</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/monitor/tensorboard2.html#BTgymMonitor2.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.monitor.tensorboard2.BTgymMonitor2.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Updates monitor with provided data.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.monitor.tensorboard2.Tensorboard">
+<em class="property">class </em><code class="descclassname">btgym.monitor.tensorboard2.</code><code class="descname">Tensorboard</code><span class="sig-paren">(</span><em>logdir='./btgym_log'</em>, <em>port=6006</em>, <em>reload=30</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/monitor/tensorboard2.html#Tensorboard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.monitor.tensorboard2.Tensorboard" title="Permalink to this definition">¶</a></dt>
+<dd><p>Utility class to start/stop tensorboard server.</p>
+<dl class="method">
+<dt id="btgym.monitor.tensorboard2.Tensorboard.start">
+<code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/monitor/tensorboard2.html#Tensorboard.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.monitor.tensorboard2.Tensorboard.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Launches Tensorboard app.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.monitor.tensorboard2.Tensorboard.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/monitor/tensorboard2.html#Tensorboard.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.monitor.tensorboard2.Tensorboard.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Closes tensorboard server.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="btgym.html"
+                        title="previous chapter">btgym.datafeed module</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="btgym.rendering.html"
+                        title="next chapter">btgym.rendering package</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="btgym.rendering.html" title="btgym.rendering package"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="btgym.html" title="btgym.datafeed module"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">BTgym 0.0.6 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

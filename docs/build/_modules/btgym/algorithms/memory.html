@@ -1,0 +1,286 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>btgym.algorithms.memory &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for btgym.algorithms.memory</h1><div class="highlight"><pre>
+<span></span><span class="c1"># This implementation is based on Kosuke Miyoshi code, under Apache License 2.0:</span>
+<span class="c1"># https://miyosuda.github.io/</span>
+<span class="c1"># https://github.com/miyosuda/unreal</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span>
+
+
+<div class="viewcode-block" id="Memory"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory">[docs]</a><span class="k">class</span> <span class="nc">Memory</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Replay memory with rebalanced replay.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        must be filled up before calling sampling methods.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history_size</span><span class="p">,</span> <span class="n">max_sample_size</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span> <span class="n">reward_threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            history_size:       number of experiences stored;</span>
+<span class="sd">            max_sample_size:    maximum allowed sample size (e.g. off-policy rollout length);</span>
+<span class="sd">            reward_threshold:   if |experience.reward| &gt; reward_threshold: experience is saved as &#39;prioritized&#39;;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_history_size</span> <span class="o">=</span> <span class="n">history_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="n">history_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward_threshold</span> <span class="o">=</span> <span class="n">reward_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_sample_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
+        <span class="c1"># Indices for non-priority frames:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_zero_reward_indices</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
+        <span class="c1"># Indices for priority frames:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_non_zero_reward_indices</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_top_frame_index</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># TODO: add logging</span>
+
+<div class="viewcode-block" id="Memory.add_frame"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.add_frame">[docs]</a>    <span class="k">def</span> <span class="nf">add_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Appends single experience frame to memory.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            frame:  dictionary of values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;terminal&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;terminal&#39;</span><span class="p">]:</span>
+            <span class="c1"># Discard if terminal frame continues</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Sequential terminal frame encountered. Discarded.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> -- </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;position&#39;</span><span class="p">],</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">]))</span>
+            <span class="k">return</span>
+
+        <span class="n">frame_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_top_frame_index</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">)</span>
+        <span class="n">was_full</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_full</span><span class="p">()</span>
+
+        <span class="c1"># Append frame:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+
+        <span class="c1"># Decide and append index:</span>
+        <span class="k">if</span> <span class="n">frame_index</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward_threshold</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_zero_reward_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame_index</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_non_zero_reward_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame_index</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">was_full</span><span class="p">:</span>
+            <span class="c1"># Decide from which index to discard:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_top_frame_index</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="n">cut_frame_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_top_frame_index</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_size</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="c1"># Cut frame if its index is lower than cut_frame_index:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_zero_reward_indices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> \
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_zero_reward_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">cut_frame_index</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_zero_reward_indices</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_non_zero_reward_indices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> \
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_non_zero_reward_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">cut_frame_index</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_non_zero_reward_indices</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Memory.add_rollout"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.add_rollout">[docs]</a>    <span class="k">def</span> <span class="nf">add_rollout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rollout</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Adds frames from given rollout to memory with respect to episode continuation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rollout:    `Rollout` instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check if current rollout is direct extension of last stored frame sequence:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;terminal&#39;</span><span class="p">]:</span>
+            <span class="c1"># E.g. check if it is same local episode and successive frame order:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;position&#39;</span><span class="p">][</span><span class="s1">&#39;episode&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">rollout</span><span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">][</span><span class="s1">&#39;episode&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> \
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;position&#39;</span><span class="p">][</span><span class="s1">&#39;step&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">rollout</span><span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">][</span><span class="s1">&#39;step&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="c1"># Means it is ok to just extend previously stored episode</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Means part or tail of previously recorded episode is somehow lost,</span>
+                <span class="c1"># so we need to mark stored episode as &#39;ended&#39;:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;terminal&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> changed to terminal&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;position&#39;</span><span class="p">]))</span>
+                <span class="c1"># If we get a lot of such messages it is an indication something is going wrong.</span>
+        <span class="c1"># Add experiences one by one:</span>
+        <span class="c1"># TODO: pain-slow.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rollout</span><span class="p">[</span><span class="s1">&#39;terminal&#39;</span><span class="p">])):</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">rollout</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Memory.is_full"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.is_full">[docs]</a>    <span class="k">def</span> <span class="nf">is_full</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_history_size</span></div>
+
+<div class="viewcode-block" id="Memory.sample_uniform"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.sample_uniform">[docs]</a>    <span class="k">def</span> <span class="nf">sample_uniform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sequence_size</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Uniformly samples sequence of successive frames of size `sequence_size` or less (~off-policy rollout).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sequence_size:  maximum sample size.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            list of ExperienceFrame&#39;s of length &lt;= sequence_size.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_history_size</span> <span class="o">-</span> <span class="n">sequence_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># Shift by one if hit terminal frame:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="n">start_pos</span><span class="p">][</span><span class="s1">&#39;terminal&#39;</span><span class="p">]:</span>
+            <span class="n">start_pos</span> <span class="o">+=</span> <span class="mi">1</span>  <span class="c1"># assuming that there are no successive terminal frames.</span>
+
+        <span class="n">sampled_frames</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sequence_size</span><span class="p">):</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="n">start_pos</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">sampled_frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;terminal&#39;</span><span class="p">]:</span>
+                <span class="k">break</span>  <span class="c1"># it&#39;s ok to return less than `sequence_size` frames if `terminal` frame encountered.</span>
+
+        <span class="k">return</span> <span class="n">sampled_frames</span></div>
+
+<div class="viewcode-block" id="Memory.sample_priority"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.sample_priority">[docs]</a>    <span class="k">def</span> <span class="nf">sample_priority</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">exact_size</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">skewness</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">sample_attempts</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Implements rebalanced replay;</span>
+<span class="sd">        samples sequence of successive frames from distribution skewed by means of reward of last sample frame.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            size:               sample size, must be &lt;= self.max_sample_size;</span>
+<span class="sd">            exact_size:         whether accept sample with size less than &#39;size&#39;</span>
+<span class="sd">                                or re-sample to get sample of exact size (used for reward prediction task);</span>
+<span class="sd">            skewness:           int&gt;=1, sampling probability denominator, such as probability of sampling sequence with</span>
+<span class="sd">                                last frame having non-zero reward is: p[non_zero]=1/skewness;</span>
+<span class="sd">            sample_attempts:    if exact_size=True, sets number of re-sampling attempts</span>
+<span class="sd">                                to get sample of continuous experiences (no `Terminal` frames inside except last one);</span>
+<span class="sd">                                if number is reached - sample returned &#39;as is&#39;.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            list of ExperienceFrame&#39;s.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_size</span><span class="p">:</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_size</span>
+
+        <span class="c1"># Toss skewed coin:</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">skewness</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">from_zero</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">from_zero</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_zero_reward_indices</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># zero rewards container was empty</span>
+            <span class="n">from_zero</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_non_zero_reward_indices</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># non zero rewards container was empty</span>
+            <span class="n">from_zero</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># Try to sample sequence of given length from one episode.</span>
+        <span class="c1"># Take maximum of &#39;sample_attempts&#39;, if no luck</span>
+        <span class="c1"># (e.g too short episodes and/or too big sampling size) -&gt;</span>
+        <span class="c1"># return inconsistent sample and issue warning.</span>
+        <span class="n">check_sequence</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sample_attempts</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">from_zero</span><span class="p">:</span>
+                <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_zero_reward_indices</span><span class="p">))</span>
+                <span class="n">end_frame_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zero_reward_indices</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_non_zero_reward_indices</span><span class="p">))</span>
+                <span class="n">end_frame_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_non_zero_reward_indices</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+
+            <span class="n">start_frame_index</span> <span class="o">=</span> <span class="n">end_frame_index</span> <span class="o">-</span> <span class="n">size</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">raw_start_frame_index</span> <span class="o">=</span> <span class="n">start_frame_index</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_top_frame_index</span>
+
+            <span class="n">sampled_frames</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">is_full</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">attempt</span> <span class="o">==</span> <span class="n">sample_attempts</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">check_sequence</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Warning: failed to sample </span><span class="si">{}</span><span class="s1"> successive frames, sampled as is.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">size</span><span class="p">))</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="n">raw_start_frame_index</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span>
+                <span class="n">sampled_frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check_sequence</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;terminal&#39;</span><span class="p">]:</span>
+                        <span class="k">if</span> <span class="n">exact_size</span><span class="p">:</span>
+                            <span class="n">is_full</span> <span class="o">=</span> <span class="kc">False</span>
+                        <span class="c1">#print(&#39;attempt:&#39;, attempt)</span>
+                        <span class="c1">#print(&#39;frame.terminal:&#39;, frame[&#39;terminal&#39;])</span>
+                        <span class="k">break</span>
+            <span class="c1"># Last frame can be terminal anyway:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="n">raw_start_frame_index</span> <span class="o">+</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">sampled_frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">is_full</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span> <span class="n">sampled_frames</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

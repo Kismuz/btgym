@@ -1,0 +1,417 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>backtrader.metabase &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for backtrader.metabase</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># -*- coding: utf-8; py-indent-offset:4 -*-</span>
+<span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2015, 2016, 2017 Daniel Rodriguez</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">###############################################################################</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="p">(</span><span class="n">absolute_import</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span><span class="p">,</span>
+                        <span class="n">unicode_literals</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">backtrader</span> <span class="k">as</span> <span class="nn">bt</span>
+<span class="kn">from</span> <span class="nn">.utils.py3</span> <span class="k">import</span> <span class="nb">zip</span><span class="p">,</span> <span class="n">string_types</span><span class="p">,</span> <span class="n">with_metaclass</span>
+
+
+<span class="k">def</span> <span class="nf">findbases</span><span class="p">(</span><span class="n">kls</span><span class="p">,</span> <span class="n">topclass</span><span class="p">):</span>
+    <span class="n">retval</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">kls</span><span class="o">.</span><span class="vm">__bases__</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">topclass</span><span class="p">):</span>
+            <span class="n">retval</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">findbases</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">topclass</span><span class="p">))</span>
+            <span class="n">retval</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">retval</span>
+
+
+<span class="k">def</span> <span class="nf">findowner</span><span class="p">(</span><span class="n">owned</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">startlevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="c1"># skip this frame and the caller&#39;s -&gt; start at 2</span>
+    <span class="k">for</span> <span class="n">framelevel</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">startlevel</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">(</span><span class="n">framelevel</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="c1"># Frame depth exceeded ... no owner ... break away</span>
+            <span class="k">break</span>
+
+        <span class="c1"># &#39;self&#39; in regular code</span>
+        <span class="n">self_</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;self&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">skip</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">self_</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">self_</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">owned</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">self_</span><span class="p">,</span> <span class="bp">cls</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">self_</span>
+
+        <span class="c1"># &#39;_obj&#39; in metaclasses</span>
+        <span class="n">obj_</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;_obj&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">skip</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">obj_</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">obj_</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">owned</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj_</span><span class="p">,</span> <span class="bp">cls</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">obj_</span>
+
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">class</span> <span class="nc">MetaBase</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">doprenew</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span>
+
+    <span class="k">def</span> <span class="nf">donew</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">_obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span>
+
+    <span class="k">def</span> <span class="nf">dopreinit</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">_obj</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span>
+
+    <span class="k">def</span> <span class="nf">doinit</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">_obj</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">_obj</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span>
+
+    <span class="k">def</span> <span class="nf">dopostinit</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">_obj</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">doprenew</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">donew</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">dopreinit</span><span class="p">(</span><span class="n">_obj</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">doinit</span><span class="p">(</span><span class="n">_obj</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">dopostinit</span><span class="p">(</span><span class="n">_obj</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_obj</span>
+
+
+<span class="k">class</span> <span class="nc">AutoInfoClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">_getpairsbase</span> <span class="o">=</span> <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">OrderedDict</span><span class="p">())</span>
+    <span class="n">_getpairs</span> <span class="o">=</span> <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">OrderedDict</span><span class="p">())</span>
+    <span class="n">_getrecurse</span> <span class="o">=</span> <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="kc">False</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_derive</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">otherbases</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="c1"># collect the 3 set of infos</span>
+        <span class="c1"># info = OrderedDict(info)</span>
+        <span class="n">baseinfo</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_getpairs</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">obasesinfo</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">obase</span> <span class="ow">in</span> <span class="n">otherbases</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obase</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)):</span>
+                <span class="n">obasesinfo</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obase</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">obasesinfo</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obase</span><span class="o">.</span><span class="n">_getpairs</span><span class="p">())</span>
+
+        <span class="c1"># update the info of this class (base) with that from the other bases</span>
+        <span class="n">baseinfo</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obasesinfo</span><span class="p">)</span>
+
+        <span class="c1"># The info of the new class is a copy of the full base info</span>
+        <span class="c1"># plus and update from parameter</span>
+        <span class="n">clsinfo</span> <span class="o">=</span> <span class="n">baseinfo</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">clsinfo</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
+
+        <span class="c1"># The new items to update/set are those from the otherbase plus the new</span>
+        <span class="n">info2add</span> <span class="o">=</span> <span class="n">obasesinfo</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">info2add</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
+
+        <span class="n">clsmodule</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__module__</span><span class="p">]</span>
+        <span class="n">newclsname</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">name</span><span class="p">)</span>  <span class="c1"># str - Python 2/3 compat</span>
+
+        <span class="c1"># This loop makes sure that if the name has already been defined, a new</span>
+        <span class="c1"># unique name is found. A collision example is in the plotlines names</span>
+        <span class="c1"># definitions of bt.indicators.MACD and bt.talib.MACD. Both end up</span>
+        <span class="c1"># definining a MACD_pl_macd and this makes it impossible for the pickle</span>
+        <span class="c1"># module to send results over a multiprocessing channel</span>
+        <span class="n">namecounter</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">while</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">clsmodule</span><span class="p">,</span> <span class="n">newclsname</span><span class="p">):</span>
+            <span class="n">newclsname</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="n">namecounter</span><span class="p">)</span>
+            <span class="n">namecounter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">newcls</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">newclsname</span><span class="p">,</span> <span class="p">(</span><span class="bp">cls</span><span class="p">,),</span> <span class="p">{})</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">clsmodule</span><span class="p">,</span> <span class="n">newclsname</span><span class="p">,</span> <span class="n">newcls</span><span class="p">)</span>
+
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">newcls</span><span class="p">,</span> <span class="s1">&#39;_getpairsbase&#39;</span><span class="p">,</span>
+                <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">baseinfo</span><span class="o">.</span><span class="n">copy</span><span class="p">()))</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">newcls</span><span class="p">,</span> <span class="s1">&#39;_getpairs&#39;</span><span class="p">,</span> <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">clsinfo</span><span class="o">.</span><span class="n">copy</span><span class="p">()))</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">newcls</span><span class="p">,</span> <span class="s1">&#39;_getrecurse&#39;</span><span class="p">,</span> <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">recurse</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">infoname</span><span class="p">,</span> <span class="n">infoval</span> <span class="ow">in</span> <span class="n">info2add</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">recurse</span><span class="p">:</span>
+                <span class="n">recursecls</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">newcls</span><span class="p">,</span> <span class="n">infoname</span><span class="p">,</span> <span class="n">AutoInfoClass</span><span class="p">)</span>
+                <span class="n">infoval</span> <span class="o">=</span> <span class="n">recursecls</span><span class="o">.</span><span class="n">_derive</span><span class="p">(</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">infoname</span><span class="p">,</span>
+                                             <span class="n">infoval</span><span class="p">,</span>
+                                             <span class="p">[])</span>
+
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">newcls</span><span class="p">,</span> <span class="n">infoname</span><span class="p">,</span> <span class="n">infoval</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">newcls</span>
+
+    <span class="k">def</span> <span class="nf">isdefault</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pname</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get</span><span class="p">(</span><span class="n">pname</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getkwargsdefault</span><span class="p">()[</span><span class="n">pname</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">notdefault</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pname</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get</span><span class="p">(</span><span class="n">pname</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getkwargsdefault</span><span class="p">()[</span><span class="n">pname</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_getkwargsdefault</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_getpairs</span><span class="p">()</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_getkeys</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_getpairs</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_getdefaults</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_getpairs</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_getitems</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_getpairs</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_gettuple</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_getpairs</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_getkwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">skip_</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getkeys</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">OrderedDict</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_getvalues</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getkeys</span><span class="p">()]</span>
+
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">AutoInfoClass</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_getrecurse</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">infoname</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">_getkeys</span><span class="p">():</span>
+                <span class="n">recursecls</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">infoname</span><span class="p">)</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">infoname</span><span class="p">,</span> <span class="n">recursecls</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="n">obj</span>
+
+
+<span class="k">class</span> <span class="nc">MetaParams</span><span class="p">(</span><span class="n">MetaBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">dct</span><span class="p">):</span>
+        <span class="c1"># Remove params from class definition to avod inheritance</span>
+        <span class="c1"># (and hence &quot;repetition&quot;)</span>
+        <span class="n">newparams</span> <span class="o">=</span> <span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;params&#39;</span><span class="p">,</span> <span class="p">())</span>
+
+        <span class="n">packs</span> <span class="o">=</span> <span class="s1">&#39;packages&#39;</span>
+        <span class="n">newpackages</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">packs</span><span class="p">,</span> <span class="p">()))</span>  <span class="c1"># remove before creation</span>
+
+        <span class="n">fpacks</span> <span class="o">=</span> <span class="s1">&#39;frompackages&#39;</span>
+        <span class="n">fnewpackages</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">fpacks</span><span class="p">,</span> <span class="p">()))</span>  <span class="c1"># remove before creation</span>
+
+        <span class="c1"># Create the new class - this pulls predefined &quot;params&quot;</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">MetaParams</span><span class="p">,</span> <span class="n">meta</span><span class="p">)</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">dct</span><span class="p">)</span>
+
+        <span class="c1"># Pulls the param class out of it - default is the empty class</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;params&#39;</span><span class="p">,</span> <span class="n">AutoInfoClass</span><span class="p">)</span>
+
+        <span class="c1"># Pulls the packages class out of it - default is the empty class</span>
+        <span class="n">packages</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">packs</span><span class="p">,</span> <span class="p">()))</span>
+        <span class="n">fpackages</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">fpacks</span><span class="p">,</span> <span class="p">()))</span>
+
+        <span class="c1"># get extra (to the right) base classes which have a param attribute</span>
+        <span class="n">morebasesparams</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">params</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;params&#39;</span><span class="p">)]</span>
+
+        <span class="c1"># Get extra packages, add them to the packages and put all in the class</span>
+        <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">packages</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">packs</span><span class="p">)]:</span>
+            <span class="n">packages</span> <span class="o">+=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">frompackages</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fpacks</span><span class="p">)]:</span>
+            <span class="n">fpackages</span> <span class="o">+=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+        <span class="bp">cls</span><span class="o">.</span><span class="n">packages</span> <span class="o">=</span> <span class="n">packages</span> <span class="o">+</span> <span class="n">newpackages</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">frompackages</span> <span class="o">=</span> <span class="n">fpackages</span> <span class="o">+</span> <span class="n">fnewpackages</span>
+
+        <span class="c1"># Subclass and store the newly derived params class</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">_derive</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">newparams</span><span class="p">,</span> <span class="n">morebasesparams</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span>
+
+    <span class="k">def</span> <span class="nf">donew</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">clsmod</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__module__</span><span class="p">]</span>
+        <span class="c1"># import specified packages</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">packages</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
+                <span class="n">p</span><span class="p">,</span> <span class="n">palias</span> <span class="o">=</span> <span class="n">p</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">palias</span> <span class="o">=</span> <span class="n">p</span>
+
+            <span class="n">pmod</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+
+            <span class="n">plevels</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">p</span> <span class="o">==</span> <span class="n">palias</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">plevels</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># &#39;os.path&#39; not aliased</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">clsmod</span><span class="p">,</span> <span class="n">pmod</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">pmod</span><span class="p">)</span>  <span class="c1"># set &#39;os&#39; in module</span>
+
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># aliased and/or dots</span>
+                <span class="k">for</span> <span class="n">plevel</span> <span class="ow">in</span> <span class="n">plevels</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>  <span class="c1"># recurse down the mod</span>
+                    <span class="n">pmod</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">pmod</span><span class="p">,</span> <span class="n">plevel</span><span class="p">)</span>
+
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">clsmod</span><span class="p">,</span> <span class="n">palias</span><span class="p">,</span> <span class="n">pmod</span><span class="p">)</span>
+
+        <span class="c1"># import from specified packages - the 2nd part is a string or iterable</span>
+        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">frompackage</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">frompackages</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">frompackage</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+                <span class="n">frompackage</span> <span class="o">=</span> <span class="p">(</span><span class="n">frompackage</span><span class="p">,)</span>  <span class="c1"># make it a tuple</span>
+
+            <span class="k">for</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">frompackage</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
+                    <span class="n">fp</span><span class="p">,</span> <span class="n">falias</span> <span class="o">=</span> <span class="n">fp</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">fp</span><span class="p">,</span> <span class="n">falias</span> <span class="o">=</span> <span class="n">fp</span><span class="p">,</span> <span class="n">fp</span>  <span class="c1"># assumed is string</span>
+
+                <span class="c1"># complain &quot;not string&quot; without fp (unicode vs bytes)</span>
+                <span class="n">pmod</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">fromlist</span><span class="o">=</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">fp</span><span class="p">)])</span>
+                <span class="n">pattr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">pmod</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">clsmod</span><span class="p">,</span> <span class="n">falias</span><span class="p">,</span> <span class="n">pattr</span><span class="p">)</span>
+
+        <span class="c1"># Create params and set the values from the kwargs</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">params</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">pname</span><span class="p">,</span> <span class="n">pdef</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">_getitems</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">pname</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">pname</span><span class="p">,</span> <span class="n">pdef</span><span class="p">))</span>
+
+        <span class="c1"># Create the object and set the params in place</span>
+        <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">MetaParams</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="n">donew</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">_obj</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">params</span>
+        <span class="n">_obj</span><span class="o">.</span><span class="n">p</span> <span class="o">=</span> <span class="n">params</span>  <span class="c1"># shorter alias</span>
+
+        <span class="c1"># Parameter values have now been set before __init__</span>
+        <span class="k">return</span> <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span>
+
+
+<span class="k">class</span> <span class="nc">ParamsBase</span><span class="p">(</span><span class="n">with_metaclass</span><span class="p">(</span><span class="n">MetaParams</span><span class="p">,</span> <span class="nb">object</span><span class="p">)):</span>
+    <span class="k">pass</span>  <span class="c1"># stub to allow easy subclassing without metaclasses</span>
+
+
+<span class="k">class</span> <span class="nc">ItemCollection</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Holds a collection of items that can be reached by</span>
+
+<span class="sd">      - Index</span>
+<span class="sd">      - Name (if set in the append operation)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_items</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_items</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_items</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">getnames</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_names</span>
+
+    <span class="k">def</span> <span class="nf">getitems</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_items</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getbyname</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_names</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_items</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,263 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>btgym.rendering package &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="btgym.algorithms package" href="btgym.algorithms.html" />
+    <link rel="prev" title="btgym.monitor package" href="btgym.monitor.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="btgym.algorithms.html" title="btgym.algorithms package"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="btgym.monitor.html" title="btgym.monitor package"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">BTgym 0.0.6 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="btgym-rendering-package">
+<h1>btgym.rendering package<a class="headerlink" href="#btgym-rendering-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-btgym.rendering.renderer">
+<span id="btgym-rendering-renderer-module"></span><h2>btgym.rendering.renderer module<a class="headerlink" href="#module-btgym.rendering.renderer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.rendering.renderer.BTgymRendering">
+<em class="property">class </em><code class="descclassname">btgym.rendering.renderer.</code><code class="descname">BTgymRendering</code><span class="sig-paren">(</span><em>render_modes</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/renderer.html#BTgymRendering"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.renderer.BTgymRendering" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handles BTgym Environment rendering.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Call <cite>initialize_pyplot()</cite> method before first render() call!</p>
+</div>
+<p>Plotting controls, can be passed as kwargs:
+render_state_as_image=True,
+render_state_channel=0,
+render_size_human=(6, 3.5),
+render_size_state=(7, 3.5),
+render_size_episode=(12,8),
+render_dpi=75,
+render_plotstyle=’seaborn’,
+render_cmap=’PRGn’,
+render_xlabel=’Relative timesteps’,
+render_ylabel=’Value’,
+render_title=’local step: {}, state observation min: {:.4f}, max: {:.4f}’,
+render_boxtext=dict(fontsize=12,</p>
+<blockquote>
+<div>fontweight=’bold’,
+color=’w’,
+bbox={‘facecolor’: ‘k’, ‘alpha’: 0.3, ‘pad’: 3},
+)</div></blockquote>
+<dl class="method">
+<dt id="btgym.rendering.renderer.BTgymRendering.initialize_pyplot">
+<code class="descname">initialize_pyplot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/renderer.html#BTgymRendering.initialize_pyplot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.renderer.BTgymRendering.initialize_pyplot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Call me before use!
+[Supposed to be done inside already running server process]</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.rendering.renderer.BTgymRendering.to_string">
+<code class="descname">to_string</code><span class="sig-paren">(</span><em>dictionary</em>, <em>excluded=[]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/renderer.html#BTgymRendering.to_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.renderer.BTgymRendering.to_string" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts given dictionary to more-or-less good looking <cite>text block</cite> string.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.rendering.renderer.BTgymRendering.rgb_empty">
+<code class="descname">rgb_empty</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/renderer.html#BTgymRendering.rgb_empty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.renderer.BTgymRendering.rgb_empty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns empty ‘plug’ image.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.rendering.renderer.BTgymRendering.parse_response">
+<code class="descname">parse_response</code><span class="sig-paren">(</span><em>state</em>, <em>mode</em>, <em>reward</em>, <em>info</em>, <em>done</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/renderer.html#BTgymRendering.parse_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.renderer.BTgymRendering.parse_response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts environment response to plotting attributes:
+state, title, text.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.rendering.renderer.BTgymRendering.render">
+<code class="descname">render</code><span class="sig-paren">(</span><em>mode_list</em>, <em>cerebro=None</em>, <em>step_to_render=None</em>, <em>send_img=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/renderer.html#BTgymRendering.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.renderer.BTgymRendering.render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Renders given mode if possible, else
+just passes last already rendered image.
+Returns rgb image as numpy array.
+Logic:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>If <cite>cerebro</cite> arg is received:</dt>
+<dd>render entire episode, using built-in backtrader plotting feature,
+update stored <cite>episode</cite> image.</dd>
+<dt>If <a href="#id1"><span class="problematic" id="id2">`</span></a>step_to_render’ arg is received:</dt>
+<dd><dl class="first last docutils">
+<dt>if mode = ‘raw_state’:</dt>
+<dd>render current state observation in conventional ‘price’ format,
+update stored <cite>raw_state</cite> image;</dd>
+<dt>if mode = something_else’:</dt>
+<dd>visualise observation as ‘seen’ by agent,
+update stored ‘agent’ image.</dd>
+</dl>
+</dd>
+</dl>
+<p>Return <cite>mode</cite> image.</p>
+</div></blockquote>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">It can actually return several modes in a single dict.
+It prevented by Gym modes convention, but done internally at the end of the episode.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.rendering.renderer.BTgymRendering.draw_plot">
+<code class="descname">draw_plot</code><span class="sig-paren">(</span><em>data</em>, <em>figsize=(10</em>, <em>6)</em>, <em>title=''</em>, <em>box_text=''</em>, <em>xlabel='X'</em>, <em>ylabel='Y'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/renderer.html#BTgymRendering.draw_plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.renderer.BTgymRendering.draw_plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visualises environment state as 2d line plot.
+Retrurns image as rgb_array.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.rendering.renderer.BTgymRendering.draw_image">
+<code class="descname">draw_image</code><span class="sig-paren">(</span><em>data</em>, <em>figsize=(12</em>, <em>6)</em>, <em>title=''</em>, <em>box_text=''</em>, <em>xlabel='X'</em>, <em>ylabel='Y'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/renderer.html#BTgymRendering.draw_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.renderer.BTgymRendering.draw_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visualises environment state as image.
+Returns rgb_array.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.rendering.renderer.BTgymRendering.draw_episode">
+<code class="descname">draw_episode</code><span class="sig-paren">(</span><em>cerebro</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/renderer.html#BTgymRendering.draw_episode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.renderer.BTgymRendering.draw_episode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Monstrous way to render episode.
+Due to storage leaks have to encapsulate it in separate process.
+Strange but reliable. PID’s are driving crazy.
+Takes cerebro instance, returns rgb array.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.rendering.renderer.BTgymNullRendering">
+<em class="property">class </em><code class="descclassname">btgym.rendering.renderer.</code><code class="descname">BTgymNullRendering</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/renderer.html#BTgymNullRendering"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.renderer.BTgymNullRendering" title="Permalink to this definition">¶</a></dt>
+<dd><p>Empty renderer to use when resources are concern.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.rendering.plotter">
+<span id="btgym-rendering-plotter-module"></span><h2>btgym.rendering.plotter module<a class="headerlink" href="#module-btgym.rendering.plotter" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.rendering.plotter.BTgymPlotter">
+<em class="property">class </em><code class="descclassname">btgym.rendering.plotter.</code><code class="descname">BTgymPlotter</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/plotter.html#BTgymPlotter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.plotter.BTgymPlotter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hacky way to get cerebro.plot() renderings.
+Overrides default backtrader plotter behaviour.</p>
+<p>pass</p>
+<dl class="method">
+<dt id="btgym.rendering.plotter.BTgymPlotter.savefig">
+<code class="descname">savefig</code><span class="sig-paren">(</span><em>fig</em>, <em>filename</em>, <em>width=16</em>, <em>height=9</em>, <em>dpi=300</em>, <em>tight=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/plotter.html#BTgymPlotter.savefig"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.plotter.BTgymPlotter.savefig" title="Permalink to this definition">¶</a></dt>
+<dd><p>We neither need picture to appear in &lt;stdout&gt; nor file to be written to disk (slow).
+Just set params and return <cite>fig</cite> to be converted to rgb array.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.rendering.plotter.DrawCerebro">
+<em class="property">class </em><code class="descclassname">btgym.rendering.plotter.</code><code class="descname">DrawCerebro</code><span class="sig-paren">(</span><em>cerebro</em>, <em>width</em>, <em>height</em>, <em>dpi</em>, <em>result_pipe</em>, <em>use=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/plotter.html#DrawCerebro"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.plotter.DrawCerebro" title="Permalink to this definition">¶</a></dt>
+<dd><p>That’s the way we plot it…</p>
+<dl class="method">
+<dt id="btgym.rendering.plotter.DrawCerebro.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/rendering/plotter.html#DrawCerebro.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.rendering.plotter.DrawCerebro.run" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">rgb_array.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="btgym.monitor.html"
+                        title="previous chapter">btgym.monitor package</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="btgym.algorithms.html"
+                        title="next chapter">btgym.algorithms package</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="btgym.algorithms.html" title="btgym.algorithms package"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="btgym.monitor.html" title="btgym.monitor package"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">BTgym 0.0.6 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

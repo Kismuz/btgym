@@ -1,0 +1,731 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>backtrader.lineseries &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for backtrader.lineseries</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># -*- coding: utf-8; py-indent-offset:4 -*-</span>
+<span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2015, 2016, 2017 Daniel Rodriguez</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">###############################################################################</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="sd">.. module:: lineroot</span>
+
+<span class="sd">Defines LineSeries and Descriptors inside of it for classes that hold multiple</span>
+<span class="sd">lines at once.</span>
+
+<span class="sd">.. moduleauthor:: Daniel Rodriguez</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="p">(</span><span class="n">absolute_import</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span><span class="p">,</span>
+                        <span class="n">unicode_literals</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">.utils.py3</span> <span class="k">import</span> <span class="nb">map</span><span class="p">,</span> <span class="nb">range</span><span class="p">,</span> <span class="n">string_types</span><span class="p">,</span> <span class="n">with_metaclass</span>
+
+<span class="kn">from</span> <span class="nn">.linebuffer</span> <span class="k">import</span> <span class="n">LineBuffer</span><span class="p">,</span> <span class="n">LineActions</span><span class="p">,</span> <span class="n">LinesOperation</span><span class="p">,</span> <span class="n">LineDelay</span><span class="p">,</span> <span class="n">NAN</span>
+<span class="kn">from</span> <span class="nn">.lineroot</span> <span class="k">import</span> <span class="n">LineRoot</span><span class="p">,</span> <span class="n">LineSingle</span><span class="p">,</span> <span class="n">LineMultiple</span>
+<span class="kn">from</span> <span class="nn">.metabase</span> <span class="k">import</span> <span class="n">AutoInfoClass</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">metabase</span>
+
+
+<span class="k">class</span> <span class="nc">LineAlias</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Descriptor class that store a line reference and returns that line</span>
+<span class="sd">    from the owner</span>
+
+<span class="sd">    Keyword Args:</span>
+<span class="sd">        line (int): reference to the line that will be returned from</span>
+<span class="sd">        owner&#39;s *lines* buffer</span>
+
+<span class="sd">    As a convenience the __set__ method of the descriptor is used not set</span>
+<span class="sd">    the *line* reference because this is a constant along the live of the</span>
+<span class="sd">    descriptor instance, but rather to set the value of the *line* at the</span>
+<span class="sd">    instant &#39;0&#39; (the current one)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">line</span> <span class="o">=</span> <span class="n">line</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">line</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        A line cannot be &quot;set&quot; once it has been created. But the values</span>
+<span class="sd">        inside the line can be &quot;set&quot;. This is achieved by adding a binding</span>
+<span class="sd">        to the line inside &quot;value&quot;</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">LineMultiple</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># If the now for sure, LineBuffer &#39;value&#39; is not a LineActions the</span>
+        <span class="c1"># binding below could kick-in too early in the chain writing the value</span>
+        <span class="c1"># into a not yet &quot;forwarded&quot; line, effectively writing the value 1</span>
+        <span class="c1"># index too early and breaking the functionality (all in next mode)</span>
+        <span class="c1"># Hence the need to transform it into a LineDelay object of null delay</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">LineActions</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">value</span><span class="o">.</span><span class="n">addbinding</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">line</span><span class="p">])</span>
+
+
+<span class="k">class</span> <span class="nc">Lines</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines an &quot;array&quot; of lines which also has most of the interface of</span>
+<span class="sd">    a LineBuffer class (forward, rewind, advance...).</span>
+
+<span class="sd">    This interface operations are passed to the lines held by self</span>
+
+<span class="sd">    The class can autosubclass itself (_derive) to hold new lines keeping them</span>
+<span class="sd">    in the defined order.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">_getlinesbase</span> <span class="o">=</span> <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="p">())</span>
+    <span class="n">_getlines</span> <span class="o">=</span> <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="p">())</span>
+    <span class="n">_getlinesextra</span> <span class="o">=</span> <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">_getlinesextrabase</span> <span class="o">=</span> <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_derive</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">lines</span><span class="p">,</span> <span class="n">extralines</span><span class="p">,</span> <span class="n">otherbases</span><span class="p">,</span> <span class="n">linesoverride</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">lalias</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Creates a subclass of this class with the lines of this class as</span>
+<span class="sd">        initial input for the subclass. It will include num &quot;extralines&quot; and</span>
+<span class="sd">        lines present in &quot;otherbases&quot;</span>
+
+<span class="sd">        &quot;name&quot; will be used as the suffix of the final class name</span>
+
+<span class="sd">        &quot;linesoverride&quot;: if True the lines of all bases will be discarded and</span>
+<span class="sd">        the baseclass will be the topmost class &quot;Lines&quot;. This is intended to</span>
+<span class="sd">        create a new hierarchy</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">obaseslines</span> <span class="o">=</span> <span class="p">()</span>
+        <span class="n">obasesextralines</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">otherbase</span> <span class="ow">in</span> <span class="n">otherbases</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">otherbase</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="n">obaseslines</span> <span class="o">+=</span> <span class="n">otherbase</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">obaseslines</span> <span class="o">+=</span> <span class="n">otherbase</span><span class="o">.</span><span class="n">_getlines</span><span class="p">()</span>
+                <span class="n">obasesextralines</span> <span class="o">+=</span> <span class="n">otherbase</span><span class="o">.</span><span class="n">_getlinesextra</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">linesoverride</span><span class="p">:</span>
+            <span class="n">baselines</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_getlines</span><span class="p">()</span> <span class="o">+</span> <span class="n">obaseslines</span>
+            <span class="n">baseextralines</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_getlinesextra</span><span class="p">()</span> <span class="o">+</span> <span class="n">obasesextralines</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># overriding lines, skip anything from baseclasses</span>
+            <span class="n">baselines</span> <span class="o">=</span> <span class="p">()</span>
+            <span class="n">baseextralines</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">clslines</span> <span class="o">=</span> <span class="n">baselines</span> <span class="o">+</span> <span class="n">lines</span>
+        <span class="n">clsextralines</span> <span class="o">=</span> <span class="n">baseextralines</span> <span class="o">+</span> <span class="n">extralines</span>
+        <span class="n">lines2add</span> <span class="o">=</span> <span class="n">obaseslines</span> <span class="o">+</span> <span class="n">lines</span>
+
+        <span class="c1"># str for Python 2/3 compatibility</span>
+        <span class="n">basecls</span> <span class="o">=</span> <span class="bp">cls</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">linesoverride</span> <span class="k">else</span> <span class="n">Lines</span>
+
+        <span class="n">newcls</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">name</span><span class="p">),</span> <span class="p">(</span><span class="n">basecls</span><span class="p">,),</span> <span class="p">{})</span>
+        <span class="n">clsmodule</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__module__</span><span class="p">]</span>
+        <span class="n">newcls</span><span class="o">.</span><span class="vm">__module__</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__module__</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">clsmodule</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">name</span><span class="p">),</span> <span class="n">newcls</span><span class="p">)</span>
+
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">newcls</span><span class="p">,</span> <span class="s1">&#39;_getlinesbase&#39;</span><span class="p">,</span> <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">baselines</span><span class="p">))</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">newcls</span><span class="p">,</span> <span class="s1">&#39;_getlines&#39;</span><span class="p">,</span> <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">clslines</span><span class="p">))</span>
+
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">newcls</span><span class="p">,</span> <span class="s1">&#39;_getlinesextrabase&#39;</span><span class="p">,</span>
+                <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">baseextralines</span><span class="p">))</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">newcls</span><span class="p">,</span> <span class="s1">&#39;_getlinesextra&#39;</span><span class="p">,</span>
+                <span class="nb">classmethod</span><span class="p">(</span><span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">clsextralines</span><span class="p">))</span>
+
+        <span class="n">l2start</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_getlines</span><span class="p">())</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">linesoverride</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">l2add</span> <span class="o">=</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines2add</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">l2start</span><span class="p">)</span>
+        <span class="n">l2alias</span> <span class="o">=</span> <span class="p">{}</span> <span class="k">if</span> <span class="n">lalias</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">lalias</span><span class="o">.</span><span class="n">_getkwargsdefault</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">linealias</span> <span class="ow">in</span> <span class="n">l2add</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">linealias</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+                <span class="c1"># a tuple or list was passed, 1st is name</span>
+                <span class="n">linealias</span> <span class="o">=</span> <span class="n">linealias</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">desc</span> <span class="o">=</span> <span class="n">LineAlias</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>  <span class="c1"># keep a reference below</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">newcls</span><span class="p">,</span> <span class="n">linealias</span><span class="p">,</span> <span class="n">desc</span><span class="p">)</span>
+
+        <span class="c1"># Create extra aliases for the given name, checking if the names is in</span>
+        <span class="c1"># l2alias (which is from the argument lalias and comes from the</span>
+        <span class="c1"># directive &#39;linealias&#39;, hence the confusion here (the LineAlias come</span>
+        <span class="c1"># from the directive &#39;lines&#39;)</span>
+        <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">linealias</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">newcls</span><span class="o">.</span><span class="n">_getlines</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">linealias</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+                <span class="c1"># a tuple or list was passed, 1st is name</span>
+                <span class="n">linealias</span> <span class="o">=</span> <span class="n">linealias</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">desc</span> <span class="o">=</span> <span class="n">LineAlias</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>  <span class="c1"># keep a reference below</span>
+            <span class="k">if</span> <span class="n">linealias</span> <span class="ow">in</span> <span class="n">l2alias</span><span class="p">:</span>
+                <span class="n">extranames</span> <span class="o">=</span> <span class="n">l2alias</span><span class="p">[</span><span class="n">linealias</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">linealias</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+                    <span class="n">extranames</span> <span class="o">=</span> <span class="p">[</span><span class="n">extranames</span><span class="p">]</span>
+
+                <span class="k">for</span> <span class="n">ename</span> <span class="ow">in</span> <span class="n">extranames</span><span class="p">:</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="n">newcls</span><span class="p">,</span> <span class="n">ename</span><span class="p">,</span> <span class="n">desc</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">newcls</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_getlinealias</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Return the alias for a line given the index</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_getlines</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;&#39;</span>
+        <span class="n">linealias</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">linealias</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">getlinealiases</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_getlines</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">itersize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">()])</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initlines</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Create the lines recording during &quot;_derive&quot; or else use the</span>
+<span class="sd">        provided &quot;initlines&quot;</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">linealias</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_getlines</span><span class="p">()):</span>
+            <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">LineBuffer</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+
+        <span class="c1"># Add the required extralines</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_getlinesextra</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">initlines</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">LineBuffer</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">initlines</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getlinesextra</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">fullsize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">extrasize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getlinesextra</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="n">line</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ago</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">line</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ago</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getlinealias</span><span class="p">(</span><span class="n">line</span><span class="p">),</span> <span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">NAN</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">backwards</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">backwards</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">rewind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">rewind</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">NAN</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">home</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">home</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">advance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">buflen</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy line operation</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">buflen</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">MetaLineSeries</span><span class="p">(</span><span class="n">LineMultiple</span><span class="o">.</span><span class="vm">__class__</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Dirty job manager for a LineSeries</span>
+
+<span class="sd">      - During __new__ (class creation), it reads &quot;lines&quot;, &quot;plotinfo&quot;,</span>
+<span class="sd">        &quot;plotlines&quot; class variable definitions and turns them into</span>
+<span class="sd">        Classes of type Lines or AutoClassInfo (plotinfo/plotlines)</span>
+
+<span class="sd">      - During &quot;new&quot; (instance creation) the lines/plotinfo/plotlines</span>
+<span class="sd">        classes are substituted in the instance with instances of the</span>
+<span class="sd">        aforementioned classes and aliases are added for the &quot;lines&quot; held</span>
+<span class="sd">        in the &quot;lines&quot; instance</span>
+
+<span class="sd">        Additionally and for remaining kwargs, these are matched against</span>
+<span class="sd">        args in plotinfo and if existent are set there and removed from kwargs</span>
+
+<span class="sd">        Remember that this Metaclass has a MetaParams (from metabase)</span>
+<span class="sd">        as root class and therefore &quot;params&quot; defined for the class have been</span>
+<span class="sd">        removed from kwargs at an earlier state</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">dct</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Intercept class creation, identifiy lines/plotinfo/plotlines class</span>
+<span class="sd">        attributes and create corresponding classes for them which take over</span>
+<span class="sd">        the class attributes</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="c1"># Get the aliases - don&#39;t leave it there for subclasses</span>
+        <span class="n">aliases</span> <span class="o">=</span> <span class="n">dct</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;alias&#39;</span><span class="p">,</span> <span class="p">())</span>
+        <span class="n">aliased</span> <span class="o">=</span> <span class="n">dct</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;aliased&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Remove the line definition (if any) from the class creation</span>
+        <span class="n">linesoverride</span> <span class="o">=</span> <span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;linesoverride&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">newlines</span> <span class="o">=</span> <span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;lines&#39;</span><span class="p">,</span> <span class="p">())</span>
+        <span class="n">extralines</span> <span class="o">=</span> <span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;extralines&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># remove the new plotinfo/plotlines definition if any</span>
+        <span class="n">newlalias</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;linealias&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+
+        <span class="c1"># remove the new plotinfo/plotlines definition if any</span>
+        <span class="n">newplotinfo</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;plotinfo&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+        <span class="n">newplotlines</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;plotlines&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+
+        <span class="c1"># Create the class - pulling in any existing &quot;lines&quot;</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">MetaLineSeries</span><span class="p">,</span> <span class="n">meta</span><span class="p">)</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">dct</span><span class="p">)</span>
+
+        <span class="c1"># Check the line aliases before creating the lines</span>
+        <span class="n">lalias</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;linealias&#39;</span><span class="p">,</span> <span class="n">AutoInfoClass</span><span class="p">)</span>
+        <span class="n">oblalias</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">linealias</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;linealias&#39;</span><span class="p">)]</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">linealias</span> <span class="o">=</span> <span class="n">la</span> <span class="o">=</span> <span class="n">lalias</span><span class="o">.</span><span class="n">_derive</span><span class="p">(</span><span class="s1">&#39;la_&#39;</span> <span class="o">+</span> <span class="n">name</span><span class="p">,</span> <span class="n">newlalias</span><span class="p">,</span> <span class="n">oblalias</span><span class="p">)</span>
+
+        <span class="c1"># Get the actual lines or a default</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;lines&#39;</span><span class="p">,</span> <span class="n">Lines</span><span class="p">)</span>
+
+        <span class="c1"># Create a subclass of the lines class with our name and newlines</span>
+        <span class="c1"># and put it in the class</span>
+        <span class="n">morebaseslines</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">lines</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;lines&#39;</span><span class="p">)]</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">_derive</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">newlines</span><span class="p">,</span> <span class="n">extralines</span><span class="p">,</span> <span class="n">morebaseslines</span><span class="p">,</span>
+                                  <span class="n">linesoverride</span><span class="p">,</span> <span class="n">lalias</span><span class="o">=</span><span class="n">la</span><span class="p">)</span>
+
+        <span class="c1"># Get a copy from base class plotinfo/plotlines (created with the</span>
+        <span class="c1"># class or set a default)</span>
+        <span class="n">plotinfo</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;plotinfo&#39;</span><span class="p">,</span> <span class="n">AutoInfoClass</span><span class="p">)</span>
+        <span class="n">plotlines</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;plotlines&#39;</span><span class="p">,</span> <span class="n">AutoInfoClass</span><span class="p">)</span>
+
+        <span class="c1"># Create a plotinfo/plotlines subclass and set it in the class</span>
+        <span class="n">morebasesplotinfo</span> <span class="o">=</span> \
+            <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">plotinfo</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;plotinfo&#39;</span><span class="p">)]</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">plotinfo</span> <span class="o">=</span> <span class="n">plotinfo</span><span class="o">.</span><span class="n">_derive</span><span class="p">(</span><span class="s1">&#39;pi_&#39;</span> <span class="o">+</span> <span class="n">name</span><span class="p">,</span> <span class="n">newplotinfo</span><span class="p">,</span>
+                                        <span class="n">morebasesplotinfo</span><span class="p">)</span>
+
+        <span class="c1"># Before doing plotline newlines have been added and no plotlineinfo</span>
+        <span class="c1"># is there add a default</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">newlines</span><span class="p">:</span>
+            <span class="n">newplotlines</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="nb">dict</span><span class="p">())</span>
+
+        <span class="n">morebasesplotlines</span> <span class="o">=</span> \
+            <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">plotlines</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;plotlines&#39;</span><span class="p">)]</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">plotlines</span> <span class="o">=</span> <span class="n">plotlines</span><span class="o">.</span><span class="n">_derive</span><span class="p">(</span>
+            <span class="s1">&#39;pl_&#39;</span> <span class="o">+</span> <span class="n">name</span><span class="p">,</span> <span class="n">newplotlines</span><span class="p">,</span> <span class="n">morebasesplotlines</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># create declared class aliases (a subclass with no modifications)</span>
+        <span class="k">for</span> <span class="n">alias</span> <span class="ow">in</span> <span class="n">aliases</span><span class="p">:</span>
+            <span class="n">newdct</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;__doc__&#39;</span><span class="p">:</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">,</span>
+                      <span class="s1">&#39;__module__&#39;</span><span class="p">:</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span>
+                      <span class="s1">&#39;aliased&#39;</span><span class="p">:</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="p">}</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">alias</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+                <span class="c1"># a tuple or list was passed, 1st is name, 2nd plotname</span>
+                <span class="n">aliasplotname</span> <span class="o">=</span> <span class="n">alias</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">alias</span> <span class="o">=</span> <span class="n">alias</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">newdct</span><span class="p">[</span><span class="s1">&#39;plotinfo&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">plotname</span><span class="o">=</span><span class="n">aliasplotname</span><span class="p">)</span>
+
+            <span class="n">newcls</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">alias</span><span class="p">),</span> <span class="p">(</span><span class="bp">cls</span><span class="p">,),</span> <span class="n">newdct</span><span class="p">)</span>
+            <span class="n">clsmodule</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__module__</span><span class="p">]</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">clsmodule</span><span class="p">,</span> <span class="n">alias</span><span class="p">,</span> <span class="n">newcls</span><span class="p">)</span>
+
+        <span class="c1"># return the class</span>
+        <span class="k">return</span> <span class="bp">cls</span>
+
+    <span class="k">def</span> <span class="nf">donew</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Intercept instance creation, take over lines/plotinfo/plotlines</span>
+<span class="sd">        class attributes by creating corresponding instance variables and add</span>
+<span class="sd">        aliases for &quot;lines&quot; and the &quot;lines&quot; held within it</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># _obj.plotinfo shadows the plotinfo (class) definition in the class</span>
+        <span class="n">plotinfo</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">plotinfo</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">pname</span><span class="p">,</span> <span class="n">pdef</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">plotinfo</span><span class="o">.</span><span class="n">_getitems</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">plotinfo</span><span class="p">,</span> <span class="n">pname</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">pname</span><span class="p">,</span> <span class="n">pdef</span><span class="p">))</span>
+
+        <span class="c1"># Create the object and set the params in place</span>
+        <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">MetaLineSeries</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="n">donew</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># set the plotinfo member in the class</span>
+        <span class="n">_obj</span><span class="o">.</span><span class="n">plotinfo</span> <span class="o">=</span> <span class="n">plotinfo</span>
+
+        <span class="c1"># _obj.lines shadows the lines (class) definition in the class</span>
+        <span class="n">_obj</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">lines</span><span class="p">()</span>
+
+        <span class="c1"># _obj.plotinfo shadows the plotinfo (class) definition in the class</span>
+        <span class="n">_obj</span><span class="o">.</span><span class="n">plotlines</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">plotlines</span><span class="p">()</span>
+
+        <span class="c1"># add aliases for lines and for the lines class itself</span>
+        <span class="n">_obj</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="n">_obj</span><span class="o">.</span><span class="n">lines</span>
+        <span class="k">if</span> <span class="n">_obj</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">fullsize</span><span class="p">():</span>
+            <span class="n">_obj</span><span class="o">.</span><span class="n">line</span> <span class="o">=</span> <span class="n">_obj</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">l</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">_obj</span><span class="o">.</span><span class="n">lines</span><span class="p">):</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">_obj</span><span class="p">,</span> <span class="s1">&#39;line_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">l</span><span class="p">,</span> <span class="n">_obj</span><span class="o">.</span><span class="n">_getlinealias</span><span class="p">(</span><span class="n">l</span><span class="p">))</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">_obj</span><span class="p">,</span> <span class="s1">&#39;line_</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">l</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">_obj</span><span class="p">,</span> <span class="s1">&#39;line</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">l</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+
+        <span class="c1"># Parameter values have now been set before __init__</span>
+        <span class="k">return</span> <span class="n">_obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span>
+
+
+<span class="k">class</span> <span class="nc">LineSeries</span><span class="p">(</span><span class="n">with_metaclass</span><span class="p">(</span><span class="n">MetaLineSeries</span><span class="p">,</span> <span class="n">LineMultiple</span><span class="p">)):</span>
+    <span class="n">plotinfo</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">plotmaster</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">)</span>
+
+    <span class="n">csv</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">array</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="c1"># to refer to line by name directly if the attribute was not found</span>
+        <span class="c1"># in this object if we set an attribute in this object it will be</span>
+        <span class="c1"># found before we end up here</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">_getlinealias</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># if any args, kwargs make it up to here, something is broken</span>
+        <span class="c1"># defining a __init__ guarantees the existence of im_func to findbases</span>
+        <span class="c1"># in lineiterator later, because object.__init__ has no im_func</span>
+        <span class="c1"># (object has slots)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">LineSeries</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">plotlabel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plotinfo</span><span class="o">.</span><span class="n">plotname</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="n">sublabels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plotlabel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sublabels</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sublabel</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sublabels</span><span class="p">):</span>
+                <span class="c1"># if isinstance(sublabel, LineSeries): ## DOESN&#39;T WORK ???</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">sublabel</span><span class="p">,</span> <span class="s1">&#39;plotinfo&#39;</span><span class="p">):</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">s</span> <span class="o">=</span> <span class="n">sublabel</span><span class="o">.</span><span class="n">plotinfo</span><span class="o">.</span><span class="n">plotname</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+                    <span class="n">sublabels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span> <span class="ow">or</span> <span class="n">sublabel</span><span class="o">.</span><span class="vm">__name__</span>
+
+            <span class="n">label</span> <span class="o">+=</span> <span class="s1">&#39; (</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">sublabels</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">label</span>
+
+    <span class="k">def</span> <span class="nf">_plotlabel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">_getvalues</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_getline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">minusall</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+            <span class="n">lineobj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>  <span class="c1"># restore original api behavior - default -&gt; 0</span>
+                <span class="k">if</span> <span class="n">minusall</span><span class="p">:</span>  <span class="c1"># minus means ... all lines</span>
+                    <span class="k">return</span> <span class="kc">None</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">lineobj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="n">line</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">lineobj</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ago</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">line</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns either a delayed verison of itself in the form of a</span>
+<span class="sd">        LineDelay object or a timeframe adapting version with regards to a ago</span>
+
+<span class="sd">        Param: ago (default: None)</span>
+
+<span class="sd">          If ago is None or an instance of LineRoot (a lines object) the</span>
+<span class="sd">          returned valued is a LineCoupler instance</span>
+
+<span class="sd">          If ago is anything else, it is assumed to be an int and a LineDelay</span>
+<span class="sd">          object will be returned</span>
+
+<span class="sd">        Param: line (default: -1)</span>
+<span class="sd">          If a LinesCoupler will be returned ``-1`` means to return a</span>
+<span class="sd">          LinesCoupler which adapts all lines of the current LineMultiple</span>
+<span class="sd">          object. Else the appropriate line (referenced by name or index) will</span>
+<span class="sd">          be LineCoupled</span>
+
+<span class="sd">          If a LineDelay object will be returned, ``-1`` is the same as ``0``</span>
+<span class="sd">          (to retain compatibility with the previous default value of 0). This</span>
+<span class="sd">          behavior will change to return all existing lines in a LineDelayed</span>
+<span class="sd">          form</span>
+
+<span class="sd">          The referenced line (index or name) will be LineDelayed</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="kn">from</span> <span class="nn">.lineiterator</span> <span class="k">import</span> <span class="n">LinesCoupler</span>  <span class="c1"># avoid circular import</span>
+
+        <span class="k">if</span> <span class="n">ago</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ago</span><span class="p">,</span> <span class="n">LineRoot</span><span class="p">):</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="p">,</span> <span class="n">ago</span><span class="p">]</span>
+            <span class="n">lineobj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getline</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">minusall</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">lineobj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">lineobj</span>
+
+            <span class="k">return</span> <span class="n">LinesCoupler</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">_ownerskip</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1"># else -&gt; assume type(ago) == int -&gt; return LineDelay object</span>
+        <span class="k">return</span> <span class="n">LineDelay</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_getline</span><span class="p">(</span><span class="n">line</span><span class="p">),</span> <span class="n">ago</span><span class="p">,</span> <span class="n">_ownerskip</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="c1"># The operations below have to be overriden to make sure subclasses can</span>
+    <span class="c1"># reach them using &quot;super&quot; which will not call __getattr__ and</span>
+    <span class="c1"># LineSeriesStub (see below) already uses super</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">NAN</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">backwards</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">backwards</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">rewind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">rewind</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">NAN</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">home</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">home</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">advance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">LineSeriesStub</span><span class="p">(</span><span class="n">LineSeries</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Simulates a LineMultiple object based on LineSeries from a single line</span>
+
+<span class="sd">    The index management operations are overriden to take into account if the</span>
+<span class="sd">    line is a slave, ie:</span>
+
+<span class="sd">      - The line reference is a line from many in a LineMultiple object</span>
+<span class="sd">      - Both the LineMultiple object and the Line are managed by the same</span>
+<span class="sd">        object</span>
+
+<span class="sd">    Were slave not to be taken into account, the individual line would for</span>
+<span class="sd">    example be advanced twice:</span>
+
+<span class="sd">      - Once under when the LineMultiple object is advanced (because it</span>
+<span class="sd">        advances all lines it is holding</span>
+<span class="sd">      - Again as part of the regular management of the object holding it</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">extralines</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">slave</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">lines</span><span class="p">(</span><span class="n">initlines</span><span class="o">=</span><span class="p">[</span><span class="n">line</span><span class="p">])</span>
+        <span class="c1"># give a change to find the line owner (for plotting at least)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">owner</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">_owner</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_minperiod</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">_minperiod</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slave</span> <span class="o">=</span> <span class="n">slave</span>
+
+    <span class="c1"># Only execute the operations below if the object is not a slave</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">NAN</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">LineSeriesStub</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">backwards</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">LineSeriesStub</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">backwards</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">rewind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">LineSeriesStub</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">rewind</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">NAN</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">LineSeriesStub</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">LineSeriesStub</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">home</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">LineSeriesStub</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">home</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">advance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">LineSeriesStub</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">qbuffer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">LineSeriesStub</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">qbuffer</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">minbuffer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">LineSeriesStub</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">minbuffer</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">LineSeriesMaker</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">slave</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">LineSeries</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">arg</span>
+
+    <span class="k">return</span> <span class="n">LineSeriesStub</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">slave</span><span class="o">=</span><span class="n">slave</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

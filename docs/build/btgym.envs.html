@@ -1,0 +1,309 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>btgym.envs package &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="btgym.datafeed module" href="btgym.html" />
+    <link rel="prev" title="Package Description" href="intro.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="btgym.html" title="btgym.datafeed module"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="intro.html" title="Package Description"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">BTgym 0.0.6 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="btgym-envs-package">
+<h1>btgym.envs package<a class="headerlink" href="#btgym-envs-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-btgym.envs.backtrader">
+<span id="btgym-envs-backtrader-module"></span><h2>btgym.envs.backtrader module<a class="headerlink" href="#module-btgym.envs.backtrader" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.envs.backtrader.BTgymEnv">
+<em class="property">class </em><code class="descclassname">btgym.envs.backtrader.</code><code class="descname">BTgymEnv</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv" title="Permalink to this definition">¶</a></dt>
+<dd><p>OpenAI Gym environment wrapper for Backtrader backtesting/trading library.</p>
+<p>Environment kwargs applying logic:</p>
+<dl class="docutils">
+<dt>if &lt;engine&gt; kwarg is given:</dt>
+<dd>do not use default engine and strategy parameters;
+ignore &lt;strategy&gt; kwarg and all strategy and engine-related kwargs.</dd>
+<dt>else (no &lt;engine&gt;):</dt>
+<dd><p class="first">use default engine parameters;
+if any engine-related kwarg is given:</p>
+<blockquote>
+<div>override corresponding default parameter;</div></blockquote>
+<dl class="last docutils">
+<dt>if &lt;strategy&gt; is given:</dt>
+<dd><p class="first">do not use default strategy parameters;
+if any strategy related kwarg is given:</p>
+<blockquote class="last">
+<div>override corresponding strategy parameter;</div></blockquote>
+</dd>
+<dt>else (no &lt;strategy&gt;):</dt>
+<dd><p class="first">use default strategy parameters;
+if any strategy related kwarg is given:</p>
+<blockquote class="last">
+<div>override corresponding strategy parameter;</div></blockquote>
+</dd>
+</dl>
+</dd>
+<dt>if &lt;dataset&gt; kwarg is given:</dt>
+<dd>do not use default dataset parameters;
+ignore dataset related kwargs;</dd>
+<dt>else (no &lt;dataset&gt;):</dt>
+<dd><dl class="first last docutils">
+<dt>use default dataset parameters;</dt>
+<dd><dl class="first last docutils">
+<dt>if  any dataset related kwarg is given:</dt>
+<dd>override corresponding dataset parameter;</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+<dt>If any &lt;other&gt; kwarg is given:</dt>
+<dd>override corresponding default parameter.</dd>
+</dl>
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._comm_with_timeout">
+<code class="descname">_comm_with_timeout</code><span class="sig-paren">(</span><em>socket</em>, <em>message</em>, <em>timeout</em>, <em>connect_timeout_step=0.01</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._comm_with_timeout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._comm_with_timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exchanges messages via socket, timeout sensitive.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>socket</strong> – zmq connected socket to communicate via;</li>
+<li><strong>message</strong> – message to send;</li>
+<li><strong>timeout</strong> – max time to wait for response;</li>
+<li><strong>connect_timeout_step</strong> – time increments between retries.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">status: communication result;
+message: received message if status == <cite>ok</cite> or None;
+time: remote side response time.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dictionary</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._start_server">
+<code class="descname">_start_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._start_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._start_server" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configures backtrader REQ/REP server instance and starts server process.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._stop_server">
+<code class="descname">_stop_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._stop_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._stop_server" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stops BT server process, releases network resources.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._force_control_mode">
+<code class="descname">_force_control_mode</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._force_control_mode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._force_control_mode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Puts BT server to control mode.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._assert_response">
+<code class="descname">_assert_response</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._assert_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._assert_response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simple watcher:
+roughly checks if we really talking to environment (== episode is running).
+Rises exception if response given is not as expected.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._reset">
+<code class="descname">_reset</code><span class="sig-paren">(</span><em>state_only=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implementation of OpenAI Gym env.reset method.
+‘Rewinds’ backtrader server and starts new episode
+within randomly selected time period.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._step">
+<code class="descname">_step</code><span class="sig-paren">(</span><em>action</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implementation of OpenAI Gym env.step method.
+Relies on remote backtrader server for actual environment dynamics computing.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._close">
+<code class="descname">_close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implementation of OpenAI Gym env.close method.
+Puts BTgym server in Control Mode:</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv.get_stat">
+<code class="descname">get_stat</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv.get_stat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv.get_stat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns last run episode statistics.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">when invoked, forces running episode to terminate.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._render">
+<code class="descname">_render</code><span class="sig-paren">(</span><em>mode='other_mode'</em>, <em>close=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implementation of OpenAI Gym env.render method.
+Visualises current environment state.
+:param <cite>mode</cite> key argument, returns image as rgb_array:</p>
+<blockquote>
+<div><cite>human</cite> - current state observation as price lines;
+<cite>agent</cite> - current processed observation state as RL agent sees it;
+<cite>episode</cite> - plotted results of last completed episode.</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finishes current episode if any, does nothing otherwise. Leaves server running.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._restart_server">
+<code class="descname">_restart_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._restart_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._restart_server" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restarts server.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._start_data_server">
+<code class="descname">_start_data_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._start_data_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._start_data_server" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>For data_master environment:</dt>
+<dd><ul class="first last simple">
+<li>configures backtrader REQ/REP server instance and starts server process.</li>
+</ul>
+</dd>
+<dt>For others:</dt>
+<dd><ul class="first last simple">
+<li>establishes network connection to existing data_server.</li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._stop_data_server">
+<code class="descname">_stop_data_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._stop_data_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._stop_data_server" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>For data_master:</dt>
+<dd><ul class="first last simple">
+<li>stops BT server process, releases network resources.</li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._restart_data_server">
+<code class="descname">_restart_data_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._restart_data_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._restart_data_server" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restarts data_server.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv._get_dataset_info">
+<code class="descname">_get_dataset_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._get_dataset_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._get_dataset_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieves dataset descriptive statistic.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="intro.html"
+                        title="previous chapter">Package Description</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="btgym.html"
+                        title="next chapter">btgym.datafeed module</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="btgym.html" title="btgym.datafeed module"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="intro.html" title="Package Description"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">BTgym 0.0.6 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

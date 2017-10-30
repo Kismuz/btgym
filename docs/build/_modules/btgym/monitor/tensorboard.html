@@ -1,0 +1,255 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>btgym.monitor.tensorboard &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for btgym.monitor.tensorboard</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2017 Andrew Muzikin</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">###############################################################################</span>
+<span class="kn">from</span> <span class="nn">subprocess</span> <span class="k">import</span> <span class="n">Popen</span><span class="p">,</span> <span class="n">PIPE</span>
+<span class="kn">import</span> <span class="nn">psutil</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="k">except</span><span class="p">:</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;BTgymMonitor requires Tensorflow&#39;</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">BTgymMonitor</span><span class="p">():</span>
+        <span class="k">pass</span>
+
+    <span class="n">quit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="BTgymMonitor"><a class="viewcode-back" href="../../../btgym.monitor.html#btgym.monitor.tensorboard.BTgymMonitor">[docs]</a><span class="k">class</span> <span class="nc">BTgymMonitor</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Light tensorflow &#39;summaries&#39; wrapper for convenient tensorboard logging.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">scalars</span><span class="o">=</span><span class="p">{},</span>
+                 <span class="n">images</span><span class="o">=</span><span class="p">{},</span>
+                 <span class="n">histograms</span><span class="o">=</span><span class="p">{},</span>
+                 <span class="n">text</span><span class="o">=</span><span class="p">{},</span>
+                 <span class="n">logdir</span><span class="o">=</span><span class="s1">&#39;./tb_log&#39;</span><span class="p">,</span>
+                 <span class="n">subdir</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span>
+                 <span class="n">purge_previous</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Monitor parameters:</span>
+<span class="sd">        Sets of names for every value category: scalars, images, histograms ant text.</span>
+<span class="sd">        logdir - tensorboard log directory;</span>
+<span class="sd">        subdir - this monitor log subdirectory;</span>
+<span class="sd">        port - localhost webpage addr to look at;</span>
+<span class="sd">        reload - web page refresh rate.</span>
+<span class="sd">        purge_previous - delete previous logs in logdir/subdir if found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tf</span> <span class="o">=</span> <span class="n">tf</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tensorboard</span> <span class="o">=</span> <span class="n">Tensorboard</span><span class="p">(</span><span class="n">logdir</span><span class="o">=</span><span class="n">logdir</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logdir</span> <span class="o">=</span> <span class="n">logdir</span><span class="o">+</span><span class="n">subdir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">purge_previous</span> <span class="o">=</span> <span class="n">purge_previous</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">summary</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Remove previous log files if opted:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">purge_previous</span><span class="p">:</span>
+            <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logdir</span> <span class="o">+</span> <span class="s1">&#39;/*&#39;</span><span class="p">)</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Popen</span><span class="p">([</span><span class="s1">&#39;rm&#39;</span><span class="p">,</span> <span class="s1">&#39;-R&#39;</span><span class="p">,</span> <span class="p">]</span> <span class="o">+</span> <span class="n">files</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">PIPE</span><span class="p">)</span>
+
+        <span class="c1"># Prepare writer:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">reset_default_graph</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sess</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">writer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">FileWriter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logdir</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">get_default_graph</span><span class="p">())</span>
+
+
+        <span class="c1"># Create summary:</span>
+        <span class="n">summaries</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">scalars</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span><span class="p">[</span><span class="n">entry</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="n">summaries</span> <span class="o">+=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span><span class="p">[</span><span class="n">entry</span><span class="p">],)]</span>
+
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">images</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span><span class="p">[</span><span class="n">entry</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+            <span class="n">summaries</span> <span class="o">+=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span><span class="p">[</span><span class="n">entry</span><span class="p">],</span> <span class="p">)]</span>
+
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">histograms</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span><span class="p">[</span><span class="n">entry</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">],)</span>
+            <span class="n">summaries</span> <span class="o">+=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span><span class="p">[</span><span class="n">entry</span><span class="p">],</span> <span class="p">)]</span>
+
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">text</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span><span class="p">[</span><span class="n">entry</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">string</span><span class="p">)</span>
+            <span class="n">summaries</span> <span class="o">+=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span><span class="p">[</span><span class="n">entry</span><span class="p">],</span> <span class="p">)]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">summaries</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BTgymMonitor.write"><a class="viewcode-back" href="../../../btgym.monitor.html#btgym.monitor.tensorboard.BTgymMonitor.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">feed_dict</span><span class="p">,</span> <span class="n">global_step</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Updates monitor with provided data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">feeder</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="c1"># Assert feed_dict is ok:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">assert</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">feed_dict</span>
+                <span class="n">feeder</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span> <span class="n">feed_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]})</span>
+
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s1">&#39;Inconsistent monitor feed:</span><span class="se">\n</span><span class="s1">Got: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">Expected: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span>
+                                 <span class="nb">format</span><span class="p">(</span><span class="n">feed_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span><span class="bp">self</span><span class="o">.</span><span class="n">feed_holder</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+                                <span class="p">)</span>
+        <span class="c1"># Write down:</span>
+        <span class="n">evaluated</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">summary</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="n">feeder</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="o">.</span><span class="n">add_summary</span><span class="p">(</span><span class="n">summary</span><span class="o">=</span><span class="n">evaluated</span><span class="p">,</span> <span class="n">global_step</span><span class="o">=</span><span class="n">global_step</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Tensorboard"><a class="viewcode-back" href="../../../btgym.monitor.html#btgym.monitor.tensorboard.Tensorboard">[docs]</a><span class="k">class</span> <span class="nc">Tensorboard</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Utility class to start/stop tensorboard server.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logdir</span><span class="o">=</span><span class="s1">&#39;./btgym_log&#39;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">6006</span><span class="p">,</span> <span class="n">reload</span><span class="o">=</span><span class="mi">30</span><span class="p">,):</span>
+        <span class="sd">&quot;&quot;&quot;____&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logdir</span> <span class="o">=</span> <span class="n">logdir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pid</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="c1"># Compose start command:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_string</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;tensorboard&#39;</span><span class="p">]</span>
+
+        <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">logdir</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_string</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;--logdir=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">logdir</span><span class="p">)]</span>
+
+        <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">port</span><span class="p">)</span> <span class="o">==</span> <span class="nb">int</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_string</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;--port=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">)]</span>
+
+        <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">reload</span><span class="p">)</span> <span class="o">==</span> <span class="nb">int</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_string</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;--reload_interval=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">reload</span><span class="p">)]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_string</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;--purge_orphaned_data&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Tensorboard.start"><a class="viewcode-back" href="../../../btgym.monitor.html#btgym.monitor.tensorboard.Tensorboard.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Launches Tensorboard app.&quot;&quot;&quot;</span>
+
+        <span class="c1"># Kill everything on port-to-use:</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Popen</span><span class="p">([</span><span class="s1">&#39;lsof&#39;</span><span class="p">,</span> <span class="s1">&#39;-i:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">),</span> <span class="s1">&#39;-t&#39;</span><span class="p">],</span> <span class="n">stdout</span><span class="o">=</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">PIPE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pid</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">communicate</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">()[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># retrieving PID</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pid</span> <span class="ow">is</span> <span class="ow">not</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Popen</span><span class="p">([</span><span class="s1">&#39;kill&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pid</span><span class="p">])</span>  <span class="c1"># , stdout=PIPE, stderr=PIPE)</span>
+
+        <span class="c1"># Start:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_string</span><span class="p">)</span>  <span class="c1"># , stdout=PIPE, stderr=PIPE)</span></div>
+
+<div class="viewcode-block" id="Tensorboard.stop"><a class="viewcode-back" href="../../../btgym.monitor.html#btgym.monitor.tensorboard.Tensorboard.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Closes tensorboard server.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

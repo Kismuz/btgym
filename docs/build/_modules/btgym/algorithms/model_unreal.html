@@ -1,0 +1,471 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>btgym.algorithms.model_unreal &#8212; BTgym 0.0.6 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for btgym.algorithms.model_unreal</h1><div class="highlight"><pre>
+<span></span><span class="c1"># This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:</span>
+<span class="c1"># https://miyosuda.github.io/</span>
+<span class="c1"># https://github.com/miyosuda/unreal</span>
+<span class="c1">#</span>
+<span class="c1"># Original A3C code comes from OpenAI repository under MIT licence:</span>
+<span class="c1"># https://github.com/openai/universe-starter-agent</span>
+<span class="c1">#</span>
+<span class="c1"># Papers:</span>
+<span class="c1"># https://arxiv.org/abs/1602.01783</span>
+<span class="c1"># https://arxiv.org/abs/1611.05397</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow.contrib.rnn</span> <span class="k">as</span> <span class="nn">rnn</span>
+<span class="kn">from</span> <span class="nn">tensorflow.contrib.layers</span> <span class="k">import</span> <span class="n">flatten</span> <span class="k">as</span> <span class="n">batch_flatten</span>
+<span class="kn">from</span> <span class="nn">tensorflow.python.util.nest</span> <span class="k">import</span> <span class="n">flatten</span> <span class="k">as</span> <span class="n">flatten_nested</span>
+
+
+<div class="viewcode-block" id="BaseUnrealPolicy"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy">[docs]</a><span class="k">class</span> <span class="nc">BaseUnrealPolicy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base CNN-LSTM policy estimator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ob_space</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">rp_sequence_size</span><span class="p">,</span> <span class="n">lstm_class</span><span class="o">=</span><span class="n">rnn</span><span class="o">.</span><span class="n">BasicLSTMCell</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,)):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span> <span class="o">=</span> <span class="n">ob_space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span> <span class="o">=</span> <span class="n">ac_space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rp_sequence_size</span> <span class="o">=</span> <span class="n">rp_sequence_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lstm_class</span> <span class="o">=</span> <span class="n">lstm_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lstm_layers</span> <span class="o">=</span> <span class="n">lstm_layers</span>
+
+        <span class="c1"># Placeholders for obs. state input:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a3c_state_in</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">ob_space</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;a3c_state_in_pl&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_state_in</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">ob_space</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy_a3c_state_in_pl&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rp_state_in</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="n">rp_sequence_size</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">ob_space</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rp_state_in_pl&#39;</span><span class="p">)</span>
+        <span class="c1">#self.vr_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name=&#39;vr_state_in_pl&#39;)</span>
+        <span class="c1">#self.pc_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name=&#39;pc_state_in_pl&#39;)</span>
+
+        <span class="c1"># Placeholders for concatenated action [one-hot] and reward [scalar]:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a3c_a_r_in</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ac_space</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;a3c_action_reward_in_pl&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_a_r_in</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ac_space</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy_a3c_action_reward_in_pl&#39;</span><span class="p">)</span>
+        <span class="c1">#self.vr_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name=&#39;vr_action_reward_in_pl&#39;)</span>
+        <span class="c1">#self.pc_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name=&#39;pc_action_reward_in_pl&#39;)</span>
+
+        <span class="c1"># Base on-policy A3C network:</span>
+        <span class="c1"># Conv. layers:</span>
+        <span class="n">a3c_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_2D_network_constructor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a3c_state_in</span><span class="p">,</span> <span class="n">ob_space</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">)</span>
+        <span class="c1"># LSTM layer takes conv. features and concatenated last action_reward tensor:</span>
+        <span class="p">[</span><span class="n">a3c_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a3c_lstm_init_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a3c_lstm_state_out</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a3c_lstm_state_pl_flatten</span><span class="p">]</span> <span class="o">=</span>\
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lstm_network_constructor</span><span class="p">(</span><span class="n">a3c_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a3c_a_r_in</span><span class="p">,</span> <span class="n">lstm_class</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="p">,</span> <span class="p">)</span>
+        <span class="c1"># A3C policy and value outputs and action-sampling function:</span>
+        <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">a3c_logits</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a3c_vf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a3c_sample</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dense_a3c_network_constructor</span><span class="p">(</span><span class="n">a3c_x</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">)</span>
+
+        <span class="c1"># Off-policy A3C network (shared):</span>
+        <span class="n">off_a3c_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_2D_network_constructor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_state_in</span><span class="p">,</span> <span class="n">ob_space</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">off_a3c_x_lstm_out</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_lstm_state_pl_flatten</span><span class="p">]</span> <span class="o">=</span>\
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lstm_network_constructor</span><span class="p">(</span><span class="n">off_a3c_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_a_r_in</span><span class="p">,</span> <span class="n">lstm_class</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_logits</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_vf</span><span class="p">,</span> <span class="n">_</span><span class="p">]</span> <span class="o">=</span>\
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dense_a3c_network_constructor</span><span class="p">(</span><span class="n">off_a3c_x_lstm_out</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Aux1: `Pixel control` network:</span>
+        <span class="c1"># Define pixels-change estimation function:</span>
+        <span class="c1"># Yes, it rather env-specific but for atari case it is handy to do it here, see self.get_pc_target():</span>
+        <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_change_state_in</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_change_last_state_in</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">]</span> <span class="o">=</span>\
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pixel_change_2D_estimator_constructor</span><span class="p">(</span><span class="n">ob_space</span><span class="p">)</span>
+
+        <span class="c1">#pc_x = self.conv_2d_network(self.pc_state_in, ob_space, ac_space, reuse=True)</span>
+        <span class="c1">#[pc_x, _, _, self.pc_lstm_state_pl_flatten] =\</span>
+        <span class="c1">#    self.lstm_network(pc_x, self.pc_a_r_in, lstm_class, lstm_layers, reuse=True)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_state_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_state_in</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_a_r_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_a_r_in</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_lstm_state_pl_flatten</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_lstm_state_pl_flatten</span>
+
+        <span class="c1"># Shared conv and lstm nets, same off-policy batch:</span>
+        <span class="n">pc_x</span> <span class="o">=</span> <span class="n">off_a3c_x_lstm_out</span>
+
+        <span class="c1"># PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_duelling_pc_network_constructor</span><span class="p">(</span><span class="n">pc_x</span><span class="p">)</span>
+
+        <span class="c1"># Aux2: `Value function replay` network:</span>
+        <span class="c1"># VR network is fully shared with a3c network but with `value` only output:</span>
+        <span class="c1"># and has same off-policy batch pass with off_a3c network:</span>
+
+        <span class="c1">#vr_x = self.conv_2d_network(self.vr_state_in, ob_space, ac_space, reuse=True)</span>
+        <span class="c1">#[vr_x, _, _, self.vr_lstm_state_pl_flatten] =\</span>
+        <span class="c1">#    self.lstm_network(vr_x, lstm_class, lstm_layers, reuse=True)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vr_state_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_state_in</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vr_a_r_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_a_r_in</span>
+        <span class="c1">#vr_x = off_a3c_x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vr_lstm_state_pl_flatten</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_lstm_state_pl_flatten</span>
+        <span class="c1">#[_, self.vr_value, _] = self._dense_a3c_network_constructor(vr_x, ac_space, reuse=True)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vr_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a3c_vf</span>
+
+        <span class="c1"># Aux3: `Reward prediction` network:</span>
+        <span class="c1"># Shared conv.:</span>
+        <span class="n">rp_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_2D_network_constructor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_state_in</span><span class="p">,</span> <span class="n">ob_space</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># RP output:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rp_logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dense_rp_network_constructor</span><span class="p">(</span><span class="n">rp_x</span><span class="p">)</span>
+
+        <span class="c1"># Batch-norm related (useless, ignore):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_phase</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_phase</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder_with_default</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span>
+                <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;train_phase_flag_pl&#39;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_ops</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">UPDATE_OPS</span><span class="p">)</span>
+        <span class="c1"># Add moving averages to save list:</span>
+        <span class="n">moving_var_list</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">GLOBAL_VARIABLES</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable_scope</span><span class="p">()</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;.*moving.*&#39;</span><span class="p">)</span>
+        <span class="n">renorm_var_list</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">GLOBAL_VARIABLES</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable_scope</span><span class="p">()</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;.*renorm.*&#39;</span><span class="p">)</span>
+
+        <span class="c1"># What to save:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">TRAINABLE_VARIABLES</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable_scope</span><span class="p">()</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span> <span class="o">+=</span> <span class="n">moving_var_list</span> <span class="o">+</span> <span class="n">renorm_var_list</span>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.get_a3c_initial_features"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.get_a3c_initial_features">[docs]</a>    <span class="k">def</span> <span class="nf">get_a3c_initial_features</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Called by thread-runner. Returns LSTM zero-state.&quot;&quot;&quot;</span>
+        <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_session</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a3c_lstm_init_state</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.flatten_homebrew"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.flatten_homebrew">[docs]</a>    <span class="k">def</span> <span class="nf">flatten_homebrew</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Not used.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="mi">1</span><span class="p">:])])</span></div>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.a3c_act"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.a3c_act">[docs]</a>    <span class="k">def</span> <span class="nf">a3c_act</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">lstm_state</span><span class="p">,</span> <span class="n">action_reward</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Called by thread-runner.&quot;&quot;&quot;</span>
+        <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_session</span><span class="p">()</span>
+        <span class="n">feeder</span> <span class="o">=</span> <span class="p">{</span><span class="n">pl</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">pl</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a3c_lstm_state_pl_flatten</span><span class="p">,</span> <span class="n">flatten_nested</span><span class="p">(</span><span class="n">lstm_state</span><span class="p">))}</span>
+        <span class="n">feeder</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">a3c_state_in</span><span class="p">:</span> <span class="p">[</span><span class="n">observation</span><span class="p">],</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">a3c_a_r_in</span><span class="p">:</span> <span class="p">[</span><span class="n">action_reward</span><span class="p">],</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">train_phase</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">a3c_sample</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a3c_vf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a3c_lstm_state_out</span><span class="p">],</span> <span class="n">feeder</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.get_a3c_value"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.get_a3c_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_a3c_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">lstm_state</span><span class="p">,</span> <span class="n">action_reward</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Called by thread-runner.&quot;&quot;&quot;</span>
+        <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_session</span><span class="p">()</span>
+        <span class="n">feeder</span> <span class="o">=</span> <span class="p">{</span><span class="n">pl</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">pl</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a3c_lstm_state_pl_flatten</span><span class="p">,</span> <span class="n">flatten_nested</span><span class="p">(</span><span class="n">lstm_state</span><span class="p">))}</span>
+        <span class="n">feeder</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">a3c_state_in</span><span class="p">:</span> <span class="p">[</span><span class="n">observation</span><span class="p">],</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">a3c_a_r_in</span><span class="p">:</span> <span class="p">[</span><span class="n">action_reward</span><span class="p">],</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">train_phase</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a3c_vf</span><span class="p">,</span> <span class="n">feeder</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.get_rp_prediction"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.get_rp_prediction">[docs]</a>    <span class="k">def</span> <span class="nf">get_rp_prediction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ob</span><span class="p">,</span> <span class="n">lstm_state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Not used.&quot;&quot;&quot;</span>
+        <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_session</span><span class="p">()</span>
+        <span class="c1">#feeder = {pl: value for pl, value in zip(self.rp_lstm_state_pl_flatten, flatten_nested(lstm_state))}</span>
+        <span class="c1">#feeder.update({self.rp_state_in: [ob], self.train_phase: False})</span>
+        <span class="n">feeder</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_state_in</span><span class="p">:</span> <span class="p">[</span><span class="n">ob</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_phase</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_logits</span><span class="p">,</span> <span class="n">feeder</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.get_pc_target"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.get_pc_target">[docs]</a>    <span class="k">def</span> <span class="nf">get_pc_target</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">last_state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Called by thread-runner.&quot;&quot;&quot;</span>
+        <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_session</span><span class="p">()</span>
+        <span class="n">feeder</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_change_state_in</span><span class="p">:</span> <span class="n">state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_change_last_state_in</span><span class="p">:</span> <span class="n">last_state</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">,</span> <span class="n">feeder</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span><span class="o">...</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.normalized_columns_initializer"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.normalized_columns_initializer">[docs]</a>    <span class="k">def</span> <span class="nf">normalized_columns_initializer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">_initializer</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">partition_info</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="o">*</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">*=</span> <span class="n">std</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">out</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_initializer</span></div>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.linear"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.linear">[docs]</a>    <span class="k">def</span> <span class="nf">linear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">initializer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bias_init</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;/w&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()[</span><span class="mi">1</span><span class="p">],</span> <span class="n">size</span><span class="p">],</span> <span class="n">initializer</span><span class="o">=</span><span class="n">initializer</span><span class="p">)</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;/b&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">size</span><span class="p">],</span> <span class="n">initializer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant_initializer</span><span class="p">(</span><span class="n">bias_init</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span></div>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.categorical_sample"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.categorical_sample">[docs]</a>    <span class="k">def</span> <span class="nf">categorical_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logits</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Called by thread-runner.&quot;&quot;&quot;</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">multinomial</span><span class="p">(</span><span class="n">logits</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">keep_dims</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="mi">1</span><span class="p">),</span> <span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">one_hot</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.rnn_placeholders"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.rnn_placeholders">[docs]</a>    <span class="k">def</span> <span class="nf">rnn_placeholders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given nested [multilayer] RNN state tensors, infers and returns state placeholders.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">rnn</span><span class="o">.</span><span class="n">LSTMStateTuple</span><span class="p">):</span>
+            <span class="n">c</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">state</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;_c_pl&#39;</span><span class="p">)</span>
+            <span class="n">h</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">h</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">h</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;_h_pl&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">rnn</span><span class="o">.</span><span class="n">LSTMStateTuple</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+            <span class="n">h</span> <span class="o">=</span> <span class="n">state</span>
+            <span class="n">h</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">h</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">h</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;_h_pl&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">h</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">structure</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">rnn_placeholders</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">state</span><span class="p">]</span>
+            <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.conv2d"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.conv2d">[docs]</a>    <span class="k">def</span> <span class="nf">conv2d</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">num_filters</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filter_size</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">stride</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">pad</span><span class="o">=</span><span class="s2">&quot;SAME&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+               <span class="n">collections</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+            <span class="n">stride_shape</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">stride</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">stride</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">filter_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">filter_size</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">filter_size</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()[</span><span class="mi">3</span><span class="p">]),</span> <span class="n">num_filters</span><span class="p">]</span>
+
+            <span class="c1"># there are &quot;num input feature maps * filter height * filter width&quot;</span>
+            <span class="c1"># inputs to each hidden unit</span>
+            <span class="n">fan_in</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">filter_shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
+            <span class="c1"># each unit in the lower layer receives a gradient from:</span>
+            <span class="c1"># &quot;num output feature maps * filter height * filter width&quot; /</span>
+            <span class="c1">#   pooling size</span>
+            <span class="n">fan_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">filter_shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span> <span class="o">*</span> <span class="n">num_filters</span>
+            <span class="c1"># initialize weights with random weights</span>
+            <span class="n">w_bound</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">6.</span> <span class="o">/</span> <span class="p">(</span><span class="n">fan_in</span> <span class="o">+</span> <span class="n">fan_out</span><span class="p">))</span>
+
+            <span class="n">w</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;W&quot;</span><span class="p">,</span> <span class="n">filter_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">random_uniform_initializer</span><span class="p">(</span><span class="o">-</span><span class="n">w_bound</span><span class="p">,</span> <span class="n">w_bound</span><span class="p">),</span>
+                                <span class="n">collections</span><span class="o">=</span><span class="n">collections</span><span class="p">)</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_filters</span><span class="p">],</span> <span class="n">initializer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant_initializer</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span>
+                                <span class="n">collections</span><span class="o">=</span><span class="n">collections</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">conv2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">stride_shape</span><span class="p">,</span> <span class="n">pad</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span></div>
+
+<div class="viewcode-block" id="BaseUnrealPolicy.deconv2d"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.model_unreal.BaseUnrealPolicy.deconv2d">[docs]</a>    <span class="k">def</span> <span class="nf">deconv2d</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">output_channels</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filter_size</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">stride</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                 <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">collections</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Deconvolutional layer, paper:</span>
+<span class="sd">        http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+            <span class="n">stride_shape</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">stride</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">stride</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">]</span>
+
+            <span class="n">batch_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">input_height</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">input_width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">input_channels</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()[</span><span class="mi">3</span><span class="p">])</span>
+
+            <span class="n">out_height</span> <span class="o">=</span> <span class="p">(</span><span class="n">input_height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">stride</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">filter_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">out_width</span> <span class="o">=</span> <span class="p">(</span><span class="n">input_width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">stride</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">filter_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="n">filter_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">filter_size</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">filter_size</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">output_channels</span><span class="p">,</span> <span class="n">input_channels</span><span class="p">]</span>
+            <span class="n">output_shape</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">out_height</span><span class="p">,</span> <span class="n">out_width</span><span class="p">,</span> <span class="n">output_channels</span><span class="p">])</span>
+
+            <span class="n">fan_in</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">filter_shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span> <span class="o">*</span> <span class="n">input_channels</span>
+            <span class="n">fan_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">filter_shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span> <span class="o">*</span> <span class="n">output_channels</span>
+            <span class="c1"># initialize weights with random weights</span>
+            <span class="n">w_bound</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">6.</span> <span class="o">/</span> <span class="p">(</span><span class="n">fan_in</span> <span class="o">+</span> <span class="n">fan_out</span><span class="p">))</span>
+
+            <span class="n">w</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;d_W&quot;</span><span class="p">,</span> <span class="n">filter_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">random_uniform_initializer</span><span class="p">(</span><span class="o">-</span><span class="n">w_bound</span><span class="p">,</span> <span class="n">w_bound</span><span class="p">),</span>
+                                <span class="n">collections</span><span class="o">=</span><span class="n">collections</span><span class="p">)</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;d_b&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">output_channels</span><span class="p">],</span> <span class="n">initializer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant_initializer</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span>
+                                <span class="n">collections</span><span class="o">=</span><span class="n">collections</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">conv2d_transpose</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">output_shape</span><span class="p">,</span>
+                                          <span class="n">strides</span><span class="o">=</span><span class="n">stride_shape</span><span class="p">,</span>
+                                          <span class="n">padding</span><span class="o">=</span><span class="s1">&#39;VALID&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span></div>
+
+    <span class="k">def</span> <span class="nf">_conv_2D_network_constructor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                     <span class="n">x</span><span class="p">,</span>
+                                     <span class="n">ob_space</span><span class="p">,</span>
+                                     <span class="n">ac_space</span><span class="p">,</span>
+                                     <span class="n">num_layers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                                     <span class="n">num_filters</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+                                     <span class="n">filter_size</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+                                     <span class="n">stride</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                                     <span class="n">pad</span><span class="o">=</span><span class="s2">&quot;SAME&quot;</span><span class="p">,</span>
+                                     <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                                     <span class="n">collections</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                     <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stage1 network: from preprocessed 2D input to estimated features.</span>
+<span class="sd">        Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            output tensor;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_layers</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">conv2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">num_filters</span><span class="p">,</span> <span class="s2">&quot;conv2d_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">filter_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">pad</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">collections</span><span class="p">,</span> <span class="n">reuse</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="c1"># Following original paper design:</span>
+        <span class="c1">#x = tf.nn.elu(self.conv2d(x, 16, &#39;conv2d_1&#39;, [8, 8], [4, 4], pad, dtype, collections, reuse))</span>
+        <span class="c1">#x = tf.nn.elu(self.conv2d(x, 32, &#39;conv2d_2&#39;, [4, 4], [2, 2], pad, dtype, collections, reuse))</span>
+        <span class="c1">#x = tf.nn.elu(</span>
+        <span class="c1">#    self.linear(batch_flatten(x), 256, &#39;conv_2d_dense&#39;, self.normalized_columns_initializer(0.01), reuse=reuse)</span>
+        <span class="c1">#)</span>
+        <span class="k">return</span> <span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">_lstm_network_constructor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">a_r</span><span class="p">,</span> <span class="n">lstm_class</span><span class="o">=</span><span class="n">rnn</span><span class="o">.</span><span class="n">BasicLSTMCell</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,),</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stage2: from features to flattened LSTM output.</span>
+<span class="sd">        Defines [multi-layered] dynamic [possibly] shared LSTM network.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">             batch-wise flattened output tensor;</span>
+<span class="sd">             lstm initial state tensor;</span>
+<span class="sd">             lstm state output tensor;</span>
+<span class="sd">             lstm flattened feed placeholders as tuple.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="s1">&#39;lstm&#39;</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+
+            <span class="c1"># Flatten, add action/reward and expand with fake time dim to feed LSTM bank:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">batch_flatten</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">a_r</span><span class="p">],</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+            <span class="c1"># Define LSTM layers:</span>
+            <span class="n">lstm</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">lstm_layers</span><span class="p">:</span>
+                <span class="n">lstm</span> <span class="o">+=</span> <span class="p">[</span><span class="n">lstm_class</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">state_is_tuple</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+
+            <span class="n">lstm</span> <span class="o">=</span> <span class="n">rnn</span><span class="o">.</span><span class="n">MultiRNNCell</span><span class="p">(</span><span class="n">lstm</span><span class="p">,</span> <span class="n">state_is_tuple</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="c1"># self.lstm = lstm[0]</span>
+
+            <span class="c1"># Get time_dimension as [1]-shaped tensor:</span>
+            <span class="n">step_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">)[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+            <span class="n">lstm_init_state</span> <span class="o">=</span> <span class="n">lstm</span><span class="o">.</span><span class="n">zero_state</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+            <span class="n">lstm_state_pl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rnn_placeholders</span><span class="p">(</span><span class="n">lstm</span><span class="o">.</span><span class="n">zero_state</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+            <span class="n">lstm_state_pl_flatten</span> <span class="o">=</span> <span class="n">flatten_nested</span><span class="p">(</span><span class="n">lstm_state_pl</span><span class="p">)</span>
+
+            <span class="n">lstm_outputs</span><span class="p">,</span> <span class="n">lstm_state_out</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">dynamic_rnn</span><span class="p">(</span>
+                <span class="n">lstm</span><span class="p">,</span>
+                <span class="n">x</span><span class="p">,</span>
+                <span class="n">initial_state</span><span class="o">=</span><span class="n">lstm_state_pl</span><span class="p">,</span>
+                <span class="n">sequence_length</span><span class="o">=</span><span class="n">step_size</span><span class="p">,</span>
+                <span class="n">time_major</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">)</span>
+            <span class="n">x_out</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">lstm_outputs</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="k">return</span> <span class="n">x_out</span><span class="p">,</span> <span class="n">lstm_init_state</span><span class="p">,</span> <span class="n">lstm_state_out</span><span class="p">,</span> <span class="n">lstm_state_pl_flatten</span>
+
+    <span class="k">def</span> <span class="nf">_dense_a3c_network_constructor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stage3: from LSTM flattened output to a3c-specifc values.</span>
+<span class="sd">        Returns: A3C logits, value function and action sampling function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">linear</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="s2">&quot;action&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">),</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">)</span>
+        <span class="n">vf</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">linear</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">),</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">categorical_sample</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+
+        <span class="k">return</span> <span class="n">logits</span><span class="p">,</span> <span class="n">vf</span><span class="p">,</span> <span class="n">sample</span>
+
+    <span class="k">def</span> <span class="nf">_dense_rp_network_constructor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stage3: From shared convolutions to reward-prediction task output.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#print(&#39;x_shape:&#39;, x.get_shape())</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="c1"># flatten to pretend we got batch of size 1</span>
+        <span class="c1"># Fully connected x128 followed by 3-way classifier [with softmax], as in paper,</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">linear</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="s1">&#39;rp_dense&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)))</span>
+        <span class="c1">#print(&#39;x_shape2:&#39;, x.get_shape())</span>
+        <span class="n">logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">linear</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;rp_classifier&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">))</span>
+        <span class="c1"># Note:  softmax is actually not here but inside loss operation (see unreal.py)</span>
+        <span class="k">return</span> <span class="n">logits</span>
+
+    <span class="k">def</span> <span class="nf">_pixel_change_2D_estimator_constructor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ob_space</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Defines op for estimating `pixel change` as subsampled</span>
+<span class="sd">        absolute difference of two states.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">input_state</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">ob_space</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pc_change_est_state_in&#39;</span><span class="p">)</span>
+        <span class="n">input_last_state</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">ob_space</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pc_change_est_last_state_in&#39;</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">input_state</span><span class="p">,</span> <span class="n">input_last_state</span><span class="p">))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># fake batch dim and crop</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keep_dims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># TODO: max_pool may be better?</span>
+        <span class="n">x_out</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">avg_pool</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="n">stride</span><span class="p">,</span><span class="n">stride</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="n">stride</span><span class="p">,</span><span class="n">stride</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;SAME&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">input_state</span><span class="p">,</span> <span class="n">input_last_state</span><span class="p">,</span> <span class="n">x_out</span>
+
+    <span class="k">def</span> <span class="nf">_duelling_pc_network_constructor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stage3 network for `pixel control&#39; task: from LSTM output to Q-aux. features.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">linear</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">9</span><span class="o">*</span><span class="mi">9</span><span class="o">*</span><span class="mi">32</span><span class="p">,</span> <span class="s1">&#39;pc_dense&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">),</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">32</span><span class="p">])</span>
+        <span class="n">pc_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deconv2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span> <span class="s1">&#39;pc_advantage&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">)</span> <span class="c1"># [None, 20, 20, ac_size]</span>
+        <span class="n">pc_v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deconv2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;pc_value_fn&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">)</span>  <span class="c1"># [None, 20, 20, 1]</span>
+
+        <span class="c1"># Q-value estimate using advantage mean,</span>
+        <span class="c1"># see (9) in &quot;Dueling Network Architectures...&quot; paper:</span>
+        <span class="c1"># https://arxiv.org/pdf/1511.06581.pdf</span>
+        <span class="n">pc_a_mean</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">pc_a</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">keep_dims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">pc_q</span> <span class="o">=</span> <span class="n">pc_v</span> <span class="o">+</span> <span class="n">pc_a</span> <span class="o">-</span> <span class="n">pc_a_mean</span>  <span class="c1"># [None, 20, 20, ac_size]</span>
+
+        <span class="k">return</span> <span class="n">pc_q</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">BTgym 0.0.6 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Andrew Muzikin.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>
