@@ -111,8 +111,8 @@ class Unreal(object):
 
         self.env = env
         self.task = task
-        self.policy_class = policy_config['policy_class']
-        self.policy_config = {key: policy_config[key] for key in policy_config if key!='policy_class'}
+        self.policy_class = policy_config['class_ref']
+        self.policy_kwargs = policy_config['kwargs']
 
         # AAC specific:
         self.model_gamma = model_gamma  # decay
@@ -204,7 +204,7 @@ class Unreal(object):
                     ob_space=model_input_shape,
                     ac_space=env.action_space.n,
                     rp_sequence_size=self.rp_sequence_size,
-                    **self.policy_config
+                    **self.policy_kwargs
                 )
                 self.global_step = tf.get_variable(
                     "global_step",
@@ -235,7 +235,7 @@ class Unreal(object):
                     ob_space=model_input_shape,
                     ac_space=env.action_space.n,
                     rp_sequence_size=self.rp_sequence_size,
-                    **self.policy_config
+                    **self.policy_kwargs
                 )
                 pi.global_step = self.global_step
                 pi.global_episode = self.global_episode

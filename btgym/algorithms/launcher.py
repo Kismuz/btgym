@@ -33,6 +33,7 @@ import psutil
 from subprocess import PIPE
 import signal
 import numpy as np
+import copy
 
 from .worker import Worker
 from .a3c import A3C
@@ -47,31 +48,6 @@ class Launcher():
 
     """
 
-    env_config = dict(
-        env_class=None,
-        port=5000,
-        data_port=4999,
-        gym_id=None,
-    )
-    cluster_config = dict(
-        host='127.0.0.1',
-        port=12222,
-        num_workers=1,
-        num_ps=1,
-        log_dir='./tmp/btgym_aac_log',
-    )
-    policy_config = dict(
-        policy_class=BaseAacAuxPolicy,
-        lstm_layers=(256,),
-    )
-    trainer_config = dict(
-        trainer_class=A3C,
-    )
-    max_train_steps = 10 * 10 ** 6
-    verbose = 0
-    test_mode = False
-    ports_to_use = []
-
     def __init__(self,
                  env_config=None,
                  cluster_config=None,
@@ -83,17 +59,50 @@ class Launcher():
                  verbose=0):
         """
 
+
         Args:
-            env_config:         dictionary containing 'env_class' key and env_kwargs, or key 'gym_id'
+            env_config:         environment class_config_dict (see 'Note' below)
             cluster_config:     dictionary containing keys: 'host', 'port', 'num_workers', 'num_ps'=1, 'log_dir'
-            policy_config:      dictionary containing 'policy_class' key and policy_kwargs
-            trainer_config:     dictionary containing 'trainer_class' keys and trainer_kwargs
+            policy_config:      policy class_config_dict
+            trainer_config:     trainer class_config_dict
             max_train_steps:    number of train steps to run
             root_random_seed:   int or None
             test_mode:          if True - use Atari gym env., BTGym otherwise.
             verbose:            0 - silent, 1 - info, 3 - debug level
+
+        Note:
+            class_config_dict:  dictionary containing at least two keys:
+                                    `class_ref`: reference to class constructor or function;
+                                    `kwargs`: dictionary of keyword arguments passed to `class_ref`
         """
 
+        self.env_config = dict(
+            class_ref=None,
+            kwargs=dict(
+                port=5000,
+                data_port=4999,
+                gym_id=None,
+            )
+        )
+        self.cluster_config = dict(
+            host='127.0.0.1',
+            port=12222,
+            num_workers=1,
+            num_ps=1,
+            log_dir='./tmp/btgym_aac_log',
+        )
+        self.policy_config = dict(
+            class_ref=BaseAacAuxPolicy,
+            kwargs=dict(
+                lstm_layers=(256,)
+            )
+        )
+        self.trainer_config = dict(
+            class_ref=A3C,
+            kwargs={}
+        )
+        self.max_train_steps = 10 * 10 ** 6
+        self.ports_to_use = []
         self.root_random_seed = root_random_seed
         self.test_mode = test_mode
         self.verbose = verbose
@@ -101,19 +110,15 @@ class Launcher():
         if max_train_steps is not None:
             self.max_train_steps = max_train_steps
 
-        if env_config is not None:
-            self.env_config.update(env_config)
+        self.env_config = self.update_config_dict(self.env_config, env_config)
 
-        if cluster_config is not None:
-            self.cluster_config.update(cluster_config)
+        self.cluster_config = self.update_config_dict(self.cluster_config, cluster_config)
 
-        if policy_config is not None:
-            self.policy_config.update(policy_config)
+        self.policy_config = self.update_config_dict(self.policy_config, policy_config)
 
-        if trainer_config is not None:
-            self.trainer_config.update(trainer_config)
+        self.trainer_config = self.update_config_dict(self.trainer_config, trainer_config)
 
-        self.trainer_config['test_mode'] = self.test_mode
+        self.trainer_config['kwargs']['test_mode'] = self.test_mode
 
         # Logging config:
         logging.basicConfig()
@@ -137,11 +142,12 @@ class Launcher():
             os.makedirs(self.cluster_config['log_dir'])
             self.log.info('{} created.'.format(self.cluster_config['log_dir']))
 
-        if not self.test_mode:
-            # We should have those to proceed with BTgym env.:
-            assert 'port' in self.env_config.keys()
-            assert 'data_port' in self.env_config.keys()
-            assert self.env_config['env_class'] is not None
+        #if not self.test_mode:
+        # We should have those to proceed with BTgym workers configuration:
+        for kwarg in ['port', 'data_port']:
+            assert kwarg in self.env_config['kwargs'].keys()
+
+        assert self.env_config['class_ref'] is not None
 
         # Make cluster specification dict:
         self.cluster_spec = self.make_cluster_spec(self.cluster_config)
@@ -152,18 +158,17 @@ class Launcher():
         for key, spec_list in self.cluster_spec.items():
             task_index = 0
             for worker_id in spec_list:
-                env_config = dict()
-                worker_config = dict()
-                env_config.update(self.env_config)
+                env_config = copy.deepcopy(self.env_config)
+                worker_config = {}
                 if key in 'worker':
                     # Configure  worker BTgym environment:
                     if task_index == 0:
-                        env_config['data_master'] = True  # set worker_0 as chief and data_master
+                        env_config['kwargs']['data_master'] = True  # set worker_0 as chief and data_master
                     else:
-                        env_config['data_master'] = False
-                        env_config['port'] += task_index  # increment connection port
+                        env_config['kwargs']['data_master'] = False
+                        env_config['kwargs']['port'] += task_index  # increment connection port
 
-                        env_config['render_enabled'] = False  # disable rendering for all but chief
+                        env_config['kwargs']['render_enabled'] = False  # disable rendering for all but chief
                 worker_config.update(
                     {
                         'env_config': env_config,
@@ -180,15 +185,16 @@ class Launcher():
                         'random_seed': workers_rnd_seeds.pop()
                     }
                 )
-                self.clear_port(env_config['port'])
+                self.clear_port(env_config['kwargs']['port'])
                 self.workers_config_list.append(worker_config)
                 task_index += 1
 
-        self.clear_port(self.env_config['data_port'])
+        self.clear_port(self.env_config['kwargs']['data_port'])
         self.log.debug('Launcher ready.')
 
     def make_cluster_spec(self, config):
-        """Composes cluster specification dictionary.
+        """
+        Composes cluster specification dictionary.
         """
         cluster = {}
         all_ps = []
@@ -220,10 +226,35 @@ class Launcher():
             p = psutil.Popen(['kill', pid])
             self.log.info('port {} cleared'.format(port))
 
+    def update_config_dict(self, old_dict, new_dict=None):
+        """
+        Updates nested dictionary with values from other one of same structure.
+
+        Args:
+            old_dict:   dict to update to
+            new_dict:   dict to update from
+
+        Returns:
+            new updated dict
+        """
+        if type(new_dict) is not dict:
+            new_dict = old_dict  # ~identity op
+
+        for key, value in new_dict.items():
+            if type(value) == dict:
+                old_dict[key] = self.update_config_dict(old_dict[key], value)
+
+            else:
+                old_dict[key] = value
+
+        return old_dict
+
     def run(self):
-        """Launches processes:
-            tf distributed workers;
-            tf parameter_server.
+        """
+        Launches processes:
+
+            distributed workers;
+            parameter_server.
         """
         workers_list = []
         p_servers_list = []
@@ -252,7 +283,7 @@ class Launcher():
 
             if worker.job_name in 'worker':
                 # Allow data-master to launch datafeed_server:
-                if worker_config['env_config']['data_master']:
+                if worker_config['env_config']['kwargs']['data_master']:
                     time.sleep(5)
                     chief_worker = worker
 

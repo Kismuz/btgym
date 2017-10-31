@@ -62,10 +62,10 @@ running separate instances of BTgym/Atari environment.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env_config</strong> – dictionary containing ‘env_class’ key and env_kwargs, or key ‘gym_id’</li>
+<li><strong>env_config</strong> – environment class_config_dict (see ‘Note’ below)</li>
 <li><strong>cluster_config</strong> – dictionary containing keys: ‘host’, ‘port’, ‘num_workers’, ‘num_ps’=1, ‘log_dir’</li>
-<li><strong>policy_config</strong> – dictionary containing ‘policy_class’ key and policy_kwargs</li>
-<li><strong>trainer_config</strong> – dictionary containing ‘trainer_class’ keys and trainer_kwargs</li>
+<li><strong>policy_config</strong> – policy class_config_dict</li>
+<li><strong>trainer_config</strong> – trainer class_config_dict</li>
 <li><strong>max_train_steps</strong> – number of train steps to run</li>
 <li><strong>root_random_seed</strong> – int or None</li>
 <li><strong>test_mode</strong> – if True - use Atari gym env., BTGym otherwise.</li>
@@ -75,6 +75,14 @@ running separate instances of BTgym/Atari environment.</p>
 </tr>
 </tbody>
 </table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<dl class="last docutils">
+<dt>class_config_dict:  dictionary containing at least two keys:</dt>
+<dd>class_ref:      reference to class constructor or function
+kwargs:         dictionary of keyword arguments passed to <cite>class_ref</cite></dd>
+</dl>
+</div>
 <dl class="method">
 <dt id="btgym.algorithms.launcher.Launcher.make_cluster_spec">
 <code class="descname">make_cluster_spec</code><span class="sig-paren">(</span><em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher.make_cluster_spec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher.make_cluster_spec" title="Permalink to this definition">¶</a></dt>
@@ -88,11 +96,33 @@ running separate instances of BTgym/Atari environment.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="btgym.algorithms.launcher.Launcher.update_config_dict">
+<code class="descname">update_config_dict</code><span class="sig-paren">(</span><em>old_dict</em>, <em>new_dict=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher.update_config_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher.update_config_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Updates nested dictionary with values from other one of same structure.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>old_dict</strong> – dict to update to</li>
+<li><strong>new_dict</strong> – dict to update from</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">new updated dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="btgym.algorithms.launcher.Launcher.run">
 <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher.run" title="Permalink to this definition">¶</a></dt>
-<dd><p>Launches processes:
-tf distributed workers;
-tf parameter_server.</p>
+<dd><p>Launches processes:</p>
+<blockquote>
+<div>distributed workers;
+parameter_server.</div></blockquote>
 </dd></dl>
 
 </dd></dl>
@@ -201,9 +231,9 @@ loading/saving.</li>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env_config</strong> – environment class and configuration dictionary.</li>
-<li><strong>policy_config</strong> – model policy estimator class and configuration dictionary.</li>
-<li><strong>trainer_config</strong> – algorithm class and configuration dictionary.</li>
+<li><strong>env_config</strong> – environment class_config_dict.</li>
+<li><strong>policy_config</strong> – model policy estimator class_config_dict.</li>
+<li><strong>trainer_config</strong> – algorithm class_config_dict.</li>
 <li><strong>cluster_spec</strong> – tf.cluster specification.</li>
 <li><strong>job_name</strong> – worker or parameter server.</li>
 <li><strong>task</strong> – integer number, 0 is chief worker.</li>
@@ -303,7 +333,7 @@ runner appends the rollout to the queue.</p>
 <dt id="btgym.algorithms.a3c.A3C">
 <em class="property">class </em><code class="descclassname">btgym.algorithms.a3c.</code><code class="descname">A3C</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-10</em>, <em>rollout_length=20</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/a3c.html#A3C"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.a3c.A3C" title="Permalink to this definition">¶</a></dt>
 <dd><p>Asynchronous Advantage Actor Critic algorithm.</p>
-<p>Original code is taken from OpenAI repository under MIT licence:
+<p>Based on original code taken from OpenAI repository under MIT licence:
 <a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
 <p>Paper: <a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a></p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -345,7 +375,8 @@ runner appends the rollout to the queue.</p>
 <dl class="method">
 <dt id="btgym.algorithms.a3c.A3C.process">
 <code class="descname">process</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/a3c.html#A3C.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.a3c.A3C.process" title="Permalink to this definition">¶</a></dt>
-<dd><p>Grabs a on_policy_rollout that’s been produced by the thread runner,
+<dd><p>Algorithm single training step.
+Grabs an on_policy_rollout that’s been produced by the thread runner,
 samples off_policy rollout[s] from replay memory and updates the parameters.
 The update is then sent to the parameter server.</p>
 </dd></dl>
@@ -355,12 +386,6 @@ The update is then sent to the parameter server.</p>
 </div>
 <div class="section" id="module-btgym.algorithms.envs">
 <span id="btgym-algorithms-envs-module"></span><h2>btgym.algorithms.envs module<a class="headerlink" href="#module-btgym.algorithms.envs" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt id="btgym.algorithms.envs.create_env">
-<code class="descclassname">btgym.algorithms.envs.</code><code class="descname">create_env</code><span class="sig-paren">(</span><em>env_id</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/envs.html#create_env"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.envs.create_env" title="Permalink to this definition">¶</a></dt>
-<dd><p>State preprocessor wrapper for Atari environments.</p>
-</dd></dl>
-
 </div>
 <div class="section" id="module-btgym.algorithms.losses">
 <span id="btgym-algorithms-losses-module"></span><h2>btgym.algorithms.losses module<a class="headerlink" href="#module-btgym.algorithms.losses" title="Permalink to this headline">¶</a></h2>

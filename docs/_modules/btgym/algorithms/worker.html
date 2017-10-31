@@ -46,10 +46,7 @@
           <div class="body" role="main">
             
   <h1>Source code for btgym.algorithms.worker</h1><div class="highlight"><pre>
-<span></span><span class="c1"># This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:</span>
-<span class="c1"># https://miyosuda.github.io/</span>
-<span class="c1"># https://github.com/miyosuda/unreal</span>
-<span class="c1">#</span>
+<span></span><span class="c1">#</span>
 <span class="c1"># Original A3C code comes from OpenAI repository under MIT licence:</span>
 <span class="c1"># https://github.com/openai/universe-starter-agent</span>
 <span class="c1">#</span>
@@ -67,7 +64,6 @@
 <span class="kn">import</span> <span class="nn">cv2</span>
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 
-<span class="kn">from</span> <span class="nn">.envs</span> <span class="k">import</span> <span class="n">create_env</span>
 
 <div class="viewcode-block" id="FastSaver"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.worker.FastSaver">[docs]</a><span class="k">class</span> <span class="nc">FastSaver</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Saver</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -111,9 +107,9 @@
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            env_config:     environment class and configuration dictionary.</span>
-<span class="sd">            policy_config:  model policy estimator class and configuration dictionary.</span>
-<span class="sd">            trainer_config: algorithm class and configuration dictionary.</span>
+<span class="sd">            env_config:     environment class_config_dict.</span>
+<span class="sd">            policy_config:  model policy estimator class_config_dict.</span>
+<span class="sd">            trainer_config: algorithm class_config_dict.</span>
 <span class="sd">            cluster_spec:   tf.cluster specification.</span>
 <span class="sd">            job_name:       worker or parameter server.</span>
 <span class="sd">            task:           integer number, 0 is chief worker.</span>
@@ -124,11 +120,11 @@
 <span class="sd">            test_mode:      if True - use Atari mode, BTGym otherwise.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">Worker</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span> <span class="o">=</span> <span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;env_class&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span> <span class="o">=</span> <span class="n">env_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span> <span class="o">=</span> <span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_kwargs</span> <span class="o">=</span> <span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span> <span class="o">=</span> <span class="n">policy_config</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span> <span class="o">=</span> <span class="n">trainer_config</span><span class="p">[</span><span class="s1">&#39;trainer_class&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trainer_config</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">trainer_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">trainer_config</span> <span class="k">if</span> <span class="n">key</span><span class="o">!=</span><span class="s1">&#39;trainer_class&#39;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span> <span class="o">=</span> <span class="n">trainer_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trainer_kwargs</span> <span class="o">=</span> <span class="n">trainer_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span> <span class="o">=</span> <span class="n">cluster_spec</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">job_name</span> <span class="o">=</span> <span class="n">job_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
@@ -179,9 +175,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;making environment.&#39;</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
                 <span class="c1"># Assume BTgym env. class:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1"> is data_master: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;data_master&#39;</span><span class="p">]))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1"> is data_master: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;data_master&#39;</span><span class="p">]))</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">env_kwargs</span><span class="p">)</span>
 
                 <span class="k">except</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39; Worker_</span><span class="si">{}</span><span class="s1"> failed to make BTgym environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
@@ -189,7 +185,7 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># Assume atari testing:</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">create_env</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;gym_id&#39;</span><span class="p">])</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;gym_id&#39;</span><span class="p">])</span>
 
                 <span class="k">except</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39; Worker_</span><span class="si">{}</span><span class="s1"> failed to make Atari Gym environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
@@ -202,7 +198,7 @@
                 <span class="n">policy_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span><span class="p">,</span>
                 <span class="n">log</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
                 <span class="n">random_seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">,</span>
-                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer_config</span><span class="p">,</span>
+                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer_kwargs</span><span class="p">,</span>
             <span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">:trainer ok.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>

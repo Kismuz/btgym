@@ -6,18 +6,6 @@ import cv2
 import gym
 from gym import spaces
 
-def create_env(env_id,  **kwargs):
-    """
-    State preprocessor wrapper for Atari environments.
-    """
-    assert "." not in env_id  # universe environments have dots in names.
-    return create_atari_env(env_id)
-
-def create_atari_env(env_id):
-    env = gym.make(env_id)
-    env = AtariRescale42x42(env)
-
-    return env
 
 def _process_frame42(frame):
     frame = frame[34:34+160, :160]
@@ -32,8 +20,18 @@ def _process_frame42(frame):
     frame = np.reshape(frame, [42, 42, 1])
     return frame
 
+
 class AtariRescale42x42(gym.ObservationWrapper):
-    def __init__(self, env=None):
+    def __init__(self, env_id=None):
+        """
+        Gym wrapper class.
+        Makes Atari environment normalized grayscale 42x42 in [0,1].
+
+        Args:
+            env_id:     conventional Gym id.
+        """
+        assert "." not in env_id  # universe environments have dots in names.
+        env = gym.make(env_id)
         super(AtariRescale42x42, self).__init__(env)
         self.observation_space = spaces.Box(0.0, 1.0, [42, 42, 1])
 

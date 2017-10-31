@@ -19,7 +19,7 @@
 
 # Asynchronous  implementation of several `advantage actor-critic`-style algorithms.
 
-from .envs import create_env
+from .envs import AtariRescale42x42
 from .rollout import Rollout, ExperienceConfig
 from .memory import Memory
 from .runner import RunnerThread

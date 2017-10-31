@@ -14,7 +14,7 @@ class A3C(object):
     """
     Asynchronous Advantage Actor Critic algorithm.
 
-    Original code is taken from OpenAI repository under MIT licence:
+    Based on original code taken from OpenAI repository under MIT licence:
     https://github.com/openai/universe-starter-agent
 
     Paper: https://arxiv.org/abs/1602.01783
@@ -74,8 +74,8 @@ class A3C(object):
 
         self.env = env
         self.task = task
-        self.policy_class = policy_config['policy_class']
-        self.policy_config = {key: policy_config[key] for key in policy_config if key!='policy_class'}
+        self.policy_class = policy_config['class_ref']
+        self.policy_kwargs = policy_config['kwargs']
 
         # AAC specific:
         self.model_gamma = model_gamma  # decay
@@ -128,7 +128,7 @@ class A3C(object):
                 self.network = self.policy_class(
                     ob_space=model_input_shape,
                     ac_space=env.action_space.n,
-                    **self.policy_config
+                    **self.policy_kwargs
                 )
                 self.global_step = tf.get_variable(
                     "global_step",
@@ -158,7 +158,7 @@ class A3C(object):
                 self.local_network = pi = self.policy_class(
                     ob_space=model_input_shape,
                     ac_space=env.action_space.n,
-                    **self.policy_config
+                    **self.policy_kwargs
                 )
                 pi.global_step = self.global_step
                 pi.global_episode = self.global_episode
@@ -307,14 +307,14 @@ class A3C(object):
 
     def process(self, sess):
         """
-        Grabs a on_policy_rollout that's been produced by the thread runner,
+        Algorithm single training step.
+        Grabs an on_policy_rollout that's been produced by the thread runner,
         samples off_policy rollout[s] from replay memory and updates the parameters.
         The update is then sent to the parameter server.
         """
 
         # Copy weights from shared to local new_policy:
         sess.run(self.sync)
-
 
         # Get and process rollout:
         on_policy_rollout = self.pull_batch_from_queue()

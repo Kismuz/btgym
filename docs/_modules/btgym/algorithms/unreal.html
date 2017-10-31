@@ -159,8 +159,8 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;policy_class&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">policy_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">policy_config</span> <span class="k">if</span> <span class="n">key</span><span class="o">!=</span><span class="s1">&#39;policy_class&#39;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policy_kwargs</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span>
 
         <span class="c1"># AAC specific:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model_gamma</span> <span class="o">=</span> <span class="n">model_gamma</span>  <span class="c1"># decay</span>
@@ -252,7 +252,7 @@
                     <span class="n">ob_space</span><span class="o">=</span><span class="n">model_input_shape</span><span class="p">,</span>
                     <span class="n">ac_space</span><span class="o">=</span><span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">,</span>
                     <span class="n">rp_sequence_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_sequence_size</span><span class="p">,</span>
-                    <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span>
+                    <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_kwargs</span>
                 <span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
                     <span class="s2">&quot;global_step&quot;</span><span class="p">,</span>
@@ -283,7 +283,7 @@
                     <span class="n">ob_space</span><span class="o">=</span><span class="n">model_input_shape</span><span class="p">,</span>
                     <span class="n">ac_space</span><span class="o">=</span><span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">,</span>
                     <span class="n">rp_sequence_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_sequence_size</span><span class="p">,</span>
-                    <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span>
+                    <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_kwargs</span>
                 <span class="p">)</span>
                 <span class="n">pi</span><span class="o">.</span><span class="n">global_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span>
                 <span class="n">pi</span><span class="o">.</span><span class="n">global_episode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_episode</span>

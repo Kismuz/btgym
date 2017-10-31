@@ -1,6 +1,3 @@
-# This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
-# https://miyosuda.github.io/
-# https://github.com/miyosuda/unreal
 #
 # Original A3C code comes from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
@@ -19,7 +16,6 @@ import multiprocessing
 import cv2
 import tensorflow as tf
 
-from .envs import create_env
 
 class FastSaver(tf.train.Saver):
     """
@@ -63,9 +59,9 @@ class Worker(multiprocessing.Process):
         """
 
         Args:
-            env_config:     environment class and configuration dictionary.
-            policy_config:  model policy estimator class and configuration dictionary.
-            trainer_config: algorithm class and configuration dictionary.
+            env_config:     environment class_config_dict.
+            policy_config:  model policy estimator class_config_dict.
+            trainer_config: algorithm class_config_dict.
             cluster_spec:   tf.cluster specification.
             job_name:       worker or parameter server.
             task:           integer number, 0 is chief worker.
@@ -76,11 +72,11 @@ class Worker(multiprocessing.Process):
             test_mode:      if True - use Atari mode, BTGym otherwise.
         """
         super(Worker, self).__init__()
-        self.env_class = env_config['env_class']
-        self.env_config = env_config
+        self.env_class = env_config['class_ref']
+        self.env_kwargs = env_config['kwargs']
         self.policy_config = policy_config
-        self.trainer_class = trainer_config['trainer_class']
-        self.trainer_config = {key: trainer_config[key] for key in trainer_config if key!='trainer_class'}
+        self.trainer_class = trainer_config['class_ref']
+        self.trainer_kwargs = trainer_config['kwargs']
         self.cluster_spec = cluster_spec
         self.job_name = job_name
         self.task = task
@@ -131,9 +127,9 @@ class Worker(multiprocessing.Process):
             self.log.debug('making environment.')
             if not self.test_mode:
                 # Assume BTgym env. class:
-                self.log.debug('worker_{} is data_master: {}'.format(self.task, self.env_config['data_master']))
+                self.log.debug('worker_{} is data_master: {}'.format(self.task, self.env_kwargs['data_master']))
                 try:
-                    self.env = self.env_class(**self.env_config)
+                    self.env = self.env_class(**self.env_kwargs)
 
                 except:
                     raise SystemExit(' Worker_{} failed to make BTgym environment'.format(self.task))
@@ -141,7 +137,7 @@ class Worker(multiprocessing.Process):
             else:
                 # Assume atari testing:
                 try:
-                    self.env = create_env(self.env_config['gym_id'])
+                    self.env = self.env_class(self.env_kwargs['gym_id'])
 
                 except:
                     raise SystemExit(' Worker_{} failed to make Atari Gym environment'.format(self.task))
@@ -154,7 +150,7 @@ class Worker(multiprocessing.Process):
                 policy_config=self.policy_config,
                 log=self.log,
                 random_seed=self.random_seed,
-                **self.trainer_config,
+                **self.trainer_kwargs,
             )
 
             self.log.debug('worker_{}:trainer ok.'.format(self.task))
