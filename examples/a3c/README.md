@@ -1,5 +1,5 @@
 ### 30.10.17: TEMPORARILY BROKEN please do not use 
-#####due to package restructuring, these examples will not work for some time. Take a look at `atari_tests` folder for now.
+##### due to package restructuring, these examples will not work for some time. Take a look at `atari_tests` folder for now.
 
 A3C implementation for BTgym.
 
