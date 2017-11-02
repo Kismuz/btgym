@@ -9,6 +9,7 @@ import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
 from tensorflow.contrib.layers import flatten as batch_flatten
 from tensorflow.python.util.nest import flatten as flatten_nested
+from btgym.algorithms.util import rnn_placeholders
 
 
 def normalized_columns_initializer(std=1.0):
@@ -22,28 +23,6 @@ def normalized_columns_initializer(std=1.0):
 def categorical_sample(logits, d):
     value = tf.squeeze(tf.multinomial(logits - tf.reduce_max(logits, [1], keep_dims=True), 1), [1])
     return tf.one_hot(value, d)
-
-
-def rnn_placeholders(state):
-    """Given nested [multilayer] RNN state tensor, infers and returns state placeholders.
-
-    Args:
-        state:  tf.nn.lstm zero-state tuple.
-
-    Returns:    tf.contrib.rnn.LSTMStateTuple of placeholders
-    """
-    if isinstance(state, tf.contrib.rnn.LSTMStateTuple):
-        c, h = state
-        c = tf.placeholder(tf.float32, c.shape, c.op.name + '_c_pl')
-        h = tf.placeholder(tf.float32, h.shape, h.op.name + '_h_pl')
-        return tf.contrib.rnn.LSTMStateTuple(c, h)
-    elif isinstance(state, tf.Tensor):
-        h = state
-        h = tf.placeholder(tf.float32, h.shape, h.op.name + '_h_pl')
-        return h
-    else:
-        structure = [rnn_placeholders(x) for x in state]
-        return tuple(structure)
 
 
 def linear(x, size, name, initializer=None, bias_init=0, reuse=False):
@@ -110,6 +89,37 @@ def deconv2d(x, output_channels, name, filter_size=(4, 4), stride=(2, 2),
         return tf.nn.conv2d_transpose(x, w, output_shape,
                                       strides=stride_shape,
                                       padding='VALID') + b
+
+
+def conv1d(x, num_filters, name, filter_size=3, stride=2, pad="SAME", dtype=tf.float32,
+           collections=None, reuse=False):
+    """ 1D convolution layer"""
+    with tf.variable_scope(name, reuse=reuse):
+        stride_shape = stride
+
+        # print('stride_shape:',stride_shape)
+
+        filter_shape = [filter_size, int(x.get_shape()[-1]), num_filters]
+
+        # print('filter_shape:', filter_shape)
+
+        # there are "num input feature maps * filter height * filter width"
+        # inputs to each hidden unit
+        fan_in = np.prod(filter_shape[:2])
+
+        # each unit in the lower layer receives a gradient from:
+        # "num output feature maps * filter height * filter width" /
+        #   pooling size
+        fan_out = np.prod(filter_shape[:1]) * num_filters
+
+        # initialize weights with random weights
+        w_bound = np.sqrt(6. / (fan_in + fan_out))
+
+        w = tf.get_variable("W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
+                            collections=collections)
+        b = tf.get_variable("b", [1, 1, num_filters], initializer=tf.constant_initializer(0.0),
+                            collections=collections)
+        return tf.nn.conv1d(x, w, stride_shape, pad) + b
 
 
 def conv_2d_network(x,

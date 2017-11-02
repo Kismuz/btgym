@@ -22,8 +22,9 @@ from gym import Space
 class BTgymMultiSpace(Space):
     """
     Multi-modal observation space wrapper.
-    Defines space as flat [not nested] dictionary of spaces.
+    Defines space as flat dictionary of spaces.
     """
+    # TODO: nested!
 
     def __init__(self, spaces_dict):
         """
@@ -32,6 +33,7 @@ class BTgymMultiSpace(Space):
             spaces_dict:    dictionary of core Gym spaces.
         """
         self.spaces = spaces_dict
+        self.shape = self.get_shapes()
 
     def sample(self):
         """

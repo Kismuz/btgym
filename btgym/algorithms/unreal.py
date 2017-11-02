@@ -6,9 +6,10 @@ import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.spaces import BTgymMultiSpace
-from btgym.algorithms import Memory, Rollout, RunnerThread
+from btgym.algorithms import Memory, Rollout, make_rollout_getter, RunnerThread
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def
+from btgym.algorithms.util import feed_dict_rnn_context, feed_dict_from_nested
 
 
 class Unreal(object):
@@ -109,6 +110,14 @@ class Unreal(object):
         self.log.debug('AAC_{}_rnd_seed:{}, log_u_sample_(0,1]x5: {}'.
                        format(task, random_seed, log_uniform([1e-10,1], 5)))
 
+        ob_space_type = BTgymMultiSpace
+        try:
+            assert type(env.observation_space) == ob_space_type
+
+        except:
+            raise TypeError('AAC_{}: expected environment observation space of type {}, got: {}'.
+                            format(self.task, ob_space_type, type(env.observation_space)))
+
         self.env = env
         self.task = task
         self.policy_class = policy_config['class_ref']
@@ -174,12 +183,6 @@ class Unreal(object):
         self.use_any_aux_tasks = use_value_replay or use_pixel_control or use_reward_prediction
         self.use_memory = self.use_any_aux_tasks or self.use_off_policy_aac
 
-        # Make replay memory:
-        self.memory = Memory(history_size=self.replay_memory_size,
-                             max_sample_size=self.replay_rollout_length,
-                             reward_threshold=self.rp_reward_threshold,
-                             log=self.log)
-
         self.log.info(
             'AAC_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}, pc_lambda: {:1.8f}.'.
                 format(self.task, self.opt_learn_rate, self.model_beta, self.pc_lambda))
@@ -190,56 +193,23 @@ class Unreal(object):
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
-        # Infer observation space shape:
-        if type(env.observation_space) == BTgymMultiSpace:
-            model_input_shape = env.observation_space.get_shapes()
-
-        else:
-            model_input_shape = env.observation_space.shape
-
+        # Update policy configuration
+        self.policy_kwargs.update(
+            {
+                'ob_space': env.observation_space.shape,
+                'ac_space': env.action_space.n,
+                'rp_sequence_size': self.rp_sequence_size,
+            }
+        )
         # Start building graph:
-        with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
-            with tf.variable_scope("global"):
-                self.network = self.policy_class(
-                    ob_space=model_input_shape,
-                    ac_space=env.action_space.n,
-                    rp_sequence_size=self.rp_sequence_size,
-                    **self.policy_kwargs
-                )
-                self.global_step = tf.get_variable(
-                    "global_step",
-                    [],
-                    tf.int32,
-                    initializer=tf.constant_initializer(
-                        0,
-                        dtype=tf.int32
-                    ),
-                    trainable=False
-                )
-                self.global_episode = tf.get_variable(
-                    "global_episode",
-                    [],
-                    tf.int32,
-                    initializer=tf.constant_initializer(
-                        0,
-                        dtype=tf.int32
-                    ),
-                    trainable=False
-                )
-        # Increment episode count:
-        inc_episode = self.global_episode.assign_add(1)
 
+        # PS:
+        with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
+            self.network = self.make_policy('global')
+
+        # Worker:
         with tf.device(worker_device):
-            with tf.variable_scope("local"):
-                self.local_network = pi = self.policy_class(
-                    ob_space=model_input_shape,
-                    ac_space=env.action_space.n,
-                    rp_sequence_size=self.rp_sequence_size,
-                    **self.policy_kwargs
-                )
-                pi.global_step = self.global_step
-                pi.global_episode = self.global_episode
-                pi.inc_episode = inc_episode
+            self.local_network = pi = self.make_policy('local')
 
             # Meant for Batch-norm layers:
             pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
@@ -280,7 +250,7 @@ class Unreal(object):
             model_summaries = on_pi_summaries
 
             # Off-policy batch size:
-            off_bs = tf.to_float(tf.shape(pi.off_state_in)[0])
+            off_bs = tf.to_float(tf.shape(pi.off_state_in[list(pi.on_state_in.keys())[0]])[0])
 
             if self.use_rebalanced_replay:
                 # Simplified importance-sampling bias correction:
@@ -361,7 +331,8 @@ class Unreal(object):
 
             grads_and_vars = list(zip(grads, self.network.var_list))
 
-            self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in)[0])
+            # Since every observation mod. has same batch size - just take  first key in a row:
+            self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in[list(pi.on_state_in.keys())[0]])[0])
 
             # Each worker gets a different set of adam optimizer parameters
             opt = tf.train.AdamOptimizer(learn_rate, epsilon=1e-5)
@@ -439,10 +410,6 @@ class Unreal(object):
             # Make runner:
             # `rollout_length` represents the number of "local steps":  the number of timesteps
             # we run the policy before we update the parameters.
-            # The larger local steps is, the lower is the variance in our policy gradients estimate
-            # on the one hand;  but on the other hand, we get less frequent parameter updates, which
-            # slows down learning.  In this code, we found that making local steps be much
-            # smaller than 20 makes the algorithm more difficult to tune and to get to work.
             self.runner = RunnerThread(
                 env,
                 pi,
@@ -453,35 +420,100 @@ class Unreal(object):
                 self.test_mode,
                 self.ep_summary
             )
+            # Make rollouts provider method:
+            self.get_rollout = make_rollout_getter(self.runner.queue)
+
+            # Make replay memory:
+            if self.use_memory:
+                self.memory = Memory(
+                    history_size=self.replay_memory_size,
+                    max_sample_size=self.replay_rollout_length,
+                    reward_threshold=self.rp_reward_threshold,
+                    task=self.task,
+                    log=self.log,
+                    rollout_getter=self.get_rollout
+                )
+
             self.log.debug('AAC_{}: init() done'.format(self.task))
+
+    def make_policy(self, scope):
+        """
+        Configures and instantiates policy network and ops.
+
+        Note:
+            `global` name_scope network should be defined first.
+
+        Args:
+            scope:  name scope
+
+        Returns:
+            policy instance
+        """
+        with tf.variable_scope(scope):
+            # Make policy instance:
+            network = self.policy_class(**self.policy_kwargs)
+            if scope not in 'global':
+                try:
+                    # For locals those should be already defined:
+                    assert hasattr(self, 'global_step') and \
+                           hasattr(self, 'global_episode') and \
+                           hasattr(self, 'inc_episode')
+                    # Set for local:
+                    network.global_step = self.global_step
+                    network.global_episode = self.global_episode
+                    network.inc_episode= self.inc_episode
+                except:
+                    raise AttributeError(
+                        'AAC_{}: `global` name_scope network should be defined before any `local`s.'.
+                        format(self.task)
+                    )
+            else:
+                # Set counters:
+                self.global_step = tf.get_variable(
+                    "global_step",
+                    [],
+                    tf.int32,
+                    initializer=tf.constant_initializer(
+                        0,
+                        dtype=tf.int32
+                    ),
+                    trainable=False
+                )
+                self.global_episode = tf.get_variable(
+                    "global_episode",
+                    [],
+                    tf.int32,
+                    initializer=tf.constant_initializer(
+                        0,
+                        dtype=tf.int32
+                    ),
+                    trainable=False
+                )
+                # Increment episode count:
+                self.inc_episode = self.global_episode.assign_add(1)
+        return network
 
     def start(self, sess, summary_writer):
         self.runner.start_runner(sess, summary_writer)  # starting runner thread
         self.summary_writer = summary_writer
 
-    def pull_batch_from_queue(self):
-        """
-        Self explanatory:  take a rollout from the queue of the thread runner.
-        """
-        rollout = self.runner.queue.get(timeout=600.0)
-        #self.log.debug('Rollout position:{}\nactions:{}\nrewards:{}\nlast_action:{}\nlast_reward:{}\nterminal:{}\n'.
-        #      format(rollout.position, rollout.actions,
-        #             rollout.rewards, rollout.last_actions, rollout.last_rewards, rollout.terminal))
-        return rollout
-
     def process_rp(self, rp_experience_frames):
         """
         Estimates reward prediction target.
+        Tuned for Atari visual input
         Returns feed dictionary for `reward prediction` loss estimation subgraph.
         """
-        batch_rp_state = []
-        batch_rp_target = []
+        rollout = Rollout()
 
-        for i in range(self.rp_sequence_size - 1):
-            batch_rp_state.append(rp_experience_frames[i]['state'])
+        # Remove last frame:
+        last_frame = rp_experience_frames.pop()
+
+        # Make remaining a rollout to get 'states' batch:
+        rollout.add_memory_sample(rp_experience_frames)
+        batch = rollout.process(gamma=1)
 
         # One hot vector for target reward (i.e. reward taken from last of sampled frames):
-        r = rp_experience_frames[-1]['reward']
+        r = last_frame['reward']
         rp_t = [0.0, 0.0, 0.0]
         if r > self.rp_reward_threshold:
             rp_t[1] = 1.0  # positive [010]
@@ -491,11 +523,9 @@ class Unreal(object):
 
         else:
             rp_t[0] = 1.0  # zero [100]
-        batch_rp_target.append(rp_t)
-        feeder = {
-            self.local_network.rp_state_in: np.asarray(batch_rp_state),
-            self.rp_target: np.asarray(batch_rp_target)
-        }
+
+        feeder = feed_dict_from_nested(self.local_network.rp_state_in, batch['state'])
+        feeder.update({self.rp_target: np.asarray([rp_t])})
         return feeder
 
     def process_vr(self, batch):
@@ -503,16 +533,9 @@ class Unreal(object):
         Returns feed dictionary for `value replay` loss estimation subgraph.
         """
         if not self.use_off_policy_aac:  # use single pass of network on same off-policy batch
-            feeder = {
-                pl: value for pl, value in zip(self.local_network.vr_lstm_state_pl_flatten, flatten_nested(batch['context']))
-            }  # ...passes lstm context
-            feeder.update(
-                {
-                    self.local_network.vr_state_in: batch['state'],
-                    self.local_network.vr_a_r_in: batch['last_action_reward'],
-                    self.vr_target: batch['r'],
-                }
-            )
+            feeder = feed_dict_from_nested(self.local_network.vr_state_in, batch['state'])
+            feeder.update(feed_dict_rnn_context(self.local_network.vr_lstm_state_pl_flatten, batch['context']))
+            feeder.update({self.local_network.vr_a_r_in: batch['last_action_reward'], self.vr_target: batch['r']})
         else:
             feeder = {self.vr_target: batch['r']}  # redundant actually :)
         return feeder
@@ -522,15 +545,11 @@ class Unreal(object):
         Returns feed dictionary for `pixel control` loss estimation subgraph.
         """
         if not self.use_off_policy_aac:  # use single pass of network on same off-policy batch
-            feeder = {
-                pl: value for pl, value in zip(
-                    self.local_network.pc_lstm_state_pl_flatten,
-                    flatten_nested(batch['context'])
-                )
-            }
+            feeder = feed_dict_from_nested(self.local_network.pc_state_in, batch['state'])
+            feeder.update(
+                feed_dict_rnn_context(self.local_network.pc_lstm_state_pl_flatten, batch['context']))
             feeder.update(
                 {
-                    self.local_network.pc_state_in: batch['state'],
                     self.local_network.pc_a_r_in: batch['last_action_reward'],
                     self.pc_action: batch['action'],
                     self.pc_target: batch['pixel_change']
@@ -540,7 +559,7 @@ class Unreal(object):
             feeder = {self.pc_action: batch['action'], self.pc_target: batch['pixel_change']}
         return feeder
 
-    def fill_replay_memory(self, sess):
+    def _fill_replay_memory(self, sess):
         """
         Fills replay memory with initial experiences.
         Supposed to be called by parent worker() just before training begins.
@@ -548,7 +567,7 @@ class Unreal(object):
         if self.use_memory:
             sess.run(self.sync)
             while not self.memory.is_full():
-                rollout = self.pull_batch_from_queue()
+                rollout = self.get_rollout()
                 self.memory.add_rollout(rollout)
             self.log.info('AAC_{}: replay memory filled.'.format(self.task))
 
@@ -563,15 +582,14 @@ class Unreal(object):
         sess.run(self.sync)
 
         # Get and process rollout for on-policy train step:
-        on_policy_rollout = self.pull_batch_from_queue()
+        on_policy_rollout = self.get_rollout()
         on_policy_batch = on_policy_rollout.process(gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
 
         # Feeder for on-policy AAC loss estimation graph:
-        feed_dict = {pl: value for pl, value in
-                     zip(self.local_network.on_lstm_state_pl_flatten, flatten_nested(on_policy_batch['context']))}
+        feed_dict = feed_dict_from_nested(self.local_network.on_state_in, on_policy_batch['state'])
+        feed_dict.update(feed_dict_rnn_context(self.local_network.on_lstm_state_pl_flatten, on_policy_batch['context']))
         feed_dict.update(
             {
-                self.local_network.on_state_in: on_policy_batch['state'],
                 self.local_network.on_a_r_in: on_policy_batch['last_action_reward'],
                 self.on_pi_act_target: on_policy_batch['action'],
                 self.on_pi_adv_target: on_policy_batch['advantage'],
@@ -580,7 +598,7 @@ class Unreal(object):
             }
         )
 
-        if self.use_off_policy_aac or self.use_pixel_control or self.use_value_replay:
+        if self.use_memory:
             # Get sample from replay memory:
             if self.use_rebalanced_replay:
                 off_policy_sample = self.memory.sample_priority(
@@ -596,37 +614,33 @@ class Unreal(object):
             off_policy_batch = off_policy_rollout.process(gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
 
             # Feeder for off-policy AAC loss estimation graph:
-            off_policy_feeder = {
-                pl: value for pl, value in
-            zip(self.local_network.off_lstm_state_pl_flatten, flatten_nested(off_policy_batch['context']))
-            }
-
-            off_policy_feeder.update(
+            off_policy_feed_dict = feed_dict_from_nested(self.local_network.off_state_in, off_policy_batch['state'])
+            off_policy_feed_dict.update(
+                feed_dict_rnn_context(self.local_network.off_lstm_state_pl_flatten, off_policy_batch['context']))
+            off_policy_feed_dict.update(
                 {
-                    self.local_network.off_state_in: off_policy_batch['state'],
                     self.local_network.off_a_r_in: off_policy_batch['last_action_reward'],
                     self.off_pi_act_target: off_policy_batch['action'],
                     self.off_pi_adv_target: off_policy_batch['advantage'],
                     self.off_pi_r_target: off_policy_batch['r'],
                 }
             )
-            feed_dict.update(off_policy_feeder)
+            feed_dict.update(off_policy_feed_dict)
 
-        # Update with reward prediction subgraph:
-        if self.use_reward_prediction:
-            # Rebalanced 50/50 sample for RP:
-            rp_sample = self.memory.sample_priority(self.rp_sequence_size, skewness=2, exact_size=True)
-            feed_dict.update(self.process_rp(rp_sample))
+            # Update with reward prediction subgraph:
+            if self.use_reward_prediction:
+                # Rebalanced 50/50 sample for RP:
+                rp_sample = self.memory.sample_priority(self.rp_sequence_size, skewness=2, exact_size=True)
+                feed_dict.update(self.process_rp(rp_sample))
 
-        # Pixel control ...
-        if self.use_pixel_control:
-            feed_dict.update(self.process_pc(off_policy_batch))
+            # Pixel control ...
+            if self.use_pixel_control:
+                feed_dict.update(self.process_pc(off_policy_batch))
 
-        # VR...
-        if self.use_value_replay:
-            feed_dict.update(self.process_vr(off_policy_batch))
+            # VR...
+            if self.use_value_replay:
+                feed_dict.update(self.process_vr(off_policy_batch))
 
-        if self.use_memory:
             # Save on_policy_rollout to replay memory:
             self.memory.add_rollout(on_policy_rollout)
 

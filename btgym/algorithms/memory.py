@@ -12,19 +12,24 @@ class Memory(object):
     Note:
         must be filled up before calling sampling methods.
     """
-    def __init__(self, history_size, max_sample_size, log, reward_threshold=0.1):
+    def __init__(self, history_size, max_sample_size, log, rollout_getter, task=-1, reward_threshold=0.1):
         """
 
         Args:
             history_size:       number of experiences stored;
             max_sample_size:    maximum allowed sample size (e.g. off-policy rollout length);
+            log:                parent logger;
+            rollout_getter:     callable returning instance of Rollout
+            task:               parent worker id;
             reward_threshold:   if |experience.reward| > reward_threshold: experience is saved as 'prioritized';
         """
         self._history_size = history_size
         self._frames = deque(maxlen=history_size)
         self.reward_threshold = reward_threshold
         self.max_sample_size = int(max_sample_size)
+        self.rollout_getter = rollout_getter
         self.log = log
+        self.task = task
         # Indices for non-priority frames:
         self._zero_reward_indices = deque()
         # Indices for priority frames:
@@ -40,7 +45,7 @@ class Memory(object):
         """
         if frame['terminal'] and len(self._frames) > 0 and self._frames[-1]['terminal']:
             # Discard if terminal frame continues
-            self.log.warning("Sequential terminal frame encountered. Discarded.")
+            self.log.warning("Memory_{}: Sequential terminal frame encountered. Discarded.".format(self.task))
             self.log.warning('{} -- {}'.format(self._frames[-1]['position'], frame['position']))
             return
 
@@ -99,6 +104,19 @@ class Memory(object):
 
     def is_full(self):
         return len(self._frames) >= self._history_size
+
+    def fill(self):
+        """
+        Fills replay memory with initial experiences.
+        Supposed to be called by parent worker() just before training begins.
+
+        Args:
+            rollout_getter:     callable, returning instance of Rollout.
+
+        """
+        while not self.is_full():
+            self.add_rollout(self.rollout_getter())
+        self.log.info('Memory_{}: filled.'.format(self.task))
 
     def sample_uniform(self, sequence_size):
         """Uniformly samples sequence of successive frames of size `sequence_size` or less (~off-policy rollout).
@@ -176,7 +194,9 @@ class Memory(object):
             is_full = True
             if attempt == sample_attempts - 1:
                 check_sequence = False
-                self.log.warning('Warning: failed to sample {} successive frames, sampled as is.'.format(size))
+                self.log.warning(
+                    'Memory_{}: failed to sample {} successive frames, sampled as is.'.format(self.task, size)
+                )
 
             for i in range(size - 1):
                 frame = self._frames[raw_start_frame_index + i]

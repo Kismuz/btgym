@@ -19,6 +19,23 @@ ExperienceConfig = ['position', 'state', 'action', 'reward', 'value', 'terminal'
                     'last_action_reward', 'pixel_change']
 
 
+def make_rollout_getter(queue):
+    """
+    Rollout getter constructor.
+
+    Args:
+        queue:     instance of `Queue` class to get rollouts from.
+
+    Returns:
+        callable, returning instance of Rollout.
+
+    """
+    def pull_rollout_from_queue():
+        return queue.get(timeout=600.0)
+
+    return pull_rollout_from_queue
+
+
 class Rollout(dict):
     """Experience rollout as [nested] dictionary of lists.
     """

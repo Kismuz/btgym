@@ -37,7 +37,8 @@ class FastSaver(tf.train.Saver):
                                     False)
 
 class Worker(multiprocessing.Process):
-    """Distributed tf worker class.
+    """
+    Distributed tf worker class.
 
     Sets up environment, trainer and starts training process in supervised session.
     """
@@ -183,7 +184,6 @@ class Worker(multiprocessing.Process):
                 summary_op=None,
                 init_op=init_op,
                 init_fn=init_fn,
-                #summary_writer=summary_writer,
                 ready_op=tf.report_uninitialized_variables(variables_to_save),
                 global_step=trainer.global_step,
                 save_model_secs=300,
@@ -194,10 +194,10 @@ class Worker(multiprocessing.Process):
                 sess.run(trainer.sync)
                 trainer.start(sess, summary_writer)
                 global_step = sess.run(trainer.global_step)
-                # Fill replay memory, id any:
+                # Fill replay memory, if any:
                 if hasattr(trainer,'memory'):
                     if not trainer.memory.is_full():
-                        trainer.fill_replay_memory(sess)
+                        trainer.memory.fill()
 
                 self.log.warning("worker_{}: started training at step: {}".format(self.task, global_step))
                 while not sv.should_stop() and global_step < self.max_train_steps:

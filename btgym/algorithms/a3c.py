@@ -5,9 +5,10 @@ import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.spaces import BTgymMultiSpace
-from btgym.algorithms import RunnerThread
+from btgym.algorithms import RunnerThread, make_rollout_getter
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import aac_loss_def
+from btgym.algorithms.util import feed_dict_rnn_context, feed_dict_from_nested
 
 
 class A3C(object):
@@ -112,11 +113,8 @@ class A3C(object):
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
         # Infer observation space shape:
-        if type(env.observation_space) == BTgymMultiSpace:
-            model_input_shape = env.observation_space.get_shapes()
-
-        else:
-            model_input_shape = env.observation_space.shape
+        assert type(env.observation_space) == BTgymMultiSpace
+        model_input_shape = env.observation_space.get_shapes()
 
         self.log.info(
             'AAC_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}.'.
@@ -205,7 +203,8 @@ class A3C(object):
 
             grads_and_vars = list(zip(grads, self.network.var_list))
 
-            self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in)[0])
+            # Since every observation mod. has same batch size - just take first key in a row:
+            self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in[list(pi.on_state_in.keys())[0]])[0])
 
             # Each worker gets a different set of adam optimizer parameters
             opt = tf.train.AdamOptimizer(learn_rate, epsilon=1e-5)
@@ -289,21 +288,14 @@ class A3C(object):
                 self.test_mode,
                 self.ep_summary
             )
+            # Make rollouts provider method:
+            self.get_rollout = make_rollout_getter(self.runner.queue)
+
             self.log.debug('AAC_{}: init() done'.format(self.task))
 
     def start(self, sess, summary_writer):
         self.runner.start_runner(sess, summary_writer)  # starting runner thread
         self.summary_writer = summary_writer
-
-    def pull_batch_from_queue(self):
-        """
-        Self explanatory:  take a rollout from the queue of the thread runner.
-        """
-        rollout = self.runner.queue.get(timeout=600.0)
-        #self.log.debug('Rollout position:{}\nactions:{}\nrewards:{}\nlast_action:{}\nlast_reward:{}\nterminal:{}\n'.
-        #      format(rollout.position, rollout.actions,
-        #             rollout.rewards, rollout.last_actions, rollout.last_rewards, rollout.terminal))
-        return rollout
 
     def process(self, sess):
         """
@@ -313,20 +305,18 @@ class A3C(object):
         The update is then sent to the parameter server.
         """
 
-        # Copy weights from shared to local new_policy:
+        # Copy weights from shared to local policy:
         sess.run(self.sync)
 
         # Get and process rollout:
-        on_policy_rollout = self.pull_batch_from_queue()
+        on_policy_rollout = self.get_rollout()
         on_policy_batch = on_policy_rollout.process(gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
 
         # Feeder for on-policy AAC loss estimation graph:
-        feed_dict = {pl: value for pl, value in
-                     zip(self.local_network.on_lstm_state_pl_flatten, flatten_nested(on_policy_batch['context']))}
-
+        feed_dict = feed_dict_from_nested(self.local_network.on_state_in, on_policy_batch['state'])
+        feed_dict.update(feed_dict_rnn_context(self.local_network.on_lstm_state_pl_flatten, on_policy_batch['context']))
         feed_dict.update(
             {
-                self.local_network.on_state_in: on_policy_batch['state'],
                 self.local_network.on_a_r_in: on_policy_batch['last_action_reward'],
                 self.on_pi_act_target: on_policy_batch['action'],
                 self.on_pi_adv_target: on_policy_batch['advantage'],
@@ -334,7 +324,6 @@ class A3C(object):
                 self.local_network.train_phase: True,
             }
         )
-
         # Every worker writes model summaries:
         should_compute_summary =\
             self.local_steps % self.model_summary_freq == 0

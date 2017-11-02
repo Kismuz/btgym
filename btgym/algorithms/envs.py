@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 import gym
 from gym import spaces
+from btgym import BTgymMultiSpace
 
 
 def _process_frame42(frame):
@@ -24,8 +25,9 @@ def _process_frame42(frame):
 class AtariRescale42x42(gym.ObservationWrapper):
     def __init__(self, env_id=None):
         """
-        Gym wrapper class.
-        Makes Atari environment normalized grayscale 42x42 in [0,1].
+        Gym wrapper, pipes Atari into BTgym algorithms, as later expect observations to be BTgymMultiSpace.
+        Makes Atari environment return state as dictionary with single key 'atari42x42' holding
+        normalized in [0,1] grayscale 42x42 visual output.
 
         Args:
             env_id:     conventional Gym id.
@@ -33,7 +35,9 @@ class AtariRescale42x42(gym.ObservationWrapper):
         assert "." not in env_id  # universe environments have dots in names.
         env = gym.make(env_id)
         super(AtariRescale42x42, self).__init__(env)
-        self.observation_space = spaces.Box(0.0, 1.0, [42, 42, 1])
+        self.observation_space = BTgymMultiSpace(
+            {'atari42x42': spaces.Box(0.0, 1.0, [42, 42, 1])}
+        )
 
     def _observation(self, observation):
-        return _process_frame42(observation)
+        return {'atari42x42': _process_frame42(observation)}

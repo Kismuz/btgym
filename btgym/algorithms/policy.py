@@ -10,6 +10,7 @@
 #
 
 from btgym.algorithms.nnet_util import *
+from btgym.algorithms.util import *
 import tensorflow as tf
 
 
@@ -30,7 +31,7 @@ class BaseAacAuxPolicy(object):
         Expects uni-modal observation as array of shape `ob_space`.
 
         Args:
-            ob_space:           observation state shape
+            ob_space:           dictionary of observation state shapes
             ac_space:           discrete action space shape (length)
             rp_sequence_size:   reward prediction sample length
             lstm_class:         tf.nn.lstm class
@@ -47,17 +48,17 @@ class BaseAacAuxPolicy(object):
         self.callback = {}
 
         # Placeholders for obs. state input:
-        self.on_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='on_policy_state_in_pl')
-        self.off_state_in = tf.placeholder(tf.float32, [None] + list(ob_space), name='off_policy_state_in_pl')
-        self.rp_state_in = tf.placeholder(tf.float32, [rp_sequence_size-1] + list(ob_space), name='rp_state_in_pl')
+        self.on_state_in = nested_placeholders(ob_space, batch_dim=None, name='on_policy_state_in')
+        self.off_state_in = nested_placeholders(ob_space, batch_dim=None, name='off_policy_state_in_pl')
+        self.rp_state_in = nested_placeholders(ob_space, batch_dim=rp_sequence_size-1, name='rp_state_in')
 
         # Placeholders for concatenated action [one-hot] and reward [scalar]:
         self.on_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='on_policy_action_reward_in_pl')
         self.off_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='off_policy_action_reward_in_pl')
- 
+
         # Base on-policy AAC network:
         # Conv. layers:
-        on_aac_x = conv_2d_network(self.on_state_in, ob_space, ac_space)
+        on_aac_x = conv_2d_network(self.on_state_in['atari42x42'], ob_space['atari42x42'], ac_space)
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
         [on_aac_x, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
             lstm_network(on_aac_x, self.on_a_r_in, lstm_class, lstm_layers, )
@@ -65,7 +66,7 @@ class BaseAacAuxPolicy(object):
         [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(on_aac_x, ac_space)
 
         # Off-policy AAC network (shared):
-        off_aac_x = conv_2d_network(self.off_state_in, ob_space, ac_space, reuse=True)
+        off_aac_x = conv_2d_network(self.off_state_in['atari42x42'], ob_space['atari42x42'], ac_space, reuse=True)
         [off_x_lstm_out, _, _, self.off_lstm_state_pl_flatten] =\
             lstm_network(off_aac_x, self.off_a_r_in, lstm_class, lstm_layers, reuse=True)
         [self.off_logits, self.off_vf, _] =\
@@ -75,7 +76,7 @@ class BaseAacAuxPolicy(object):
         # Define pixels-change estimation function:
         # Yes, it rather env-specific but for atari case it is handy to do it here, see self.get_pc_target():
         [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
-            pixel_change_2d_estimator(ob_space)
+            pixel_change_2d_estimator(ob_space['atari42x42'])
 
         self.pc_state_in = self.off_state_in
         self.pc_a_r_in = self.off_a_r_in
@@ -99,7 +100,7 @@ class BaseAacAuxPolicy(object):
 
         # Aux3: `Reward prediction` network:
         # Shared conv.:
-        rp_x = conv_2d_network(self.rp_state_in, ob_space, ac_space, reuse=True)
+        rp_x = conv_2d_network(self.rp_state_in['atari42x42'], ob_space['atari42x42'], ac_space, reuse=True)
 
         # RP output:
         self.rp_logits = dense_rp_network(rp_x)
@@ -142,17 +143,18 @@ class BaseAacAuxPolicy(object):
         Predicts action.
 
         Args:
-            observation:    single observation value
+            observation:    dictionary containing single observation
             lstm_state:     lstm context value
             action_reward:  concatenated last action-reward value
 
         Returns:
-            Action value, one-hot.
+            Action, one-hot.
         """
         sess = tf.get_default_session()
         feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
+        feeder.update(feed_dict_from_nested(self.on_state_in, observation, expand_batch=True))
         feeder.update(
-            {self.on_state_in: [observation],
+            {#self.on_state_in: [observation],
              self.on_a_r_in: [action_reward],
              self.train_phase: False}
         )
@@ -171,12 +173,10 @@ class BaseAacAuxPolicy(object):
             Policy V-function estimated value
         """
         sess = tf.get_default_session()
-        feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
-        feeder.update(
-            {self.on_state_in: [observation],
-             self.on_a_r_in: [action_reward],
-             self.train_phase: False}
-        )
+        feeder = feed_dict_rnn_context(self.on_lstm_state_pl_flatten, lstm_state)
+        feeder.update(feed_dict_from_nested(self.on_state_in, observation, expand_batch=True))
+        feeder.update({self.on_a_r_in: [action_reward], self.train_phase: False})
+
         return sess.run(self.on_vf, feeder)[0]
 
     def get_pc_target(self, state, last_state, **kwargs):
@@ -191,8 +191,10 @@ class BaseAacAuxPolicy(object):
         Returns:
             Estimated absolute difference between two subsampled states.
         """
+        # TODO: NESTED OBS?
         sess = tf.get_default_session()
-        feeder = {self.pc_change_state_in: state, self.pc_change_last_state_in: last_state}
+        feeder = {self.pc_change_state_in: state['atari42x42'], self.pc_change_last_state_in: last_state['atari42x42']}
+
         return sess.run(self.pc_target, feeder)[0,...,0]
 
 
@@ -234,5 +236,37 @@ AacPolicy = BaseAacPolicy
 PpoPolicy = BaseAacPolicy
 
 
+class BaseAacPolicyMModal(object):
+    """
+    Base advantage actor-critic LSTM policy estimator for bi-modal obs.space.
+    Expects observation space to be dictionary containing different modalities.
 
 
+    Papers:
+    https://arxiv.org/abs/1602.01783
+
+    https://arxiv.org/abs/1611.05397
+    """
+    def __init__(self, ob_space, ac_space,  lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,)):
+        """
+
+        Args:
+            ob_space:               dictionary of shapes
+            ac_space:               int, dimensionality of discrete action space
+            lstm_class:
+            lstm_layers:
+        """
+        self.ob_space = ob_space
+        self.ac_space = ac_space
+        self.lstm_class = lstm_class
+        self.lstm_layers = lstm_layers
+        self.on_state_in ={}
+
+        for mod in ob_space.keys():
+            self.on_state_in[mod] = tf.placeholder(
+                tf.float32,
+                [None] + list(ob_space[mod]),
+                name=mod+'_on_policy_state_in_pl'
+            )
+
+        self.on_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='on_policy_action_reward_in_pl')
