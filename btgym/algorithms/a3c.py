@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 
-from btgym.spaces import BTgymMultiSpace
+from btgym.spaces import DictSpace
 from btgym.algorithms import RunnerThread, make_rollout_getter
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import aac_loss_def
@@ -113,7 +113,7 @@ class A3C(object):
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
         # Infer observation space shape:
-        assert type(env.observation_space) == BTgymMultiSpace
+        assert type(env.observation_space) == DictSpace
         model_input_shape = env.observation_space.get_shapes()
 
         self.log.info(

@@ -52,7 +52,7 @@
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 <span class="kn">from</span> <span class="nn">tensorflow.python.util.nest</span> <span class="k">import</span> <span class="n">flatten</span> <span class="k">as</span> <span class="n">flatten_nested</span>
 
-<span class="kn">from</span> <span class="nn">btgym.spaces</span> <span class="k">import</span> <span class="n">BTgymMultiSpace</span>
+<span class="kn">from</span> <span class="nn">btgym.spaces</span> <span class="k">import</span> <span class="n">DictSpace</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">RunnerThread</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms.math_util</span> <span class="k">import</span> <span class="n">log_uniform</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms.losses</span> <span class="k">import</span> <span class="n">aac_loss_def</span>
@@ -160,7 +160,7 @@
         <span class="n">worker_device</span> <span class="o">=</span> <span class="s2">&quot;/job:worker/task:</span><span class="si">{}</span><span class="s2">/cpu:0&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
         <span class="c1"># Infer observation space shape:</span>
-        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">)</span> <span class="o">==</span> <span class="n">BTgymMultiSpace</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">)</span> <span class="o">==</span> <span class="n">DictSpace</span><span class="p">:</span>
             <span class="n">model_input_shape</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">get_shapes</span><span class="p">()</span>
 
         <span class="k">else</span><span class="p">:</span>

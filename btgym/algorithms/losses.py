@@ -3,7 +3,8 @@ import  numpy as np
 from btgym.algorithms.math_util import cat_entropy, kl_divergence
 
 
-def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, entropy_beta, name='aac', verbose=False):
+def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_logits,
+                 entropy_beta, epsilon, name='aac', verbose=False):
     """
     Advantage Actor Critic loss definition.
     Paper: https://arxiv.org/abs/1602.01783
@@ -43,7 +44,7 @@ def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, entropy_bet
     return loss, summaries
 
 
-def ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_old_logits, entropy_beta, epsilon,
+def ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_logits, entropy_beta, epsilon,
                  name='ppo', verbose=False):
     """
     PPO clipped surrogate loss definition, as (7) in https://arxiv.org/pdf/1707.06347.pdf
@@ -54,7 +55,7 @@ def ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_old_logi
         r_target:        tensor holding policy empirical returns targets;
         pi_logits:       policy logits output tensor;
         pi_vf:           policy value function output tensor;
-        pi_old_logits:   old_policy logits output tensor;
+        pi_prime_logits: old_policy logits output tensor;
         entropy_beta:    entropy regularization constant
         epsilon:         L^Clip epsilon tensor;
         name:            scope;
@@ -74,7 +75,7 @@ def ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_old_logi
         )
         pi_old_log_prob = tf.stop_gradient(
             - tf.nn.softmax_cross_entropy_with_logits(
-                logits=pi_old_logits,
+                logits=pi_prime_logits,
                 labels=act_target
             )
         )
@@ -92,7 +93,7 @@ def ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_old_logi
         # Info:
         mean_pi_ratio = tf.reduce_mean(pi_ratio)
         mean_vf = tf.reduce_mean(pi_vf)
-        mean_kl_old_new = tf.reduce_mean(kl_divergence(pi_old_logits, pi_logits ))
+        mean_kl_old_new = tf.reduce_mean(kl_divergence(pi_prime_logits, pi_logits))
 
         summaries = [
             tf.summary.scalar('l_clip_loss', pi_surr_loss),

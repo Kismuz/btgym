@@ -32,7 +32,7 @@ from gym import error, spaces
 
 import backtrader as bt
 
-from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering, BTgymDataFeedServer, BTgymMultiSpace
+from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering, BTgymDataFeedServer, DictSpace
 
 from btgym.rendering import BTgymNullRendering
 
@@ -337,7 +337,7 @@ class BTgymEnv(gym.Env):
                              self.dataset_stat.loc['max', self.dataset_columns].max()))
 
         # Set observation space shape from engine/strategy parameters:
-        self.observation_space = BTgymMultiSpace(self.params['strategy']['state_shape'])
+        self.observation_space = DictSpace(self.params['strategy']['state_shape'])
 
         self.log.debug('Obs. shape: {}'.format(self.observation_space.spaces))
         #self.log.debug('Obs. min:\n{}\nmax:\n{}'.format(self.observation_space.low, self.observation_space.high))

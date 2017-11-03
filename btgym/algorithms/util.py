@@ -40,7 +40,7 @@ def nested_placeholders(ob_space, batch_dim=None, name='nested'):
     Returns:
         nested dictionary of placeholders
     """
-    if type(ob_space) == dict:
+    if isinstance(ob_space,dict):
         out = {key: nested_placeholders(value, batch_dim, name + '_' + key) for key, value in ob_space.items()}
         return out
     else:
@@ -81,7 +81,7 @@ def feed_dict_from_nested(placeholder, value, expand_batch=False):
 
 def _flat_from_nested(placeholder, value, expand_batch):
     feed_dict = {}
-    if type(placeholder) == dict:
+    if isinstance(placeholder, dict):
         for key in placeholder.keys():
             feed_dict.update(_flat_from_nested(placeholder[key], value[key], expand_batch))
 
@@ -119,7 +119,7 @@ def as_array(struct):
     Returns:
         dict of np.arrays
     """
-    if type(struct) == dict:
+    if isinstance(struct,dict):
         out = {}
         for key, value in struct.items():
             out[key] = as_array(value)

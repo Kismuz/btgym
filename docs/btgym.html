@@ -258,8 +258,8 @@ info, &lt;list&gt; - auxiliary information.</p>
 <div class="section" id="module-btgym.spaces">
 <span id="btgym-spaces-module"></span><h1>btgym.spaces module<a class="headerlink" href="#module-btgym.spaces" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="btgym.spaces.BTgymMultiSpace">
-<em class="property">class </em><code class="descclassname">btgym.spaces.</code><code class="descname">BTgymMultiSpace</code><span class="sig-paren">(</span><em>spaces_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#BTgymMultiSpace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.BTgymMultiSpace" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.spaces.DictSpace">
+<em class="property">class </em><code class="descclassname">btgym.spaces.</code><code class="descname">DictSpace</code><span class="sig-paren">(</span><em>spaces_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#DictSpace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.DictSpace" title="Permalink to this definition">¶</a></dt>
 <dd><p>Multi-modal observation space wrapper.
 Defines space as flat [not nested] dictionary of spaces.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -271,8 +271,8 @@ Defines space as flat [not nested] dictionary of spaces.</p>
 </tbody>
 </table>
 <dl class="method">
-<dt id="btgym.spaces.BTgymMultiSpace.sample">
-<code class="descname">sample</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#BTgymMultiSpace.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.BTgymMultiSpace.sample" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.spaces.DictSpace.sample">
+<code class="descname">sample</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#DictSpace.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.DictSpace.sample" title="Permalink to this definition">¶</a></dt>
 <dd><p>Uniformly randomly sample a random element of this space.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -285,15 +285,15 @@ Defines space as flat [not nested] dictionary of spaces.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.spaces.BTgymMultiSpace.contains">
-<code class="descname">contains</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#BTgymMultiSpace.contains"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.BTgymMultiSpace.contains" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.spaces.DictSpace.contains">
+<code class="descname">contains</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#DictSpace.contains"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.DictSpace.contains" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return boolean specifying if x is a valid
 member of this space</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.spaces.BTgymMultiSpace.get_shapes">
-<code class="descname">get_shapes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#BTgymMultiSpace.get_shapes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.BTgymMultiSpace.get_shapes" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.spaces.DictSpace.get_shapes">
+<code class="descname">get_shapes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#DictSpace.get_shapes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.DictSpace.get_shapes" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get shapes for every space included.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -306,14 +306,14 @@ member of this space</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.spaces.BTgymMultiSpace.to_jsonable">
-<code class="descname">to_jsonable</code><span class="sig-paren">(</span><em>sample_n</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#BTgymMultiSpace.to_jsonable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.BTgymMultiSpace.to_jsonable" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.spaces.DictSpace.to_jsonable">
+<code class="descname">to_jsonable</code><span class="sig-paren">(</span><em>sample_n</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#DictSpace.to_jsonable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.DictSpace.to_jsonable" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert a batch of samples from this space to a JSONable data type.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.spaces.BTgymMultiSpace.from_jsonable">
-<code class="descname">from_jsonable</code><span class="sig-paren">(</span><em>sample_n</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#BTgymMultiSpace.from_jsonable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.BTgymMultiSpace.from_jsonable" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.spaces.DictSpace.from_jsonable">
+<code class="descname">from_jsonable</code><span class="sig-paren">(</span><em>sample_n</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#DictSpace.from_jsonable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.DictSpace.from_jsonable" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert a JSONable data type to a batch of samples from this space.</p>
 </dd></dl>
 

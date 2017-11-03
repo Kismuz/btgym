@@ -67,7 +67,7 @@
 
 <span class="kn">from</span> <span class="nn">gym</span> <span class="k">import</span> <span class="n">Space</span>
 
-<div class="viewcode-block" id="BTgymMultiSpace"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.BTgymMultiSpace">[docs]</a><span class="k">class</span> <span class="nc">BTgymMultiSpace</span><span class="p">(</span><span class="n">Space</span><span class="p">):</span>
+<div class="viewcode-block" id="DictSpace"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.DictSpace">[docs]</a><span class="k">class</span> <span class="nc">DictSpace</span><span class="p">(</span><span class="n">Space</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Multi-modal observation space wrapper.</span>
 <span class="sd">    Defines space as flat [not nested] dictionary of spaces.</span>
@@ -81,7 +81,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">spaces</span> <span class="o">=</span> <span class="n">spaces_dict</span>
 
-<div class="viewcode-block" id="BTgymMultiSpace.sample"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.BTgymMultiSpace.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="DictSpace.sample"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.DictSpace.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Uniformly randomly sample a random element of this space.</span>
 
@@ -90,7 +90,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">space</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">space</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span></div>
 
-<div class="viewcode-block" id="BTgymMultiSpace.contains"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.BTgymMultiSpace.contains">[docs]</a>    <span class="k">def</span> <span class="nf">contains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<div class="viewcode-block" id="DictSpace.contains"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.DictSpace.contains">[docs]</a>    <span class="k">def</span> <span class="nf">contains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return boolean specifying if x is a valid</span>
 <span class="sd">        member of this space</span>
@@ -104,7 +104,7 @@
         <span class="k">except</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">False</span></div>
 
-<div class="viewcode-block" id="BTgymMultiSpace.get_shapes"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.BTgymMultiSpace.get_shapes">[docs]</a>    <span class="k">def</span> <span class="nf">get_shapes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="DictSpace.get_shapes"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.DictSpace.get_shapes">[docs]</a>    <span class="k">def</span> <span class="nf">get_shapes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get shapes for every space included.</span>
 
@@ -114,12 +114,12 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">spaces</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span></div>
 
-<div class="viewcode-block" id="BTgymMultiSpace.to_jsonable"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.BTgymMultiSpace.to_jsonable">[docs]</a>    <span class="k">def</span> <span class="nf">to_jsonable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_n</span><span class="p">):</span>
+<div class="viewcode-block" id="DictSpace.to_jsonable"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.DictSpace.to_jsonable">[docs]</a>    <span class="k">def</span> <span class="nf">to_jsonable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_n</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Convert a batch of samples from this space to a JSONable data type.&quot;&quot;&quot;</span>
         <span class="c1"># By default, assume identity is JSONable</span>
         <span class="k">return</span> <span class="n">sample_n</span></div>
 
-<div class="viewcode-block" id="BTgymMultiSpace.from_jsonable"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.BTgymMultiSpace.from_jsonable">[docs]</a>    <span class="k">def</span> <span class="nf">from_jsonable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_n</span><span class="p">):</span>
+<div class="viewcode-block" id="DictSpace.from_jsonable"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.DictSpace.from_jsonable">[docs]</a>    <span class="k">def</span> <span class="nf">from_jsonable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_n</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Convert a JSONable data type to a batch of samples from this space.&quot;&quot;&quot;</span>
         <span class="c1"># By default, assume identity is JSONable</span>
         <span class="k">return</span> <span class="n">sample_n</span></div></div>

@@ -80,7 +80,7 @@
 
 <span class="kn">import</span> <span class="nn">backtrader</span> <span class="k">as</span> <span class="nn">bt</span>
 
-<span class="kn">from</span> <span class="nn">btgym</span> <span class="k">import</span> <span class="n">BTgymServer</span><span class="p">,</span> <span class="n">BTgymStrategy</span><span class="p">,</span> <span class="n">BTgymDataset</span><span class="p">,</span> <span class="n">BTgymRendering</span><span class="p">,</span> <span class="n">BTgymDataFeedServer</span><span class="p">,</span> <span class="n">BTgymMultiSpace</span>
+<span class="kn">from</span> <span class="nn">btgym</span> <span class="k">import</span> <span class="n">BTgymServer</span><span class="p">,</span> <span class="n">BTgymStrategy</span><span class="p">,</span> <span class="n">BTgymDataset</span><span class="p">,</span> <span class="n">BTgymRendering</span><span class="p">,</span> <span class="n">BTgymDataFeedServer</span><span class="p">,</span> <span class="n">DictSpace</span>
 
 <span class="kn">from</span> <span class="nn">btgym.rendering</span> <span class="k">import</span> <span class="n">BTgymNullRendering</span>
 
@@ -385,7 +385,7 @@
                              <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()))</span>
 
         <span class="c1"># Set observation space shape from engine/strategy parameters:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">observation_space</span> <span class="o">=</span> <span class="n">BTgymMultiSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">observation_space</span> <span class="o">=</span> <span class="n">DictSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">])</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Obs. shape: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">spaces</span><span class="p">))</span>
         <span class="c1">#self.log.debug(&#39;Obs. min:\n{}\nmax:\n{}&#39;.format(self.observation_space.low, self.observation_space.high))</span>

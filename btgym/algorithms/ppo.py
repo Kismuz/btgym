@@ -15,7 +15,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 
-from btgym.spaces import BTgymMultiSpace
+from btgym.spaces import DictSpace
 from btgym.algorithms import Memory, Rollout, RunnerThread
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import ppo_loss_def, value_fn_loss_def, rp_loss_def, pc_loss_def
@@ -211,7 +211,7 @@ class PPO(object):
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
         # Infer observation space shape:
-        if type(env.observation_space) == BTgymMultiSpace:
+        if type(env.observation_space) == DictSpace:
             model_input_shape = env.observation_space.get_shapes()
 
         else:
@@ -303,7 +303,7 @@ class PPO(object):
                 r_target=self.on_pi_r_target,
                 pi_logits=pi.on_logits,
                 pi_vf=pi.on_vf,
-                pi_old_logits=pi_old.on_logits,
+                pi_prime_logits=pi_old.on_logits,
                 entropy_beta=self.model_beta,
                 epsilon=clip_epsilon,
                 name='on_policy/ppo',
@@ -340,7 +340,7 @@ class PPO(object):
                     r_target=self.off_pi_r_target,
                     pi_logits=pi.off_logits,
                     pi_vf=pi.off_vf,
-                    pi_old_logits=pi_old.off_logits,
+                    pi_prime_logits=pi_old.off_logits,
                     entropy_beta=self.model_beta,
                     epsilon=clip_epsilon,
                     name='off_policy/ppo',

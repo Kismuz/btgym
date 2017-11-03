@@ -300,7 +300,7 @@ Consider reinforcement learning setup for equity/currency trading:
     - no record duplication and format consistency checks preformed.
 
 - 21.08.17: UPDATE: BTgym is now using multi-modal observation space.
-     - space used is simple extension of gym: `BTgymMultiSpace(gym.Space)` - dictionary (not nested yet) of core gym spaces.
+     - space used is simple extension of gym: `DictSpace(gym.Space)` - dictionary (not nested yet) of core gym spaces.
      - defined in `btgym/spaces.py`.
      - `raw_state` is default Box space of OHLC prices. Subclass BTgymStrategy and override `get_state()` method to
             compute alll parts of env. observation.

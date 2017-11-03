@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 
-from btgym.spaces import BTgymMultiSpace
+from btgym.spaces import DictSpace as ObSpace
 from btgym.algorithms import Memory, Rollout, make_rollout_getter, RunnerThread
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def
@@ -32,6 +32,11 @@ class Unreal(object):
                  task,
                  policy_config,
                  log,
+                 on_policy_loss=aac_loss_def,
+                 off_policy_loss=aac_loss_def,
+                 vr_loss=value_fn_loss_def,
+                 rp_loss=rp_loss_def,
+                 pc_loss=pc_loss_def,
                  random_seed=None,
                  model_gamma=0.99,  # decay
                  model_gae_lambda=1.00,  # GAE lambda
@@ -42,7 +47,7 @@ class Unreal(object):
                  opt_learn_rate=1e-4,
                  opt_decay=0.99,
                  opt_momentum=0.0,
-                 opt_epsilon=1e-10,
+                 opt_epsilon=1e-8,
                  rollout_length=20,
                  episode_summary_freq=2,  # every i`th environment episode
                  env_render_freq=10,  # every i`th environment episode
@@ -54,15 +59,17 @@ class Unreal(object):
                  use_reward_prediction=False,
                  use_pixel_control=False,
                  use_value_replay=False,
-                 use_rebalanced_replay=False,  # simplified form of prioritized replay
-                 rebalance_skewness=2,
                  rp_lambda=1,  # aux tasks loss weights
                  pc_lambda=0.1,
                  vr_lambda=1,
                  off_aac_lambda=1,
                  gamma_pc=0.9,  # pixel change gamma-decay - not used
                  rp_reward_threshold=0.1,  # r.prediction: abs.rewards values bigger than this are considered non-zero
-                 rp_sequence_size=3,):  # r.prediction sampling
+                 rp_sequence_size=3,  # r.prediction sampling
+                 clip_epsilon=0.1,
+                 num_epochs=1,
+                 pi_prime_update_period=1,
+                 _use_target_policy=False):  # target policy tracking behavioral one with delay
         """
 
         Args:
@@ -70,6 +77,11 @@ class Unreal(object):
             task:                   int
             policy_config:          policy estimator class and configuration dictionary
             log:                    parent log
+            on_policy_loss:         callable returning tensor holding on_policy training loss and summaries
+            off_policy_loss:        callable returning tensor holding off_policy training loss and summaries
+            vr_loss:                callable returning tensor holding value replay loss and summaries
+            rp_loss:                callable returning tensor holding reward prediction loss and summaries
+            pc_loss:                callable returning tensor holding pixel_control loss and summaries
             random_seed:            int or None
             model_gamma:            gamma discount factor
             model_gae_lambda:       GAE lambda
@@ -92,8 +104,6 @@ class Unreal(object):
             use_reward_prediction:  use aux. off-policy reward prediction task
             use_pixel_control:      use aux. off-policy pixel control task
             use_value_replay:       use aux. off-policy value replay task (not used, if use_off_policy_aac=True)
-            use_rebalanced_replay:  NOT USED
-            rebalance_skewness:     NOT USED
             rp_lambda:              reward prediction loss weight
             pc_lambda:              pixel control loss weight
             vr_lambda:              value replay loss weight
@@ -101,6 +111,10 @@ class Unreal(object):
             gamma_pc:               NOT USED
             rp_reward_threshold:    reward prediction task classification threshold, above which reward is 'non-zero'
             rp_sequence_size:       reward prediction sample size, in number of experiences
+            clip_epsilon:           PPO: surrogate L^clip epsilon
+            num_epochs:             num. of SGD runs for every train step
+            pi_prime_update_period:   int, PPO: pi to pi_old update period in number of train steps
+            _use_target_policy:     target policy tracking behavioral one with some delay in parameters update
         """
         self.log = log
         self.random_seed = random_seed
@@ -110,18 +124,24 @@ class Unreal(object):
         self.log.debug('AAC_{}_rnd_seed:{}, log_u_sample_(0,1]x5: {}'.
                        format(task, random_seed, log_uniform([1e-10,1], 5)))
 
-        ob_space_type = BTgymMultiSpace
         try:
-            assert type(env.observation_space) == ob_space_type
+            assert isinstance(env.observation_space, ObSpace)
 
-        except:
+        except AssertionError:
             raise TypeError('AAC_{}: expected environment observation space of type {}, got: {}'.
-                            format(self.task, ob_space_type, type(env.observation_space)))
+                            format(self.task, ObSpace, type(env.observation_space)))
 
         self.env = env
         self.task = task
         self.policy_class = policy_config['class_ref']
         self.policy_kwargs = policy_config['kwargs']
+
+        # Losses:
+        self.on_policy_loss = on_policy_loss
+        self.off_policy_loss = off_policy_loss
+        self.vr_loss = vr_loss
+        self.rp_loss = rp_loss
+        self.pc_loss = pc_loss
 
         # AAC specific:
         self.model_gamma = model_gamma  # decay
@@ -155,7 +175,7 @@ class Unreal(object):
         # If True - use ATARI gym env.:
         self.test_mode = test_mode
 
-        # UNREAL specific:
+        # UNREAL/AUX and Off-policy specific:
         self.off_aac_lambda = off_aac_lambda
         self.rp_lambda = rp_lambda
         self.pc_lambda = log_uniform(pc_lambda, 1)
@@ -169,6 +189,11 @@ class Unreal(object):
         self.rp_sequence_size = rp_sequence_size
         self.rp_reward_threshold = rp_reward_threshold
 
+        # PPO related:
+        self.clip_epsilon = clip_epsilon
+        self.num_epochs = num_epochs
+        self.pi_prime_update_period = pi_prime_update_period
+
         # On/off switchers for off-policy training and auxiliary tasks:
         self.use_off_policy_aac = use_off_policy_aac
         self.use_reward_prediction = use_reward_prediction
@@ -177,11 +202,11 @@ class Unreal(object):
             self.use_value_replay = False  # v-replay is redundant in this case
         else:
             self.use_value_replay = use_value_replay
-        self.use_rebalanced_replay = use_rebalanced_replay
-        self.rebalance_skewness = rebalance_skewness
 
         self.use_any_aux_tasks = use_value_replay or use_pixel_control or use_reward_prediction
         self.use_memory = self.use_any_aux_tasks or self.use_off_policy_aac
+
+        self.use_target_policy = _use_target_policy
 
         self.log.info(
             'AAC_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}, pc_lambda: {:1.8f}.'.
@@ -199,6 +224,7 @@ class Unreal(object):
                 'ob_space': env.observation_space.shape,
                 'ac_space': env.action_space.n,
                 'rp_sequence_size': self.rp_sequence_size,
+                'aux_estimate': self.use_any_aux_tasks,
             }
         )
         # Start building graph:
@@ -210,6 +236,12 @@ class Unreal(object):
         # Worker:
         with tf.device(worker_device):
             self.local_network = pi = self.make_policy('local')
+
+            if self.use_target_policy:
+                self.local_network_prime = pi_prime = self.make_policy('local_prime')
+
+            else:
+                self.local_network_prime = pi_prime = self.make_dummy_policy()
 
             # Meant for Batch-norm layers:
             pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
@@ -228,19 +260,21 @@ class Unreal(object):
                 power=1,
                 cycle=False,
             )
-
+            clip_epsilon = tf.cast(self.clip_epsilon * learn_rate / self.opt_learn_rate, tf.float32)
             # On-policy AAC loss definition:
             self.on_pi_act_target = tf.placeholder(tf.float32, [None, env.action_space.n], name="on_policy_action_pl")
             self.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
             self.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
 
-            on_pi_loss, on_pi_summaries = aac_loss_def(
+            on_pi_loss, on_pi_summaries = self.on_policy_loss(
                 act_target=self.on_pi_act_target,
                 adv_target=self.on_pi_adv_target,
                 r_target=self.on_pi_r_target,
                 pi_logits=pi.on_logits,
                 pi_vf=pi.on_vf,
+                pi_prime_logits=pi_prime.on_logits,
                 entropy_beta=self.model_beta,
+                epsilon=clip_epsilon,
                 name='on_policy/aac',
                 verbose=True
             )
@@ -250,14 +284,7 @@ class Unreal(object):
             model_summaries = on_pi_summaries
 
             # Off-policy batch size:
-            off_bs = tf.to_float(tf.shape(pi.off_state_in[list(pi.on_state_in.keys())[0]])[0])
-
-            if self.use_rebalanced_replay:
-                # Simplified importance-sampling bias correction:
-                rebalanced_replay_weight = self.rebalance_skewness / off_bs
-
-            else:
-                rebalanced_replay_weight = 1.0
+            #off_bs = tf.to_float(tf.shape(pi.off_state_in[list(pi.on_state_in.keys())[0]])[0])
 
             # Off policy training:
             self.off_pi_act_target = tf.placeholder(
@@ -268,53 +295,56 @@ class Unreal(object):
                 tf.float32, [None], name="off_policy_return_pl")
 
             if self.use_off_policy_aac:
-                # Off-policy PPO loss graph mirrors on-policy:
-                off_ppo_loss, off_ppo_summaries = aac_loss_def(
+                # Off-policy AAC loss graph mirrors on-policy:
+                # TODO: sample mini_batches to break trajectory
+                off_pi_loss, off_pi_summaries = self.off_policy_loss(
                     act_target=self.off_pi_act_target,
                     adv_target=self.off_pi_adv_target,
                     r_target=self.off_pi_r_target,
                     pi_logits=pi.off_logits,
                     pi_vf=pi.off_vf,
+                    pi_prime_logits=pi_prime.off_logits,
                     entropy_beta=self.model_beta,
+                    epsilon=clip_epsilon,
                     name='off_policy/aac',
                     verbose=False
                 )
-                self.loss = self.loss + self.off_aac_lambda * rebalanced_replay_weight * off_ppo_loss
-                model_summaries += off_ppo_summaries
+                self.loss = self.loss + self.off_aac_lambda * off_pi_loss
+                model_summaries += off_pi_summaries
 
             if self.use_pixel_control:
                 # Pixel control loss:
                 self.pc_action = tf.placeholder(tf.float32, [None, env.action_space.n], name="pc_action")
                 self.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
 
-                pc_loss, pc_summaries = pc_loss_def(
+                pc_loss, pc_summaries = self.pc_loss(
                     actions=self.pc_action,
                     targets=self.pc_target,
                     pi_pc_q=pi.pc_q,
                     name='off_policy/pixel_control',
                     verbose=True
                 )
-                self.loss = self.loss + self.pc_lambda * rebalanced_replay_weight * pc_loss
+                self.loss = self.loss + self.pc_lambda * pc_loss
                 # Add specific summary:
                 model_summaries += pc_summaries
 
             if self.use_value_replay:
                 # Value function replay loss:
                 self.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
-                vr_loss, vr_summaries = value_fn_loss_def(
+                vr_loss, vr_summaries = self.vr_loss(
                     r_target=self.vr_target,
                     pi_vf=pi.vr_value,
                     name='off_policy/value_replay',
                     verbose=True
                 )
-                self.loss = self.loss + self.vr_lambda * rebalanced_replay_weight * vr_loss
+                self.loss = self.loss + self.vr_lambda * vr_loss
                 model_summaries += vr_summaries
 
             if self.use_reward_prediction:
                 # Reward prediction loss:
                 self.rp_target = tf.placeholder(tf.float32, [1,3], name="rp_target")
 
-                rp_loss, rp_summaries = rp_loss_def(
+                rp_loss, rp_summaries = self.rp_loss(
                     rp_targets=self.rp_target,
                     pi_rp_logits=pi.rp_logits,
                     name='off_policy/reward_prediction',
@@ -327,22 +357,26 @@ class Unreal(object):
             grads, _ = tf.clip_by_global_norm(grads, 40.0)
 
             # Copy weights from the parameter server to the local model
-            self.sync = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
+            self.sync = self.sync_pi = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
+
+            if self.use_target_policy:
+                # Copy weights from new policy model to target one:
+                self.sync_pi_prime = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi_prime.var_list, pi.var_list)])
 
             grads_and_vars = list(zip(grads, self.network.var_list))
 
-            # Since every observation mod. has same batch size - just take  first key in a row:
+            # Since every observation mod. has same batch size - just take first key in a row:
             self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in[list(pi.on_state_in.keys())[0]])[0])
 
             # Each worker gets a different set of adam optimizer parameters
-            opt = tf.train.AdamOptimizer(learn_rate, epsilon=1e-5)
+            #opt = tf.train.AdamOptimizer(learn_rate, epsilon=1e-5)
 
-            #opt = tf.train.RMSPropOptimizer(
-            #    learning_rate=learn_rate,
-            #    decay=0.99,
-            #    momentum=0.0,
-            #    epsilon=1e-8,
-            #)
+            opt = tf.train.RMSPropOptimizer(
+                learning_rate=learn_rate,
+                decay=self.opt_decay,
+                momentum=self.opt_momentum,
+                epsilon=self.opt_epsilon,
+            )
 
             #self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), self.inc_step)
             #self.train_op = tf.group(opt.apply_gradients(grads_and_vars), self.inc_step)
@@ -493,6 +527,20 @@ class Unreal(object):
                 self.inc_episode = self.global_episode.assign_add(1)
         return network
 
+    def make_dummy_policy(self):
+
+        class dummy_pi(object):
+            """
+            Policy plug when target network is not used.
+            """
+            def __init__(self):
+                self.on_logits = None
+                self.off_logits = None
+                self.on_vf = None
+                self.off_vf = None
+
+        return dummy_pi()
+
     def start(self, sess, summary_writer):
         self.runner.start_runner(sess, summary_writer)  # starting runner thread
         self.summary_writer = summary_writer
@@ -559,18 +607,6 @@ class Unreal(object):
             feeder = {self.pc_action: batch['action'], self.pc_target: batch['pixel_change']}
         return feeder
 
-    def _fill_replay_memory(self, sess):
-        """
-        Fills replay memory with initial experiences.
-        Supposed to be called by parent worker() just before training begins.
-        """
-        if self.use_memory:
-            sess.run(self.sync)
-            while not self.memory.is_full():
-                rollout = self.get_rollout()
-                self.memory.add_rollout(rollout)
-            self.log.info('AAC_{}: replay memory filled.'.format(self.task))
-
     def process(self, sess):
         """
         Grabs a on_policy_rollout that's been produced by the thread runner,
@@ -578,8 +614,12 @@ class Unreal(object):
         The update is then sent to the parameter server.
         """
 
+        # Copy weights from local policy to local target policy:
+        if self.use_target_policy and self.local_steps % self.pi_prime_update_period == 0:
+            sess.run(self.sync_pi_prime)
+
         # Copy weights from shared to local new_policy:
-        sess.run(self.sync)
+        sess.run(self.sync_pi)
 
         # Get and process rollout for on-policy train step:
         on_policy_rollout = self.get_rollout()
@@ -597,18 +637,9 @@ class Unreal(object):
                 self.local_network.train_phase: True,
             }
         )
-
         if self.use_memory:
             # Get sample from replay memory:
-            if self.use_rebalanced_replay:
-                off_policy_sample = self.memory.sample_priority(
-                    self.replay_rollout_length,
-                    skewness=self.rebalance_skewness,
-                    exact_size=False
-                )
-            else:
-                off_policy_sample = self.memory.sample_uniform(self.replay_rollout_length)
-
+            off_policy_sample = self.memory.sample_uniform(self.replay_rollout_length)
             off_policy_rollout = Rollout()
             off_policy_rollout.add_memory_sample(off_policy_sample)
             off_policy_batch = off_policy_rollout.process(gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
@@ -651,11 +682,15 @@ class Unreal(object):
         fetches = [self.train_op]
 
         if should_compute_summary:
-            fetches = [self.train_op, self.model_summary_op, self.inc_step]
+            fetches_last = fetches + [self.model_summary_op, self.inc_step]
         else:
-            fetches = [self.train_op, self.inc_step]
+            fetches_last = fetches + [self.inc_step]
 
-        fetched = sess.run(fetches, feed_dict=feed_dict)
+        # Do a number of SGD train steps:
+        for i in range(self.num_epochs - 1):
+            fetched = sess.run(fetches, feed_dict=feed_dict)
+
+        fetched = sess.run(fetches_last, feed_dict=feed_dict)
 
         if should_compute_summary:
             self.summary_writer.add_summary(tf.Summary.FromString(fetched[-2]), fetched[-1])
