@@ -1,52 +1,190 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>btgym.algorithms package &#8212; BTgym 0.0.6 documentation</title>
-    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
-        VERSION:     '0.0.6',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true,
-        SOURCELINK_SUFFIX: '.txt'
-      };
-    </script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="btgym.rendering package" href="btgym.rendering.html" /> 
-  </head>
-  <body>
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
-          <a href="btgym.rendering.html" title="btgym.rendering package"
-             accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">BTgym 0.0.6 documentation</a> &#187;</li> 
-      </ul>
-    </div>  
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.algorithms package &mdash; BTGym 0.0.6 documentation</title>
+  
 
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="BTGym 0.0.6 documentation" href="index.html"/>
+        <link rel="prev" title="btgym.rendering package" href="btgym.rendering.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html">btgym.datafeed module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.strategy">btgym.strategy module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">btgym.algorithms package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.launcher">btgym.algorithms.launcher module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.worker">btgym.algorithms.worker module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.runner">btgym.algorithms.runner module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.a3c">btgym.algorithms.a3c module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.envs">btgym.algorithms.envs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.losses">btgym.algorithms.losses module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.memory">btgym.algorithms.memory module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-model-module">btgym.algorithms.model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-aac-policy-module">btgym.algorithms.aac_policy module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-model-unreal-module">btgym.algorithms.model_unreal module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.nnet_util">btgym.algorithms.nnet_util module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.ppo">btgym.algorithms.ppo module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.rollout">btgym.algorithms.rollout module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.unreal">btgym.algorithms.unreal module</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>btgym.algorithms package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/btgym.algorithms.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
             
   <div class="section" id="btgym-algorithms-package">
 <h1>btgym.algorithms package<a class="headerlink" href="#btgym-algorithms-package" title="Permalink to this headline">¶</a></h1>
@@ -79,8 +217,8 @@ running separate instances of BTgym/Atari environment.</p>
 <p class="first admonition-title">Note</p>
 <dl class="last docutils">
 <dt>class_config_dict:  dictionary containing at least two keys:</dt>
-<dd>class_ref:      reference to class constructor or function
-kwargs:         dictionary of keyword arguments passed to <cite>class_ref</cite></dd>
+<dd><cite>class_ref</cite>: reference to class constructor or function;
+<cite>kwargs</cite>: dictionary of keyword arguments passed to <cite>class_ref</cite></dd>
 </dl>
 </div>
 <dl class="method">
@@ -367,12 +505,6 @@ runner appends the rollout to the queue.</p>
 </tbody>
 </table>
 <dl class="method">
-<dt id="btgym.algorithms.a3c.A3C.pull_batch_from_queue">
-<code class="descname">pull_batch_from_queue</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/a3c.html#A3C.pull_batch_from_queue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.a3c.A3C.pull_batch_from_queue" title="Permalink to this definition">¶</a></dt>
-<dd><p>Self explanatory:  take a rollout from the queue of the thread runner.</p>
-</dd></dl>
-
-<dl class="method">
 <dt id="btgym.algorithms.a3c.A3C.process">
 <code class="descname">process</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/a3c.html#A3C.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.a3c.A3C.process" title="Permalink to this definition">¶</a></dt>
 <dd><p>Algorithm single training step.
@@ -391,7 +523,7 @@ The update is then sent to the parameter server.</p>
 <span id="btgym-algorithms-losses-module"></span><h2>btgym.algorithms.losses module<a class="headerlink" href="#module-btgym.algorithms.losses" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="btgym.algorithms.losses.aac_loss_def">
-<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">aac_loss_def</code><span class="sig-paren">(</span><em>act_target</em>, <em>adv_target</em>, <em>r_target</em>, <em>pi_logits</em>, <em>pi_vf</em>, <em>entropy_beta</em>, <em>name='aac'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#aac_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.aac_loss_def" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">aac_loss_def</code><span class="sig-paren">(</span><em>act_target</em>, <em>adv_target</em>, <em>r_target</em>, <em>pi_logits</em>, <em>pi_vf</em>, <em>pi_prime_logits</em>, <em>entropy_beta</em>, <em>epsilon</em>, <em>name='aac'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#aac_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.aac_loss_def" title="Permalink to this definition">¶</a></dt>
 <dd><p>Advantage Actor Critic loss definition.
 Paper: <a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a></p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -420,7 +552,7 @@ list of related tensorboard summaries.</p>
 
 <dl class="function">
 <dt id="btgym.algorithms.losses.ppo_loss_def">
-<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">ppo_loss_def</code><span class="sig-paren">(</span><em>act_target</em>, <em>adv_target</em>, <em>r_target</em>, <em>pi_logits</em>, <em>pi_vf</em>, <em>pi_old_logits</em>, <em>entropy_beta</em>, <em>epsilon</em>, <em>name='ppo'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#ppo_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.ppo_loss_def" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">ppo_loss_def</code><span class="sig-paren">(</span><em>act_target</em>, <em>adv_target</em>, <em>r_target</em>, <em>pi_logits</em>, <em>pi_vf</em>, <em>pi_prime_logits</em>, <em>entropy_beta</em>, <em>epsilon</em>, <em>name='ppo'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#ppo_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.ppo_loss_def" title="Permalink to this definition">¶</a></dt>
 <dd><p>PPO clipped surrogate loss definition, as (7) in <a class="reference external" href="https://arxiv.org/pdf/1707.06347.pdf">https://arxiv.org/pdf/1707.06347.pdf</a></p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -432,7 +564,7 @@ list of related tensorboard summaries.</p>
 <li><strong>r_target</strong> – tensor holding policy empirical returns targets;</li>
 <li><strong>pi_logits</strong> – policy logits output tensor;</li>
 <li><strong>pi_vf</strong> – policy value function output tensor;</li>
-<li><strong>pi_old_logits</strong> – old_policy logits output tensor;</li>
+<li><strong>pi_prime_logits</strong> – old_policy logits output tensor;</li>
 <li><strong>entropy_beta</strong> – entropy regularization constant</li>
 <li><strong>epsilon</strong> – L^Clip epsilon tensor;</li>
 <li><strong>name</strong> – scope;</li>
@@ -567,7 +699,7 @@ list of related tensorboard summaries.</p>
 <span id="btgym-algorithms-memory-module"></span><h2>btgym.algorithms.memory module<a class="headerlink" href="#module-btgym.algorithms.memory" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.memory.Memory">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.memory.</code><code class="descname">Memory</code><span class="sig-paren">(</span><em>history_size</em>, <em>max_sample_size</em>, <em>log</em>, <em>reward_threshold=0.1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.memory.</code><code class="descname">Memory</code><span class="sig-paren">(</span><em>history_size</em>, <em>max_sample_size</em>, <em>log</em>, <em>rollout_getter</em>, <em>task=-1</em>, <em>reward_threshold=0.1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/2/library/functions.html#object" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
 <p>Replay memory with rebalanced replay.</p>
 <div class="admonition note">
@@ -581,6 +713,9 @@ list of related tensorboard summaries.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>history_size</strong> – number of experiences stored;</li>
 <li><strong>max_sample_size</strong> – maximum allowed sample size (e.g. off-policy rollout length);</li>
+<li><strong>log</strong> – parent logger;</li>
+<li><strong>rollout_getter</strong> – callable returning instance of Rollout</li>
+<li><strong>task</strong> – parent worker id;</li>
 <li><strong>reward_threshold</strong> – if <a href="#id11"><span class="problematic" id="id12">|experience.reward|</span></a> &gt; reward_threshold: experience is saved as ‘prioritized’;</li>
 </ul>
 </td>
@@ -619,6 +754,21 @@ list of related tensorboard summaries.</p>
 <dt id="btgym.algorithms.memory.Memory.is_full">
 <code class="descname">is_full</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.is_full"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.is_full" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.memory.Memory.fill">
+<code class="descname">fill</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.fill"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.fill" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fills replay memory with initial experiences.
+Supposed to be called by parent worker() just before training begins.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rollout_getter</strong> – callable, returning instance of Rollout.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="btgym.algorithms.memory.Memory.sample_uniform">
@@ -679,21 +829,6 @@ if number is reached - sample returned ‘as is’.</li>
 <div class="section" id="module-btgym.algorithms.nnet_util">
 <span id="btgym-algorithms-nnet-util-module"></span><h2>btgym.algorithms.nnet_util module<a class="headerlink" href="#module-btgym.algorithms.nnet_util" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="btgym.algorithms.nnet_util.rnn_placeholders">
-<code class="descclassname">btgym.algorithms.nnet_util.</code><code class="descname">rnn_placeholders</code><span class="sig-paren">(</span><em>state</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nnet_util.html#rnn_placeholders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nnet_util.rnn_placeholders" title="Permalink to this definition">¶</a></dt>
-<dd><p>Given nested [multilayer] RNN state tensor, infers and returns state placeholders.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>state</strong> – tf.nn.lstm zero-state tuple.</td>
-</tr>
-</tbody>
-</table>
-<p>Returns:    tf.contrib.rnn.LSTMStateTuple of placeholders</p>
-</dd></dl>
-
-<dl class="function">
 <dt id="btgym.algorithms.nnet_util.linear">
 <code class="descclassname">btgym.algorithms.nnet_util.</code><code class="descname">linear</code><span class="sig-paren">(</span><em>x</em>, <em>size</em>, <em>name</em>, <em>initializer=None</em>, <em>bias_init=0</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nnet_util.html#linear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nnet_util.linear" title="Permalink to this definition">¶</a></dt>
 <dd><p>Linear network layer.</p>
@@ -710,6 +845,12 @@ if number is reached - sample returned ‘as is’.</li>
 <code class="descclassname">btgym.algorithms.nnet_util.</code><code class="descname">deconv2d</code><span class="sig-paren">(</span><em>x</em>, <em>output_channels</em>, <em>name</em>, <em>filter_size=(4</em>, <em>4)</em>, <em>stride=(2</em>, <em>2)</em>, <em>dtype=tf.float32</em>, <em>collections=None</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nnet_util.html#deconv2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nnet_util.deconv2d" title="Permalink to this definition">¶</a></dt>
 <dd><p>Deconvolution layer, paper:
 <a class="reference external" href="http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf">http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf</a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nnet_util.conv1d">
+<code class="descclassname">btgym.algorithms.nnet_util.</code><code class="descname">conv1d</code><span class="sig-paren">(</span><em>x</em>, <em>num_filters</em>, <em>name</em>, <em>filter_size=3</em>, <em>stride=2</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>collections=None</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nnet_util.html#conv1d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nnet_util.conv1d" title="Permalink to this definition">¶</a></dt>
+<dd><p>1D convolution layer</p>
 </dd></dl>
 
 <dl class="function">
@@ -786,7 +927,7 @@ action sampling function.</td>
 <dt id="btgym.algorithms.ppo.PPO">
 <em class="property">class </em><code class="descclassname">btgym.algorithms.ppo.</code><code class="descname">PPO</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>clip_epsilon=0.1</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-10</em>, <em>rollout_length=20</em>, <em>num_epochs=1</em>, <em>pi_old_update_period=10</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>use_rebalanced_replay=False</em>, <em>rebalance_skewness=2</em>, <em>rp_lambda=1</em>, <em>pc_lambda=0.1</em>, <em>vr_lambda=1</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Asynchronous implementation of Proximal Policy Optimization algorithm,
-augmented with auxiliary Unreal-style tasks.</p>
+augmented with auxiliary BaseAAC-style tasks.</p>
 <p>paper:
 <a class="reference external" href="https://arxiv.org/pdf/1707.06347.pdf">https://arxiv.org/pdf/1707.06347.pdf</a></p>
 <p>Based on PPO-SGD code from OpenAI <cite>Baselines</cite> repository under MIT licence:
@@ -886,6 +1027,22 @@ The update is then sent to the parameter server.</p>
 </div>
 <div class="section" id="module-btgym.algorithms.rollout">
 <span id="btgym-algorithms-rollout-module"></span><h2>btgym.algorithms.rollout module<a class="headerlink" href="#module-btgym.algorithms.rollout" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="btgym.algorithms.rollout.make_rollout_getter">
+<code class="descclassname">btgym.algorithms.rollout.</code><code class="descname">make_rollout_getter</code><span class="sig-paren">(</span><em>queue</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#make_rollout_getter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.make_rollout_getter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rollout getter constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>queue</strong> – instance of <cite>Queue</cite> class to get rollouts from.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">callable, returning instance of Rollout.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="class">
 <dt id="btgym.algorithms.rollout.Rollout">
 <em class="property">class </em><code class="descclassname">btgym.algorithms.rollout.</code><code class="descname">Rollout</code><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#Rollout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.Rollout" title="Permalink to this definition">¶</a></dt>
@@ -948,8 +1105,8 @@ Computes rollout returns and the advantages.</p>
 <div class="section" id="module-btgym.algorithms.unreal">
 <span id="btgym-algorithms-unreal-module"></span><h2>btgym.algorithms.unreal module<a class="headerlink" href="#module-btgym.algorithms.unreal" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
-<dt id="btgym.algorithms.unreal.Unreal">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.unreal.</code><code class="descname">Unreal</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-10</em>, <em>rollout_length=20</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>use_rebalanced_replay=False</em>, <em>rebalance_skewness=2</em>, <em>rp_lambda=1</em>, <em>pc_lambda=0.1</em>, <em>vr_lambda=1</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#Unreal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.Unreal" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.algorithms.unreal.BaseAAC">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.unreal.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1</em>, <em>pc_lambda=0.1</em>, <em>vr_lambda=1</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>_use_target_policy=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC" title="Permalink to this definition">¶</a></dt>
 <dd><p>Asynchronous Advantage Actor Critic with auxiliary control tasks.</p>
 <p>This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
 <a class="reference external" href="https://miyosuda.github.io/">https://miyosuda.github.io/</a>
@@ -968,6 +1125,11 @@ Computes rollout returns and the advantages.</p>
 <li><strong>task</strong> – int</li>
 <li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
 <li><strong>log</strong> – parent log</li>
+<li><strong>on_policy_loss</strong> – callable returning tensor holding on_policy training loss and summaries</li>
+<li><strong>off_policy_loss</strong> – callable returning tensor holding off_policy training loss and summaries</li>
+<li><strong>vr_loss</strong> – callable returning tensor holding value replay loss and summaries</li>
+<li><strong>rp_loss</strong> – callable returning tensor holding reward prediction loss and summaries</li>
+<li><strong>pc_loss</strong> – callable returning tensor holding pixel_control loss and summaries</li>
 <li><strong>random_seed</strong> – int or None</li>
 <li><strong>model_gamma</strong> – gamma discount factor</li>
 <li><strong>model_gae_lambda</strong> – GAE lambda</li>
@@ -990,8 +1152,6 @@ Computes rollout returns and the advantages.</p>
 <li><strong>use_reward_prediction</strong> – use aux. off-policy reward prediction task</li>
 <li><strong>use_pixel_control</strong> – use aux. off-policy pixel control task</li>
 <li><strong>use_value_replay</strong> – use aux. off-policy value replay task (not used, if use_off_policy_aac=True)</li>
-<li><strong>use_rebalanced_replay</strong> – NOT USED</li>
-<li><strong>rebalance_skewness</strong> – NOT USED</li>
 <li><strong>rp_lambda</strong> – reward prediction loss weight</li>
 <li><strong>pc_lambda</strong> – pixel control loss weight</li>
 <li><strong>vr_lambda</strong> – value replay loss weight</li>
@@ -999,46 +1159,58 @@ Computes rollout returns and the advantages.</p>
 <li><strong>gamma_pc</strong> – NOT USED</li>
 <li><strong>rp_reward_threshold</strong> – reward prediction task classification threshold, above which reward is ‘non-zero’</li>
 <li><strong>rp_sequence_size</strong> – reward prediction sample size, in number of experiences</li>
+<li><strong>clip_epsilon</strong> – PPO: surrogate L^clip epsilon</li>
+<li><strong>num_epochs</strong> – num. of SGD runs for every train step</li>
+<li><strong>pi_prime_update_period</strong> – int, PPO: pi to pi_old update period in number of train steps</li>
+<li><strong>_use_target_policy</strong> – target policy tracking behavioral one with some delay in parameters update</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
-<dt id="btgym.algorithms.unreal.Unreal.pull_batch_from_queue">
-<code class="descname">pull_batch_from_queue</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#Unreal.pull_batch_from_queue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.Unreal.pull_batch_from_queue" title="Permalink to this definition">¶</a></dt>
-<dd><p>Self explanatory:  take a rollout from the queue of the thread runner.</p>
+<dt id="btgym.algorithms.unreal.BaseAAC.make_policy">
+<code class="descname">make_policy</code><span class="sig-paren">(</span><em>scope</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC.make_policy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC.make_policy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configures and instantiates policy network and ops.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><cite>global</cite> name_scope network should be defined first.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>scope</strong> – name scope</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">policy instance</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.algorithms.unreal.Unreal.process_rp">
-<code class="descname">process_rp</code><span class="sig-paren">(</span><em>rp_experience_frames</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#Unreal.process_rp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.Unreal.process_rp" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.algorithms.unreal.BaseAAC.process_rp">
+<code class="descname">process_rp</code><span class="sig-paren">(</span><em>rp_experience_frames</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC.process_rp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC.process_rp" title="Permalink to this definition">¶</a></dt>
 <dd><p>Estimates reward prediction target.
+Tuned for Atari visual input
 Returns feed dictionary for <cite>reward prediction</cite> loss estimation subgraph.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.algorithms.unreal.Unreal.process_vr">
-<code class="descname">process_vr</code><span class="sig-paren">(</span><em>batch</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#Unreal.process_vr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.Unreal.process_vr" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.algorithms.unreal.BaseAAC.process_vr">
+<code class="descname">process_vr</code><span class="sig-paren">(</span><em>batch</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC.process_vr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC.process_vr" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns feed dictionary for <cite>value replay</cite> loss estimation subgraph.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.algorithms.unreal.Unreal.process_pc">
-<code class="descname">process_pc</code><span class="sig-paren">(</span><em>batch</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#Unreal.process_pc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.Unreal.process_pc" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.algorithms.unreal.BaseAAC.process_pc">
+<code class="descname">process_pc</code><span class="sig-paren">(</span><em>batch</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC.process_pc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC.process_pc" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns feed dictionary for <cite>pixel control</cite> loss estimation subgraph.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.algorithms.unreal.Unreal.fill_replay_memory">
-<code class="descname">fill_replay_memory</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#Unreal.fill_replay_memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.Unreal.fill_replay_memory" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fills replay memory with initial experiences.
-Supposed to be called by parent worker() just before training begins.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.unreal.Unreal.process">
-<code class="descname">process</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#Unreal.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.Unreal.process" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.algorithms.unreal.BaseAAC.process">
+<code class="descname">process</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC.process" title="Permalink to this definition">¶</a></dt>
 <dd><p>Grabs a on_policy_rollout that’s been produced by the thread runner,
 samples off_policy rollout[s] from replay memory and updates the parameters.
 The update is then sent to the parameter server.</p>
@@ -1050,46 +1222,74 @@ The update is then sent to the parameter server.</p>
 </div>
 
 
+           </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="btgym.rendering.html" class="btn btn-neutral" title="btgym.rendering package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-  <h4>Previous topic</h4>
-  <p class="topless"><a href="btgym.rendering.html"
-                        title="previous chapter">btgym.rendering package</a></p>
-<div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
-    <form class="search" action="search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
-    </form>
-</div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
-        </div>
-      </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             >index</a></li>
-        <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
-          <a href="btgym.rendering.html" title="btgym.rendering package"
-             >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">BTgym 0.0.6 documentation</a> &#187;</li> 
-      </ul>
-    </div>
-    <div class="footer" role="contentinfo">
-        &#169; Copyright 2017, Andrew Muzikin.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
-    </div>
-  </body>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.0.6',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
 </html>

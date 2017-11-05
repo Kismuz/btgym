@@ -12,11 +12,11 @@ from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def,
 from btgym.algorithms.util import feed_dict_rnn_context, feed_dict_from_nested
 
 
-class Unreal(object):
+class BaseAAC(object):
     """
-    Asynchronous Advantage Actor Critic with auxiliary control tasks.
+    Base Asynchronous Advantage Actor Critic algorithm framework class with auxiliary control tasks.
 
-    This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+    Auxiliary tasks implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
     https://miyosuda.github.io/
     https://github.com/miyosuda/unreal
 
@@ -275,7 +275,7 @@ class Unreal(object):
                 pi_prime_logits=pi_prime.on_logits,
                 entropy_beta=self.model_beta,
                 epsilon=clip_epsilon,
-                name='on_policy/aac',
+                name='on_policy',
                 verbose=True
             )
 
@@ -306,7 +306,7 @@ class Unreal(object):
                     pi_prime_logits=pi_prime.off_logits,
                     entropy_beta=self.model_beta,
                     epsilon=clip_epsilon,
-                    name='off_policy/aac',
+                    name='off_policy',
                     verbose=False
                 )
                 self.loss = self.loss + self.off_aac_lambda * off_pi_loss
@@ -321,7 +321,7 @@ class Unreal(object):
                     actions=self.pc_action,
                     targets=self.pc_target,
                     pi_pc_q=pi.pc_q,
-                    name='off_policy/pixel_control',
+                    name='off_policy',
                     verbose=True
                 )
                 self.loss = self.loss + self.pc_lambda * pc_loss
@@ -334,7 +334,7 @@ class Unreal(object):
                 vr_loss, vr_summaries = self.vr_loss(
                     r_target=self.vr_target,
                     pi_vf=pi.vr_value,
-                    name='off_policy/value_replay',
+                    name='off_policy',
                     verbose=True
                 )
                 self.loss = self.loss + self.vr_lambda * vr_loss
@@ -347,7 +347,7 @@ class Unreal(object):
                 rp_loss, rp_summaries = self.rp_loss(
                     rp_targets=self.rp_target,
                     pi_rp_logits=pi.rp_logits,
-                    name='off_policy/reward_prediction',
+                    name='off_policy',
                     verbose=True
                 )
                 self.loss = self.loss + self.rp_lambda * rp_loss
@@ -534,6 +534,12 @@ class Unreal(object):
             Policy plug when target network is not used.
             """
             def __init__(self):
+                self.on_state_in = None
+                self.off_state_in = None
+                self.on_lstm_state_pl_flatten = None
+                self.off_lstm_state_pl_flatten = None
+                self.on_a_r_in = None
+                self.off_a_r_in = None
                 self.on_logits = None
                 self.off_logits = None
                 self.on_vf = None
@@ -627,7 +633,9 @@ class Unreal(object):
 
         # Feeder for on-policy AAC loss estimation graph:
         feed_dict = feed_dict_from_nested(self.local_network.on_state_in, on_policy_batch['state'])
-        feed_dict.update(feed_dict_rnn_context(self.local_network.on_lstm_state_pl_flatten, on_policy_batch['context']))
+        feed_dict.update(
+            feed_dict_rnn_context(self.local_network.on_lstm_state_pl_flatten, on_policy_batch['context'])
+        )
         feed_dict.update(
             {
                 self.local_network.on_a_r_in: on_policy_batch['last_action_reward'],
@@ -637,6 +645,16 @@ class Unreal(object):
                 self.local_network.train_phase: True,
             }
         )
+        if self.use_target_policy:
+            feed_dict.update(
+                feed_dict_from_nested(self.local_network_prime.on_state_in, on_policy_batch['state'])
+            )
+            feed_dict.update(
+                feed_dict_rnn_context(self.local_network_prime.on_lstm_state_pl_flatten, on_policy_batch['context'])
+            )
+            feed_dict.update(
+                {self.local_network_prime.on_a_r_in: on_policy_batch['last_action_reward']}
+            )
         if self.use_memory:
             # Get sample from replay memory:
             off_policy_sample = self.memory.sample_uniform(self.replay_rollout_length)
@@ -656,6 +674,18 @@ class Unreal(object):
                     self.off_pi_r_target: off_policy_batch['r'],
                 }
             )
+            if self.use_target_policy:
+                off_policy_feed_dict.update(
+                    feed_dict_from_nested(self.local_network_prime.off_state_in, off_policy_batch['state'])
+                )
+
+                off_policy_feed_dict.update(
+                    {self.local_network_prime.off_a_r_in: off_policy_batch['last_action_reward']}
+                )
+                off_policy_feed_dict.update(
+                    feed_dict_rnn_context(self.local_network_prime.off_lstm_state_pl_flatten,
+                                          off_policy_batch['context']))
+
             feed_dict.update(off_policy_feed_dict)
 
             # Update with reward prediction subgraph:
@@ -703,3 +733,5 @@ class Unreal(object):
         #        print(k, v.shape)
         #    except:
         #        print(k, type(v))
+
+Unreal = BaseAAC

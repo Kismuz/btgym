@@ -14,8 +14,9 @@ from btgym.algorithms.util import *
 import tensorflow as tf
 
 
-class BaseAacAuxPolicy(object):
-    """ Base advantage actor-critic LSTM policy estimator with auxiliary control tasks.
+class BaseAacPolicy(object):
+    """
+    Base advantage actor-critic LSTM policy estimator with auxiliary control tasks.
 
     Papers:
     https://arxiv.org/abs/1602.01783
@@ -36,7 +37,7 @@ class BaseAacAuxPolicy(object):
             rp_sequence_size:   reward prediction sample length
             lstm_class:         tf.nn.lstm class
             lstm_layers:        tuple of LSTM layers sizes
-            aux_estimate:       (bool), if True - add auxiliary tasks estimations to callbacks dictionary.
+            aux_estimate:       (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary.
             **kwargs            not used
         """
         self.ob_space = ob_space
@@ -58,7 +59,7 @@ class BaseAacAuxPolicy(object):
 
         # Base on-policy AAC network:
         # Conv. layers:
-        on_aac_x = conv_2d_network(self.on_state_in['atari42x42'], ob_space['atari42x42'], ac_space)
+        on_aac_x = conv_2d_network(self.on_state_in['external'], ob_space['external'], ac_space)
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
         [on_aac_x, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
             lstm_network(on_aac_x, self.on_a_r_in, lstm_class, lstm_layers, )
@@ -66,7 +67,7 @@ class BaseAacAuxPolicy(object):
         [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(on_aac_x, ac_space)
 
         # Off-policy AAC network (shared):
-        off_aac_x = conv_2d_network(self.off_state_in['atari42x42'], ob_space['atari42x42'], ac_space, reuse=True)
+        off_aac_x = conv_2d_network(self.off_state_in['external'], ob_space['external'], ac_space, reuse=True)
         [off_x_lstm_out, _, _, self.off_lstm_state_pl_flatten] =\
             lstm_network(off_aac_x, self.off_a_r_in, lstm_class, lstm_layers, reuse=True)
         [self.off_logits, self.off_vf, _] =\
@@ -76,7 +77,7 @@ class BaseAacAuxPolicy(object):
         # Define pixels-change estimation function:
         # Yes, it rather env-specific but for atari case it is handy to do it here, see self.get_pc_target():
         [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
-            pixel_change_2d_estimator(ob_space['atari42x42'])
+            pixel_change_2d_estimator(ob_space['external'])
 
         self.pc_state_in = self.off_state_in
         self.pc_a_r_in = self.off_a_r_in
@@ -100,7 +101,7 @@ class BaseAacAuxPolicy(object):
 
         # Aux3: `Reward prediction` network:
         # Shared conv.:
-        rp_x = conv_2d_network(self.rp_state_in['atari42x42'], ob_space['atari42x42'], ac_space, reuse=True)
+        rp_x = conv_2d_network(self.rp_state_in['external'], ob_space['external'], ac_space, reuse=True)
 
         # RP output:
         self.rp_logits = dense_rp_network(rp_x)
@@ -191,82 +192,8 @@ class BaseAacAuxPolicy(object):
         Returns:
             Estimated absolute difference between two subsampled states.
         """
-        # TODO: NESTED OBS?
         sess = tf.get_default_session()
-        feeder = {self.pc_change_state_in: state['atari42x42'], self.pc_change_last_state_in: last_state['atari42x42']}
+        feeder = {self.pc_change_state_in: state['external'], self.pc_change_last_state_in: last_state['external']}
 
         return sess.run(self.pc_target, feeder)[0,...,0]
 
-
-class BaseAacPolicy(BaseAacAuxPolicy):
-    """
-    Vanilla advantage actor-critic LSTM policy estimator.
-    """
-
-    def __init__(self, ob_space, ac_space, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), **kwargs):
-        """
-        Defines network for estimating  actions, logits and value function.
-        In fact, it's just truncated `BaseAacAuxPolicy` to gain some execution speed.
-        Expects uni-modal observation as array of shape `ob_space`.
-
-        Args:
-            ob_space:           observation state shape
-            ac_space:           discrete action space shape (length)
-            rp_sequence_size:   reward prediction sample length
-            lstm_class:         tf.nn.lstm class
-            lstm_layers:        tuple of LSTM layers sizes
-            **kwargs
-        """
-        #print('kwargs:', kwargs)
-        kwargs['rp_sequence_size'] = 3
-        kwargs['aux_estimate'] = False
-        super(BaseAacPolicy, self).__init__(
-            ob_space=ob_space,
-            ac_space=ac_space,
-            lstm_class=lstm_class,
-            lstm_layers=lstm_layers,
-            **kwargs
-        )
-
-
-AacAuxPolicy = BaseAacAuxPolicy
-
-AacPolicy = BaseAacPolicy
-
-PpoPolicy = BaseAacPolicy
-
-
-class BaseAacPolicyMModal(object):
-    """
-    Base advantage actor-critic LSTM policy estimator for bi-modal obs.space.
-    Expects observation space to be dictionary containing different modalities.
-
-
-    Papers:
-    https://arxiv.org/abs/1602.01783
-
-    https://arxiv.org/abs/1611.05397
-    """
-    def __init__(self, ob_space, ac_space,  lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,)):
-        """
-
-        Args:
-            ob_space:               dictionary of shapes
-            ac_space:               int, dimensionality of discrete action space
-            lstm_class:
-            lstm_layers:
-        """
-        self.ob_space = ob_space
-        self.ac_space = ac_space
-        self.lstm_class = lstm_class
-        self.lstm_layers = lstm_layers
-        self.on_state_in ={}
-
-        for mod in ob_space.keys():
-            self.on_state_in[mod] = tf.placeholder(
-                tf.float32,
-                [None] + list(ob_space[mod]),
-                name=mod+'_on_policy_state_in_pl'
-            )
-
-        self.on_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='on_policy_action_reward_in_pl')

@@ -2,7 +2,7 @@
 
 ****
 
-- **[Atari tests](./atari_tests)**: Gym-Atari tests for A3C, Unreal, PPO.
+- **[Atari tests](./atari_tests)**: Gym-Atari tests for A3C, BaseAAC, PPO.
 
 - **[A3C for BTgym](./a3c)**: TEMPORARILY OUT OF SERVICE
 

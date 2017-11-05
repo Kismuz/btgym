@@ -433,7 +433,7 @@ class Unreal(object):
         self.rp_sequence_size = rp_sequence_size
         self.rp_reward_threshold = rp_reward_threshold
 
-        # On/off switchers for off-policy training and Unreal auxiliary tasks:
+        # On/off switchers for off-policy training and BaseAAC auxiliary tasks:
         self.use_off_policy_a3c = use_off_policy_a3c
         self.use_reward_prediction = use_reward_prediction
         self.use_pixel_control = use_pixel_control

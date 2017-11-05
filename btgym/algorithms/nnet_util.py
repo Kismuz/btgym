@@ -143,7 +143,7 @@ def conv_2d_network(x,
         x = tf.nn.elu(
             conv2d(x, num_filters, "conv2d_{}".format(i + 1), filter_size, stride, pad, dtype, collections, reuse)
         )
-    # A3c/Unreal original paper design:
+    # A3c/BaseAAC original paper design:
     # x = tf.nn.elu(conv2d(x, 16, 'conv2d_1', [8, 8], [4, 4], pad, dtype, collections, reuse))
     # x = tf.nn.elu(conv2d(x, 32, 'conv2d_2', [4, 4], [2, 2], pad, dtype, collections, reuse))
     # x = tf.nn.elu(

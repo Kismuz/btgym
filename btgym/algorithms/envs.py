@@ -26,7 +26,7 @@ class AtariRescale42x42(gym.ObservationWrapper):
     def __init__(self, env_id=None):
         """
         Gym wrapper, pipes Atari into BTgym algorithms, as later expect observations to be DictSpace.
-        Makes Atari environment return state as dictionary with single key 'atari42x42' holding
+        Makes Atari environment return state as dictionary with single key 'external' holding
         normalized in [0,1] grayscale 42x42 visual output.
 
         Args:
@@ -36,8 +36,8 @@ class AtariRescale42x42(gym.ObservationWrapper):
         env = gym.make(env_id)
         super(AtariRescale42x42, self).__init__(env)
         self.observation_space = DictSpace(
-            {'atari42x42': spaces.Box(0.0, 1.0, [42, 42, 1])}
+            {'external': spaces.Box(0.0, 1.0, [42, 42, 1])}
         )
 
     def _observation(self, observation):
-        return {'atari42x42': _process_frame42(observation)}
+        return {'external': _process_frame42(observation)}

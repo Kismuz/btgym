@@ -263,7 +263,7 @@ def env_runner(sess,
                         renderings = sess.run(
                             ep_summary['test_render_op'],
                             feed_dict={
-                                ep_summary['render_atari_pl']: state['atari42x42'][None,:] * 255
+                                ep_summary['render_atari_pl']: state['external'][None,:] * 255
                             }
                         )
 

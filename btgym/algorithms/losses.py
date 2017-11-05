@@ -4,7 +4,7 @@ from btgym.algorithms.math_util import cat_entropy, kl_divergence
 
 
 def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_logits,
-                 entropy_beta, epsilon, name='aac', verbose=False):
+                 entropy_beta, epsilon, name='_aac_', verbose=False):
     """
     Advantage Actor Critic loss definition.
     Paper: https://arxiv.org/abs/1602.01783
@@ -14,8 +14,10 @@ def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_lo
         adv_target:      tensor holding policy estimated advantages targets;
         r_target:        tensor holding policy empirical returns targets;
         pi_logits:       policy logits output tensor;
+        pi_prime_logits: not used;
         pi_vf:           policy value function output tensor;
         entropy_beta:    entropy regularization constant;
+        epsilon:         not used;
         name:            scope;
         verbose:         summary level.
 
@@ -23,7 +25,7 @@ def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_lo
         tensor holding estimated AAC loss;
         list of related tensorboard summaries.
     """
-    with tf.name_scope(name):
+    with tf.name_scope(name + '/aac'):
         neg_pi_log_prob = tf.nn.softmax_cross_entropy_with_logits(
             logits=pi_logits,
             labels=act_target
@@ -45,7 +47,7 @@ def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_lo
 
 
 def ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_logits, entropy_beta, epsilon,
-                 name='ppo', verbose=False):
+                 name='_ppo_', verbose=False):
     """
     PPO clipped surrogate loss definition, as (7) in https://arxiv.org/pdf/1707.06347.pdf
 
@@ -68,7 +70,7 @@ def ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_lo
     #act_target = tf.placeholder(tf.float32, [None, env.action_space.n], name="on_policy_action_pl")
     #adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
     #r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
-    with tf.name_scope(name):
+    with tf.name_scope(name + '/ppo'):
         pi_log_prob = - tf.nn.softmax_cross_entropy_with_logits(
             logits=pi_logits,
             labels=act_target
@@ -110,7 +112,7 @@ def ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_lo
     return loss, summaries
 
 
-def value_fn_loss_def(r_target, pi_vf, name='value_replay', verbose=False):
+def value_fn_loss_def(r_target, pi_vf, name='_vr_', verbose=False):
     """
     Value function loss.
 
@@ -125,7 +127,7 @@ def value_fn_loss_def(r_target, pi_vf, name='value_replay', verbose=False):
         list of related tensorboard summaries.
     """
     # r_target = tf.placeholder(tf.float32, [None], name="vr_target")
-    with tf.name_scope(name):
+    with tf.name_scope(name + '/value_replay'):
         loss = tf.losses.mean_squared_error(r_target, pi_vf)
 
         if verbose:
@@ -136,7 +138,7 @@ def value_fn_loss_def(r_target, pi_vf, name='value_replay', verbose=False):
     return loss, summaries
 
 
-def pc_loss_def(actions, targets, pi_pc_q, name='pixel_control', verbose=False):
+def pc_loss_def(actions, targets, pi_pc_q, name='_pc_', verbose=False):
     """
     Pixel control auxiliary task loss definition.
 
@@ -161,7 +163,7 @@ def pc_loss_def(actions, targets, pi_pc_q, name='pixel_control', verbose=False):
     """
     #actions = tf.placeholder(tf.float32, [None, env.action_space.n], name="pc_action")
     #targets = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
-    with tf.name_scope(name):
+    with tf.name_scope(name + '/pixel_control'):
         # Get Q-value features for actions been taken and define loss:
         pc_action_reshaped = tf.reshape(actions, [-1, 1, 1, tf.shape(actions)[-1]])
         pc_q_action = tf.multiply(pi_pc_q, pc_action_reshaped)
@@ -178,7 +180,7 @@ def pc_loss_def(actions, targets, pi_pc_q, name='pixel_control', verbose=False):
     return loss, summaries
 
 
-def rp_loss_def(rp_targets, pi_rp_logits, name='reward_prediction', verbose=False):
+def rp_loss_def(rp_targets, pi_rp_logits, name='_rp_', verbose=False):
     """
     Reward prediction auxillary task loss definition.
 
@@ -202,7 +204,7 @@ def rp_loss_def(rp_targets, pi_rp_logits, name='reward_prediction', verbose=Fals
         list of related tensorboard summaries.
     """
     #rp_targets = tf.placeholder(tf.float32, [1, 3], name="rp_target")
-    with tf.name_scope(name):
+    with tf.name_scope(name + '/reward_prediction'):
         loss = tf.nn.softmax_cross_entropy_with_logits(
             labels=rp_targets,
             logits=pi_rp_logits
@@ -211,75 +213,5 @@ def rp_loss_def(rp_targets, pi_rp_logits, name='reward_prediction', verbose=Fals
             summaries = [tf.summary.scalar('class_loss', loss), ]
         else:
             summaries = []
-
-    return loss, summaries
-
-
-def aac_ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_old_logits, entropy_beta, epsilon,
-                 name='ppo', verbose=False):
-    """
-
-    Note:
-        IGNORE!! Do not use this loss.
-
-    Args:
-        act_target      tensor holding policy actions targets;
-        adv_target      tensor holding policy estimated advantages targets;
-        r_target        tensor holding policy empirical returns targets;
-        pi__logits      policy logits output tensor;
-        pi_vf           policy value function output tensor;
-        pi_old_logits   old_policy logits output tensor;
-        entropy_beta    entropy regularization constant
-        epsilon         L^Clip epsilon tensor;
-        name            scope;
-        verbose         summary level.
-    Returns:
-        tensor holding estimated PPO L^Clip loss;
-        list of related tensorboard summaries.
-    """
-    with tf.name_scope(name):
-        pi_log_prob = - tf.nn.softmax_cross_entropy_with_logits(
-            logits=pi_logits,
-            labels=act_target
-        )
-        pi_old_log_prob = tf.stop_gradient(
-            - tf.nn.softmax_cross_entropy_with_logits(
-                logits=pi_old_logits,
-                labels=act_target
-            )
-        )
-        pi_ratio = tf.exp(pi_log_prob - pi_old_log_prob)
-
-        surr1 = pi_ratio * adv_target  # surrogate from conservative policy iteration
-        surr2 = tf.clip_by_value(pi_ratio, 1.0 - epsilon, 1.0 + epsilon) * adv_target
-
-        pi_surr_loss = - 0.5 * tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
-        vf_loss = 0.75 * tf.reduce_mean(tf.square(pi_vf - r_target))  # V.fn. loss
-        entropy = tf.reduce_mean(cat_entropy(pi_logits))
-
-        aac_loss = - 0.5 * tf.reduce_mean(pi_log_prob * adv_target)
-
-        loss = pi_surr_loss + aac_loss + vf_loss - entropy * entropy_beta
-
-        aac_surr_loss = aac_loss + pi_surr_loss
-
-        # Info:
-        mean_pi_ratio = tf.reduce_mean(pi_ratio)
-        mean_vf = tf.reduce_mean(pi_vf)
-        mean_kl_old_new = tf.reduce_mean(kl_divergence(pi_old_logits, pi_logits ))
-
-        summaries = [
-            tf.summary.scalar('l_clip_loss', pi_surr_loss),
-            tf.summary.scalar('value_loss', vf_loss),
-            tf.summary.scalar('pi_loss', aac_loss),
-            tf.summary.scalar('aac_ppo_loss', aac_surr_loss),
-        ]
-        if verbose:
-            summaries += [
-                tf.summary.scalar('entropy', entropy),
-                tf.summary.scalar('Dkl_old_new', mean_kl_old_new),
-                tf.summary.scalar('pi_ratio', mean_pi_ratio),
-                tf.summary.scalar('value_f', mean_vf),
-            ]
 
     return loss, summaries

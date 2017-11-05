@@ -25,11 +25,11 @@ from .memory import Memory
 from .runner import RunnerThread
 from .worker import Worker
 
-from .policy import BaseAacAuxPolicy, AacAuxPolicy, BaseAacPolicy, AacPolicy
+from .policy import BaseAacPolicy
 
-from .a3c import A3C
-from .unreal import Unreal
+from .aac import BaseAAC, Unreal
 from .ppo import PPO
+from .a3c import A3C
 
 from .launcher import Launcher
 

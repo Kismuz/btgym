@@ -37,7 +37,7 @@ import copy
 
 from .worker import Worker
 from .a3c import A3C
-from .policy import BaseAacAuxPolicy
+from .policy import BaseAacPolicy
 
 
 
@@ -92,7 +92,7 @@ class Launcher():
             log_dir='./tmp/btgym_aac_log',
         )
         self.policy_config = dict(
-            class_ref=BaseAacAuxPolicy,
+            class_ref=BaseAacPolicy,
             kwargs=dict(
                 lstm_layers=(256,)
             )
