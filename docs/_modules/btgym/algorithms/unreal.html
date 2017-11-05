@@ -185,7 +185,7 @@
 <span class="kn">from</span> <span class="nn">btgym.algorithms.util</span> <span class="k">import</span> <span class="n">feed_dict_rnn_context</span><span class="p">,</span> <span class="n">feed_dict_from_nested</span>
 
 
-<div class="viewcode-block" id="BaseAAC"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.BaseAAC">[docs]</a><span class="k">class</span> <span class="nc">BaseAAC</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="Unreal"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.Unreal">[docs]</a><span class="k">class</span> <span class="nc">Unreal</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Asynchronous Advantage Actor Critic with auxiliary control tasks.</span>
 
@@ -643,7 +643,7 @@
 
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: init() done&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
 
-<div class="viewcode-block" id="BaseAAC.make_policy"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.BaseAAC.make_policy">[docs]</a>    <span class="k">def</span> <span class="nf">make_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">):</span>
+<div class="viewcode-block" id="Unreal.make_policy"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.Unreal.make_policy">[docs]</a>    <span class="k">def</span> <span class="nf">make_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Configures and instantiates policy network and ops.</span>
 
@@ -718,7 +718,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">runner</span><span class="o">.</span><span class="n">start_runner</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">)</span>  <span class="c1"># starting runner thread</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="n">summary_writer</span>
 
-<div class="viewcode-block" id="BaseAAC.process_rp"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.BaseAAC.process_rp">[docs]</a>    <span class="k">def</span> <span class="nf">process_rp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rp_experience_frames</span><span class="p">):</span>
+<div class="viewcode-block" id="Unreal.process_rp"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.Unreal.process_rp">[docs]</a>    <span class="k">def</span> <span class="nf">process_rp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rp_experience_frames</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Estimates reward prediction target.</span>
 <span class="sd">        Tuned for Atari visual input</span>
@@ -749,7 +749,7 @@
         <span class="n">feeder</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_target</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">rp_t</span><span class="p">])})</span>
         <span class="k">return</span> <span class="n">feeder</span></div>
 
-<div class="viewcode-block" id="BaseAAC.process_vr"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.BaseAAC.process_vr">[docs]</a>    <span class="k">def</span> <span class="nf">process_vr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+<div class="viewcode-block" id="Unreal.process_vr"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.Unreal.process_vr">[docs]</a>    <span class="k">def</span> <span class="nf">process_vr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns feed dictionary for `value replay` loss estimation subgraph.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -761,7 +761,7 @@
             <span class="n">feeder</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">vr_target</span><span class="p">:</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]}</span>  <span class="c1"># redundant actually :)</span>
         <span class="k">return</span> <span class="n">feeder</span></div>
 
-<div class="viewcode-block" id="BaseAAC.process_pc"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.BaseAAC.process_pc">[docs]</a>    <span class="k">def</span> <span class="nf">process_pc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+<div class="viewcode-block" id="Unreal.process_pc"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.Unreal.process_pc">[docs]</a>    <span class="k">def</span> <span class="nf">process_pc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns feed dictionary for `pixel control` loss estimation subgraph.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -780,7 +780,7 @@
             <span class="n">feeder</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_action</span><span class="p">:</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">:</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;pixel_change&#39;</span><span class="p">]}</span>
         <span class="k">return</span> <span class="n">feeder</span></div>
 
-<div class="viewcode-block" id="BaseAAC.process"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.BaseAAC.process">[docs]</a>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">):</span>
+<div class="viewcode-block" id="Unreal.process"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.Unreal.process">[docs]</a>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Grabs a on_policy_rollout that&#39;s been produced by the thread runner,</span>
 <span class="sd">        samples off_policy rollout[s] from replay memory and updates the parameters.</span>

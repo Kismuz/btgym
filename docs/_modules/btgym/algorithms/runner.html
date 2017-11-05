@@ -436,7 +436,7 @@
                         <span class="n">renderings</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
                             <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_render_op&#39;</span><span class="p">],</span>
                             <span class="n">feed_dict</span><span class="o">=</span><span class="p">{</span>
-                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_atari_pl&#39;</span><span class="p">]:</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;atari42x42&#39;</span><span class="p">][</span><span class="kc">None</span><span class="p">,:]</span> <span class="o">*</span> <span class="mi">255</span>
+                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_atari_pl&#39;</span><span class="p">]:</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">][</span><span class="kc">None</span><span class="p">,:]</span> <span class="o">*</span> <span class="mi">255</span>
                             <span class="p">}</span>
                         <span class="p">)</span>
 

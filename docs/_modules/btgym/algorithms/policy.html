@@ -186,7 +186,7 @@
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 
 
-<span class="k">class</span> <span class="nc">BaseAacPolicy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">BaseAacAuxPolicy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Base advantage actor-critic LSTM policy estimator with auxiliary control tasks.</span>
 
 <span class="sd">    Papers:</span>
@@ -369,7 +369,7 @@
         <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">,</span> <span class="n">feeder</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span><span class="o">...</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
 
 
-<span class="k">class</span> <span class="nc">BaseAacPolicy</span><span class="p">(</span><span class="n">BaseAacPolicy</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">BaseAacPolicy</span><span class="p">(</span><span class="n">BaseAacAuxPolicy</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Vanilla advantage actor-critic LSTM policy estimator.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -377,7 +377,7 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ob_space</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">lstm_class</span><span class="o">=</span><span class="n">rnn</span><span class="o">.</span><span class="n">BasicLSTMCell</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Defines network for estimating  actions, logits and value function.</span>
-<span class="sd">        In fact, it&#39;s just truncated `BaseAacPolicy` to gain some execution speed.</span>
+<span class="sd">        In fact, it&#39;s just truncated `BaseAacAuxPolicy` to gain some execution speed.</span>
 <span class="sd">        Expects uni-modal observation as array of shape `ob_space`.</span>
 
 <span class="sd">        Args:</span>
@@ -400,7 +400,7 @@
         <span class="p">)</span>
 
 
-<span class="n">AacAuxPolicy</span> <span class="o">=</span> <span class="n">BaseAacPolicy</span>
+<span class="n">AacAuxPolicy</span> <span class="o">=</span> <span class="n">BaseAacAuxPolicy</span>
 
 <span class="n">AacPolicy</span> <span class="o">=</span> <span class="n">BaseAacPolicy</span>
 

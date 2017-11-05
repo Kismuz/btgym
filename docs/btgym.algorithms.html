@@ -120,7 +120,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.nnet_util">btgym.algorithms.nnet_util module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.ppo">btgym.algorithms.ppo module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.rollout">btgym.algorithms.rollout module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.unreal">btgym.algorithms.unreal module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-unreal-module">btgym.algorithms.unreal module</a></li>
 </ul>
 </li>
 </ul>
@@ -469,8 +469,8 @@ runner appends the rollout to the queue.</p>
 <span id="btgym-algorithms-a3c-module"></span><h2>btgym.algorithms.a3c module<a class="headerlink" href="#module-btgym.algorithms.a3c" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.a3c.A3C">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.a3c.</code><code class="descname">A3C</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-10</em>, <em>rollout_length=20</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/a3c.html#A3C"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.a3c.A3C" title="Permalink to this definition">¶</a></dt>
-<dd><p>Asynchronous Advantage Actor Critic algorithm.</p>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.a3c.</code><code class="descname">A3C</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/a3c.html#A3C"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.a3c.A3C" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vanilla Asynchronous Advantage Actor Critic algorithm.</p>
 <p>Based on original code taken from OpenAI repository under MIT licence:
 <a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
 <p>Paper: <a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a></p>
@@ -504,15 +504,6 @@ runner appends the rollout to the queue.</p>
 </tr>
 </tbody>
 </table>
-<dl class="method">
-<dt id="btgym.algorithms.a3c.A3C.process">
-<code class="descname">process</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/a3c.html#A3C.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.a3c.A3C.process" title="Permalink to this definition">¶</a></dt>
-<dd><p>Algorithm single training step.
-Grabs an on_policy_rollout that’s been produced by the thread runner,
-samples off_policy rollout[s] from replay memory and updates the parameters.
-The update is then sent to the parameter server.</p>
-</dd></dl>
-
 </dd></dl>
 
 </div>
@@ -523,7 +514,7 @@ The update is then sent to the parameter server.</p>
 <span id="btgym-algorithms-losses-module"></span><h2>btgym.algorithms.losses module<a class="headerlink" href="#module-btgym.algorithms.losses" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="btgym.algorithms.losses.aac_loss_def">
-<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">aac_loss_def</code><span class="sig-paren">(</span><em>act_target</em>, <em>adv_target</em>, <em>r_target</em>, <em>pi_logits</em>, <em>pi_vf</em>, <em>pi_prime_logits</em>, <em>entropy_beta</em>, <em>epsilon</em>, <em>name='aac'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#aac_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.aac_loss_def" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">aac_loss_def</code><span class="sig-paren">(</span><em>act_target</em>, <em>adv_target</em>, <em>r_target</em>, <em>pi_logits</em>, <em>pi_vf</em>, <em>pi_prime_logits</em>, <em>entropy_beta</em>, <em>epsilon</em>, <em>name='_aac_'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#aac_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.aac_loss_def" title="Permalink to this definition">¶</a></dt>
 <dd><p>Advantage Actor Critic loss definition.
 Paper: <a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a></p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -535,8 +526,10 @@ Paper: <a class="reference external" href="https://arxiv.org/abs/1602.01783">htt
 <li><strong>adv_target</strong> – tensor holding policy estimated advantages targets;</li>
 <li><strong>r_target</strong> – tensor holding policy empirical returns targets;</li>
 <li><strong>pi_logits</strong> – policy logits output tensor;</li>
+<li><strong>pi_prime_logits</strong> – not used;</li>
 <li><strong>pi_vf</strong> – policy value function output tensor;</li>
 <li><strong>entropy_beta</strong> – entropy regularization constant;</li>
+<li><strong>epsilon</strong> – not used;</li>
 <li><strong>name</strong> – scope;</li>
 <li><strong>verbose</strong> – summary level.</li>
 </ul>
@@ -552,7 +545,7 @@ list of related tensorboard summaries.</p>
 
 <dl class="function">
 <dt id="btgym.algorithms.losses.ppo_loss_def">
-<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">ppo_loss_def</code><span class="sig-paren">(</span><em>act_target</em>, <em>adv_target</em>, <em>r_target</em>, <em>pi_logits</em>, <em>pi_vf</em>, <em>pi_prime_logits</em>, <em>entropy_beta</em>, <em>epsilon</em>, <em>name='ppo'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#ppo_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.ppo_loss_def" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">ppo_loss_def</code><span class="sig-paren">(</span><em>act_target</em>, <em>adv_target</em>, <em>r_target</em>, <em>pi_logits</em>, <em>pi_vf</em>, <em>pi_prime_logits</em>, <em>entropy_beta</em>, <em>epsilon</em>, <em>name='_ppo_'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#ppo_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.ppo_loss_def" title="Permalink to this definition">¶</a></dt>
 <dd><p>PPO clipped surrogate loss definition, as (7) in <a class="reference external" href="https://arxiv.org/pdf/1707.06347.pdf">https://arxiv.org/pdf/1707.06347.pdf</a></p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -582,7 +575,7 @@ list of related tensorboard summaries.</p>
 
 <dl class="function">
 <dt id="btgym.algorithms.losses.value_fn_loss_def">
-<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">value_fn_loss_def</code><span class="sig-paren">(</span><em>r_target</em>, <em>pi_vf</em>, <em>name='value_replay'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#value_fn_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.value_fn_loss_def" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">value_fn_loss_def</code><span class="sig-paren">(</span><em>r_target</em>, <em>pi_vf</em>, <em>name='_vr_'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#value_fn_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.value_fn_loss_def" title="Permalink to this definition">¶</a></dt>
 <dd><p>Value function loss.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -606,7 +599,7 @@ list of related tensorboard summaries.</p>
 
 <dl class="function">
 <dt id="btgym.algorithms.losses.pc_loss_def">
-<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">pc_loss_def</code><span class="sig-paren">(</span><em>actions</em>, <em>targets</em>, <em>pi_pc_q</em>, <em>name='pixel_control'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#pc_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.pc_loss_def" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">pc_loss_def</code><span class="sig-paren">(</span><em>actions</em>, <em>targets</em>, <em>pi_pc_q</em>, <em>name='_pc_'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#pc_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.pc_loss_def" title="Permalink to this definition">¶</a></dt>
 <dd><p>Pixel control auxiliary task loss definition.</p>
 <p>Paper: <a class="reference external" href="https://arxiv.org/abs/1611.05397">https://arxiv.org/abs/1611.05397</a></p>
 <p>Borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:</p>
@@ -635,7 +628,7 @@ list of related tensorboard summaries.</p>
 
 <dl class="function">
 <dt id="btgym.algorithms.losses.rp_loss_def">
-<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">rp_loss_def</code><span class="sig-paren">(</span><em>rp_targets</em>, <em>pi_rp_logits</em>, <em>name='reward_prediction'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#rp_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.rp_loss_def" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">rp_loss_def</code><span class="sig-paren">(</span><em>rp_targets</em>, <em>pi_rp_logits</em>, <em>name='_rp_'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#rp_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.rp_loss_def" title="Permalink to this definition">¶</a></dt>
 <dd><p>Reward prediction auxillary task loss definition.</p>
 <p>Paper: <a class="reference external" href="https://arxiv.org/abs/1611.05397">https://arxiv.org/abs/1611.05397</a></p>
 <p>Borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:</p>
@@ -654,39 +647,6 @@ list of related tensorboard summaries.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated rp loss;
-list of related tensorboard summaries.</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="btgym.algorithms.losses.aac_ppo_loss_def">
-<code class="descclassname">btgym.algorithms.losses.</code><code class="descname">aac_ppo_loss_def</code><span class="sig-paren">(</span><em>act_target</em>, <em>adv_target</em>, <em>r_target</em>, <em>pi_logits</em>, <em>pi_vf</em>, <em>pi_old_logits</em>, <em>entropy_beta</em>, <em>epsilon</em>, <em>name='ppo'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/losses.html#aac_ppo_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.losses.aac_ppo_loss_def" title="Permalink to this definition">¶</a></dt>
-<dd><div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">IGNORE!! Do not use this loss.</p>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>tensor holding policy actions targets;</strong> (<em>act_target</em>) – </li>
-<li><strong>tensor holding policy estimated advantages targets;</strong> (<em>adv_target</em>) – </li>
-<li><strong>tensor holding policy empirical returns targets;</strong> (<em>r_target</em>) – </li>
-<li><strong>policy logits output tensor;</strong> (<em>pi__logits</em>) – </li>
-<li><strong>policy value function output tensor;</strong> (<em>pi_vf</em>) – </li>
-<li><strong>old_policy logits output tensor;</strong> (<em>pi_old_logits</em>) – </li>
-<li><strong>entropy regularization constant</strong> (<em>entropy_beta</em>) – </li>
-<li><strong>L^Clip epsilon tensor;</strong> (<em>epsilon</em>) – </li>
-<li><strong>scope;</strong> (<em>name</em>) – </li>
-<li><strong>summary level.</strong> (<em>verbose</em>) – </li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated PPO L^Clip loss;
 list of related tensorboard summaries.</p>
 </td>
 </tr>
@@ -925,9 +885,9 @@ action sampling function.</td>
 <span id="btgym-algorithms-ppo-module"></span><h2>btgym.algorithms.ppo module<a class="headerlink" href="#module-btgym.algorithms.ppo" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.ppo.PPO">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.ppo.</code><code class="descname">PPO</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>clip_epsilon=0.1</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-10</em>, <em>rollout_length=20</em>, <em>num_epochs=1</em>, <em>pi_old_update_period=10</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>use_rebalanced_replay=False</em>, <em>rebalance_skewness=2</em>, <em>rp_lambda=1</em>, <em>pc_lambda=0.1</em>, <em>vr_lambda=1</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO" title="Permalink to this definition">¶</a></dt>
-<dd><p>Asynchronous implementation of Proximal Policy Optimization algorithm,
-augmented with auxiliary BaseAAC-style tasks.</p>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.ppo.</code><code class="descname">PPO</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO" title="Permalink to this definition">¶</a></dt>
+<dd><p>Asynchronous implementation of Proximal Policy Optimization algorithm (L^Clip objective)
+augmented with auxiliary control tasks.</p>
 <p>paper:
 <a class="reference external" href="https://arxiv.org/pdf/1707.06347.pdf">https://arxiv.org/pdf/1707.06347.pdf</a></p>
 <p>Based on PPO-SGD code from OpenAI <cite>Baselines</cite> repository under MIT licence:
@@ -943,11 +903,13 @@ augmented with auxiliary BaseAAC-style tasks.</p>
 <li><strong>task</strong> – int</li>
 <li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
 <li><strong>log</strong> – parent log</li>
+<li><strong>vr_loss</strong> – callable returning tensor holding value replay loss and summaries</li>
+<li><strong>rp_loss</strong> – callable returning tensor holding reward prediction loss and summaries</li>
+<li><strong>pc_loss</strong> – callable returning tensor holding pixel_control loss and summaries</li>
 <li><strong>random_seed</strong> – int or None</li>
 <li><strong>model_gamma</strong> – gamma discount factor</li>
 <li><strong>model_gae_lambda</strong> – GAE lambda</li>
 <li><strong>model_beta</strong> – entropy regularization beta</li>
-<li><strong>clip_epsilon</strong> – PPO surrogate L^clip epsilon</li>
 <li><strong>opt_max_train_steps</strong> – train steps to run</li>
 <li><strong>opt_decay_steps</strong> – learn ratio decay steps</li>
 <li><strong>opt_end_learn_rate</strong> – final lerarn rate</li>
@@ -956,72 +918,31 @@ augmented with auxiliary BaseAAC-style tasks.</p>
 <li><strong>opt_momentum</strong> – optimizer momentum, if apll.</li>
 <li><strong>opt_epsilon</strong> – optimizer epsilon</li>
 <li><strong>rollout_length</strong> – on-policy rollout length</li>
-<li><strong>num_epochs</strong> – num. of SGD runs for every train step</li>
-<li><strong>pi_old_update_period</strong> – int, PPO pi to pi old update period in number of train steps</li>
 <li><strong>episode_summary_freq</strong> – int, write episode summary for every i’th episode</li>
 <li><strong>env_render_freq</strong> – int, write environment rendering summary for every i’th train step</li>
 <li><strong>model_summary_freq</strong> – int, write model summary for every i’th train step</li>
 <li><strong>test_mode</strong> – True: Atari, False: BTGym</li>
 <li><strong>replay_memory_size</strong> – in number of experiences</li>
 <li><strong>replay_rollout_length</strong> – off-policy rollout length</li>
-<li><strong>use_off_policy_aac</strong> – use full AAC off policy training</li>
+<li><strong>use_off_policy_aac</strong> – use full PPO off-policy training instead of Value-replay</li>
 <li><strong>use_reward_prediction</strong> – use aux. off-policy reward prediction task</li>
 <li><strong>use_pixel_control</strong> – use aux. off-policy pixel control task</li>
 <li><strong>use_value_replay</strong> – use aux. off-policy value replay task (not used, if use_off_policy_aac=True)</li>
-<li><strong>use_rebalanced_replay</strong> – NOT USED</li>
-<li><strong>rebalance_skewness</strong> – NOT USED</li>
 <li><strong>rp_lambda</strong> – reward prediction loss weight</li>
 <li><strong>pc_lambda</strong> – pixel control loss weight</li>
 <li><strong>vr_lambda</strong> – value replay loss weight</li>
-<li><strong>off_aac_lambda</strong> – off-policy AAC loss weight</li>
+<li><strong>off_aac_lambda</strong> – off-policy PPO loss weight</li>
 <li><strong>gamma_pc</strong> – NOT USED</li>
 <li><strong>rp_reward_threshold</strong> – reward prediction task classification threshold, above which reward is ‘non-zero’</li>
 <li><strong>rp_sequence_size</strong> – reward prediction sample size, in number of experiences</li>
+<li><strong>clip_epsilon</strong> – PPO: surrogate L^clip epsilon</li>
+<li><strong>num_epochs</strong> – num. of SGD runs for every train step</li>
+<li><strong>pi_prime_update_period</strong> – int, PPO: pi to pi_old update period in number of train steps</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
-<dl class="method">
-<dt id="btgym.algorithms.ppo.PPO.pull_batch_from_queue">
-<code class="descname">pull_batch_from_queue</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO.pull_batch_from_queue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO.pull_batch_from_queue" title="Permalink to this definition">¶</a></dt>
-<dd><p>Self explanatory:  take a rollout from the queue of the thread runner.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.ppo.PPO.process_rp">
-<code class="descname">process_rp</code><span class="sig-paren">(</span><em>rp_experience_frames</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO.process_rp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO.process_rp" title="Permalink to this definition">¶</a></dt>
-<dd><p>Estimates reward prediction target.
-Returns feed dictionary for <cite>reward prediction</cite> loss estimation subgraph.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.ppo.PPO.process_vr">
-<code class="descname">process_vr</code><span class="sig-paren">(</span><em>batch</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO.process_vr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO.process_vr" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns feed dictionary for <cite>value replay</cite> loss estimation subgraph.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.ppo.PPO.process_pc">
-<code class="descname">process_pc</code><span class="sig-paren">(</span><em>batch</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO.process_pc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO.process_pc" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns feed dictionary for <cite>pixel control</cite> loss estimation subgraph.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.ppo.PPO.fill_replay_memory">
-<code class="descname">fill_replay_memory</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO.fill_replay_memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO.fill_replay_memory" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fills replay memory with initial experiences.
-Supposed to be called by parent worker() just before training begins.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.ppo.PPO.process">
-<code class="descname">process</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO.process" title="Permalink to this definition">¶</a></dt>
-<dd><p>Grabs a on_policy_rollout that’s been produced by the thread runner,
-samples off_policy rollout[s] from replay memory and updates the parameters.
-The update is then sent to the parameter server.</p>
-</dd></dl>
-
 </dd></dl>
 
 </div>
@@ -1102,122 +1023,8 @@ Computes rollout returns and the advantages.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-btgym.algorithms.unreal">
-<span id="btgym-algorithms-unreal-module"></span><h2>btgym.algorithms.unreal module<a class="headerlink" href="#module-btgym.algorithms.unreal" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="btgym.algorithms.unreal.BaseAAC">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.unreal.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_train_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1</em>, <em>pc_lambda=0.1</em>, <em>vr_lambda=1</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>_use_target_policy=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC" title="Permalink to this definition">¶</a></dt>
-<dd><p>Asynchronous Advantage Actor Critic with auxiliary control tasks.</p>
-<p>This UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
-<a class="reference external" href="https://miyosuda.github.io/">https://miyosuda.github.io/</a>
-<a class="reference external" href="https://github.com/miyosuda/unreal">https://github.com/miyosuda/unreal</a></p>
-<p>Original A3C code comes from OpenAI repository under MIT licence:
-<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
-<p>Papers:
-<a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a>
-<a class="reference external" href="https://arxiv.org/abs/1611.05397">https://arxiv.org/abs/1611.05397</a></p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env</strong> – envirionment instance.</li>
-<li><strong>task</strong> – int</li>
-<li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
-<li><strong>log</strong> – parent log</li>
-<li><strong>on_policy_loss</strong> – callable returning tensor holding on_policy training loss and summaries</li>
-<li><strong>off_policy_loss</strong> – callable returning tensor holding off_policy training loss and summaries</li>
-<li><strong>vr_loss</strong> – callable returning tensor holding value replay loss and summaries</li>
-<li><strong>rp_loss</strong> – callable returning tensor holding reward prediction loss and summaries</li>
-<li><strong>pc_loss</strong> – callable returning tensor holding pixel_control loss and summaries</li>
-<li><strong>random_seed</strong> – int or None</li>
-<li><strong>model_gamma</strong> – gamma discount factor</li>
-<li><strong>model_gae_lambda</strong> – GAE lambda</li>
-<li><strong>model_beta</strong> – entropy regularization beta</li>
-<li><strong>opt_max_train_steps</strong> – train steps to run</li>
-<li><strong>opt_decay_steps</strong> – learn ratio decay steps</li>
-<li><strong>opt_end_learn_rate</strong> – final lerarn rate</li>
-<li><strong>opt_learn_rate</strong> – start learn rate</li>
-<li><strong>opt_decay</strong> – optimizer decay, if apll.</li>
-<li><strong>opt_momentum</strong> – optimizer momentum, if apll.</li>
-<li><strong>opt_epsilon</strong> – optimizer epsilon</li>
-<li><strong>rollout_length</strong> – on-policy rollout length</li>
-<li><strong>episode_summary_freq</strong> – int, write episode summary for every i’th episode</li>
-<li><strong>env_render_freq</strong> – int, write environment rendering summary for every i’th train step</li>
-<li><strong>model_summary_freq</strong> – int, write model summary for every i’th train step</li>
-<li><strong>test_mode</strong> – True: Atari, False: BTGym</li>
-<li><strong>replay_memory_size</strong> – in number of experiences</li>
-<li><strong>replay_rollout_length</strong> – off-policy rollout length</li>
-<li><strong>use_off_policy_aac</strong> – use full AAC off policy training instead of Value-replay</li>
-<li><strong>use_reward_prediction</strong> – use aux. off-policy reward prediction task</li>
-<li><strong>use_pixel_control</strong> – use aux. off-policy pixel control task</li>
-<li><strong>use_value_replay</strong> – use aux. off-policy value replay task (not used, if use_off_policy_aac=True)</li>
-<li><strong>rp_lambda</strong> – reward prediction loss weight</li>
-<li><strong>pc_lambda</strong> – pixel control loss weight</li>
-<li><strong>vr_lambda</strong> – value replay loss weight</li>
-<li><strong>off_aac_lambda</strong> – off-policy AAC loss weight</li>
-<li><strong>gamma_pc</strong> – NOT USED</li>
-<li><strong>rp_reward_threshold</strong> – reward prediction task classification threshold, above which reward is ‘non-zero’</li>
-<li><strong>rp_sequence_size</strong> – reward prediction sample size, in number of experiences</li>
-<li><strong>clip_epsilon</strong> – PPO: surrogate L^clip epsilon</li>
-<li><strong>num_epochs</strong> – num. of SGD runs for every train step</li>
-<li><strong>pi_prime_update_period</strong> – int, PPO: pi to pi_old update period in number of train steps</li>
-<li><strong>_use_target_policy</strong> – target policy tracking behavioral one with some delay in parameters update</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="btgym.algorithms.unreal.BaseAAC.make_policy">
-<code class="descname">make_policy</code><span class="sig-paren">(</span><em>scope</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC.make_policy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC.make_policy" title="Permalink to this definition">¶</a></dt>
-<dd><p>Configures and instantiates policy network and ops.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last"><cite>global</cite> name_scope network should be defined first.</p>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>scope</strong> – name scope</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">policy instance</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.unreal.BaseAAC.process_rp">
-<code class="descname">process_rp</code><span class="sig-paren">(</span><em>rp_experience_frames</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC.process_rp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC.process_rp" title="Permalink to this definition">¶</a></dt>
-<dd><p>Estimates reward prediction target.
-Tuned for Atari visual input
-Returns feed dictionary for <cite>reward prediction</cite> loss estimation subgraph.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.unreal.BaseAAC.process_vr">
-<code class="descname">process_vr</code><span class="sig-paren">(</span><em>batch</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC.process_vr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC.process_vr" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns feed dictionary for <cite>value replay</cite> loss estimation subgraph.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.unreal.BaseAAC.process_pc">
-<code class="descname">process_pc</code><span class="sig-paren">(</span><em>batch</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC.process_pc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC.process_pc" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns feed dictionary for <cite>pixel control</cite> loss estimation subgraph.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.unreal.BaseAAC.process">
-<code class="descname">process</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/unreal.html#BaseAAC.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.unreal.BaseAAC.process" title="Permalink to this definition">¶</a></dt>
-<dd><p>Grabs a on_policy_rollout that’s been produced by the thread runner,
-samples off_policy rollout[s] from replay memory and updates the parameters.
-The update is then sent to the parameter server.</p>
-</dd></dl>
-
-</dd></dl>
-
+<div class="section" id="btgym-algorithms-unreal-module">
+<h2>btgym.algorithms.unreal module<a class="headerlink" href="#btgym-algorithms-unreal-module" title="Permalink to this headline">¶</a></h2>
 </div>
 </div>
 
