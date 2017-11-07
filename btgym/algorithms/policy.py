@@ -63,7 +63,7 @@ class BaseAacPolicy(object):
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
         [on_aac_x, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
             lstm_network(on_aac_x, self.on_a_r_in, lstm_class, lstm_layers, )
-        # ppo policy and value outputs and action-sampling function:
+        # aac policy and value outputs and action-sampling function:
         [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(on_aac_x, ac_space)
 
         # Off-policy AAC network (shared):

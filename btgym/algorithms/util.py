@@ -16,12 +16,12 @@ def rnn_placeholders(state):
     """
     if isinstance(state, tf.contrib.rnn.LSTMStateTuple):
         c, h = state
-        c = tf.placeholder(tf.float32, c.shape, c.op.name + '_c_pl')
-        h = tf.placeholder(tf.float32, h.shape, h.op.name + '_h_pl')
+        c = tf.placeholder(tf.float32, tf.TensorShape([None]).concatenate(c.get_shape()[1:]), c.op.name + '_c_pl')
+        h = tf.placeholder(tf.float32, tf.TensorShape([None]).concatenate(h.get_shape()[1:]), h.op.name + '_h_pl')
         return tf.contrib.rnn.LSTMStateTuple(c, h)
     elif isinstance(state, tf.Tensor):
         h = state
-        h = tf.placeholder(tf.float32, h.shape, h.op.name + '_h_pl')
+        h = tf.placeholder(tf.float32, tf.TensorShape([None]).concatenate(h.get_shape()[1:]), h.op.name + '_h_pl')
         return h
     else:
         structure = [rnn_placeholders(x) for x in state]

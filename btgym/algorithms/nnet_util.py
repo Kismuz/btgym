@@ -153,7 +153,8 @@ def conv_2d_network(x,
 
 
 def lstm_network(x, a_r, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse=False):
-    """Stage2 network: from features to flattened LSTM output.
+    """
+    Stage2 network: from features to flattened LSTM output.
     Defines [multi-layered] dynamic [possibly shared] LSTM network.
 
     Returns:
@@ -163,7 +164,7 @@ def lstm_network(x, a_r, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse
          lstm flattened feed placeholders as tuple.
     """
     with tf.variable_scope('lstm', reuse=reuse):
-        # Flatten, add action/reward and expand with fake time dim to feed LSTM bank:
+        # Flatten, add action/reward and expand with fake [time] batch? dim to feed LSTM bank:
         x = tf.concat([batch_flatten(x), a_r] ,axis=-1)
         x = tf.expand_dims(x, [0])
 
