@@ -9,7 +9,7 @@ from btgym.spaces import DictSpace as ObSpace
 from btgym.algorithms import Memory, Rollout, make_rollout_getter, RunnerThread
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def
-from btgym.algorithms.util import feed_dict_rnn_context, feed_dict_from_nested
+from btgym.algorithms.util import feed_dict_rnn_context, feed_dict_from_nested, batch_concat, _show_struct
 
 
 class BaseAAC(object):
@@ -630,6 +630,11 @@ class BaseAAC(object):
         # Get and process rollout for on-policy train step:
         on_policy_rollout = self.get_rollout()
         on_policy_batch = on_policy_rollout.process(gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
+
+        rollout2 = self.get_rollout()
+        batch2 = rollout2.process(gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
+        on_policy_batch = batch_concat([on_policy_batch, batch2])
+        _show_struct(on_policy_batch)
 
         # Feeder for on-policy AAC loss estimation graph:
         feed_dict = feed_dict_from_nested(self.local_network.on_state_in, on_policy_batch['state'])

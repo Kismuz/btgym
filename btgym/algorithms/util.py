@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 from tensorflow.python.util.nest import assert_same_structure
+from tensorflow.contrib.rnn import LSTMStateTuple
 
 
 def rnn_placeholders(state):
@@ -127,3 +128,59 @@ def as_array(struct):
 
     else:
         return np.asarray(struct)
+
+
+def batch_concat(dict_list, _top=True):
+    """
+    Concatenates values of given processed rollouts
+    along batch  dimension.
+
+    Args:
+        dict_list:   list of processed rollouts of the same size.
+
+    Returns:
+        dictionary of stacked arrays.
+    """
+    master = dict_list[0]
+    batch = {}
+    if _top:
+        # Shape inference:
+        batch['rnn_batch_size'] = len(dict_list)
+        batch['rnn_time_steps'] = master['terminal'].shape[0]
+
+    if isinstance(master, dict):
+        for key in master.keys():
+            value_list = [value[key] for value in dict_list]
+            batch[key] = batch_concat(value_list, False)
+
+    elif isinstance(master, LSTMStateTuple):
+        c = batch_concat([state[0] for state in dict_list], False)
+        h = batch_concat([state[1] for state in dict_list], False)
+        batch = LSTMStateTuple(c=c, h=h)
+
+    elif isinstance(master, tuple):
+        batch = tuple([batch_concat([struct[i] for struct in dict_list], False) for i in range(len(master))])
+
+    else:
+        batch = np.concatenate(dict_list, axis=0)
+
+    return batch
+
+
+def _show_struct(struct):
+    if isinstance(struct, dict):
+        for key, value in struct.items():
+            print(key)
+            _show_struct(value)
+
+    elif type(struct) in [LSTMStateTuple, tuple, list]:
+        print('LSTM/tuple/list:', type(struct), len(struct))
+        for i in struct:
+            _show_struct(i)
+
+    else:
+        try:
+            print('shape:', struct.shape)
+
+        except AttributeError:
+            print('value:', struct)
