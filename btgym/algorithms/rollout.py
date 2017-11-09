@@ -13,6 +13,7 @@
 import numpy as np
 
 from btgym.algorithms.math_util import discount
+from btgym.algorithms.util import batch_pad
 
 # Info:
 ExperienceConfig = ['position', 'state', 'action', 'reward', 'value', 'terminal', 'r', 'context',
@@ -42,6 +43,7 @@ class Rollout(dict):
 
     def __init__(self):
         super(Rollout, self).__init__()
+        self.size = 0
 
     def add(self, values_dict, _dict=None):
         """
@@ -51,7 +53,9 @@ class Rollout(dict):
             values_dict:    [nested] dictionary of values.
         """
         if _dict is None:
+            # Top level:
             _dict = self
+            self.size += 1
         for key, value in values_dict.items():
             if type(value) == dict:
                 if key not in _dict.keys():
@@ -73,13 +77,14 @@ class Rollout(dict):
         for frame in sample:
             self.add(frame)
 
-    def process(self, gamma, gae_lambda=1.0):
+    def process(self, gamma, gae_lambda=1.0, size=None):
         """
         Converts rollout to dictionary of ready-to-feed arrays.
         Computes rollout returns and the advantages.
+        Pads with zeroes to desired length, if size arg is given.
 
         Returns:
-            batch as [nested] dictionary.
+            batch as [nested] dictionary of np.arrays [, LSTMStateTuples].
         """
         # self._check_it()
         batch = dict()
@@ -99,6 +104,14 @@ class Rollout(dict):
         # https://arxiv.org/abs/1506.02438
         delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
         batch['advantage'] = discount(delta_t, gamma * gae_lambda)
+
+        # Brush it out:
+        batch['rnn_time_steps'] = batch['advantage'].shape[0]  # real non-padded time length
+        batch['rnn_batch_size'] = 1  # rollout is a trajectory
+
+        if size is not None and batch['advantage'].shape[0] != size:
+            batch = batch_pad(batch, to_size=size)
+
 
         return batch
 

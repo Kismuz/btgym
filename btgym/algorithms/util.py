@@ -132,8 +132,12 @@ def as_array(struct):
 
 def batch_concat(dict_list, _top=True):
     """
-    Concatenates values of given processed rollouts
-    along batch  dimension.
+    Concatenates values of given processed rollouts along batch dimension.
+    Initial batch dimension is saved as key 'rnn_batch_size' for further shape inference.
+
+    Example:
+        dict_list sizes: [[20,10,10,1], [20,10,10,1]] --> result size: [40,10,10,1],
+        result['rnn_batch_size'] = 20
 
     Args:
         dict_list:   list of processed rollouts of the same size.
@@ -143,10 +147,6 @@ def batch_concat(dict_list, _top=True):
     """
     master = dict_list[0]
     batch = {}
-    if _top:
-        # Shape inference:
-        batch['rnn_batch_size'] = len(dict_list)
-        batch['rnn_time_steps'] = master['terminal'].shape[0]
 
     if isinstance(master, dict):
         for key in master.keys():
@@ -162,9 +162,57 @@ def batch_concat(dict_list, _top=True):
         batch = tuple([batch_concat([struct[i] for struct in dict_list], False) for i in range(len(master))])
 
     else:
-        batch = np.concatenate(dict_list, axis=0)
+        try:
+            batch = np.concatenate(dict_list, axis=0)
 
+        except ValueError:
+            batch = np.stack(dict_list, axis=0)
+    if _top:
+        # Mind lstm shape inference:
+        batch['rnn_batch_size'] = batch['rnn_batch_size'].sum()
+        
     return batch
+
+
+def batch_pad(batch, to_size, _one_hot=False):
+    """
+    Pads given `batch` with zeros along zero dimension
+
+    Args:
+        batch:      processed rollout as dictionary of np.arrays
+        to_size:    desired batch size
+
+    Returns:
+        dictionary with all included np.arrays being zero-padded to size [to_size, own_depth].
+    """
+    if isinstance(batch, dict):
+        padded_batch = {}
+        for key, struct in batch.items():
+            # Mind one-hot action encoding:
+            if key in ['action', 'last_action_reward']:
+                one_hot = True
+
+            else:
+                one_hot = False
+
+            padded_batch[key] = batch_pad(struct, to_size, one_hot)
+
+    elif isinstance(batch, np.ndarray):
+        shape = batch.shape
+        assert shape[0] < to_size, \
+            'Padded batch size must be greater than initial, got: {}, {}'.format(to_size, shape[0])
+
+        pad = np.zeros((to_size - shape[0],) + shape[1:])
+        if _one_hot:
+            pad[:, 0, ...] = 1
+        padded_batch = np.concatenate([batch, pad], axis=0)
+
+    else:
+        # Hit tuple, scalar or something else:
+        padded_batch = batch
+
+    #print('padded_batch:\n', _show_struct(padded_batch))
+    return padded_batch
 
 
 def _show_struct(struct):
