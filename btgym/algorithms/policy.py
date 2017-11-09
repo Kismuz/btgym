@@ -57,19 +57,54 @@ class BaseAacPolicy(object):
         self.on_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='on_policy_action_reward_in_pl')
         self.off_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='off_policy_action_reward_in_pl')
 
+        # Placeholders for rnn batch and time-step dimensions:
+        self.on_batch_size = tf.placeholder(tf.int32, name='on_policy_batch_size')
+        self.on_time_length = tf.placeholder(tf.int32, name='on_policy_sequence_size')
+
+        self.off_batch_size = tf.placeholder(tf.int32, name='off_policy_batch_size')
+        self.off_time_length = tf.placeholder(tf.int32, name='off_policy_sequence_size')
+
         # Base on-policy AAC network:
         # Conv. layers:
         on_aac_x = conv_2d_network(self.on_state_in['external'], ob_space['external'], ac_space)
+
+        # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
+        x_shape_dynamic = tf.shape(on_aac_x)
+        max_seq_len = tf.cast(x_shape_dynamic[0] / self.on_batch_size, tf.int32)
+        x_shape_static = on_aac_x.get_shape().as_list()
+
+        on_a_r_in = tf.reshape(self.on_a_r_in, [self.on_batch_size, max_seq_len, ac_space + 1])
+        on_aac_x = tf.reshape( on_aac_x, [self.on_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
+
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
-        [on_aac_x, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
-            lstm_network(on_aac_x, self.on_a_r_in, lstm_class, lstm_layers, )
+        [on_x_lstm_out, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
+            lstm_network(on_aac_x, on_a_r_in, self.on_time_length, lstm_class, lstm_layers, )
+
+        # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
+        x_shape_static = on_x_lstm_out.get_shape().as_list()
+        on_x_lstm_out = tf.reshape(on_x_lstm_out, [x_shape_dynamic[0], x_shape_static[-1]])
+
         # aac policy and value outputs and action-sampling function:
-        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(on_aac_x, ac_space)
+        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(on_x_lstm_out, ac_space)
 
         # Off-policy AAC network (shared):
         off_aac_x = conv_2d_network(self.off_state_in['external'], ob_space['external'], ac_space, reuse=True)
+
+        # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
+        x_shape_dynamic = tf.shape(off_aac_x)
+        max_seq_len = tf.cast(x_shape_dynamic[0] / self.off_batch_size, tf.int32)
+        x_shape_static = off_aac_x.get_shape().as_list()
+
+        off_a_r_in = tf.reshape(self.off_a_r_in, [self.off_batch_size, max_seq_len, ac_space + 1])
+        off_aac_x = tf.reshape( off_aac_x, [self.off_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
+
         [off_x_lstm_out, _, _, self.off_lstm_state_pl_flatten] =\
-            lstm_network(off_aac_x, self.off_a_r_in, lstm_class, lstm_layers, reuse=True)
+            lstm_network(off_aac_x, off_a_r_in, self.off_time_length, lstm_class, lstm_layers, reuse=True)
+
+        # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
+        x_shape_static = off_x_lstm_out.get_shape().as_list()
+        off_x_lstm_out = tf.reshape(off_x_lstm_out, [x_shape_dynamic[0], x_shape_static[-1]])
+
         [self.off_logits, self.off_vf, _] =\
             dense_aac_network(off_x_lstm_out, ac_space, reuse=True)
 
@@ -155,9 +190,12 @@ class BaseAacPolicy(object):
         feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
         feeder.update(feed_dict_from_nested(self.on_state_in, observation, expand_batch=True))
         feeder.update(
-            {#self.on_state_in: [observation],
-             self.on_a_r_in: [action_reward],
-             self.train_phase: False}
+            {
+                self.on_a_r_in: [action_reward],
+                self.on_batch_size: 1,
+                self.on_time_length: 1,
+                self.train_phase: False
+            }
         )
         return sess.run([self.on_sample, self.on_vf, self.on_lstm_state_out], feeder)
 
@@ -176,7 +214,14 @@ class BaseAacPolicy(object):
         sess = tf.get_default_session()
         feeder = feed_dict_rnn_context(self.on_lstm_state_pl_flatten, lstm_state)
         feeder.update(feed_dict_from_nested(self.on_state_in, observation, expand_batch=True))
-        feeder.update({self.on_a_r_in: [action_reward], self.train_phase: False})
+        feeder.update(
+            {
+                self.on_a_r_in: [action_reward],
+                self.on_batch_size: 1,
+                self.on_time_length: 1,
+                self.train_phase: False
+            }
+        )
 
         return sess.run(self.on_vf, feeder)[0]
 

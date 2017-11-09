@@ -54,6 +54,7 @@ class BaseAAC(object):
                  model_summary_freq=100,  # every i`th algorithm iteration
                  test_mode=False,  # gym_atari test mode
                  replay_memory_size=2000,
+                 replay_batch_size=4,
                  replay_rollout_length=None,
                  use_off_policy_aac=False,
                  use_reward_prediction=False,
@@ -99,6 +100,7 @@ class BaseAAC(object):
             model_summary_freq:     int, write model summary for every i'th train step
             test_mode:              True: Atari, False: BTGym
             replay_memory_size:     in number of experiences
+            replay_batch_size:
             replay_rollout_length:  off-policy rollout length
             use_off_policy_aac:     use full AAC off policy training instead of Value-replay
             use_reward_prediction:  use aux. off-policy reward prediction task
@@ -188,6 +190,7 @@ class BaseAAC(object):
             self.replay_rollout_length = rollout_length
         self.rp_sequence_size = rp_sequence_size
         self.rp_reward_threshold = rp_reward_threshold
+        self.replay_batch_size = replay_batch_size
 
         # PPO related:
         self.clip_epsilon = clip_epsilon
@@ -544,6 +547,10 @@ class BaseAAC(object):
                 self.off_logits = None
                 self.on_vf = None
                 self.off_vf = None
+                self.on_batch_size = None
+                self.on_time_length = None
+                self.off_batch_size = None
+                self.off_time_length = None
 
         return dummy_pi()
 
@@ -631,11 +638,6 @@ class BaseAAC(object):
         on_policy_rollout = self.get_rollout()
         on_policy_batch = on_policy_rollout.process(gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
 
-        rollout2 = self.get_rollout()
-        batch2 = rollout2.process(gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
-        on_policy_batch = batch_concat([on_policy_batch, batch2])
-        _show_struct(on_policy_batch)
-
         # Feeder for on-policy AAC loss estimation graph:
         feed_dict = feed_dict_from_nested(self.local_network.on_state_in, on_policy_batch['state'])
         feed_dict.update(
@@ -644,6 +646,8 @@ class BaseAAC(object):
         feed_dict.update(
             {
                 self.local_network.on_a_r_in: on_policy_batch['last_action_reward'],
+                self.local_network.on_batch_size: on_policy_batch['rnn_batch_size'],
+                self.local_network.on_time_length: on_policy_batch['rnn_time_steps'],
                 self.on_pi_act_target: on_policy_batch['action'],
                 self.on_pi_adv_target: on_policy_batch['advantage'],
                 self.on_pi_r_target: on_policy_batch['r'],
@@ -658,14 +662,27 @@ class BaseAAC(object):
                 feed_dict_rnn_context(self.local_network_prime.on_lstm_state_pl_flatten, on_policy_batch['context'])
             )
             feed_dict.update(
-                {self.local_network_prime.on_a_r_in: on_policy_batch['last_action_reward']}
+                {
+                    self.local_network_prime.on_batch_size: on_policy_batch['rnn_batch_size'],
+                    self.local_network_prime.on_time_length: on_policy_batch['rnn_time_steps'],
+                    self.local_network_prime.on_a_r_in: on_policy_batch['last_action_reward']
+                }
             )
         if self.use_memory:
-            # Get sample from replay memory:
-            off_policy_sample = self.memory.sample_uniform(self.replay_rollout_length)
-            off_policy_rollout = Rollout()
-            off_policy_rollout.add_memory_sample(off_policy_sample)
-            off_policy_batch = off_policy_rollout.process(gamma=self.model_gamma, gae_lambda=self.model_gae_lambda)
+            # Get batch of rollouts from replay memory:
+            off_policy_samples = []
+            for i in range(self.replay_batch_size):
+                off_policy_sample = self.memory.sample_uniform(self.replay_rollout_length)
+                off_policy_rollout = Rollout()
+                off_policy_rollout.add_memory_sample(off_policy_sample)
+                off_policy_samples.append(
+                    off_policy_rollout.process(
+                        gamma=self.model_gamma,
+                        gae_lambda=self.model_gae_lambda,
+                        size=self.replay_rollout_length
+                    )
+                )
+            off_policy_batch = batch_concat(off_policy_samples)
 
             # Feeder for off-policy AAC loss estimation graph:
             off_policy_feed_dict = feed_dict_from_nested(self.local_network.off_state_in, off_policy_batch['state'])
@@ -674,6 +691,8 @@ class BaseAAC(object):
             off_policy_feed_dict.update(
                 {
                     self.local_network.off_a_r_in: off_policy_batch['last_action_reward'],
+                    self.local_network.off_batch_size: off_policy_batch['rnn_batch_size'],
+                    self.local_network.off_time_length: off_policy_batch['rnn_time_steps'],
                     self.off_pi_act_target: off_policy_batch['action'],
                     self.off_pi_adv_target: off_policy_batch['advantage'],
                     self.off_pi_r_target: off_policy_batch['r'],
@@ -685,7 +704,11 @@ class BaseAAC(object):
                 )
 
                 off_policy_feed_dict.update(
-                    {self.local_network_prime.off_a_r_in: off_policy_batch['last_action_reward']}
+                    {
+                        self.local_network_prime.off_batch_size: off_policy_batch['rnn_batch_size'],
+                        self.local_network_prime.off_time_length: off_policy_batch['rnn_time_steps'],
+                        self.local_network_prime.off_a_r_in: off_policy_batch['last_action_reward']
+                    }
                 )
                 off_policy_feed_dict.update(
                     feed_dict_rnn_context(self.local_network_prime.off_lstm_state_pl_flatten,
