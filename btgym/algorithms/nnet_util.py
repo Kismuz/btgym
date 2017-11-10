@@ -214,12 +214,12 @@ def dense_rp_network(x):
     """Stage3 network: From shared convolutions to reward-prediction task output tensor.
     """
     # print('x_shape:', x.get_shape())
-    x = tf.reshape(x, [1, -1]) # flatten to pretend we got batch of size 1
+    #x = tf.reshape(x, [1, -1]) # flatten to pretend we got batch of size 1
     # Fully connected x128 followed by 3-way classifier [with softmax], as in paper:
     x = tf.nn.elu(linear(x, 128, 'rp_dense', normalized_columns_initializer(0.01)))
     # print('x_shape2:', x.get_shape())
     logits = linear(x, 3, 'rp_classifier', normalized_columns_initializer(0.01))
-    # Note:  softmax is actually not here but inside loss operation (see unreal.py)
+    # Note:  softmax is actually not here but inside loss operation (see losses.py)
     return logits
 
 
@@ -232,7 +232,7 @@ def pixel_change_2d_estimator(ob_space, stride=2):
     x = tf.abs(tf.subtract(input_state, input_last_state)) # TODO: tf.square?
     x = tf.expand_dims(x, 0)[:, 1:-1, 1:-1, :]  # fake batch dim and crop
     x = tf.reduce_mean(x, axis=-1, keep_dims=True)
-    # TODO: max_pool may be better?
+    # TODO: max_pool may be better? indeed it is.
     x_out = tf.nn.max_pool(x, [1, stride, stride, 1], [1, stride, stride, 1], 'SAME')
     return input_state, input_last_state, x_out
 

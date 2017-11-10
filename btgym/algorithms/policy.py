@@ -8,10 +8,10 @@
 # Async. framework code comes from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
 #
-
 from btgym.algorithms.nnet_util import *
 from btgym.algorithms.util import *
 import tensorflow as tf
+from tensorflow.contrib.layers import flatten as batch_flatten
 
 
 class BaseAacPolicy(object):
@@ -51,7 +51,7 @@ class BaseAacPolicy(object):
         # Placeholders for obs. state input:
         self.on_state_in = nested_placeholders(ob_space, batch_dim=None, name='on_policy_state_in')
         self.off_state_in = nested_placeholders(ob_space, batch_dim=None, name='off_policy_state_in_pl')
-        self.rp_state_in = nested_placeholders(ob_space, batch_dim=rp_sequence_size-1, name='rp_state_in')
+        self.rp_state_in = nested_placeholders(ob_space, batch_dim=None, name='rp_state_in')
 
         # Placeholders for concatenated action [one-hot] and reward [scalar]:
         self.on_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='on_policy_action_reward_in_pl')
@@ -137,7 +137,7 @@ class BaseAacPolicy(object):
         # Aux3: `Reward prediction` network:
         # Shared conv.:
         rp_x = conv_2d_network(self.rp_state_in['external'], ob_space['external'], ac_space, reuse=True)
-
+        rp_x = batch_flatten(rp_x)
         # RP output:
         self.rp_logits = dense_rp_network(rp_x)
 

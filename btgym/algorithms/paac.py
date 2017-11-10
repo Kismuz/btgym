@@ -5,19 +5,16 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 
-from btgym.spaces import DictSpace as ObSpace  # now can be gym.Dict
+from btgym.spaces import DictSpace as ObSpace
 from btgym.algorithms import Memory, Rollout, make_rollout_getter, RunnerThread
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def
 from btgym.algorithms.util import feed_dict_rnn_context, feed_dict_from_nested, batch_stack, _show_struct
 
 
-class BaseAAC(object):
+class BasePAAC(object):
     """
-    Base Asynchronous Advantage Actor Critic algorithm framework class with auxiliary control tasks and
-    option to run several instances of environment for every worker in vectorized fashion, PAAC-like.
-    Can be configured to run with different losses and policies.
-
+    half-P Advantage Actor Critic algorithm framework class with auxiliary control tasks.
 
     Auxiliary tasks implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
     https://miyosuda.github.io/
@@ -57,7 +54,7 @@ class BaseAAC(object):
                  model_summary_freq=100,  # every i`th algorithm iteration
                  test_mode=False,  # gym_atari test mode
                  replay_memory_size=2000,
-                 replay_batch_size=None,
+                 replay_batch_size=4,
                  replay_rollout_length=None,
                  use_off_policy_aac=False,
                  use_reward_prediction=False,
@@ -77,8 +74,8 @@ class BaseAAC(object):
         """
 
         Args:
-            env:                    environment instance or list of instances
-            task:                   int, parent worker id
+            env:                    list of envirionment instances.
+            task:                   int
             policy_config:          policy estimator class and configuration dictionary
             log:                    parent log
             on_policy_loss:         callable returning tensor holding on_policy training loss and summaries
@@ -103,12 +100,12 @@ class BaseAAC(object):
             model_summary_freq:     int, write model summary for every i'th train step
             test_mode:              True: Atari, False: BTGym
             replay_memory_size:     in number of experiences
-            replay_batch_size:      mini-batch size for off-policy training
+            replay_batch_size:
             replay_rollout_length:  off-policy rollout length
-            use_off_policy_aac:     use full AAC off-policy loss instead of Value-replay
+            use_off_policy_aac:     use full AAC off policy training instead of Value-replay
             use_reward_prediction:  use aux. off-policy reward prediction task
             use_pixel_control:      use aux. off-policy pixel control task
-            use_value_replay:       use aux. off-policy value replay task (not used if use_off_policy_aac=True)
+            use_value_replay:       use aux. off-policy value replay task (not used, if use_off_policy_aac=True)
             rp_lambda:              reward prediction loss weight
             pc_lambda:              pixel control loss weight
             vr_lambda:              value replay loss weight
@@ -117,9 +114,9 @@ class BaseAAC(object):
             rp_reward_threshold:    reward prediction task classification threshold, above which reward is 'non-zero'
             rp_sequence_size:       reward prediction sample size, in number of experiences
             clip_epsilon:           PPO: surrogate L^clip epsilon
-            num_epochs:             num. of SGD runs for every train step, def: 1
-            pi_prime_update_period: PPO: pi to pi_old update period in number of train steps, def: 1
-            _use_target_policy:     target policy, tracking behavioral one with `pi_prime_update_period` delay
+            num_epochs:             num. of SGD runs for every train step
+            pi_prime_update_period:   int, PPO: pi to pi_old update period in number of train steps
+            _use_target_policy:     target policy tracking behavioral one with some delay in parameters update
         """
         self.log = log
         self.random_seed = random_seed
@@ -136,7 +133,8 @@ class BaseAAC(object):
         except AssertionError:
             self.env_list = [env]
 
-        ref_env = self.env_list[0]  # reference instance to get obs shapes etc.
+        ref_env = self.env_list[0]
+
         assert isinstance(ref_env.observation_space, ObSpace),\
             'AAC_{}: expected environment observation space of type {}, got: {}'.\
             format(self.task, ObSpace, type(ref_env.observation_space))
@@ -191,21 +189,13 @@ class BaseAAC(object):
         self.vr_lambda = vr_lambda
         self.gamma_pc = gamma_pc
         self.replay_memory_size = replay_memory_size
-
         if replay_rollout_length is not None:
             self.replay_rollout_length = replay_rollout_length
-
         else:
-            self.replay_rollout_length = rollout_length # by default off-rollout equals on-policy one
-
+            self.replay_rollout_length = rollout_length
         self.rp_sequence_size = rp_sequence_size
         self.rp_reward_threshold = rp_reward_threshold
-
-        if replay_batch_size is not None:
-            self.replay_batch_size = replay_batch_size
-
-        else:
-            self.replay_batch_size = len(self.env_list)  # by default off-batch equals on-policy one
+        self.replay_batch_size = replay_batch_size
 
         # PPO related:
         self.clip_epsilon = clip_epsilon
@@ -245,7 +235,7 @@ class BaseAAC(object):
                 'aux_estimate': self.use_any_aux_tasks,
             }
         )
-        # Start building graphs:
+        # Start building graph:
 
         # PS:
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
@@ -263,8 +253,8 @@ class BaseAAC(object):
 
             # Meant for Batch-norm layers:
             pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
-
             self.log.debug('AAC_{}: local_network_upd_ops_collection:\n{}'.format(self.task, pi.update_ops))
+
             self.log.debug('\nAAC_{}: local_network_var_list_to_save:'.format(self.task))
             for v in pi.var_list:
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
@@ -279,7 +269,6 @@ class BaseAAC(object):
                 cycle=False,
             )
             clip_epsilon = tf.cast(self.clip_epsilon * learn_rate / self.opt_learn_rate, tf.float32)
-
             # On-policy AAC loss definition:
             self.on_pi_act_target = tf.placeholder(tf.float32, [None, ref_env.action_space.n], name="on_policy_action_pl")
             self.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
@@ -297,18 +286,25 @@ class BaseAAC(object):
                 name='on_policy',
                 verbose=True
             )
+
             # Start accumulating total loss:
             self.loss = on_pi_loss
             model_summaries = on_pi_summaries
 
-            # Off-policy losses:
+            # Off-policy batch size:
+            #off_bs = tf.to_float(tf.shape(pi.off_state_in[list(pi.on_state_in.keys())[0]])[0])
+
+            # Off policy training:
             self.off_pi_act_target = tf.placeholder(
                 tf.float32, [None, ref_env.action_space.n], name="off_policy_action_pl")
-            self.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
-            self.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
+            self.off_pi_adv_target = tf.placeholder(
+                tf.float32, [None], name="off_policy_advantage_pl")
+            self.off_pi_r_target = tf.placeholder(
+                tf.float32, [None], name="off_policy_return_pl")
 
             if self.use_off_policy_aac:
                 # Off-policy AAC loss graph mirrors on-policy:
+                # TODO: sample mini_batches to break trajectory
                 off_pi_loss, off_pi_summaries = self.off_policy_loss(
                     act_target=self.off_pi_act_target,
                     adv_target=self.off_pi_adv_target,
@@ -354,7 +350,7 @@ class BaseAAC(object):
 
             if self.use_reward_prediction:
                 # Reward prediction loss:
-                self.rp_target = tf.placeholder(tf.float32, [None, 3], name="rp_target")
+                self.rp_target = tf.placeholder(tf.float32, [1,3], name="rp_target")
 
                 rp_loss, rp_summaries = self.rp_loss(
                     rp_targets=self.rp_target,
@@ -453,7 +449,7 @@ class BaseAAC(object):
                 name='episode_atari'
             )
 
-            # Make runners:
+            # Make runner:
             # `rollout_length` represents the number of "local steps":  the number of timesteps
             # we run the policy before we update the parameters.
             self.runners = []
@@ -470,7 +466,8 @@ class BaseAAC(object):
                         self.ep_summary
                      )
                 )
-            # Make rollouts provider:
+
+            # Make rollouts provider method:
             self.rollout_getter = [make_rollout_getter(runner.queue) for runner in self.runners]
 
             # Make replay memory:
@@ -488,11 +485,10 @@ class BaseAAC(object):
 
     def get_rollout(self):
         """
-        Collect rollouts from every environmnet.
+
         Returns:
             list of rollouts
         """
-        # TODO: nowait?
         return [get_it() for get_it in self.rollout_getter]
 
     def make_policy(self, scope):
@@ -554,7 +550,7 @@ class BaseAAC(object):
 
     def make_dummy_policy(self):
 
-        class Dummy(object):
+        class dummy_pi(object):
             """
             Policy plug when target network is not used.
             """
@@ -574,42 +570,56 @@ class BaseAAC(object):
                 self.off_batch_size = None
                 self.off_time_length = None
 
-        return Dummy()
+        return dummy_pi()
 
     def start(self, sess, summary_writer):
-        for runner in self.runners:
-            runner.start_runner(sess, summary_writer)  # starting runner threads
-
+        _ = [runner.start_runner(sess, summary_writer) for runner in self.runners]  # starting runner threads
         self.summary_writer = summary_writer
 
-    def get_rp_feeder(self, batch):
+    def process_rp(self, rp_experience_frames):
         """
+        Estimates reward prediction target.
+        Tuned for Atari visual input
         Returns feed dictionary for `reward prediction` loss estimation subgraph.
         """
+        rollout = Rollout()
+
+        # Remove last frame:
+        last_frame = rp_experience_frames.pop()
+
+        # Make remaining a rollout to get 'states' batch:
+        rollout.add_memory_sample(rp_experience_frames)
+        batch = rollout.process(gamma=1)
+
+        # One hot vector for target reward (i.e. reward taken from last of sampled frames):
+        r = last_frame['reward']
+        rp_t = [0.0, 0.0, 0.0]
+        if r > self.rp_reward_threshold:
+            rp_t[1] = 1.0  # positive [010]
+
+        elif r < - self.rp_reward_threshold:
+            rp_t[2] = 1.0  # negative [001]
+
+        else:
+            rp_t[0] = 1.0  # zero [100]
+
         feeder = feed_dict_from_nested(self.local_network.rp_state_in, batch['state'])
-        feeder.update({self.rp_target: batch['rp_target']})
+        feeder.update({self.rp_target: np.asarray([rp_t])})
         return feeder
 
-    def get_vr_feeder(self, batch):
+    def process_vr(self, batch):
         """
         Returns feed dictionary for `value replay` loss estimation subgraph.
         """
         if not self.use_off_policy_aac:  # use single pass of network on same off-policy batch
             feeder = feed_dict_from_nested(self.local_network.vr_state_in, batch['state'])
             feeder.update(feed_dict_rnn_context(self.local_network.vr_lstm_state_pl_flatten, batch['context']))
-            feeder.update(
-                {
-                    self.local_network.vr_batch_size: batch['rnn_batch_size'],
-                    self.local_network.vr_time_length: batch['rnn_time_steps'],
-                    self.local_network.vr_a_r_in: batch['last_action_reward'],
-                    self.vr_target: batch['r']
-                }
-            )
+            feeder.update({self.local_network.vr_a_r_in: batch['last_action_reward'], self.vr_target: batch['r']})
         else:
             feeder = {self.vr_target: batch['r']}  # redundant actually :)
         return feeder
 
-    def get_pc_feeder(self, batch):
+    def process_pc(self, batch):
         """
         Returns feed dictionary for `pixel control` loss estimation subgraph.
         """
@@ -642,17 +652,16 @@ class BaseAAC(object):
         # Copy weights from shared to local new_policy:
         sess.run(self.sync_pi)
 
-        # Get and process minibatch for on-policy train step:
-        on_policy_rollouts = self.get_rollout()
-        on_policy_batch = batch_stack(
-            [
-                r.process(
-                    gamma=self.model_gamma,
-                    gae_lambda=self.model_gae_lambda,
-                    size=self.rollout_length
-                ) for r in on_policy_rollouts
-            ]
-        )
+        # Get and process rollout for on-policy train step:
+        on_policy_rollout = self.get_rollout()
+        on_policy_batch = [
+            r.process(
+                gamma=self.model_gamma,
+                gae_lambda=self.model_gae_lambda,
+                size=self.rollout_length
+            ) for r in on_policy_rollout
+        ]
+        on_policy_batch = batch_stack(on_policy_batch)
         # Feeder for on-policy AAC loss estimation graph:
         feed_dict = feed_dict_from_nested(self.local_network.on_state_in, on_policy_batch['state'])
         feed_dict.update(
@@ -685,18 +694,19 @@ class BaseAAC(object):
             )
         if self.use_memory:
             # Get batch of rollouts from replay memory:
-            off_policy_batches = []
+            off_policy_samples = []
             for i in range(self.replay_batch_size):
+                off_policy_sample = self.memory.sample_uniform(self.replay_rollout_length)
                 off_policy_rollout = Rollout()
-                off_policy_rollout.add_memory_sample(self.memory.sample_uniform(self.replay_rollout_length))
-                off_policy_batches.append(
+                off_policy_rollout.add_memory_sample(off_policy_sample)
+                off_policy_samples.append(
                     off_policy_rollout.process(
                         gamma=self.model_gamma,
                         gae_lambda=self.model_gae_lambda,
                         size=self.replay_rollout_length
                     )
                 )
-            off_policy_batch = batch_stack(off_policy_batches)
+            off_policy_batch = batch_stack(off_policy_samples)
 
             # Feeder for off-policy AAC loss estimation graph:
             off_policy_feed_dict = feed_dict_from_nested(self.local_network.off_state_in, off_policy_batch['state'])
@@ -716,6 +726,7 @@ class BaseAAC(object):
                 off_policy_feed_dict.update(
                     feed_dict_from_nested(self.local_network_prime.off_state_in, off_policy_batch['state'])
                 )
+
                 off_policy_feed_dict.update(
                     {
                         self.local_network_prime.off_batch_size: off_policy_batch['rnn_batch_size'],
@@ -724,38 +735,27 @@ class BaseAAC(object):
                     }
                 )
                 off_policy_feed_dict.update(
-                    feed_dict_rnn_context(
-                        self.local_network_prime.off_lstm_state_pl_flatten,
-                        off_policy_batch['context']
-                    )
-                )
+                    feed_dict_rnn_context(self.local_network_prime.off_lstm_state_pl_flatten,
+                                          off_policy_batch['context']))
+
             feed_dict.update(off_policy_feed_dict)
 
             # Update with reward prediction subgraph:
             if self.use_reward_prediction:
                 # Rebalanced 50/50 sample for RP:
-                rp_batches = []
-                for i in range(self.replay_batch_size):
-                    rp_rollout = Rollout()
-                    rp_rollout.add_memory_sample(
-                        self.memory.sample_priority(self.rp_sequence_size, skewness=2, exact_size=True)
-                    )
-                    rp_batches.append(rp_rollout.process_rp(self.rp_reward_threshold))
-
-                rp_batch = batch_stack(rp_batches)
-                feed_dict.update(self.get_rp_feeder(rp_batch))
+                rp_sample = self.memory.sample_priority(self.rp_sequence_size, skewness=2, exact_size=True)
+                feed_dict.update(self.process_rp(rp_sample))
 
             # Pixel control ...
             if self.use_pixel_control:
-                feed_dict.update(self.get_pc_feeder(off_policy_batch))
+                feed_dict.update(self.process_pc(off_policy_batch))
 
             # VR...
             if self.use_value_replay:
-                feed_dict.update(self.get_vr_feeder(off_policy_batch))
+                feed_dict.update(self.process_vr(off_policy_batch))
 
             # Save on_policy_rollout to replay memory:
-            for r in on_policy_rollouts:
-                self.memory.add_rollout(r)
+            self.memory.add_rollout(on_policy_rollout)
 
         # Every worker writes model summaries:
         should_compute_summary =\
@@ -786,4 +786,3 @@ class BaseAAC(object):
         #    except:
         #        print(k, type(v))
 
-Unreal = BaseAAC

@@ -1,7 +1,3 @@
-# UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
-# https://miyosuda.github.io/
-# https://github.com/miyosuda/unreal
-#
 # Original A3C code comes from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
 #
@@ -38,7 +34,8 @@ def make_rollout_getter(queue):
 
 
 class Rollout(dict):
-    """Experience rollout as [nested] dictionary of lists.
+    """
+    Experience rollout as [nested] dictionary of lists.
     """
 
     def __init__(self):
@@ -79,7 +76,7 @@ class Rollout(dict):
 
     def process(self, gamma, gae_lambda=1.0, size=None):
         """
-        Converts rollout to dictionary of ready-to-feed arrays.
+        Converts rollout of batch_size=1 to dictionary of ready-to-feed arrays.
         Computes rollout returns and the advantages.
         Pads with zeroes to desired length, if size arg is given.
 
@@ -112,10 +109,42 @@ class Rollout(dict):
         if size is not None and batch['advantage'].shape[0] != size:
             batch = batch_pad(batch, to_size=size)
 
+        return batch
+
+    def process_rp(self, reward_threshold=0.1):
+        """
+        Processes rollout process()-alike and estimates reward prediction target for first n-1 frames.
+
+        Args:
+            reward_threshold:   reward values such as |r|> reward_threshold are classified as neg. or pos.
+
+        Returns:
+            Processed batch with size reduced by one and
+            with extra `rp_target` key holding one hot encodings {zero, positive, negative}.
+        """
+
+        # Remove last frame:
+        last_frame = self.pop_frame(-1)
+
+        batch = self.process(gamma=1)
+
+        # Make one hot vector for target rewards (i.e. reward taken from last of sampled frames):
+        r = last_frame['reward']
+        rp_t = [0.0, 0.0, 0.0]
+        if r > reward_threshold:
+            rp_t[1] = 1.0  # positive [010]
+
+        elif r < - reward_threshold:
+            rp_t[2] = 1.0  # negative [001]
+
+        else:
+            rp_t[0] = 1.0  # zero [100]
+
+        batch['rp_target'] = rp_t
 
         return batch
 
-    def extract(self, idx, _struct=None):
+    def get_frame(self, idx, _struct=None):
         """
         Extracts single experience from rollout.
 
@@ -123,7 +152,7 @@ class Rollout(dict):
             idx:    experience position
 
         Returns:
-            [nested] dictionary
+            frame as [nested] dictionary
         """
         # No idx range checks here!
         if _struct is None:
@@ -132,11 +161,34 @@ class Rollout(dict):
         if type(_struct) == dict or type(_struct) == type(self):
             frame = {}
             for key, value in _struct.items():
-                frame[key] = self.extract(idx, _struct=value)
+                frame[key] = self.get_frame(idx, _struct=value)
             return frame
 
         else:
             return _struct[idx]
+
+    def pop_frame(self, idx, _struct=None):
+        """
+        Pops single experience from rollout.
+
+        Args:
+            idx:    experience position
+
+        Returns:
+            frame as [nested] dictionary
+        """
+        # No idx range checks here!
+        if _struct is None:
+            _struct = self
+
+        if type(_struct) == dict or type(_struct) == type(self):
+            frame = {}
+            for key, value in _struct.items():
+                frame[key] = self.pop_frame(idx, _struct=value)
+            return frame
+
+        else:
+            return _struct.pop(idx)
 
     def as_array(self, struct):
         if type(struct) == dict:

@@ -61,10 +61,10 @@ class Launcher():
 
 
         Args:
-            env_config:         environment class_config_dict (see 'Note' below)
-            cluster_config:     dictionary containing keys: 'host', 'port', 'num_workers', 'num_ps'=1, 'log_dir'
-            policy_config:      policy class_config_dict
-            trainer_config:     trainer class_config_dict
+            env_config:         environment class_config_dict, see 'Note' below
+            cluster_config:     tf cluster configuration, see 'Note' below
+            policy_config:      policy class_config_dict, see corr. policy class args.
+            trainer_config:     trainer class_config_dict, see corr. trainer class args.
             max_train_steps:    number of train steps to run
             root_random_seed:   int or None
             test_mode:          if True - use Atari gym env., BTGym otherwise.
@@ -72,8 +72,17 @@ class Launcher():
 
         Note:
             class_config_dict:  dictionary containing at least two keys:
-                                    `class_ref`: reference to class constructor or function;
-                                    `kwargs`: dictionary of keyword arguments passed to `class_ref`
+                                    `class_ref`:    reference to class constructor or function;
+                                    `kwargs`:       dictionary of keyword arguments, see corr. environment class args.
+
+            cluster_config:     dictionary containing at least these keys:
+                                    'host':         cluster host, def: '127.0.0.1'
+                                    'port':         cluster port, def: 12222
+                                    'num_workers':  number of workers to run, def: 1
+                                    'num_ps':       number of parameter servers, def: 1
+                                    'num_envs':     number of environments to run in parallel for each worker, def: 1
+                                    'log_dir':      directory to save model and summaries, def: './tmp/btgym_aac_log'
+
         """
 
         self.env_config = dict(
@@ -90,6 +99,7 @@ class Launcher():
             num_workers=1,
             num_ps=1,
             log_dir='./tmp/btgym_aac_log',
+            num_envs=1,
         )
         self.policy_config = dict(
             class_ref=BaseAacPolicy,
@@ -154,10 +164,12 @@ class Launcher():
 
         # Configure workers:
         self.workers_config_list = []
+        env_ports = np.arange(self.cluster_config['num_envs'])
+        worker_port = self.env_config['kwargs']['port']  # start value for BTGym comm. port
 
         for key, spec_list in self.cluster_spec.items():
-            task_index = 0
-            for worker_id in spec_list:
+            task_index = 0  # referenced further as worker id
+            for _id in spec_list:
                 env_config = copy.deepcopy(self.env_config)
                 worker_config = {}
                 if key in 'worker':
@@ -166,9 +178,11 @@ class Launcher():
                         env_config['kwargs']['data_master'] = True  # set worker_0 as chief and data_master
                     else:
                         env_config['kwargs']['data_master'] = False
-                        env_config['kwargs']['port'] += task_index  # increment connection port
-
                         env_config['kwargs']['render_enabled'] = False  # disable rendering for all but chief
+
+                    # Add list of connection ports for every parallel env for each worker:
+                    env_config['kwargs']['port'] = list(worker_port + env_ports)
+                    worker_port += self.cluster_config['num_envs']
                 worker_config.update(
                     {
                         'env_config': env_config,
@@ -293,7 +307,7 @@ class Launcher():
             else:
                 p_servers_list.append(worker)
 
-        # TODO: launch tensorboard
+        # TODO: auto-launch tensorboard?
 
         signal.signal(signal.SIGINT, signal_handler)
 

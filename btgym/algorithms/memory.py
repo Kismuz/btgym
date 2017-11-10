@@ -12,14 +12,14 @@ class Memory(object):
     Note:
         must be filled up before calling sampling methods.
     """
-    def __init__(self, history_size, max_sample_size, log, rollout_getter, task=-1, reward_threshold=0.1):
+    def __init__(self, history_size, max_sample_size, log, rollout_provider, task=-1, reward_threshold=0.1):
         """
 
         Args:
             history_size:       number of experiences stored;
             max_sample_size:    maximum allowed sample size (e.g. off-policy rollout length);
             log:                parent logger;
-            rollout_getter:     callable returning instance of Rollout
+            rollout_provider:   callable returning list of Rollouts
             task:               parent worker id;
             reward_threshold:   if |experience.reward| > reward_threshold: experience is saved as 'prioritized';
         """
@@ -27,7 +27,7 @@ class Memory(object):
         self._frames = deque(maxlen=history_size)
         self.reward_threshold = reward_threshold
         self.max_sample_size = int(max_sample_size)
-        self.rollout_getter = rollout_getter
+        self.rollout_provider = rollout_provider
         self.log = log
         self.task = task
         # Indices for non-priority frames:
@@ -99,7 +99,7 @@ class Memory(object):
         # Add experiences one by one:
         # TODO: pain-slow.
         for i in range(len(rollout['terminal'])):
-            frame = rollout.extract(i)
+            frame = rollout.get_frame(i)
             self.add_frame(frame)
 
     def is_full(self):
@@ -111,11 +111,12 @@ class Memory(object):
         Supposed to be called by parent worker() just before training begins.
 
         Args:
-            rollout_getter:     callable, returning instance of Rollout.
+            rollout_getter:     callable, returning list of Rollouts.
 
         """
         while not self.is_full():
-            self.add_rollout(self.rollout_getter())
+            for rollout in self.rollout_provider():
+                self.add_rollout(rollout)
         self.log.info('Memory_{}: filled.'.format(self.task))
 
     def sample_uniform(self, sequence_size):

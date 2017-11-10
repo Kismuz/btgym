@@ -42,7 +42,7 @@ class Worker(multiprocessing.Process):
 
     Sets up environment, trainer and starts training process in supervised session.
     """
-    env = None
+    env_list = None
 
     def __init__(self,
                  env_config,
@@ -126,27 +126,34 @@ class Worker(multiprocessing.Process):
             self.log.debug('worker_{} tf.server started.'.format(self.task))
 
             self.log.debug('making environment.')
-            if not self.test_mode:
-                # Assume BTgym env. class:
-                self.log.debug('worker_{} is data_master: {}'.format(self.task, self.env_kwargs['data_master']))
-                try:
-                    self.env = self.env_class(**self.env_kwargs)
+            # Making as many environments as many entries in env_config `port` list:
+            self.env_list = []
+            env_kwargs = self.env_kwargs.copy()
+            port_list = env_kwargs.pop('port')
 
-                except:
-                    raise SystemExit(' Worker_{} failed to make BTgym environment'.format(self.task))
+            for port in port_list:
+                if not self.test_mode:
+                    # Assume BTgym env. class:
+                    self.log.debug('worker_{} is data_master: {}'.format(self.task, self.env_kwargs['data_master']))
+                    try:
+                        self.env_list.append(self.env_class(port=port, **env_kwargs))
 
-            else:
-                # Assume atari testing:
-                try:
-                    self.env = self.env_class(self.env_kwargs['gym_id'])
+                    except:
+                        raise SystemExit(' Worker_{} failed to make BTgym environment'.format(self.task))
 
-                except:
-                    raise SystemExit(' Worker_{} failed to make Atari Gym environment'.format(self.task))
+                else:
+                    # Assume atari testing:
+                    try:
+                        self.env_list.append(self.env_class(env_kwargs['gym_id']))
+
+                    except:
+                        raise SystemExit(' Worker_{} failed to make Gym environment'.format(self.task))
 
             self.log.debug('worker_{}:envronment ok.'.format(self.task))
+
             # Define trainer:
             trainer = self.trainer_class(
-                env=self.env,
+                env=self.env_list,
                 task=self.task,
                 policy_config=self.policy_config,
                 log=self.log,
@@ -205,7 +212,9 @@ class Worker(multiprocessing.Process):
                     global_step = sess.run(trainer.global_step)
 
                 # Ask for all the services to stop:
-                self.env.close()
+                for env in self.env_list:
+                    env.close()
+
                 sv.stop()
             self.log.warning('worker_{}: reached {} steps, exiting.'.format(self.task, global_step))
 

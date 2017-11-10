@@ -130,9 +130,9 @@ def as_array(struct):
         return np.asarray(struct)
 
 
-def batch_concat(dict_list, _top=True):
+def batch_stack(dict_list, _top=True):
     """
-    Concatenates values of given processed rollouts along batch dimension.
+    Stacks values of given processed rollouts along batch dimension.
     Initial batch dimension is saved as key 'rnn_batch_size' for further shape inference.
 
     Example:
@@ -151,15 +151,15 @@ def batch_concat(dict_list, _top=True):
     if isinstance(master, dict):
         for key in master.keys():
             value_list = [value[key] for value in dict_list]
-            batch[key] = batch_concat(value_list, False)
+            batch[key] = batch_stack(value_list, False)
 
     elif isinstance(master, LSTMStateTuple):
-        c = batch_concat([state[0] for state in dict_list], False)
-        h = batch_concat([state[1] for state in dict_list], False)
+        c = batch_stack([state[0] for state in dict_list], False)
+        h = batch_stack([state[1] for state in dict_list], False)
         batch = LSTMStateTuple(c=c, h=h)
 
     elif isinstance(master, tuple):
-        batch = tuple([batch_concat([struct[i] for struct in dict_list], False) for i in range(len(master))])
+        batch = tuple([batch_stack([struct[i] for struct in dict_list], False) for i in range(len(master))])
 
     else:
         try:
