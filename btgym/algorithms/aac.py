@@ -587,7 +587,12 @@ class BaseAAC(object):
         Returns feed dictionary for `reward prediction` loss estimation subgraph.
         """
         feeder = feed_dict_from_nested(self.local_network.rp_state_in, batch['state'])
-        feeder.update({self.rp_target: batch['rp_target']})
+        feeder.update(
+            {
+                self.rp_target: batch['rp_target'],
+                self.local_network.rp_batch_size: batch['batch_size'],
+            }
+        )
         return feeder
 
     def get_vr_feeder(self, batch):
@@ -599,8 +604,8 @@ class BaseAAC(object):
             feeder.update(feed_dict_rnn_context(self.local_network.vr_lstm_state_pl_flatten, batch['context']))
             feeder.update(
                 {
-                    self.local_network.vr_batch_size: batch['rnn_batch_size'],
-                    self.local_network.vr_time_length: batch['rnn_time_steps'],
+                    self.local_network.vr_batch_size: batch['batch_size'],
+                    self.local_network.vr_time_length: batch['time_steps'],
                     self.local_network.vr_a_r_in: batch['last_action_reward'],
                     self.vr_target: batch['r']
                 }
@@ -661,8 +666,8 @@ class BaseAAC(object):
         feed_dict.update(
             {
                 self.local_network.on_a_r_in: on_policy_batch['last_action_reward'],
-                self.local_network.on_batch_size: on_policy_batch['rnn_batch_size'],
-                self.local_network.on_time_length: on_policy_batch['rnn_time_steps'],
+                self.local_network.on_batch_size: on_policy_batch['batch_size'],
+                self.local_network.on_time_length: on_policy_batch['time_steps'],
                 self.on_pi_act_target: on_policy_batch['action'],
                 self.on_pi_adv_target: on_policy_batch['advantage'],
                 self.on_pi_r_target: on_policy_batch['r'],
@@ -678,8 +683,8 @@ class BaseAAC(object):
             )
             feed_dict.update(
                 {
-                    self.local_network_prime.on_batch_size: on_policy_batch['rnn_batch_size'],
-                    self.local_network_prime.on_time_length: on_policy_batch['rnn_time_steps'],
+                    self.local_network_prime.on_batch_size: on_policy_batch['batch_size'],
+                    self.local_network_prime.on_time_length: on_policy_batch['time_steps'],
                     self.local_network_prime.on_a_r_in: on_policy_batch['last_action_reward']
                 }
             )
@@ -705,8 +710,8 @@ class BaseAAC(object):
             off_policy_feed_dict.update(
                 {
                     self.local_network.off_a_r_in: off_policy_batch['last_action_reward'],
-                    self.local_network.off_batch_size: off_policy_batch['rnn_batch_size'],
-                    self.local_network.off_time_length: off_policy_batch['rnn_time_steps'],
+                    self.local_network.off_batch_size: off_policy_batch['batch_size'],
+                    self.local_network.off_time_length: off_policy_batch['time_steps'],
                     self.off_pi_act_target: off_policy_batch['action'],
                     self.off_pi_adv_target: off_policy_batch['advantage'],
                     self.off_pi_r_target: off_policy_batch['r'],
@@ -718,8 +723,8 @@ class BaseAAC(object):
                 )
                 off_policy_feed_dict.update(
                     {
-                        self.local_network_prime.off_batch_size: off_policy_batch['rnn_batch_size'],
-                        self.local_network_prime.off_time_length: off_policy_batch['rnn_time_steps'],
+                        self.local_network_prime.off_batch_size: off_policy_batch['batch_size'],
+                        self.local_network_prime.off_time_length: off_policy_batch['time_steps'],
                         self.local_network_prime.off_a_r_in: off_policy_batch['last_action_reward']
                     }
                 )

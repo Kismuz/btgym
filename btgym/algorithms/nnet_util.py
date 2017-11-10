@@ -215,6 +215,7 @@ def dense_rp_network(x):
     """
     # print('x_shape:', x.get_shape())
     #x = tf.reshape(x, [1, -1]) # flatten to pretend we got batch of size 1
+
     # Fully connected x128 followed by 3-way classifier [with softmax], as in paper:
     x = tf.nn.elu(linear(x, 128, 'rp_dense', normalized_columns_initializer(0.01)))
     # print('x_shape2:', x.get_shape())

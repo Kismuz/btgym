@@ -114,6 +114,9 @@ class BaseAacPolicy(object):
         [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
             pixel_change_2d_estimator(ob_space['external'])
 
+        self.pc_batch_size = self.off_batch_size
+        self.pc_time_length = self.off_time_length
+
         self.pc_state_in = self.off_state_in
         self.pc_a_r_in = self.off_a_r_in
         self.pc_lstm_state_pl_flatten = self.off_lstm_state_pl_flatten
@@ -127,6 +130,8 @@ class BaseAacPolicy(object):
         # Aux2: `Value function replay` network:
         # VR network is fully shared with ppo network but with `value` only output:
         # and has same off-policy batch pass with off_ppo network:
+        self.vr_batch_size = self.off_batch_size
+        self.vr_time_length = self.off_time_length
 
         self.vr_state_in = self.off_state_in
         self.vr_a_r_in = self.off_a_r_in
@@ -135,9 +140,15 @@ class BaseAacPolicy(object):
         self.vr_value = self.off_vf
 
         # Aux3: `Reward prediction` network:
-        # Shared conv.:
+        self.rp_batch_size = tf.placeholder(tf.int32, name='rp_batch_size')
+
+        # Shared conv. output:
         rp_x = conv_2d_network(self.rp_state_in['external'], ob_space['external'], ac_space, reuse=True)
-        rp_x = batch_flatten(rp_x)
+
+        # Flatten batch-wise:
+        rp_x_shape_static = rp_x.get_shape().as_list()
+        rp_x = tf.reshape(rp_x, [self.rp_batch_size, np.prod(rp_x_shape_static[1:]) * (self.rp_sequence_size-1)])
+
         # RP output:
         self.rp_logits = dense_rp_network(rp_x)
 

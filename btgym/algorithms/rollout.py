@@ -103,8 +103,8 @@ class Rollout(dict):
         batch['advantage'] = discount(delta_t, gamma * gae_lambda)
 
         # Brush it out:
-        batch['rnn_time_steps'] = batch['advantage'].shape[0]  # real non-padded time length
-        batch['rnn_batch_size'] = 1  # rollout is a trajectory
+        batch['time_steps'] = batch['advantage'].shape[0]  # real non-padded time length
+        batch['batch_size'] = 1  # rollout is a trajectory
 
         if size is not None and batch['advantage'].shape[0] != size:
             batch = batch_pad(batch, to_size=size)
@@ -130,7 +130,7 @@ class Rollout(dict):
 
         # Make one hot vector for target rewards (i.e. reward taken from last of sampled frames):
         r = last_frame['reward']
-        rp_t = [0.0, 0.0, 0.0]
+        rp_t = np.zeros(3)
         if r > reward_threshold:
             rp_t[1] = 1.0  # positive [010]
 
@@ -140,7 +140,8 @@ class Rollout(dict):
         else:
             rp_t[0] = 1.0  # zero [100]
 
-        batch['rp_target'] = rp_t
+        batch['rp_target'] = rp_t[None,...]
+        batch['time_steps'] = batch['advantage'].shape[0]  # e.g -1 of original
 
         return batch
 

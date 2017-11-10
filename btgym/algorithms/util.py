@@ -168,8 +168,8 @@ def batch_stack(dict_list, _top=True):
         except ValueError:
             batch = np.stack(dict_list, axis=0)
     if _top:
-        # Mind lstm shape inference:
-        batch['rnn_batch_size'] = batch['rnn_batch_size'].sum()
+        # Mind shape inference:
+        batch['batch_size'] = batch['batch_size'].sum()
         
     return batch
 
