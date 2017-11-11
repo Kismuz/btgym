@@ -8,8 +8,10 @@
 
 import numpy as np
 
+from tensorflow.contrib.rnn import LSTMStateTuple
 from btgym.algorithms.math_util import discount
 from btgym.algorithms.util import batch_pad
+
 
 # Info:
 ExperienceConfig = ['position', 'state', 'action', 'reward', 'value', 'terminal', 'r', 'context',
@@ -35,36 +37,56 @@ def make_rollout_getter(queue):
 
 class Rollout(dict):
     """
-    Experience rollout as [nested] dictionary of lists.
+    Experience rollout as [nested] dictionary of lists of ndarrays, tuples and rnn states.
     """
 
     def __init__(self):
         super(Rollout, self).__init__()
         self.size = 0
 
-    def add(self, values_dict, _dict=None):
+    def add(self, values, _struct=None):
         """
-        Adds single experience to rollout by appending values to dictionary of lists.
+        Adds single experience to rollout.
 
         Args:
-            values_dict:    [nested] dictionary of values.
+            values:    [nested] dictionary of values.
         """
-        if _dict is None:
+        if _struct is None:
             # Top level:
-            _dict = self
+            _struct = self
             self.size += 1
-        for key, value in values_dict.items():
-            if type(value) == dict:
-                if key not in _dict.keys():
-                    _dict[key] = {}
-                self.add(value, _dict=_dict[key])
+            top = True
+
+        else:
+            top = False
+
+        if isinstance(values, dict):
+            for key, value in values.items():
+                if key not in _struct.keys():
+                    _struct[key] = {}
+                _struct[key] =self.add(value, _struct[key])
+
+        elif isinstance(values, tuple):
+            if not isinstance(_struct, tuple):
+                _struct = ['empty' for entry in values]
+            _struct = tuple([self.add(*pair) for pair in zip(values, _struct)])
+
+        elif isinstance(values, LSTMStateTuple):
+            if not isinstance(_struct, LSTMStateTuple):
+                _struct = LSTMStateTuple(0, 0)
+            c = self.add(values[0], _struct[0])
+            h = self.add(values[1], _struct[1])
+            _struct = LSTMStateTuple(c, h)
+
+        else:
+            if isinstance(_struct, list):
+                _struct += [values]
 
             else:
-                if key in _dict.keys():
-                    _dict[key] += [value]
+                _struct = [values]
 
-                else:
-                    _dict[key] = [value]
+        if not top:
+            return _struct
 
     def add_memory_sample(self, sample):
         """
@@ -74,21 +96,37 @@ class Rollout(dict):
         for frame in sample:
             self.add(frame)
 
-    def process(self, gamma, gae_lambda=1.0, size=None):
+    def process(self, gamma, gae_lambda=1.0, size=None, time_flat=False):
         """
-        Converts rollout of batch_size=1 to dictionary of ready-to-feed arrays.
+        Converts single-trajectory rollout of experiences to dictionary of ready-to-feed arrays.
         Computes rollout returns and the advantages.
         Pads with zeroes to desired length, if size arg is given.
 
+        Args:
+            gamma:          discount factor
+            gae_lambda:     GAE lambda
+            size:           if given and time_flat=False, pads outputs with zeroes along `time' dim. to exact 'size'.
+            time_flat:      reduce time dimension to 1 step by stacking all experiences along batch dimension.
+
         Returns:
-            batch as [nested] dictionary of np.arrays [, LSTMStateTuples].
+            batch as [nested] dictionary of np.arrays, tuples and LSTMStateTuples. of size:
+
+                - [1, time_size, depth] or [1, size, depth] if not time_flatten and `size` is not/given, with single
+                `context` entry for entire trajectory, i.e. of size [1, context_depth];
+
+                - [batch_size, 1, depth], if time_flatten, with batch_size = time_size and `context` entry for
+                every experience frame, i.e. of size [batch_size, context_depth].
         """
         # self._check_it()
         batch = dict()
         for key in self.keys() - {'context', 'reward', 'r', 'value', 'position'}:
             batch[key] = self.as_array(self[key])
 
-        batch['context'] = self['context'][0]  # rollout initial LSTM state
+        if time_flat:
+            batch['context'] = self.as_array(self['context'])  # LSTM state for every frame
+
+        else:
+            batch['context'] = self.get_frame(0)['context'] # just get rollout initial LSTM state
 
         # Total accumulated empirical return:
         rewards = np.asarray(self['reward'])
@@ -102,11 +140,17 @@ class Rollout(dict):
         delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
         batch['advantage'] = discount(delta_t, gamma * gae_lambda)
 
-        # Brush it out:
-        batch['time_steps'] = batch['advantage'].shape[0]  # real non-padded time length
-        batch['batch_size'] = 1  # rollout is a trajectory
+        # Shape it out:
+        if time_flat:
+            batch['time_steps'] = 1
+            batch['batch_size'] = batch['advantage'].shape[0]  # time length turned batch size
 
-        if size is not None and batch['advantage'].shape[0] != size:
+        else:
+            batch['time_steps'] = batch['advantage'].shape[0]  # real non-padded time length
+            batch['batch_size'] = 1  # want rollout as a trajectory
+
+        if size is not None and not time_flat and batch['advantage'].shape[0] != size:
+            # Want all batches to be exact size for further batch stacking:
             batch = batch_pad(batch, to_size=size)
 
         return batch
@@ -159,11 +203,17 @@ class Rollout(dict):
         if _struct is None:
             _struct = self
 
-        if type(_struct) == dict or type(_struct) == type(self):
+        if isinstance(_struct, dict) or type(_struct) == type(self):
             frame = {}
             for key, value in _struct.items():
-                frame[key] = self.get_frame(idx, _struct=value)
+                frame[key] = self.get_frame(idx, value)
             return frame
+
+        elif isinstance(_struct, tuple):
+            return tuple([self.get_frame(idx, value) for value in _struct])
+
+        elif isinstance(_struct, LSTMStateTuple):
+            return LSTMStateTuple(self.get_frame(idx, _struct[0]), self.get_frame(idx, _struct[1]))
 
         else:
             return _struct[idx]
@@ -182,21 +232,33 @@ class Rollout(dict):
         if _struct is None:
             _struct = self
 
-        if type(_struct) == dict or type(_struct) == type(self):
+        if isinstance(_struct, dict) or type(_struct) == type(self):
             frame = {}
             for key, value in _struct.items():
-                frame[key] = self.pop_frame(idx, _struct=value)
+                frame[key] = self.pop_frame(idx, value)
             return frame
+
+        elif isinstance(_struct, tuple):
+            return tuple([self.pop_frame(idx, value) for value in _struct])
+
+        elif isinstance(_struct, LSTMStateTuple):
+            return LSTMStateTuple(self.pop_frame(idx, _struct[0]), self.pop_frame(idx, _struct[1]))
 
         else:
             return _struct.pop(idx)
 
     def as_array(self, struct):
-        if type(struct) == dict:
+        if isinstance(struct, dict):
             out = {}
             for key, value in struct.items():
                 out[key] = self.as_array(value)
             return out
+
+        elif isinstance(struct, tuple):
+            return tuple([self.as_array(value) for value in struct])
+
+        elif isinstance(struct, LSTMStateTuple):
+            return LSTMStateTuple(self.as_array(struct[0]), self.as_array(struct[1]))
 
         else:
             return np.asarray(struct)
