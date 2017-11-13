@@ -201,7 +201,7 @@ class Worker(multiprocessing.Process):
                 sess.run(trainer.sync)
                 trainer.start(sess, summary_writer)
                 global_step = sess.run(trainer.global_step)
-                # Fill replay memory, if any:
+                # Fill replay memory, if any: TODO: remove
                 if hasattr(trainer,'memory'):
                     if not trainer.memory.is_full():
                         trainer.memory.fill()

@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.spaces import DictSpace as ObSpace
-from btgym.algorithms import Memory, Rollout, make_rollout_getter, RunnerThread
+from btgym.algorithms import Memory, Rollout, make_data_getter, RunnerThread
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def
 from btgym.algorithms.util import feed_dict_rnn_context, feed_dict_from_nested, batch_stack, _show_struct
@@ -468,7 +468,7 @@ class BasePAAC(object):
                 )
 
             # Make rollouts provider method:
-            self.rollout_getter = [make_rollout_getter(runner.queue) for runner in self.runners]
+            self.rollout_getter = [make_data_getter(runner.queue) for runner in self.runners]
 
             # Make replay memory:
             if self.use_memory:

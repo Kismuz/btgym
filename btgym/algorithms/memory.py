@@ -4,6 +4,7 @@
 
 import numpy as np
 from collections import deque
+from btgym.algorithms import Rollout
 
 
 class Memory(object):
@@ -12,33 +13,43 @@ class Memory(object):
     Note:
         must be filled up before calling sampling methods.
     """
-    def __init__(self, history_size, max_sample_size, log, rollout_provider, task=-1, reward_threshold=0.1):
+    def __init__(self, history_size, max_sample_size, priority_sample_size, log,
+                 rollout_provider=None, task=-1, reward_threshold=0.1, use_priority_sampling=False):
         """
 
         Args:
-            history_size:       number of experiences stored;
-            max_sample_size:    maximum allowed sample size (e.g. off-policy rollout length);
-            log:                parent logger;
-            rollout_provider:   callable returning list of Rollouts
-            task:               parent worker id;
-            reward_threshold:   if |experience.reward| > reward_threshold: experience is saved as 'prioritized';
+            history_size:           number of experiences stored;
+            max_sample_size:        maximum allowed sample size (e.g. off-policy rollout length);
+            priority_sample_size:   sample size of priority_sample() method
+            log:                    parent logger;
+            rollout_provider:       callable returning list of Rollouts
+            task:                   parent worker id;
+            reward_threshold:       if |experience.reward| > reward_threshold: experience is saved as 'prioritized';
         """
         self._history_size = history_size
         self._frames = deque(maxlen=history_size)
         self.reward_threshold = reward_threshold
         self.max_sample_size = int(max_sample_size)
+        self.priority_sample_size = int(priority_sample_size)
         self.rollout_provider = rollout_provider
         self.log = log
         self.task = task
+        self.use_priority_sampling = use_priority_sampling
         # Indices for non-priority frames:
         self._zero_reward_indices = deque()
         # Indices for priority frames:
         self._non_zero_reward_indices = deque()
         self._top_frame_index = 0
-        # TODO: add logging
 
-    def add_frame(self, frame):
-        """Appends single experience frame to memory.
+        if use_priority_sampling:
+            self.sample_priority = self._sample_priority
+
+        else:
+            self.sample_priority = self._sample_dummy
+
+    def add(self, frame):
+        """
+        Appends single experience frame to memory.
 
         Args:
             frame:  dictionary of values.
@@ -100,7 +111,7 @@ class Memory(object):
         # TODO: pain-slow.
         for i in range(len(rollout['terminal'])):
             frame = rollout.get_frame(i)
-            self.add_frame(frame)
+            self.add(frame)
 
     def is_full(self):
         return len(self._frames) >= self._history_size
@@ -114,10 +125,14 @@ class Memory(object):
             rollout_getter:     callable, returning list of Rollouts.
 
         """
-        while not self.is_full():
-            for rollout in self.rollout_provider():
-                self.add_rollout(rollout)
-        self.log.info('Memory_{}: filled.'.format(self.task))
+        if self.rollout_provider is not None:
+            while not self.is_full():
+                for rollout in self.rollout_provider():
+                    self.add_rollout(rollout)
+            self.log.info('Memory_{}: filled.'.format(self.task))
+
+        else:
+            raise AttributeError('Rollout_provider is None, can not fill memory.')
 
     def sample_uniform(self, sequence_size):
         """Uniformly samples sequence of successive frames of size `sequence_size` or less (~off-policy rollout).
@@ -125,25 +140,26 @@ class Memory(object):
         Args:
             sequence_size:  maximum sample size.
         Returns:
-            list of ExperienceFrame's of length <= sequence_size.
+            instance of Rollout of size <= sequence_size.
         """
         start_pos = np.random.randint(0, self._history_size - sequence_size - 1)
         # Shift by one if hit terminal frame:
         if self._frames[start_pos]['terminal']:
             start_pos += 1  # assuming that there are no successive terminal frames.
 
-        sampled_frames = []
+        sampled_rollout = Rollout()
 
         for i in range(sequence_size):
             frame = self._frames[start_pos + i]
-            sampled_frames.append(frame)
+            sampled_rollout.add(frame)
             if frame['terminal']:
                 break  # it's ok to return less than `sequence_size` frames if `terminal` frame encountered.
 
-        return sampled_frames
+        return sampled_rollout
 
-    def sample_priority(self, size, exact_size=False, skewness=2, sample_attempts=100):
-        """ Implements rebalanced replay;
+    def _sample_priority(self, size=None, exact_size=False, skewness=2, sample_attempts=100):
+        """
+        Implements rebalanced replay;
         samples sequence of successive frames from distribution skewed by means of reward of last sample frame.
 
         Args:
@@ -156,8 +172,11 @@ class Memory(object):
                                 to get sample of continuous experiences (no `Terminal` frames inside except last one);
                                 if number is reached - sample returned 'as is'.
         Returns:
-            list of ExperienceFrame's.
+            instance of Rollout().
         """
+        if size is None:
+            size = self.priority_sample_size
+
         if size > self.max_sample_size:
             size = self.max_sample_size
 
@@ -191,7 +210,7 @@ class Memory(object):
             start_frame_index = end_frame_index - size + 1
             raw_start_frame_index = start_frame_index - self._top_frame_index
 
-            sampled_frames = []
+            sampled_rollout = Rollout()
             is_full = True
             if attempt == sample_attempts - 1:
                 check_sequence = False
@@ -201,7 +220,7 @@ class Memory(object):
 
             for i in range(size - 1):
                 frame = self._frames[raw_start_frame_index + i]
-                sampled_frames.append(frame)
+                sampled_rollout.add(frame)
                 if check_sequence:
                     if frame['terminal']:
                         if exact_size:
@@ -211,9 +230,35 @@ class Memory(object):
                         break
             # Last frame can be terminal anyway:
             frame = self._frames[raw_start_frame_index + size - 1]
-            sampled_frames.append(frame)
+            sampled_rollout.add(frame)
 
             if is_full:
                 break
 
-        return sampled_frames
+        return sampled_rollout
+
+    @staticmethod
+    def _sample_dummy(**kwargs):
+        return None
+
+
+class _DummyMemory:
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def add(frame):
+        return None
+
+    @staticmethod
+    def sample_uniform(**kwargs):
+        return None
+
+    @staticmethod
+    def sample_priority(**kwargs):
+        return  None
+
+    @staticmethod
+    def is_full():
+        return True

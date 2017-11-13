@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.spaces import DictSpace as ObSpace  # now can be gym.Dict
-from btgym.algorithms import Memory, Rollout, make_rollout_getter, RunnerThread
+from btgym.algorithms import Memory, Rollout, make_data_getter, RunnerThread
 from btgym.algorithms.math_util import log_uniform
 from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def
 from btgym.algorithms.util import feed_dict_rnn_context, feed_dict_from_nested, batch_stack, _show_struct
@@ -52,6 +52,7 @@ class BaseAAC(object):
                  opt_momentum=0.0,
                  opt_epsilon=1e-8,
                  rollout_length=20,
+                 time_flat=False,
                  episode_summary_freq=2,  # every i`th environment episode
                  env_render_freq=10,  # every i`th environment episode
                  model_summary_freq=100,  # every i`th algorithm iteration
@@ -90,14 +91,15 @@ class BaseAAC(object):
             model_gamma:            gamma discount factor
             model_gae_lambda:       GAE lambda
             model_beta:             entropy regularization beta
-            opt_max_train_steps:    train steps to run
+            opt_max_train_steps:    total number of environment steps to run training on
             opt_decay_steps:        learn ratio decay steps
-            opt_end_learn_rate:     final lerarn rate
+            opt_end_learn_rate:     final learn rate
             opt_learn_rate:         start learn rate
             opt_decay:              optimizer decay, if apll.
             opt_momentum:           optimizer momentum, if apll.
             opt_epsilon:            optimizer epsilon
             rollout_length:         on-policy rollout length
+            time_flat:              flatten rnn time-steps in rollouts while training
             episode_summary_freq:   int, write episode summary for every i'th episode
             env_render_freq:        int, write environment rendering summary for every i'th train step
             model_summary_freq:     int, write model summary for every i'th train step
@@ -157,6 +159,8 @@ class BaseAAC(object):
         self.model_gae_lambda = model_gae_lambda  # general advantage estimator lambda
         self.model_beta = log_uniform(model_beta, 1)  # entropy reg.
 
+        self.time_flat = time_flat
+
         # Optimizer
         self.opt_max_train_steps = opt_max_train_steps
         self.opt_learn_rate = log_uniform(opt_learn_rate, 1)
@@ -185,10 +189,10 @@ class BaseAAC(object):
         self.test_mode = test_mode
 
         # UNREAL/AUX and Off-policy specific:
-        self.off_aac_lambda = off_aac_lambda
-        self.rp_lambda = rp_lambda
+        self.off_aac_lambda = log_uniform(off_aac_lambda, 1)
+        self.rp_lambda = log_uniform(rp_lambda, 1)
         self.pc_lambda = log_uniform(pc_lambda, 1)
-        self.vr_lambda = vr_lambda
+        self.vr_lambda = log_uniform(vr_lambda, 1)
         self.gamma_pc = gamma_pc
         self.replay_memory_size = replay_memory_size
 
@@ -226,9 +230,12 @@ class BaseAAC(object):
 
         self.use_target_policy = _use_target_policy
 
-        self.log.info(
-            'AAC_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}, pc_lambda: {:1.8f}.'.
-                format(self.task, self.opt_learn_rate, self.model_beta, self.pc_lambda))
+        self.log.info('AAC_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}'.
+                      format(self.task, self.opt_learn_rate, self.model_beta))
+
+        if self.use_memory:
+            self.log.info('AAC_{}: vr_lambda: {:1.6f}, off_aac_lambda: {:1.6f}, pc_lambda: {:1.6f}, rp_lambda: {:1.6f}'.
+                          format(self.task, self.vr_lambda, self.off_aac_lambda, self.pc_lambda, self.rp_lambda))
 
         #self.log.info(
         #    'AAC_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
@@ -259,7 +266,7 @@ class BaseAAC(object):
                 self.local_network_prime = pi_prime = self.make_policy('local_prime')
 
             else:
-                self.local_network_prime = pi_prime = self.make_dummy_policy()
+                self.local_network_prime = pi_prime = self._make_dummy_policy()
 
             # Meant for Batch-norm layers:
             pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
@@ -414,49 +421,66 @@ class BaseAAC(object):
             # Episode-related summaries:
             self.ep_summary = dict(
                 # Summary placeholders
-                render_human_pl=tf.placeholder(tf.uint8, [None, None, None, 3]),
-                render_model_input_pl=tf.placeholder(tf.uint8, [None, None, None, 3]),
-                render_episode_pl=tf.placeholder(tf.uint8, [None, None, None, 3]),
-                render_atari_pl=tf.placeholder(tf.uint8, [None, None, None, 1]),
-                total_r_pl=tf.placeholder(tf.float32, ),
-                cpu_time_pl=tf.placeholder(tf.float32, ),
-                final_value_pl=tf.placeholder(tf.float32, ),
-                steps_pl=tf.placeholder(tf.int32, ),
+                render_human=tf.placeholder(tf.uint8, [None, None, None, 3]),
+                render_model_input=tf.placeholder(tf.uint8, [None, None, None, 3]),
+                render_episode=tf.placeholder(tf.uint8, [None, None, None, 3]),
+                render_atari=tf.placeholder(tf.uint8, [None, None, None, 1]),
+                total_r=tf.placeholder(tf.float32, ),
+                cpu_time=tf.placeholder(tf.float32, ),
+                final_value=tf.placeholder(tf.float32, ),
+                steps=tf.placeholder(tf.int32, ),
             )
             # Environmnet rendering:
             self.ep_summary['render_op'] = tf.summary.merge(
                 [
-                    tf.summary.image('human', self.ep_summary['render_human_pl']),
-                    tf.summary.image('model_input', self.ep_summary['render_model_input_pl']),
-                    tf.summary.image('episode', self.ep_summary['render_episode_pl']),
+                    tf.summary.image('human', self.ep_summary['render_human']),
+                    tf.summary.image('model_input', self.ep_summary['render_model_input']),
+                    tf.summary.image('episode', self.ep_summary['render_episode']),
                 ],
                 name='render'
             )
             # For Atari:
-            self.ep_summary['test_render_op'] = tf.summary.image("model/state", self.ep_summary['render_atari_pl'])
+            self.ep_summary['test_render_op'] = tf.summary.image("model/state", self.ep_summary['render_atari'])
 
             # Episode stat. summary:
             self.ep_summary['stat_op'] = tf.summary.merge(
                 [
-                    tf.summary.scalar('episode/total_reward', self.ep_summary['total_r_pl']),
-                    tf.summary.scalar('episode/cpu_time_sec', self.ep_summary['cpu_time_pl']),
-                    tf.summary.scalar('episode/final_value', self.ep_summary['final_value_pl']),
-                    tf.summary.scalar('episode/env_steps', self.ep_summary['steps_pl'])
+                    tf.summary.scalar('episode/total_reward', self.ep_summary['total_r']),
+                    tf.summary.scalar('episode/cpu_time_sec', self.ep_summary['cpu_time']),
+                    tf.summary.scalar('episode/final_value', self.ep_summary['final_value']),
+                    tf.summary.scalar('episode/env_steps', self.ep_summary['steps'])
                 ],
                 name='episode'
             )
             self.ep_summary['test_stat_op'] = tf.summary.merge(
                 [
-                    tf.summary.scalar('episode/total_reward', self.ep_summary['total_r_pl']),
-                    tf.summary.scalar('episode/steps', self.ep_summary['steps_pl'])
+                    tf.summary.scalar('episode/total_reward', self.ep_summary['total_r']),
+                    tf.summary.scalar('episode/steps', self.ep_summary['steps'])
                 ],
                 name='episode_atari'
             )
+            # Replay memory_config:
+            if self.use_memory:
+                memory_config = dict(
+                    class_ref=Memory,
+                    kwargs=dict(
+                        history_size=self.replay_memory_size,
+                        max_sample_size=self.replay_rollout_length,
+                        priority_sample_size=self.rp_sequence_size,
+                        reward_threshold=self.rp_reward_threshold,
+                        use_priority_sampling=self.use_reward_prediction,
+                        task=self.task,
+                        log=self.log,
+                    )
+                )
+            else:
+                memory_config = None
 
             # Make runners:
             # `rollout_length` represents the number of "local steps":  the number of timesteps
             # we run the policy before we update the parameters.
             self.runners = []
+            task = 100 * self.task  # Runners will have [worker_task][env_count] id's
             for env in self.env_list:
                 self.runners.append(
                      RunnerThread(
@@ -467,33 +491,27 @@ class BaseAAC(object):
                         self.episode_summary_freq,
                         self.env_render_freq,
                         self.test_mode,
-                        self.ep_summary
+                        self.ep_summary,
+                        memory_config
                      )
                 )
+                task += 1
             # Make rollouts provider:
-            self.rollout_getter = [make_rollout_getter(runner.queue) for runner in self.runners]
-
-            # Make replay memory:
-            if self.use_memory:
-                self.memory = Memory(
-                    history_size=self.replay_memory_size,
-                    max_sample_size=self.replay_rollout_length,
-                    reward_threshold=self.rp_reward_threshold,
-                    task=self.task,
-                    log=self.log,
-                    rollout_provider=self.get_rollout
-                )
+            self.data_getter = [make_data_getter(runner.queue) for runner in self.runners]
 
             self.log.debug('AAC_{}: init() done'.format(self.task))
 
-    def get_rollout(self):
+    def get_data(self):
         """
         Collect rollouts from every environmnet.
+
         Returns:
-            list of rollouts
+            dictionary of lists of data streams collected from every runner
         """
         # TODO: nowait?
-        return [get_it() for get_it in self.rollout_getter]
+        data_streams = [get_it() for get_it in self.data_getter]
+
+        return {key: [stream[key] for stream in data_streams] for key in data_streams[0].keys()}
 
     def make_policy(self, scope):
         """
@@ -552,9 +570,9 @@ class BaseAAC(object):
                 self.inc_episode = self.global_episode.assign_add(1)
         return network
 
-    def make_dummy_policy(self):
+    def _make_dummy_policy(self):
 
-        class Dummy(object):
+        class _Dummy(object):
             """
             Policy plug when target network is not used.
             """
@@ -574,7 +592,7 @@ class BaseAAC(object):
                 self.off_batch_size = None
                 self.off_time_length = None
 
-        return Dummy()
+        return _Dummy()
 
     def start(self, sess, summary_writer):
         for runner in self.runners:
@@ -647,14 +665,18 @@ class BaseAAC(object):
         # Copy weights from shared to local new_policy:
         sess.run(self.sync_pi)
 
-        # Get and process minibatch for on-policy train step:
-        on_policy_rollouts = self.get_rollout()
+        # Collect data from child thread runners:
+        data = self.get_data()
+
+        # Process minibatch for on-policy train step:
+        on_policy_rollouts = data['on_policy']
         on_policy_batch = batch_stack(
             [
                 r.process(
                     gamma=self.model_gamma,
                     gae_lambda=self.model_gae_lambda,
-                    size=self.rollout_length
+                    size=self.rollout_length,
+                    time_flat=self.time_flat,
                 ) for r in on_policy_rollouts
             ]
         )
@@ -689,20 +711,18 @@ class BaseAAC(object):
                 }
             )
         if self.use_memory:
-            # Get batch of rollouts from replay memory:
-            off_policy_batches = []
-            for i in range(self.replay_batch_size):
-                off_policy_rollout = Rollout()
-                off_policy_rollout.add_memory_sample(self.memory.sample_uniform(self.replay_rollout_length))
-                off_policy_batches.append(
-                    off_policy_rollout.process(
+            # Process rollouts from replay memory:
+            off_policy_rollouts = data['off_policy']
+            off_policy_batch = batch_stack(
+                [
+                    r.process(
                         gamma=self.model_gamma,
                         gae_lambda=self.model_gae_lambda,
-                        size=self.replay_rollout_length
-                    )
-                )
-            off_policy_batch = batch_stack(off_policy_batches)
-
+                        size=self.replay_rollout_length,
+                        time_flat=self.time_flat,
+                    ) for r in off_policy_rollouts
+                ]
+            )
             # Feeder for off-policy AAC loss estimation graph:
             off_policy_feed_dict = feed_dict_from_nested(self.local_network.off_state_in, off_policy_batch['state'])
             off_policy_feed_dict.update(
@@ -739,15 +759,8 @@ class BaseAAC(object):
             # Update with reward prediction subgraph:
             if self.use_reward_prediction:
                 # Rebalanced 50/50 sample for RP:
-                rp_batches = []
-                for i in range(self.replay_batch_size):
-                    rp_rollout = Rollout()
-                    rp_rollout.add_memory_sample(
-                        self.memory.sample_priority(self.rp_sequence_size, skewness=2, exact_size=True)
-                    )
-                    rp_batches.append(rp_rollout.process_rp(self.rp_reward_threshold))
-
-                rp_batch = batch_stack(rp_batches)
+                rp_rollouts = data['off_policy_rp']
+                rp_batch = batch_stack([rp.process_rp(self.rp_reward_threshold) for rp in rp_rollouts])
                 feed_dict.update(self.get_rp_feeder(rp_batch))
 
             # Pixel control ...
@@ -758,28 +771,65 @@ class BaseAAC(object):
             if self.use_value_replay:
                 feed_dict.update(self.get_vr_feeder(off_policy_batch))
 
-            # Save on_policy_rollout to replay memory:
-            for r in on_policy_rollouts:
-                self.memory.add_rollout(r)
+        # Every worker writes episode and model summaries:
+        ep_summary_feeder = {}
+        # Collect episode summaries from all env runners:
+        for stat in data['ep_summary']:
+            if stat is not None:
+                for key in stat.keys():
+                    if key in ep_summary_feeder.keys():
+                        ep_summary_feeder[key] += [stat[key]]
+                    else:
+                        ep_summary_feeder[key] = [stat[key]]
+        # Average values among thread_runners, if any, and write episode summary:
+        if ep_summary_feeder != {}:
+            ep_summary_feed_dict = {
+                self.ep_summary[key]: np.average(list) for key, list in ep_summary_feeder.items()
+            }
+            if self.test_mode:
+                # Atari:
+                fetched_episode_stat = sess.run(self.ep_summary['test_stat_op'], ep_summary_feed_dict)
 
-        # Every worker writes model summaries:
-        should_compute_summary =\
+            else:
+                # BTGym
+                fetched_episode_stat = sess.run(self.ep_summary['stat_op'], ep_summary_feed_dict)
+
+            self.summary_writer.add_summary(fetched_episode_stat, sess.run(self.global_episode))
+            self.summary_writer.flush()
+
+        wirte_model_summary =\
             self.local_steps % self.model_summary_freq == 0
+
+        # Look for renderings (chief worker only, always 0-numbered environment):
+        if self.task == 0:
+            if data['render_summary'][0] is not None:
+                render_feed_dict = {
+                    self.ep_summary[key]: pic for key, pic in data['render_summary'][0].items()
+                }
+                if self.test_mode:
+                    renderings = sess.run(self.ep_summary['test_render_op'], render_feed_dict)
+
+                else:
+                    renderings = sess.run(self.ep_summary['render_op'], render_feed_dict)
+
+                self.summary_writer.add_summary(renderings, sess.run(self.global_episode))
+                self.summary_writer.flush()
 
         fetches = [self.train_op]
 
-        if should_compute_summary:
+        if wirte_model_summary:
             fetches_last = fetches + [self.model_summary_op, self.inc_step]
         else:
             fetches_last = fetches + [self.inc_step]
 
-        # Do a number of SGD train steps:
+        # Do a number of SGD train epochs:
+        # When doing more than one epoch, we actually use only last summary:
         for i in range(self.num_epochs - 1):
             fetched = sess.run(fetches, feed_dict=feed_dict)
 
         fetched = sess.run(fetches_last, feed_dict=feed_dict)
 
-        if should_compute_summary:
+        if wirte_model_summary:
             self.summary_writer.add_summary(tf.Summary.FromString(fetched[-2]), fetched[-1])
             self.summary_writer.flush()
 

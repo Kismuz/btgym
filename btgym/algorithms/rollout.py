@@ -18,15 +18,15 @@ ExperienceConfig = ['position', 'state', 'action', 'reward', 'value', 'terminal'
                     'last_action_reward', 'pixel_change']
 
 
-def make_rollout_getter(queue):
+def make_data_getter(queue):
     """
-    Rollout getter constructor.
+    Data stream getter constructor.
 
     Args:
         queue:     instance of `Queue` class to get rollouts from.
 
     Returns:
-        callable, returning instance of Rollout.
+        callable, returning dictionary of data.
 
     """
     def pull_rollout_from_queue():
@@ -46,7 +46,7 @@ class Rollout(dict):
 
     def add(self, values, _struct=None):
         """
-        Adds single experience to rollout.
+        Adds single experience frame to rollout.
 
         Args:
             values:    [nested] dictionary of values.
@@ -123,7 +123,7 @@ class Rollout(dict):
             batch[key] = self.as_array(self[key])
 
         if time_flat:
-            batch['context'] = self.as_array(self['context'])  # LSTM state for every frame
+            batch['context'] = self.as_array(self['context'], squeeze_axis=1)  # LSTM state for every frame
 
         else:
             batch['context'] = self.get_frame(0)['context'] # just get rollout initial LSTM state
@@ -142,8 +142,8 @@ class Rollout(dict):
 
         # Shape it out:
         if time_flat:
-            batch['time_steps'] = 1
             batch['batch_size'] = batch['advantage'].shape[0]  # time length turned batch size
+            batch['time_steps'] = np.ones(batch['batch_size'])
 
         else:
             batch['time_steps'] = batch['advantage'].shape[0]  # real non-padded time length
@@ -247,21 +247,25 @@ class Rollout(dict):
         else:
             return _struct.pop(idx)
 
-    def as_array(self, struct):
+    def as_array(self, struct, squeeze_axis=None):
         if isinstance(struct, dict):
             out = {}
             for key, value in struct.items():
-                out[key] = self.as_array(value)
+                out[key] = self.as_array(value, squeeze_axis)
             return out
 
         elif isinstance(struct, tuple):
-            return tuple([self.as_array(value) for value in struct])
+            return tuple([self.as_array(value, squeeze_axis) for value in struct])
 
         elif isinstance(struct, LSTMStateTuple):
-            return LSTMStateTuple(self.as_array(struct[0]), self.as_array(struct[1]))
+            return LSTMStateTuple(self.as_array(struct[0], squeeze_axis), self.as_array(struct[1], squeeze_axis))
 
         else:
-            return np.asarray(struct)
+            if squeeze_axis is not None:
+                return np.squeeze(np.asarray(struct), axis=squeeze_axis)
+
+            else:
+                return np.asarray(struct)
 
     def _check_it(self, _struct=None):
         if _struct is None:

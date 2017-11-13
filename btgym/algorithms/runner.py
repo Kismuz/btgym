@@ -7,6 +7,7 @@ import six.moves.queue as queue
 import threading
 
 from btgym.algorithms import Rollout
+from btgym.algorithms.memory import _DummyMemory
 
 
 class RunnerThread(threading.Thread):
@@ -21,7 +22,16 @@ class RunnerThread(threading.Thread):
     is that a universe environment is _real time_.  This means that there should be a thread
     that would constantly interact with the environment and tell it what to do.  This thread is here.
     """
-    def __init__(self, env, policy, task, rollout_length, episode_summary_freq, env_render_freq, test, ep_summary):
+    def __init__(self,
+                 env,
+                 policy,
+                 task,
+                 rollout_length,
+                 episode_summary_freq,
+                 env_render_freq,
+                 test,
+                 ep_summary,
+                 memory_config=None):
         """
 
         Args:
@@ -33,6 +43,7 @@ class RunnerThread(threading.Thread):
             env_render_freq:        int
             test:                   Atari or BTGyn
             ep_summary:             tf.summary
+            memory_config:          replay memory configuration dictionary
         """
         threading.Thread.__init__(self)
         self.queue = queue.Queue(5)
@@ -48,6 +59,7 @@ class RunnerThread(threading.Thread):
         self.task = task
         self.test = test
         self.ep_summary = ep_summary
+        self.memory_config = memory_config
 
     def start_runner(self, sess, summary_writer):
         self.sess = sess
@@ -70,7 +82,8 @@ class RunnerThread(threading.Thread):
             self.episode_summary_freq,
             self.env_render_freq,
             self.test,
-            self.ep_summary
+            self.ep_summary,
+            self.memory_config
         )
         while True:
             # the timeout variable exists because apparently, if one worker dies, the other workers
@@ -89,7 +102,8 @@ def env_runner(sess,
                episode_summary_freq,
                env_render_freq,
                test,
-               ep_summary):
+               ep_summary,
+               memory_config):
     """The logic of the thread runner.
     In brief, it constantly keeps on running
     the policy, and as long as the rollout exceeds a certain length, the thread
@@ -103,15 +117,26 @@ def env_runner(sess,
         episode_summary_freq:   int
         env_render_freq:        int
         test:                   Atari or BTGyn
-        ep_summary:             tf.summary
+        ep_summary:             dict of tf.summary op and placeholders
+        memory_config:          replay memory configuration dictionary
 
     Yelds:
-        rollout instance
+        rollout instance as dictionary of on_policy, [off_policy] data and episode statistics.
     """
-    last_state = env.reset()
-    if not test:
-        last_state = last_state['model_input']
+    if memory_config is not None:
+        memory = memory_config['class_ref'](**memory_config['kwargs'])
+        """
+            history_size=memory_config['size'],
+            max_sample_size=rollout_length,
+            reward_threshold=memory_config['rp_reward_threshold'],
+            task=task,
+            log=None,
+            rollout_provider=None
+        """
+    else:
+        memory = _DummyMemory()
 
+    last_state = env.reset()
     last_context = policy.get_initial_features()
     length = 0
     local_episode = 0
@@ -127,6 +152,9 @@ def env_runner(sess,
     final_value = 0
     total_steps = 0
     total_steps_atari = 0
+
+    ep_stat = None
+    render_stat = None
 
     while True:
         terminal_end = False
@@ -191,6 +219,7 @@ def env_runner(sess,
                 # Bootstrap to complete and push previous experience:
                 last_experience['r'] = value_
                 rollout.add(last_experience)
+                memory.add(last_experience)
 
                 # Housekeeping:
                 length += 1
@@ -221,26 +250,18 @@ def env_runner(sess,
                 if local_episode % episode_summary_freq == 0:
                     if not test:
                         # BTgym:
-                        fetched_episode_stat = sess.run(
-                            ep_summary['stat_op'],
-                            feed_dict={
-                                ep_summary['total_r_pl']: total_r / episode_summary_freq,
-                                ep_summary['cpu_time_pl']: cpu_time / episode_summary_freq,
-                                ep_summary['final_value_pl']: final_value / episode_summary_freq,
-                                ep_summary['steps_pl']: total_steps / episode_summary_freq
-                            }
+                        ep_stat = dict(
+                            total_r=total_r / episode_summary_freq,
+                            cpu_time=cpu_time / episode_summary_freq,
+                            final_value=final_value / episode_summary_freq,
+                            steps=total_steps / episode_summary_freq
                         )
                     else:
                         # Atari:
-                        fetched_episode_stat = sess.run(
-                            ep_summary['test_stat_op'],
-                            feed_dict={
-                                ep_summary['total_r_pl']: total_r / episode_summary_freq,
-                                ep_summary['steps_pl']: total_steps_atari / episode_summary_freq
-                            }
+                        ep_stat = dict(
+                            total_r=total_r / episode_summary_freq,
+                            steps=total_steps_atari / episode_summary_freq
                         )
-                    summary_writer.add_summary(fetched_episode_stat, sess.run(policy.global_episode))
-                    summary_writer.flush()
                     total_r = 0
                     cpu_time = 0
                     final_value = 0
@@ -250,25 +271,15 @@ def env_runner(sess,
                 if task == 0 and local_episode % env_render_freq == 0 :
                     if not test:
                         # Render environment (chief worker only, and not in atari test mode):
-                        renderings = sess.run(
-                            ep_summary['render_op'],
-                            feed_dict={
-                                ep_summary['render_human_pl']: env.render('human')[None,:],
-                                ep_summary['render_model_input_pl']: env.render('model_input')[None,:],
-                                ep_summary['render_episode_pl']: env.render('episode')[None,:],
-                            }
+
+                        render_stat = dict(
+                            render_human=env.render('human')[None,:],
+                            render_model_input=env.render('model_input')[None, :],
+                            render_episode=env.render('episode')[None,:],
                         )
                     else:
                         # Atari:
-                        renderings = sess.run(
-                            ep_summary['test_render_op'],
-                            feed_dict={
-                                ep_summary['render_atari_pl']: state['external'][None,:] * 255
-                            }
-                        )
-
-                    summary_writer.add_summary(renderings, sess.run(policy.global_episode))
-                    summary_writer.flush()
+                        render_stat = dict(render_atari=state['external'][None,:] * 255)
 
                 # New episode:
                 last_state = env.reset()
@@ -300,6 +311,7 @@ def env_runner(sess,
             last_experience['r'] = np.asarray([0.0])
 
         rollout.add(last_experience)
+        memory.add(last_experience)
 
         #print('last_experience {}'.format(last_experience['position']))
         #for k, v in last_experience.items():
@@ -324,5 +336,18 @@ def env_runner(sess,
         #print('rollout size: {}, last r: {}'.format(len(rollout.position), rollout.r[-1]))
         #print('last value_next: ', last_experience['value_next'], ', rollout flushed.')
 
-        # Once we have enough experience, yield it, and have the ThreadRunner place it on a queue:
-        yield rollout
+        # Once we have enough experience and memory can be sampled, yield it,
+        # and have the ThreadRunner place it on a queue:
+        if memory.is_full():
+            data = dict(
+                on_policy=rollout,
+                off_policy=memory.sample_uniform(sequence_size=rollout_length),
+                off_policy_rp=memory.sample_priority(exact_size=True),
+                ep_summary=ep_stat,
+                render_summary=render_stat,
+            )
+            yield data
+
+            ep_stat = None
+            render_stat = None
+
