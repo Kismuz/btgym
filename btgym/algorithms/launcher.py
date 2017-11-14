@@ -36,7 +36,7 @@ import numpy as np
 import copy
 
 from .worker import Worker
-from .a3c import A3C
+from .aac import A3C
 from .policy import BaseAacPolicy
 
 
@@ -44,7 +44,7 @@ from .policy import BaseAacPolicy
 class Launcher():
     """
     Configures and starts distributed TF training session with workers
-    running separate instances of BTgym/Atari environment.
+    running sets of separate instances of BTgym/Atari environment.
 
     """
 
@@ -53,7 +53,7 @@ class Launcher():
                  cluster_config=None,
                  policy_config=None,
                  trainer_config=None,
-                 max_train_steps=None,
+                 max_env_steps=None,
                  root_random_seed=None,
                  test_mode=False,
                  verbose=0):
@@ -63,25 +63,25 @@ class Launcher():
         Args:
             env_config:         environment class_config_dict, see 'Note' below
             cluster_config:     tf cluster configuration, see 'Note' below
-            policy_config:      policy class_config_dict, see corr. policy class args.
-            trainer_config:     trainer class_config_dict, see corr. trainer class args.
-            max_train_steps:    number of train steps to run
+            policy_config:      policy class_config_dict holding corr. policy class args.
+            trainer_config:     trainer class_config_dict holding corr. trainer class args.
+            max_env_steps:      total number of environment steps to run training on
             root_random_seed:   int or None
             test_mode:          if True - use Atari gym env., BTGym otherwise.
             verbose:            0 - silent, 1 - info, 3 - debug level
 
         Note:
             class_config_dict:  dictionary containing at least two keys:
-                                    `class_ref`:    reference to class constructor or function;
-                                    `kwargs`:       dictionary of keyword arguments, see corr. environment class args.
+                                - `class_ref`:    reference to class constructor or function;
+                                - `kwargs`:       dictionary of keyword arguments, see corr. environment class args.
 
             cluster_config:     dictionary containing at least these keys:
-                                    'host':         cluster host, def: '127.0.0.1'
-                                    'port':         cluster port, def: 12222
-                                    'num_workers':  number of workers to run, def: 1
-                                    'num_ps':       number of parameter servers, def: 1
-                                    'num_envs':     number of environments to run in parallel for each worker, def: 1
-                                    'log_dir':      directory to save model and summaries, def: './tmp/btgym_aac_log'
+                                - 'host':         cluster host, def: '127.0.0.1'
+                                - 'port':         cluster port, def: 12222
+                                - 'num_workers':  number of workers to run, def: 1
+                                - 'num_ps':       number of parameter servers, def: 1
+                                - 'num_envs':     number of environments to run in parallel for each worker, def: 1
+                                - 'log_dir':      directory to save model and summaries, def: './tmp/btgym_aac_log'
 
         """
 
@@ -111,22 +111,22 @@ class Launcher():
             class_ref=A3C,
             kwargs={}
         )
-        self.max_train_steps = 10 * 10 ** 6
+        self.max_env_steps = 100 * 10 ** 6
         self.ports_to_use = []
         self.root_random_seed = root_random_seed
         self.test_mode = test_mode
         self.verbose = verbose
 
-        if max_train_steps is not None:
-            self.max_train_steps = max_train_steps
+        if max_env_steps is not None:
+            self.max_env_steps = max_env_steps
 
-        self.env_config = self.update_config_dict(self.env_config, env_config)
+        self.env_config = self._update_config_dict(self.env_config, env_config)
 
-        self.cluster_config = self.update_config_dict(self.cluster_config, cluster_config)
+        self.cluster_config = self._update_config_dict(self.cluster_config, cluster_config)
 
-        self.policy_config = self.update_config_dict(self.policy_config, policy_config)
+        self.policy_config = self._update_config_dict(self.policy_config, policy_config)
 
-        self.trainer_config = self.update_config_dict(self.trainer_config, trainer_config)
+        self.trainer_config = self._update_config_dict(self.trainer_config, trainer_config)
 
         self.trainer_config['kwargs']['test_mode'] = self.test_mode
 
@@ -152,8 +152,6 @@ class Launcher():
             os.makedirs(self.cluster_config['log_dir'])
             self.log.info('{} created.'.format(self.cluster_config['log_dir']))
 
-        #if not self.test_mode:
-        # We should have those to proceed with BTgym workers configuration:
         for kwarg in ['port', 'data_port']:
             assert kwarg in self.env_config['kwargs'].keys()
 
@@ -173,7 +171,7 @@ class Launcher():
                 env_config = copy.deepcopy(self.env_config)
                 worker_config = {}
                 if key in 'worker':
-                    # Configure  worker BTgym environment:
+                    # Configure worker BTgym environment:
                     if task_index == 0:
                         env_config['kwargs']['data_master'] = True  # set worker_0 as chief and data_master
                     else:
@@ -193,7 +191,7 @@ class Launcher():
                         'task': task_index,
                         'test_mode': self.test_mode,
                         'log_dir': self.cluster_config['log_dir'],
-                        'max_train_steps': self.max_train_steps,
+                        'max_env_steps': self.max_env_steps,
                         'log': self.log,
                         'log_level': self.log.getEffectiveLevel(),
                         'random_seed': workers_rnd_seeds.pop()
@@ -240,9 +238,9 @@ class Launcher():
             p = psutil.Popen(['kill', pid])
             self.log.info('port {} cleared'.format(port))
 
-    def update_config_dict(self, old_dict, new_dict=None):
+    def _update_config_dict(self, old_dict, new_dict=None):
         """
-        Updates nested dictionary with values from other one of same structure.
+        Service, updates nested dictionary with values from other one of same structure.
 
         Args:
             old_dict:   dict to update to
@@ -256,7 +254,7 @@ class Launcher():
 
         for key, value in new_dict.items():
             if type(value) == dict:
-                old_dict[key] = self.update_config_dict(old_dict[key], value)
+                old_dict[key] = self._update_config_dict(old_dict[key], value)
 
             else:
                 old_dict[key] = value

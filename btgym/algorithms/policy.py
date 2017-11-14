@@ -195,7 +195,7 @@ class BaseAacPolicy(object):
             action_reward:  concatenated last action-reward value
 
         Returns:
-            Action, one-hot.
+            Action [one-hot], V-fn value, output RNN state
         """
         sess = tf.get_default_session()
         feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
@@ -220,7 +220,7 @@ class BaseAacPolicy(object):
             action_reward:  concatenated last action-reward value
 
         Returns:
-            Policy V-function estimated value
+            V-function value
         """
         sess = tf.get_default_session()
         feeder = feed_dict_rnn_context(self.on_lstm_state_pl_flatten, lstm_state)

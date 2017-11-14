@@ -15,26 +15,18 @@ btgym\.algorithms\.worker module
     :members:
 
 
-btgym\.algorithms\.runner module
---------------------------------
-
-.. automodule:: btgym.algorithms.runner
-    :members:
-
-
-btgym\.algorithms\.a3c module
+btgym\.algorithms\.aac module
 -----------------------------
 
-.. automodule:: btgym.algorithms.a3c
+.. automodule:: btgym.algorithms.aac
     :members:
 
 
-btgym\.algorithms\.envs module
-------------------------------
+btgym\.algorithms\.policy module
+-------------------------------------
 
-.. automodule:: btgym.algorithms.envs
+.. automodule:: btgym.algorithms.policy
     :members:
-
 
 
 btgym\.algorithms\.losses module
@@ -44,34 +36,6 @@ btgym\.algorithms\.losses module
     :members:
 
 
-btgym\.algorithms\.memory module
---------------------------------
-
-.. automodule:: btgym.algorithms.memory
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-btgym\.algorithms\.model module
--------------------------------
-
-.. automodule:: btgym.algorithms.model
-    :members:
-
-
-btgym\.algorithms\.aac\_policy module
--------------------------------------
-
-.. automodule:: btgym.algorithms.aac_policy
-    :members:
-
-
-btgym\.algorithms\.model\_unreal module
----------------------------------------
-
-.. automodule:: btgym.algorithms.model_unreal
-    :members:
-
 
 btgym\.algorithms\.nnet\_util module
 ------------------------------------
@@ -80,26 +44,30 @@ btgym\.algorithms\.nnet\_util module
     :members:
 
 
-btgym\.algorithms\.ppo module
------------------------------
-
-.. automodule:: btgym.algorithms.ppo
-    :members:
-    :private-members:
-
-
 btgym\.algorithms\.rollout module
 ---------------------------------
 
 .. automodule:: btgym.algorithms.rollout
     :members:
-    :private-members:
 
 
-btgym\.algorithms\.unreal module
+btgym\.algorithms\.memory module
 --------------------------------
 
-.. automodule:: btgym.algorithms.unreal
+.. automodule:: btgym.algorithms.memory
     :members:
     :private-members:
 
+
+btgym\.algorithms\.envs module
+------------------------------
+
+.. automodule:: btgym.algorithms.envs
+    :members:
+
+
+btgym\.algorithms\.runner module
+--------------------------------
+
+.. automodule:: btgym.algorithms.runner
+    :members:

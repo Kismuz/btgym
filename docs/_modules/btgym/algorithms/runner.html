@@ -180,6 +180,7 @@
 <span class="kn">import</span> <span class="nn">threading</span>
 
 <span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">Rollout</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.memory</span> <span class="k">import</span> <span class="n">_DummyMemory</span>
 
 
 <div class="viewcode-block" id="RunnerThread"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.runner.RunnerThread">[docs]</a><span class="k">class</span> <span class="nc">RunnerThread</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
@@ -187,14 +188,26 @@
 <span class="sd">    Async. framework code comes from OpenAI repository under MIT licence:</span>
 <span class="sd">    https://github.com/openai/universe-starter-agent</span>
 
-<span class="sd">    Despite the fact BTgym is not real-time environment [yet], thread-runner approach is still here.</span>
-
-<span class="sd">    From original `universe-starter-agent`:</span>
-<span class="sd">    ...One of the key distinctions between a normal environment and a universe environment</span>
+<span class="sd">    Despite the fact BTgym is not real-time environment [yet], thread-runner approach is still here. From</span>
+<span class="sd">    original `universe-starter-agent`:</span>
+<span class="sd">    `...One of the key distinctions between a normal environment and a universe environment</span>
 <span class="sd">    is that a universe environment is _real time_.  This means that there should be a thread</span>
-<span class="sd">    that would constantly interact with the environment and tell it what to do.  This thread is here.</span>
+<span class="sd">    that would constantly interact with the environment and tell it what to do.  This thread is here.`</span>
+
+<span class="sd">    Another idea is to see ThreadRunner as all-in-one data provider, thus shaping data distribution</span>
+<span class="sd">    fed to estimator from single place.</span>
+<span class="sd">    So, replay memory is also here, as well as some service functions (collecting summary data).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">policy</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">rollout_length</span><span class="p">,</span> <span class="n">episode_summary_freq</span><span class="p">,</span> <span class="n">env_render_freq</span><span class="p">,</span> <span class="n">test</span><span class="p">,</span> <span class="n">ep_summary</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">env</span><span class="p">,</span>
+                 <span class="n">policy</span><span class="p">,</span>
+                 <span class="n">task</span><span class="p">,</span>
+                 <span class="n">rollout_length</span><span class="p">,</span>
+                 <span class="n">episode_summary_freq</span><span class="p">,</span>
+                 <span class="n">env_render_freq</span><span class="p">,</span>
+                 <span class="n">test</span><span class="p">,</span>
+                 <span class="n">ep_summary</span><span class="p">,</span>
+                 <span class="n">memory_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
@@ -206,6 +219,7 @@
 <span class="sd">            env_render_freq:        int</span>
 <span class="sd">            test:                   Atari or BTGyn</span>
 <span class="sd">            ep_summary:             tf.summary</span>
+<span class="sd">            memory_config:          replay memory configuration dictionary</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">queue</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
@@ -221,6 +235,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">test</span> <span class="o">=</span> <span class="n">test</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span> <span class="o">=</span> <span class="n">ep_summary</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_config</span> <span class="o">=</span> <span class="n">memory_config</span>
 
     <span class="k">def</span> <span class="nf">start_runner</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sess</span> <span class="o">=</span> <span class="n">sess</span>
@@ -243,7 +258,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">episode_summary_freq</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">env_render_freq</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory_config</span>
         <span class="p">)</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="c1"># the timeout variable exists because apparently, if one worker dies, the other workers</span>
@@ -262,11 +278,13 @@
                <span class="n">episode_summary_freq</span><span class="p">,</span>
                <span class="n">env_render_freq</span><span class="p">,</span>
                <span class="n">test</span><span class="p">,</span>
-               <span class="n">ep_summary</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;The logic of the thread runner.</span>
+               <span class="n">ep_summary</span><span class="p">,</span>
+               <span class="n">memory_config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The logic of the thread runner.</span>
 <span class="sd">    In brief, it constantly keeps on running</span>
 <span class="sd">    the policy, and as long as the rollout exceeds a certain length, the thread</span>
-<span class="sd">    runner appends the rollout to the queue.</span>
+<span class="sd">    runner appends all the collected data to the queue.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        env:                    environment instance</span>
@@ -276,15 +294,26 @@
 <span class="sd">        episode_summary_freq:   int</span>
 <span class="sd">        env_render_freq:        int</span>
 <span class="sd">        test:                   Atari or BTGyn</span>
-<span class="sd">        ep_summary:             tf.summary</span>
+<span class="sd">        ep_summary:             dict of tf.summary op and placeholders</span>
+<span class="sd">        memory_config:          replay memory configuration dictionary</span>
 
 <span class="sd">    Yelds:</span>
-<span class="sd">        rollout instance</span>
+<span class="sd">        collected data as dictionary of on_policy, off_policy rollouts and episode statistics.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">last_state</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
-        <span class="n">last_state</span> <span class="o">=</span> <span class="n">last_state</span><span class="p">[</span><span class="s1">&#39;model_input&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">memory_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">memory</span> <span class="o">=</span> <span class="n">memory_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">](</span><span class="o">**</span><span class="n">memory_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">])</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            history_size=memory_config[&#39;size&#39;],</span>
+<span class="sd">            max_sample_size=rollout_length,</span>
+<span class="sd">            reward_threshold=memory_config[&#39;rp_reward_threshold&#39;],</span>
+<span class="sd">            task=task,</span>
+<span class="sd">            log=None,</span>
+<span class="sd">            rollout_provider=None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">memory</span> <span class="o">=</span> <span class="n">_DummyMemory</span><span class="p">()</span>
 
+    <span class="n">last_state</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
     <span class="n">last_context</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">get_initial_features</span><span class="p">()</span>
     <span class="n">length</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">local_episode</span> <span class="o">=</span> <span class="mi">0</span>
@@ -300,6 +329,9 @@
     <span class="n">final_value</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">total_steps</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">total_steps_atari</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">ep_stat</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">render_stat</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
         <span class="n">terminal_end</span> <span class="o">=</span> <span class="kc">False</span>
@@ -364,6 +396,7 @@
                 <span class="c1"># Bootstrap to complete and push previous experience:</span>
                 <span class="n">last_experience</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value_</span>
                 <span class="n">rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">last_experience</span><span class="p">)</span>
+                <span class="n">memory</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">last_experience</span><span class="p">)</span>
 
                 <span class="c1"># Housekeeping:</span>
                 <span class="n">length</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -394,26 +427,18 @@
                 <span class="k">if</span> <span class="n">local_episode</span> <span class="o">%</span> <span class="n">episode_summary_freq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
                         <span class="c1"># BTgym:</span>
-                        <span class="n">fetched_episode_stat</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-                            <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;stat_op&#39;</span><span class="p">],</span>
-                            <span class="n">feed_dict</span><span class="o">=</span><span class="p">{</span>
-                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r_pl&#39;</span><span class="p">]:</span> <span class="n">total_r</span> <span class="o">/</span> <span class="n">episode_summary_freq</span><span class="p">,</span>
-                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;cpu_time_pl&#39;</span><span class="p">]:</span> <span class="n">cpu_time</span> <span class="o">/</span> <span class="n">episode_summary_freq</span><span class="p">,</span>
-                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;final_value_pl&#39;</span><span class="p">]:</span> <span class="n">final_value</span> <span class="o">/</span> <span class="n">episode_summary_freq</span><span class="p">,</span>
-                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps_pl&#39;</span><span class="p">]:</span> <span class="n">total_steps</span> <span class="o">/</span> <span class="n">episode_summary_freq</span>
-                            <span class="p">}</span>
+                        <span class="n">ep_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                            <span class="n">total_r</span><span class="o">=</span><span class="n">total_r</span> <span class="o">/</span> <span class="n">episode_summary_freq</span><span class="p">,</span>
+                            <span class="n">cpu_time</span><span class="o">=</span><span class="n">cpu_time</span> <span class="o">/</span> <span class="n">episode_summary_freq</span><span class="p">,</span>
+                            <span class="n">final_value</span><span class="o">=</span><span class="n">final_value</span> <span class="o">/</span> <span class="n">episode_summary_freq</span><span class="p">,</span>
+                            <span class="n">steps</span><span class="o">=</span><span class="n">total_steps</span> <span class="o">/</span> <span class="n">episode_summary_freq</span>
                         <span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="c1"># Atari:</span>
-                        <span class="n">fetched_episode_stat</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-                            <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_stat_op&#39;</span><span class="p">],</span>
-                            <span class="n">feed_dict</span><span class="o">=</span><span class="p">{</span>
-                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r_pl&#39;</span><span class="p">]:</span> <span class="n">total_r</span> <span class="o">/</span> <span class="n">episode_summary_freq</span><span class="p">,</span>
-                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps_pl&#39;</span><span class="p">]:</span> <span class="n">total_steps_atari</span> <span class="o">/</span> <span class="n">episode_summary_freq</span>
-                            <span class="p">}</span>
+                        <span class="n">ep_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                            <span class="n">total_r</span><span class="o">=</span><span class="n">total_r</span> <span class="o">/</span> <span class="n">episode_summary_freq</span><span class="p">,</span>
+                            <span class="n">steps</span><span class="o">=</span><span class="n">total_steps_atari</span> <span class="o">/</span> <span class="n">episode_summary_freq</span>
                         <span class="p">)</span>
-                    <span class="n">summary_writer</span><span class="o">.</span><span class="n">add_summary</span><span class="p">(</span><span class="n">fetched_episode_stat</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">policy</span><span class="o">.</span><span class="n">global_episode</span><span class="p">))</span>
-                    <span class="n">summary_writer</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
                     <span class="n">total_r</span> <span class="o">=</span> <span class="mi">0</span>
                     <span class="n">cpu_time</span> <span class="o">=</span> <span class="mi">0</span>
                     <span class="n">final_value</span> <span class="o">=</span> <span class="mi">0</span>
@@ -423,25 +448,15 @@
                 <span class="k">if</span> <span class="n">task</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">local_episode</span> <span class="o">%</span> <span class="n">env_render_freq</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">:</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
                         <span class="c1"># Render environment (chief worker only, and not in atari test mode):</span>
-                        <span class="n">renderings</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-                            <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_op&#39;</span><span class="p">],</span>
-                            <span class="n">feed_dict</span><span class="o">=</span><span class="p">{</span>
-                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_human_pl&#39;</span><span class="p">]:</span> <span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;human&#39;</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:],</span>
-                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_model_input_pl&#39;</span><span class="p">]:</span> <span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;model_input&#39;</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:],</span>
-                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_episode_pl&#39;</span><span class="p">]:</span> <span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;episode&#39;</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:],</span>
-                            <span class="p">}</span>
+
+                        <span class="n">render_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                            <span class="n">render_human</span><span class="o">=</span><span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;human&#39;</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:],</span>
+                            <span class="n">render_model_input</span><span class="o">=</span><span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;model_input&#39;</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:],</span>
+                            <span class="n">render_episode</span><span class="o">=</span><span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;episode&#39;</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:],</span>
                         <span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="c1"># Atari:</span>
-                        <span class="n">renderings</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-                            <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_render_op&#39;</span><span class="p">],</span>
-                            <span class="n">feed_dict</span><span class="o">=</span><span class="p">{</span>
-                                <span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_atari_pl&#39;</span><span class="p">]:</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">][</span><span class="kc">None</span><span class="p">,:]</span> <span class="o">*</span> <span class="mi">255</span>
-                            <span class="p">}</span>
-                        <span class="p">)</span>
-
-                    <span class="n">summary_writer</span><span class="o">.</span><span class="n">add_summary</span><span class="p">(</span><span class="n">renderings</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">policy</span><span class="o">.</span><span class="n">global_episode</span><span class="p">))</span>
-                    <span class="n">summary_writer</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+                        <span class="n">render_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">render_atari</span><span class="o">=</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">][</span><span class="kc">None</span><span class="p">,:]</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span>
 
                 <span class="c1"># New episode:</span>
                 <span class="n">last_state</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
@@ -473,6 +488,7 @@
             <span class="n">last_experience</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mf">0.0</span><span class="p">])</span>
 
         <span class="n">rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">last_experience</span><span class="p">)</span>
+        <span class="n">memory</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">last_experience</span><span class="p">)</span>
 
         <span class="c1">#print(&#39;last_experience {}&#39;.format(last_experience[&#39;position&#39;]))</span>
         <span class="c1">#for k, v in last_experience.items():</span>
@@ -497,8 +513,21 @@
         <span class="c1">#print(&#39;rollout size: {}, last r: {}&#39;.format(len(rollout.position), rollout.r[-1]))</span>
         <span class="c1">#print(&#39;last value_next: &#39;, last_experience[&#39;value_next&#39;], &#39;, rollout flushed.&#39;)</span>
 
-        <span class="c1"># Once we have enough experience, yield it, and have the ThreadRunner place it on a queue:</span>
-        <span class="k">yield</span> <span class="n">rollout</span></div>
+        <span class="c1"># Once we have enough experience and memory can be sampled, yield it,</span>
+        <span class="c1"># and have the ThreadRunner place it on a queue:</span>
+        <span class="k">if</span> <span class="n">memory</span><span class="o">.</span><span class="n">is_full</span><span class="p">():</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">on_policy</span><span class="o">=</span><span class="n">rollout</span><span class="p">,</span>
+                <span class="n">off_policy</span><span class="o">=</span><span class="n">memory</span><span class="o">.</span><span class="n">sample_uniform</span><span class="p">(</span><span class="n">sequence_size</span><span class="o">=</span><span class="n">rollout_length</span><span class="p">),</span>
+                <span class="n">off_policy_rp</span><span class="o">=</span><span class="n">memory</span><span class="o">.</span><span class="n">sample_priority</span><span class="p">(</span><span class="n">exact_size</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+                <span class="n">ep_summary</span><span class="o">=</span><span class="n">ep_stat</span><span class="p">,</span>
+                <span class="n">render_summary</span><span class="o">=</span><span class="n">render_stat</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">yield</span> <span class="n">data</span>
+
+            <span class="n">ep_stat</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">render_stat</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 </pre></div>
 
            </div>

@@ -8,7 +8,8 @@ from btgym.algorithms import Rollout
 
 
 class Memory(object):
-    """Replay memory with rebalanced replay.
+    """
+    Replay memory with rebalanced replay based on reward value.
 
     Note:
         must be filled up before calling sampling methods.
@@ -22,7 +23,7 @@ class Memory(object):
             max_sample_size:        maximum allowed sample size (e.g. off-policy rollout length);
             priority_sample_size:   sample size of priority_sample() method
             log:                    parent logger;
-            rollout_provider:       callable returning list of Rollouts
+            rollout_provider:       callable returning list of Rollouts NOT USED
             task:                   parent worker id;
             reward_threshold:       if |experience.reward| > reward_threshold: experience is saved as 'prioritized';
         """
@@ -89,7 +90,8 @@ class Memory(object):
                 self._non_zero_reward_indices.popleft()
 
     def add_rollout(self, rollout):
-        """ Adds frames from given rollout to memory with respect to episode continuation.
+        """
+        Adds frames from given rollout to memory with respect to episode continuation.
 
         Args:
             rollout:    `Rollout` instance.
@@ -118,7 +120,7 @@ class Memory(object):
 
     def fill(self):
         """
-        Fills replay memory with initial experiences.
+        Fills replay memory with initial experiences. NOT USED.
         Supposed to be called by parent worker() just before training begins.
 
         Args:
@@ -135,7 +137,8 @@ class Memory(object):
             raise AttributeError('Rollout_provider is None, can not fill memory.')
 
     def sample_uniform(self, sequence_size):
-        """Uniformly samples sequence of successive frames of size `sequence_size` or less (~off-policy rollout).
+        """
+        Uniformly samples sequence of successive frames of size `sequence_size` or less (~off-policy rollout).
 
         Args:
             sequence_size:  maximum sample size.
@@ -159,8 +162,8 @@ class Memory(object):
 
     def _sample_priority(self, size=None, exact_size=False, skewness=2, sample_attempts=100):
         """
-        Implements rebalanced replay;
-        samples sequence of successive frames from distribution skewed by means of reward of last sample frame.
+        Implements rebalanced replay.
+        Samples sequence of successive frames from distribution skewed by means of reward of last sample frame.
 
         Args:
             size:               sample size, must be <= self.max_sample_size;

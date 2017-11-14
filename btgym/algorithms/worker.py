@@ -17,7 +17,7 @@ import cv2
 import tensorflow as tf
 
 
-class FastSaver(tf.train.Saver):
+class _FastSaver(tf.train.Saver):
     """
     Disables write_meta_graph argument,
     which freezes entire process and is mostly useless.
@@ -29,12 +29,12 @@ class FastSaver(tf.train.Saver):
              latest_filename=None,
              meta_graph_suffix="meta",
              write_meta_graph=True):
-        super(FastSaver, self).save(sess,
-                                    save_path,
-                                    global_step,
-                                    latest_filename,
-                                    meta_graph_suffix,
-                                    False)
+        super(_FastSaver, self).save(sess,
+                                     save_path,
+                                     global_step,
+                                     latest_filename,
+                                     meta_graph_suffix,
+                                     False)
 
 class Worker(multiprocessing.Process):
     """
@@ -54,7 +54,7 @@ class Worker(multiprocessing.Process):
                  log_dir,
                  log,
                  log_level,
-                 max_train_steps,
+                 max_env_steps,
                  random_seed=None,
                  test_mode=False):
         """
@@ -68,9 +68,20 @@ class Worker(multiprocessing.Process):
             task:           integer number, 0 is chief worker.
             log_dir:        for tb summaries and checkpoints.
             log:            parent logger
-            log_level:      --
-            max_steps:      number of train steps
+            log_level:      0 - silent, 1 - info, 3 - debug level
+            max_env_steps:  number of environment steps to run training on
             test_mode:      if True - use Atari mode, BTGym otherwise.
+
+            Note:
+                - Conventional `self.global_step` refers to number of environment steps,
+                    summarized over all environment instances, not to number of policy optimizer train steps.
+
+                - Every worker can run several environments in parralell, as specified by `cluster_config'['num_envs'].
+                    If use 4 forkers and num_envs=4 => total number of environments is 16. Every env instance has
+                    it's own ThreadRunner process.
+
+                - When using replay memory, keep in mind that every ThreadRunner is keeping it's own replay memory,
+                    If memory_size = 2000, num_workers=4, num_envs=4 => total replay memory size equals 32 000 frames.
         """
         super(Worker, self).__init__()
         self.env_class = env_config['class_ref']
@@ -82,7 +93,7 @@ class Worker(multiprocessing.Process):
         self.job_name = job_name
         self.task = task
         self.log_dir = log_dir
-        self.max_train_steps = max_train_steps
+        self.max_env_steps = max_env_steps
         self.log = log
         logging.basicConfig()
         self.log = logging.getLogger('{}_{}'.format(self.job_name, self.task))
@@ -168,7 +179,7 @@ class Worker(multiprocessing.Process):
             init_op = tf.variables_initializer(variables_to_save)
             init_all_op = tf.global_variables_initializer()
 
-            saver = FastSaver(variables_to_save)
+            saver = _FastSaver(variables_to_save)
 
             self.log.debug('worker_{}: vars_to_save:'.format(self.task))
             for v in variables_to_save:
@@ -200,6 +211,8 @@ class Worker(multiprocessing.Process):
             with sv.managed_session(server.target, config=config) as sess, sess.as_default():
                 sess.run(trainer.sync)
                 trainer.start(sess, summary_writer)
+                # Note: `self.global_step` refers to number of environment steps
+                # summarized over all environment instances, not to number of policy optimizer train steps.
                 global_step = sess.run(trainer.global_step)
                 # Fill replay memory, if any: TODO: remove
                 if hasattr(trainer,'memory'):
@@ -207,7 +220,7 @@ class Worker(multiprocessing.Process):
                         trainer.memory.fill()
 
                 self.log.warning("worker_{}: started training at step: {}".format(self.task, global_step))
-                while not sv.should_stop() and global_step < self.max_train_steps:
+                while not sv.should_stop() and global_step < self.max_env_steps:
                     trainer.process(sess)
                     global_step = sess.run(trainer.global_step)
 

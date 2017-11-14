@@ -188,28 +188,29 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A3C args. is a subset of BaseAAC arguments, see `BaseAAC` class for descriptions.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            env:                    envirionment instance</span>
-<span class="sd">            task:                   int</span>
-<span class="sd">            policy_config:          policy estimator class and configuration dictionary</span>
-<span class="sd">            log:                    parent log</span>
-<span class="sd">            random_seed:            int or None</span>
-<span class="sd">            model_gamma:            gamma discount factor</span>
-<span class="sd">            model_gae_lambda:       GAE lambda</span>
-<span class="sd">            model_beta:             entropy regularization beta</span>
-<span class="sd">            opt_max_train_steps:    train steps to run</span>
-<span class="sd">            opt_decay_steps:        learn ratio decay steps</span>
-<span class="sd">            opt_end_learn_rate:     final lerarn rate</span>
-<span class="sd">            opt_learn_rate:         start learn rate</span>
-<span class="sd">            opt_decay:              optimizer decay, if apll.</span>
-<span class="sd">            opt_momentum:           optimizer momentum, if apll.</span>
-<span class="sd">            opt_epsilon:            optimizer epsilon</span>
-<span class="sd">            rollout_length:         on-policy rollout length</span>
-<span class="sd">            episode_summary_freq:   int, write episode summary for every i&#39;th episode</span>
-<span class="sd">            env_render_freq:        int, write environment rendering summary for every i&#39;th train step</span>
-<span class="sd">            model_summary_freq:     int, write model summary for every i&#39;th train step</span>
-<span class="sd">            test_mode:              True: Atari, False: BTGym</span>
+<span class="sd">            env:</span>
+<span class="sd">            task:</span>
+<span class="sd">            policy_config:</span>
+<span class="sd">            log:</span>
+<span class="sd">            random_seed:</span>
+<span class="sd">            model_gamma:</span>
+<span class="sd">            model_gae_lambda:</span>
+<span class="sd">            model_beta:</span>
+<span class="sd">            opt_max_env_steps:</span>
+<span class="sd">            opt_decay_steps:</span>
+<span class="sd">            opt_end_learn_rate:</span>
+<span class="sd">            opt_learn_rate:</span>
+<span class="sd">            opt_decay:</span>
+<span class="sd">            opt_momentum:</span>
+<span class="sd">            opt_epsilon:</span>
+<span class="sd">            rollout_length:</span>
+<span class="sd">            episode_summary_freq:</span>
+<span class="sd">            env_render_freq:</span>
+<span class="sd">            model_summary_freq:</span>
+<span class="sd">            test_mode:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">A3C</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">on_policy_loss</span><span class="o">=</span><span class="n">aac_loss_def</span><span class="p">,</span>

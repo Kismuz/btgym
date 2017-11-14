@@ -26,7 +26,9 @@ def categorical_sample(logits, d):
 
 
 def linear(x, size, name, initializer=None, bias_init=0, reuse=False):
-    """Linear network layer."""
+    """
+    Linear network layer.
+    """
     with tf.variable_scope(name, reuse=reuse):
         w = tf.get_variable("/w", [x.get_shape()[1], size], initializer=initializer)
         b = tf.get_variable("/b", [size], initializer=tf.constant_initializer(bias_init))
@@ -35,7 +37,9 @@ def linear(x, size, name, initializer=None, bias_init=0, reuse=False):
 
 def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", dtype=tf.float32,
            collections=None, reuse=False):
-    """2D convolution layer."""
+    """
+    2D convolution layer.
+    """
     with tf.variable_scope(name, reuse=reuse):
         stride_shape = [1, stride[0], stride[1], 1]
         filter_shape = [filter_size[0], filter_size[1], int(x.get_shape()[3]), num_filters]
@@ -93,7 +97,9 @@ def deconv2d(x, output_channels, name, filter_size=(4, 4), stride=(2, 2),
 
 def conv1d(x, num_filters, name, filter_size=3, stride=2, pad="SAME", dtype=tf.float32,
            collections=None, reuse=False):
-    """ 1D convolution layer"""
+    """
+    1D convolution layer
+    """
     with tf.variable_scope(name, reuse=reuse):
         stride_shape = stride
 
@@ -133,7 +139,8 @@ def conv_2d_network(x,
                     dtype=tf.float32,
                     collections=None,
                     reuse=False):
-    """Stage1 network: from preprocessed 2D input to estimated features.
+    """
+    Stage1 network: from preprocessed 2D input to estimated features.
     Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.
 
     Returns:
@@ -196,7 +203,8 @@ def lstm_network(x, a_r, sequence_length, lstm_class=rnn.BasicLSTMCell, lstm_lay
 
 
 def dense_aac_network(x, ac_space, reuse=False):
-    """Stage3 network: from LSTM flattened output to advantage actor-critic.
+    """
+    Stage3 network: from LSTM flattened output to advantage actor-critic.
 
     Returns:
         logits tensor
@@ -211,7 +219,8 @@ def dense_aac_network(x, ac_space, reuse=False):
 
 
 def dense_rp_network(x):
-    """Stage3 network: From shared convolutions to reward-prediction task output tensor.
+    """
+    Stage3 network: From shared convolutions to reward-prediction task output tensor.
     """
     # print('x_shape:', x.get_shape())
     #x = tf.reshape(x, [1, -1]) # flatten to pretend we got batch of size 1
@@ -225,7 +234,8 @@ def dense_rp_network(x):
 
 
 def pixel_change_2d_estimator(ob_space, stride=2):
-    """Defines tf op for estimating `pixel change` as subsampled absolute difference of two states.
+    """
+    Defines tf operation for estimating `pixel change` as subsampled absolute difference of two states.
     """
     input_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_state_in')
     input_last_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_last_state_in')
@@ -239,7 +249,8 @@ def pixel_change_2d_estimator(ob_space, stride=2):
 
 
 def duelling_pc_network(x, ac_space, reuse=False):
-    """Stage3 network for `pixel control' task: from LSTM output to Q-aux. features tensor.
+    """
+    Stage3 network for `pixel control' task: from LSTM output to Q-aux. features tensor.
     """
     x = tf.nn.elu(linear(x, 9* 9 * 32, 'pc_dense', normalized_columns_initializer(0.01), reuse=reuse))
     x = tf.reshape(x, [-1, 9, 9, 32])

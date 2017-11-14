@@ -111,10 +111,10 @@ class Rollout(dict):
         Returns:
             batch as [nested] dictionary of np.arrays, tuples and LSTMStateTuples. of size:
 
-                - [1, time_size, depth] or [1, size, depth] if not time_flatten and `size` is not/given, with single
+                [1, time_size, depth] or [1, size, depth] if not time_flatten and `size` is not/given, with single
                 `context` entry for entire trajectory, i.e. of size [1, context_depth];
 
-                - [batch_size, 1, depth], if time_flatten, with batch_size = time_size and `context` entry for
+                [batch_size, 1, depth], if time_flatten, with batch_size = time_size and `context` entry for
                 every experience frame, i.e. of size [batch_size, context_depth].
         """
         # self._check_it()
@@ -163,8 +163,8 @@ class Rollout(dict):
             reward_threshold:   reward values such as |r|> reward_threshold are classified as neg. or pos.
 
         Returns:
-            Processed batch with size reduced by one and
-            with extra `rp_target` key holding one hot encodings {zero, positive, negative}.
+            Processed batch with size reduced by one and with extra `rp_target` key
+            holding one hot encodings for classes {zero, positive, negative}.
         """
 
         # Remove last frame:

@@ -177,41 +177,53 @@
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">Rollout</span>
 
 
 <div class="viewcode-block" id="Memory"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory">[docs]</a><span class="k">class</span> <span class="nc">Memory</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Replay memory with rebalanced replay.</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Replay memory with rebalanced replay based on reward value.</span>
 
 <span class="sd">    Note:</span>
 <span class="sd">        must be filled up before calling sampling methods.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history_size</span><span class="p">,</span> <span class="n">max_sample_size</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span> <span class="n">rollout_getter</span><span class="p">,</span> <span class="n">task</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">reward_threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history_size</span><span class="p">,</span> <span class="n">max_sample_size</span><span class="p">,</span> <span class="n">priority_sample_size</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span>
+                 <span class="n">rollout_provider</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">task</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">reward_threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">use_priority_sampling</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            history_size:       number of experiences stored;</span>
-<span class="sd">            max_sample_size:    maximum allowed sample size (e.g. off-policy rollout length);</span>
-<span class="sd">            log:                parent logger;</span>
-<span class="sd">            rollout_getter:     callable returning instance of Rollout</span>
-<span class="sd">            task:               parent worker id;</span>
-<span class="sd">            reward_threshold:   if |experience.reward| &gt; reward_threshold: experience is saved as &#39;prioritized&#39;;</span>
+<span class="sd">            history_size:           number of experiences stored;</span>
+<span class="sd">            max_sample_size:        maximum allowed sample size (e.g. off-policy rollout length);</span>
+<span class="sd">            priority_sample_size:   sample size of priority_sample() method</span>
+<span class="sd">            log:                    parent logger;</span>
+<span class="sd">            rollout_provider:       callable returning list of Rollouts NOT USED</span>
+<span class="sd">            task:                   parent worker id;</span>
+<span class="sd">            reward_threshold:       if |experience.reward| &gt; reward_threshold: experience is saved as &#39;prioritized&#39;;</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_history_size</span> <span class="o">=</span> <span class="n">history_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="n">history_size</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reward_threshold</span> <span class="o">=</span> <span class="n">reward_threshold</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_sample_size</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">rollout_getter</span> <span class="o">=</span> <span class="n">rollout_getter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">priority_sample_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">priority_sample_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rollout_provider</span> <span class="o">=</span> <span class="n">rollout_provider</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_priority_sampling</span> <span class="o">=</span> <span class="n">use_priority_sampling</span>
         <span class="c1"># Indices for non-priority frames:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_zero_reward_indices</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
         <span class="c1"># Indices for priority frames:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_non_zero_reward_indices</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_top_frame_index</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="c1"># TODO: add logging</span>
 
-<div class="viewcode-block" id="Memory.add_frame"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.add_frame">[docs]</a>    <span class="k">def</span> <span class="nf">add_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Appends single experience frame to memory.</span>
+        <span class="k">if</span> <span class="n">use_priority_sampling</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample_priority</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_priority</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample_priority</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_dummy</span>
+
+<div class="viewcode-block" id="Memory.add"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Appends single experience frame to memory.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            frame:  dictionary of values.</span>
@@ -251,7 +263,8 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_non_zero_reward_indices</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Memory.add_rollout"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.add_rollout">[docs]</a>    <span class="k">def</span> <span class="nf">add_rollout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rollout</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Adds frames from given rollout to memory with respect to episode continuation.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds frames from given rollout to memory with respect to episode continuation.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            rollout:    `Rollout` instance.</span>
@@ -272,51 +285,58 @@
         <span class="c1"># Add experiences one by one:</span>
         <span class="c1"># TODO: pain-slow.</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rollout</span><span class="p">[</span><span class="s1">&#39;terminal&#39;</span><span class="p">])):</span>
-            <span class="n">frame</span> <span class="o">=</span> <span class="n">rollout</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">add_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span></div>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">rollout</span><span class="o">.</span><span class="n">get_frame</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Memory.is_full"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.is_full">[docs]</a>    <span class="k">def</span> <span class="nf">is_full</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_history_size</span></div>
+    <span class="k">def</span> <span class="nf">is_full</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_history_size</span>
 
 <div class="viewcode-block" id="Memory.fill"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.fill">[docs]</a>    <span class="k">def</span> <span class="nf">fill</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Fills replay memory with initial experiences.</span>
+<span class="sd">        Fills replay memory with initial experiences. NOT USED.</span>
 <span class="sd">        Supposed to be called by parent worker() just before training begins.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            rollout_getter:     callable, returning instance of Rollout.</span>
+<span class="sd">            rollout_getter:     callable, returning list of Rollouts.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_full</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">add_rollout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rollout_getter</span><span class="p">())</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Memory_</span><span class="si">{}</span><span class="s1">: filled.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span></div>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rollout_provider</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_full</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">rollout</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rollout_provider</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">add_rollout</span><span class="p">(</span><span class="n">rollout</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Memory_</span><span class="si">{}</span><span class="s1">: filled.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s1">&#39;Rollout_provider is None, can not fill memory.&#39;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Memory.sample_uniform"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.sample_uniform">[docs]</a>    <span class="k">def</span> <span class="nf">sample_uniform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sequence_size</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Uniformly samples sequence of successive frames of size `sequence_size` or less (~off-policy rollout).</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Uniformly samples sequence of successive frames of size `sequence_size` or less (~off-policy rollout).</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            sequence_size:  maximum sample size.</span>
 <span class="sd">        Returns:</span>
-<span class="sd">            list of ExperienceFrame&#39;s of length &lt;= sequence_size.</span>
+<span class="sd">            instance of Rollout of size &lt;= sequence_size.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">start_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_history_size</span> <span class="o">-</span> <span class="n">sequence_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
         <span class="c1"># Shift by one if hit terminal frame:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="n">start_pos</span><span class="p">][</span><span class="s1">&#39;terminal&#39;</span><span class="p">]:</span>
             <span class="n">start_pos</span> <span class="o">+=</span> <span class="mi">1</span>  <span class="c1"># assuming that there are no successive terminal frames.</span>
 
-        <span class="n">sampled_frames</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">sampled_rollout</span> <span class="o">=</span> <span class="n">Rollout</span><span class="p">()</span>
 
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sequence_size</span><span class="p">):</span>
             <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="n">start_pos</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span>
-            <span class="n">sampled_frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+            <span class="n">sampled_rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;terminal&#39;</span><span class="p">]:</span>
                 <span class="k">break</span>  <span class="c1"># it&#39;s ok to return less than `sequence_size` frames if `terminal` frame encountered.</span>
 
-        <span class="k">return</span> <span class="n">sampled_frames</span></div>
+        <span class="k">return</span> <span class="n">sampled_rollout</span></div>
 
-<div class="viewcode-block" id="Memory.sample_priority"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory.sample_priority">[docs]</a>    <span class="k">def</span> <span class="nf">sample_priority</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">exact_size</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">skewness</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">sample_attempts</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Implements rebalanced replay;</span>
-<span class="sd">        samples sequence of successive frames from distribution skewed by means of reward of last sample frame.</span>
+<div class="viewcode-block" id="Memory._sample_priority"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.memory.Memory._sample_priority">[docs]</a>    <span class="k">def</span> <span class="nf">_sample_priority</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exact_size</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">skewness</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">sample_attempts</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implements rebalanced replay.</span>
+<span class="sd">        Samples sequence of successive frames from distribution skewed by means of reward of last sample frame.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            size:               sample size, must be &lt;= self.max_sample_size;</span>
@@ -328,8 +348,11 @@
 <span class="sd">                                to get sample of continuous experiences (no `Terminal` frames inside except last one);</span>
 <span class="sd">                                if number is reached - sample returned &#39;as is&#39;.</span>
 <span class="sd">        Returns:</span>
-<span class="sd">            list of ExperienceFrame&#39;s.</span>
+<span class="sd">            instance of Rollout().</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">priority_sample_size</span>
+
         <span class="k">if</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_size</span><span class="p">:</span>
             <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_size</span>
 
@@ -363,7 +386,7 @@
             <span class="n">start_frame_index</span> <span class="o">=</span> <span class="n">end_frame_index</span> <span class="o">-</span> <span class="n">size</span> <span class="o">+</span> <span class="mi">1</span>
             <span class="n">raw_start_frame_index</span> <span class="o">=</span> <span class="n">start_frame_index</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_top_frame_index</span>
 
-            <span class="n">sampled_frames</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">sampled_rollout</span> <span class="o">=</span> <span class="n">Rollout</span><span class="p">()</span>
             <span class="n">is_full</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="k">if</span> <span class="n">attempt</span> <span class="o">==</span> <span class="n">sample_attempts</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="n">check_sequence</span> <span class="o">=</span> <span class="kc">False</span>
@@ -373,7 +396,7 @@
 
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
                 <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="n">raw_start_frame_index</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span>
-                <span class="n">sampled_frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+                <span class="n">sampled_rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">check_sequence</span><span class="p">:</span>
                     <span class="k">if</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;terminal&#39;</span><span class="p">]:</span>
                         <span class="k">if</span> <span class="n">exact_size</span><span class="p">:</span>
@@ -383,12 +406,38 @@
                         <span class="k">break</span>
             <span class="c1"># Last frame can be terminal anyway:</span>
             <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frames</span><span class="p">[</span><span class="n">raw_start_frame_index</span> <span class="o">+</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-            <span class="n">sampled_frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+            <span class="n">sampled_rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">is_full</span><span class="p">:</span>
                 <span class="k">break</span>
 
-        <span class="k">return</span> <span class="n">sampled_frames</span></div></div>
+        <span class="k">return</span> <span class="n">sampled_rollout</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_sample_dummy</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<span class="k">class</span> <span class="nc">_DummyMemory</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">frame</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">sample_uniform</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">sample_priority</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span>  <span class="kc">None</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">is_full</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">True</span>
 </pre></div>
 
            </div>

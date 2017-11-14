@@ -456,7 +456,7 @@ class Unreal(object):
 
         #self.log.info(
         #    'U_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
-        #        format(self.task, self.opt_max_train_steps, self.opt_decay_steps, self.opt_end_learn_rate))
+        #        format(self.task, self.opt_max_env_steps, self.opt_decay_steps, self.opt_end_learn_rate))
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 

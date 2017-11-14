@@ -15,12 +15,15 @@ class RunnerThread(threading.Thread):
     Async. framework code comes from OpenAI repository under MIT licence:
     https://github.com/openai/universe-starter-agent
 
-    Despite the fact BTgym is not real-time environment [yet], thread-runner approach is still here.
-
-    From original `universe-starter-agent`:
-    ...One of the key distinctions between a normal environment and a universe environment
+    Despite the fact BTgym is not real-time environment [yet], thread-runner approach is still here. From
+    original `universe-starter-agent`:
+    `...One of the key distinctions between a normal environment and a universe environment
     is that a universe environment is _real time_.  This means that there should be a thread
-    that would constantly interact with the environment and tell it what to do.  This thread is here.
+    that would constantly interact with the environment and tell it what to do.  This thread is here.`
+
+    Another idea is to see ThreadRunner as all-in-one data provider, thus shaping data distribution
+    fed to estimator from single place.
+    So, replay memory is also here, as well as some service functions (collecting summary data).
     """
     def __init__(self,
                  env,
@@ -104,10 +107,11 @@ def env_runner(sess,
                test,
                ep_summary,
                memory_config):
-    """The logic of the thread runner.
+    """
+    The logic of the thread runner.
     In brief, it constantly keeps on running
     the policy, and as long as the rollout exceeds a certain length, the thread
-    runner appends the rollout to the queue.
+    runner appends all the collected data to the queue.
 
     Args:
         env:                    environment instance
@@ -121,7 +125,7 @@ def env_runner(sess,
         memory_config:          replay memory configuration dictionary
 
     Yelds:
-        rollout instance as dictionary of on_policy, [off_policy] data and episode statistics.
+        collected data as dictionary of on_policy, off_policy rollouts and episode statistics.
     """
     if memory_config is not None:
         memory = memory_config['class_ref'](**memory_config['kwargs'])

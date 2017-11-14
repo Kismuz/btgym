@@ -109,18 +109,14 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">btgym.algorithms package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.launcher">btgym.algorithms.launcher module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.worker">btgym.algorithms.worker module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.runner">btgym.algorithms.runner module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.a3c">btgym.algorithms.a3c module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.envs">btgym.algorithms.envs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.aac">btgym.algorithms.aac module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.policy">btgym.algorithms.policy module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.losses">btgym.algorithms.losses module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.memory">btgym.algorithms.memory module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-model-module">btgym.algorithms.model module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-aac-policy-module">btgym.algorithms.aac_policy module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-model-unreal-module">btgym.algorithms.model_unreal module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.nnet_util">btgym.algorithms.nnet_util module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.ppo">btgym.algorithms.ppo module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.rollout">btgym.algorithms.rollout module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-unreal-module">btgym.algorithms.unreal module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.memory">btgym.algorithms.memory module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.envs">btgym.algorithms.envs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.runner">btgym.algorithms.runner module</a></li>
 </ul>
 </li>
 </ul>
@@ -192,19 +188,19 @@
 <span id="btgym-algorithms-launcher-module"></span><h2>btgym.algorithms.launcher module<a class="headerlink" href="#module-btgym.algorithms.launcher" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.launcher.Launcher">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.launcher.</code><code class="descname">Launcher</code><span class="sig-paren">(</span><em>env_config=None</em>, <em>cluster_config=None</em>, <em>policy_config=None</em>, <em>trainer_config=None</em>, <em>max_train_steps=None</em>, <em>root_random_seed=None</em>, <em>test_mode=False</em>, <em>verbose=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.launcher.</code><code class="descname">Launcher</code><span class="sig-paren">(</span><em>env_config=None</em>, <em>cluster_config=None</em>, <em>policy_config=None</em>, <em>trainer_config=None</em>, <em>max_env_steps=None</em>, <em>root_random_seed=None</em>, <em>test_mode=False</em>, <em>verbose=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher" title="Permalink to this definition">¶</a></dt>
 <dd><p>Configures and starts distributed TF training session with workers
-running separate instances of BTgym/Atari environment.</p>
+running sets of separate instances of BTgym/Atari environment.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env_config</strong> – environment class_config_dict (see ‘Note’ below)</li>
-<li><strong>cluster_config</strong> – dictionary containing keys: ‘host’, ‘port’, ‘num_workers’, ‘num_ps’=1, ‘log_dir’</li>
-<li><strong>policy_config</strong> – policy class_config_dict</li>
-<li><strong>trainer_config</strong> – trainer class_config_dict</li>
-<li><strong>max_train_steps</strong> – number of train steps to run</li>
+<li><strong>env_config</strong> – environment class_config_dict, see ‘Note’ below</li>
+<li><strong>cluster_config</strong> – tf cluster configuration, see ‘Note’ below</li>
+<li><strong>policy_config</strong> – policy class_config_dict holding corr. policy class args.</li>
+<li><strong>trainer_config</strong> – trainer class_config_dict holding corr. trainer class args.</li>
+<li><strong>max_env_steps</strong> – total number of environment steps to run training on</li>
 <li><strong>root_random_seed</strong> – int or None</li>
 <li><strong>test_mode</strong> – if True - use Atari gym env., BTGym otherwise.</li>
 <li><strong>verbose</strong> – 0 - silent, 1 - info, 3 - debug level</li>
@@ -217,8 +213,21 @@ running separate instances of BTgym/Atari environment.</p>
 <p class="first admonition-title">Note</p>
 <dl class="last docutils">
 <dt>class_config_dict:  dictionary containing at least two keys:</dt>
-<dd><cite>class_ref</cite>: reference to class constructor or function;
-<cite>kwargs</cite>: dictionary of keyword arguments passed to <cite>class_ref</cite></dd>
+<dd><ul class="first last simple">
+<li><cite>class_ref</cite>:    reference to class constructor or function;</li>
+<li><cite>kwargs</cite>:       dictionary of keyword arguments, see corr. environment class args.</li>
+</ul>
+</dd>
+<dt>cluster_config:     dictionary containing at least these keys:</dt>
+<dd><ul class="first last simple">
+<li>‘host’:         cluster host, def: ‘127.0.0.1’</li>
+<li>‘port’:         cluster port, def: 12222</li>
+<li>‘num_workers’:  number of workers to run, def: 1</li>
+<li>‘num_ps’:       number of parameter servers, def: 1</li>
+<li>‘num_envs’:     number of environments to run in parallel for each worker, def: 1</li>
+<li>‘log_dir’:      directory to save model and summaries, def: ‘./tmp/btgym_aac_log’</li>
+</ul>
+</dd>
 </dl>
 </div>
 <dl class="method">
@@ -231,27 +240,6 @@ running separate instances of BTgym/Atari environment.</p>
 <dt id="btgym.algorithms.launcher.Launcher.clear_port">
 <code class="descname">clear_port</code><span class="sig-paren">(</span><em>port</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher.clear_port"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher.clear_port" title="Permalink to this definition">¶</a></dt>
 <dd><p>Kills process on specified port, if any.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.launcher.Launcher.update_config_dict">
-<code class="descname">update_config_dict</code><span class="sig-paren">(</span><em>old_dict</em>, <em>new_dict=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher.update_config_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher.update_config_dict" title="Permalink to this definition">¶</a></dt>
-<dd><p>Updates nested dictionary with values from other one of same structure.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>old_dict</strong> – dict to update to</li>
-<li><strong>new_dict</strong> – dict to update from</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">new updated dict</p>
-</td>
-</tr>
-</tbody>
-</table>
 </dd></dl>
 
 <dl class="method">
@@ -269,99 +257,8 @@ parameter_server.</div></blockquote>
 <div class="section" id="module-btgym.algorithms.worker">
 <span id="btgym-algorithms-worker-module"></span><h2>btgym.algorithms.worker module<a class="headerlink" href="#module-btgym.algorithms.worker" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
-<dt id="btgym.algorithms.worker.FastSaver">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.worker.</code><code class="descname">FastSaver</code><span class="sig-paren">(</span><em>var_list=None</em>, <em>reshape=False</em>, <em>sharded=False</em>, <em>max_to_keep=5</em>, <em>keep_checkpoint_every_n_hours=10000.0</em>, <em>name=None</em>, <em>restore_sequentially=False</em>, <em>saver_def=None</em>, <em>builder=None</em>, <em>defer_build=False</em>, <em>allow_empty=False</em>, <em>write_version=2</em>, <em>pad_step_number=False</em>, <em>save_relative_paths=False</em>, <em>filename=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/worker.html#FastSaver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.worker.FastSaver" title="Permalink to this definition">¶</a></dt>
-<dd><p>Disables write_meta_graph argument,
-which freezes entire process and is mostly useless.</p>
-<p>Creates a <cite>Saver</cite>.</p>
-<p>The constructor adds ops to save and restore variables.</p>
-<p><cite>var_list</cite> specifies the variables that will be saved and restored. It can
-be passed as a <cite>dict</cite> or a list:</p>
-<ul class="simple">
-<li>A <cite>dict</cite> of names to variables: The keys are the names that will be
-used to save or restore the variables in the checkpoint files.</li>
-<li>A list of variables: The variables will be keyed with their op name in
-the checkpoint files.</li>
-</ul>
-<p>For example:</p>
-<p><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
-v1 = tf.Variable(…, name=’v1’)
-v2 = tf.Variable(…, name=’v2’)</p>
-<p># Pass the variables as a dict:
-saver = tf.train.Saver({‘v1’: v1, ‘v2’: v2})</p>
-<p># Or pass them as a list.
-saver = tf.train.Saver([v1, v2])
-# Passing a list is equivalent to passing a dict with the variable op names
-# as keys:
-saver = tf.train.Saver({v.op.name: v for v in [v1, v2]})
-<a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
-<p>The optional <cite>reshape</cite> argument, if <cite>True</cite>, allows restoring a variable from
-a save file where the variable had a different shape, but the same number
-of elements and type.  This is useful if you have reshaped a variable and
-want to reload it from an older checkpoint.</p>
-<p>The optional <cite>sharded</cite> argument, if <cite>True</cite>, instructs the saver to shard
-checkpoints per device.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>var_list</strong> – A list of <cite>Variable</cite>/<cite>SaveableObject</cite>, or a dictionary mapping
-names to <cite>SaveableObject`s. If `None</cite>, defaults to the list of all
-saveable objects.</li>
-<li><strong>reshape</strong> – If <cite>True</cite>, allows restoring parameters from a checkpoint
-where the variables have a different shape.</li>
-<li><strong>sharded</strong> – If <cite>True</cite>, shard the checkpoints, one per device.</li>
-<li><strong>max_to_keep</strong> – Maximum number of recent checkpoints to keep.
-Defaults to 5.</li>
-<li><strong>keep_checkpoint_every_n_hours</strong> – How often to keep checkpoints.
-Defaults to 10,000 hours.</li>
-<li><strong>name</strong> – String.  Optional name to use as a prefix when adding operations.</li>
-<li><strong>restore_sequentially</strong> – A <cite>Bool</cite>, which if true, causes restore of different
-variables to happen sequentially within each device.  This can lower
-memory usage when restoring very large models.</li>
-<li><strong>saver_def</strong> – Optional <cite>SaverDef</cite> proto to use instead of running the
-builder. This is only useful for specialty code that wants to recreate
-a <cite>Saver</cite> object for a previously built <cite>Graph</cite> that had a <cite>Saver</cite>.
-The <cite>saver_def</cite> proto should be the one returned by the
-<cite>as_saver_def()</cite> call of the <cite>Saver</cite> that was created for that <cite>Graph</cite>.</li>
-<li><strong>builder</strong> – Optional <cite>SaverBuilder</cite> to use if a <cite>saver_def</cite> was not provided.
-Defaults to <cite>BaseSaverBuilder()</cite>.</li>
-<li><strong>defer_build</strong> – If <cite>True</cite>, defer adding the save and restore ops to the
-<cite>build()</cite> call. In that case <cite>build()</cite> should be called before
-finalizing the graph or using the saver.</li>
-<li><strong>allow_empty</strong> – If <cite>False</cite> (default) raise an error if there are no
-variables in the graph. Otherwise, construct the saver anyway and make
-it a no-op.</li>
-<li><strong>write_version</strong> – controls what format to use when saving checkpoints.  It
-also affects certain filepath matching logic.  The V2 format is the
-recommended choice: it is much more optimized than V1 in terms of
-memory required and latency incurred during restore.  Regardless of
-this flag, the Saver is able to restore from both V2 and V1 checkpoints.</li>
-<li><strong>pad_step_number</strong> – if True, pads the global step number in the checkpoint
-filepaths to some fixed width (8 by default).  This is turned off by
-default.</li>
-<li><strong>save_relative_paths</strong> – If <cite>True</cite>, will write relative paths to the
-checkpoint state file. This is needed if the user wants to copy the
-checkpoint directory and reload from the copied directory.</li>
-<li><strong>filename</strong> – If known at graph construction time, filename used for variable
-loading/saving.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
-<li><code class="xref py py-exc docutils literal"><span class="pre">TypeError</span></code> – If <cite>var_list</cite> is invalid.</li>
-<li><code class="xref py py-exc docutils literal"><span class="pre">ValueError</span></code> – If any of the keys or values in <cite>var_list</cite> are not unique.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="class">
 <dt id="btgym.algorithms.worker.Worker">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.worker.</code><code class="descname">Worker</code><span class="sig-paren">(</span><em>env_config</em>, <em>policy_config</em>, <em>trainer_config</em>, <em>cluster_spec</em>, <em>job_name</em>, <em>task</em>, <em>log_dir</em>, <em>log</em>, <em>log_level</em>, <em>max_train_steps</em>, <em>random_seed=None</em>, <em>test_mode=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/worker.html#Worker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.worker.Worker" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.worker.</code><code class="descname">Worker</code><span class="sig-paren">(</span><em>env_config</em>, <em>policy_config</em>, <em>trainer_config</em>, <em>cluster_spec</em>, <em>job_name</em>, <em>task</em>, <em>log_dir</em>, <em>log</em>, <em>log_level</em>, <em>max_env_steps</em>, <em>random_seed=None</em>, <em>test_mode=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/worker.html#Worker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.worker.Worker" title="Permalink to this definition">¶</a></dt>
 <dd><p>Distributed tf worker class.</p>
 <p>Sets up environment, trainer and starts training process in supervised session.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -377,10 +274,28 @@ loading/saving.</li>
 <li><strong>task</strong> – integer number, 0 is chief worker.</li>
 <li><strong>log_dir</strong> – for tb summaries and checkpoints.</li>
 <li><strong>log</strong> – parent logger</li>
-<li><strong>log_level</strong> – <p>–</p>
-</li>
-<li><strong>max_steps</strong> – number of train steps</li>
+<li><strong>log_level</strong> – 0 - silent, 1 - info, 3 - debug level</li>
+<li><strong>max_env_steps</strong> – number of environment steps to run training on</li>
 <li><strong>test_mode</strong> – if True - use Atari mode, BTGym otherwise.</li>
+<li><strong>Note</strong> – <ul>
+<li><dl class="first docutils">
+<dt>Conventional <cite>self.global_step</cite> refers to number of environment steps,</dt>
+<dd>summarized over all environment instances, not to number of policy optimizer train steps.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Every worker can run several environments in parralell, as specified by <a href="#id1"><span class="problematic" id="id2">`</span></a>cluster_config’[‘num_envs’].</dt>
+<dd>If use 4 forkers and num_envs=4 =&gt; total number of environments is 16. Every env instance has
+it’s own ThreadRunner process.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>When using replay memory, keep in mind that every ThreadRunner is keeping it’s own replay memory,</dt>
+<dd>If memory_size = 2000, num_workers=4, num_envs=4 =&gt; total replay memory size equals 32 000 frames.</dd>
+</dl>
+</li>
+</ul>
+</li>
 </ul>
 </td>
 </tr>
@@ -395,120 +310,400 @@ loading/saving.</li>
 </dd></dl>
 
 </div>
-<div class="section" id="module-btgym.algorithms.runner">
-<span id="btgym-algorithms-runner-module"></span><h2>btgym.algorithms.runner module<a class="headerlink" href="#module-btgym.algorithms.runner" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-btgym.algorithms.aac">
+<span id="btgym-algorithms-aac-module"></span><h2>btgym.algorithms.aac module<a class="headerlink" href="#module-btgym.algorithms.aac" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
-<dt id="btgym.algorithms.runner.RunnerThread">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.runner.</code><code class="descname">RunnerThread</code><span class="sig-paren">(</span><em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>test</em>, <em>ep_summary</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#RunnerThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.RunnerThread" title="Permalink to this definition">¶</a></dt>
-<dd><p>Async. framework code comes from OpenAI repository under MIT licence:
+<dt id="btgym.algorithms.aac.BaseAAC">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1</em>, <em>pc_lambda=0.1</em>, <em>vr_lambda=1</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>_use_target_policy=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base Asynchronous Advantage Actor Critic algorithm framework class with auxiliary control tasks and
+option to run several instances of environment for every worker in vectorized fashion, PAAC-like.
+Can be configured to run with different losses and policies.</p>
+<p>Auxiliary tasks implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+<a class="reference external" href="https://miyosuda.github.io/">https://miyosuda.github.io/</a>
+<a class="reference external" href="https://github.com/miyosuda/unreal">https://github.com/miyosuda/unreal</a></p>
+<p>Original A3C code comes from OpenAI repository under MIT licence:
 <a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
-<p>Despite the fact BTgym is not real-time environment [yet], thread-runner approach is still here.</p>
-<p>From original <cite>universe-starter-agent</cite>:
-…One of the key distinctions between a normal environment and a universe environment
-is that a universe environment is _real <a href="#id13"><span class="problematic" id="id14">time_</span></a>.  This means that there should be a thread
-that would constantly interact with the environment and tell it what to do.  This thread is here.</p>
+<p>Papers:
+<a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a>
+<a class="reference external" href="https://arxiv.org/abs/1611.05397">https://arxiv.org/abs/1611.05397</a></p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env</strong> – environment instance</li>
-<li><strong>policy</strong> – policy instance</li>
-<li><strong>task</strong> – int</li>
-<li><strong>rollout_length</strong> – int</li>
-<li><strong>episode_summary_freq</strong> – int</li>
-<li><strong>env_render_freq</strong> – int</li>
-<li><strong>test</strong> – Atari or BTGyn</li>
-<li><strong>ep_summary</strong> – tf.summary</li>
+<li><strong>env</strong> – environment instance or list of instances</li>
+<li><strong>task</strong> – int, parent worker id</li>
+<li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
+<li><strong>log</strong> – parent log</li>
+<li><strong>on_policy_loss</strong> – callable returning tensor holding on_policy training loss graph and summaries</li>
+<li><strong>off_policy_loss</strong> – callable returning tensor holding off_policy training loss graph and summaries</li>
+<li><strong>vr_loss</strong> – callable returning tensor holding value replay loss graph and summaries</li>
+<li><strong>rp_loss</strong> – callable returning tensor holding reward prediction loss graph and summaries</li>
+<li><strong>pc_loss</strong> – callable returning tensor holding pixel_control loss graph and summaries</li>
+<li><strong>random_seed</strong> – int or None</li>
+<li><strong>model_gamma</strong> – scalar, gamma discount factor</li>
+<li><strong>model_gae_lambda</strong> – scalar, GAE lambda</li>
+<li><strong>model_beta</strong> – entropy regularization beta, scalar or [high_bound, low_bound] for log_uniform.</li>
+<li><strong>opt_max_env_steps</strong> – int, total number of environment steps to run training on.</li>
+<li><strong>opt_decay_steps</strong> – int, learn ratio decay steps, in number of environment steps.</li>
+<li><strong>opt_end_learn_rate</strong> – scalar, final learn rate</li>
+<li><strong>opt_learn_rate</strong> – start learn rate, scalar or [high_bound, low_bound] for log_uniform distr.</li>
+<li><strong>opt_decay</strong> – scalar, optimizer decay, if apll.</li>
+<li><strong>opt_momentum</strong> – scalar, optimizer momentum, if apll.</li>
+<li><strong>opt_epsilon</strong> – scalar, optimizer epsilon</li>
+<li><strong>rollout_length</strong> – int, on-policy rollout length</li>
+<li><strong>time_flat</strong> – bool, flatten rnn time-steps in rollouts while training - see <cite>Notes</cite> below</li>
+<li><strong>episode_summary_freq</strong> – int, write episode summary for every i’th episode</li>
+<li><strong>env_render_freq</strong> – int, write environment rendering summary for every i’th train step</li>
+<li><strong>model_summary_freq</strong> – int, write model summary for every i’th train step</li>
+<li><strong>test_mode</strong> – bool, True: Atari, False: BTGym</li>
+<li><strong>replay_memory_size</strong> – int, in number of experiences</li>
+<li><strong>replay_batch_size</strong> – int, mini-batch size for off-policy training, def = 1</li>
+<li><strong>replay_rollout_length</strong> – int off-policy rollout length by def. equals on_policy_rollout_length</li>
+<li><strong>use_off_policy_aac</strong> – bool, use full AAC off-policy loss instead of Value-replay</li>
+<li><strong>use_reward_prediction</strong> – bool, use aux. off-policy reward prediction task</li>
+<li><strong>use_pixel_control</strong> – bool, use aux. off-policy pixel control task</li>
+<li><strong>use_value_replay</strong> – bool, use aux. off-policy value replay task (not used if use_off_policy_aac=True)</li>
+<li><strong>rp_lambda</strong> – reward prediction loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>pc_lambda</strong> – pixel control loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>vr_lambda</strong> – value replay loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>off_aac_lambda</strong> – off-policy AAC loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>gamma_pc</strong> – NOT USED</li>
+<li><strong>rp_reward_threshold</strong> – scalar, reward prediction classification threshold, above which reward is ‘non-zero’</li>
+<li><strong>rp_sequence_size</strong> – int, reward prediction sample size, in number of experiences</li>
+<li><strong>clip_epsilon</strong> – scalar, PPO: surrogate L^clip epsilon</li>
+<li><strong>num_epochs</strong> – int, num. of SGD runs for every train step, val. &gt; 1 should be used with caution.</li>
+<li><strong>pi_prime_update_period</strong> – int, PPO: pi to pi_old update period in number of train steps, def: 1</li>
+<li><strong>_use_target_policy</strong> – bool, PPO: use target policy (aka pi_old), delayed by <cite>pi_prime_update_period</cite> delay</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last">
+<li><p class="first">On <cite>time_flat</cite> arg:</p>
+<blockquote>
+<div><p>There are two alternatives to run RNN part of policy estimator:</p>
+<ol class="loweralpha simple">
+<li><dl class="first docutils">
+<dt>Feed initial RNN state for every experience frame in rollout</dt>
+<dd>(those are stored anyway if we want random memory repaly sampling) and do single time-step RNN
+advance for all experiences in a batch; this is when time_flat=True;</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Reshape incoming batch after convolution part of network in time-wise fashion</dt>
+<dd>for every rollout in a batch i.e. batch_size=number_of_rollouts and
+rnn_timesteps=max_rollout_length. In this case we need to feed initial rnn_states
+for rollouts only. There is some little extra work to pad rollouts to max_time_size
+and feed true rollout lengths to rnn. Thus, when time_flat=False, we unroll RNN in
+specified number of time-steps for every rollout.</dd>
+</dl>
+</li>
+</ol>
+<p>Both options has pros and cons:</p>
+<dl class="docutils">
+<dt>Unrolling dynamic RNN is computationally more expensive but gives clearly faster convergence,</dt>
+<dd><p class="first last">[possibly] due to the fact that RNN states for 2nd, 3rd, … frames
+of rollouts are computed using updated policy estimator, which is supposed to be
+closer to optimal one. When time_flattened, every time-step uses RNN states computed
+when rollout was collected (i.e. by behavioral policy estimator with older
+parameters).</p>
+</dd>
+<dt>Nevertheless, time_flatting can be interesting</dt>
+<dd><p class="first last">because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
+ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).</p>
+</dd>
+</dl>
+</div></blockquote>
+</li>
+</ul>
+</div>
+<dl class="method">
+<dt id="btgym.algorithms.aac.BaseAAC.get_data">
+<code class="descname">get_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.get_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Collect rollouts from every environmnet.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">dictionary of lists of data streams collected from every runner</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.aac.BaseAAC.make_policy">
+<code class="descname">make_policy</code><span class="sig-paren">(</span><em>scope</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.make_policy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.make_policy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configures and instantiates policy network and ops.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><cite>global</cite> name_scope network should be defined first.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>scope</strong> – name scope</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">policy instance</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.aac.BaseAAC.get_rp_feeder">
+<code class="descname">get_rp_feeder</code><span class="sig-paren">(</span><em>batch</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.get_rp_feeder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.get_rp_feeder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns feed dictionary for <cite>reward prediction</cite> loss estimation subgraph.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.aac.BaseAAC.get_vr_feeder">
+<code class="descname">get_vr_feeder</code><span class="sig-paren">(</span><em>batch</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.get_vr_feeder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.get_vr_feeder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns feed dictionary for <cite>value replay</cite> loss estimation subgraph.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.aac.BaseAAC.get_pc_feeder">
+<code class="descname">get_pc_feeder</code><span class="sig-paren">(</span><em>batch</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.get_pc_feeder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.get_pc_feeder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns feed dictionary for <cite>pixel control</cite> loss estimation subgraph.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.aac.BaseAAC.process">
+<code class="descname">process</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Grabs a on_policy_rollout that’s been produced by the thread runner,
+samples off_policy rollout[s] from replay memory and updates the parameters.
+The update is then sent to the parameter server.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="attribute">
+<dt id="btgym.algorithms.aac.Unreal">
+<code class="descclassname">btgym.algorithms.aac.</code><code class="descname">Unreal</code><a class="headerlink" href="#btgym.algorithms.aac.Unreal" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <a class="reference internal" href="#btgym.algorithms.aac.BaseAAC" title="btgym.algorithms.aac.BaseAAC"><code class="xref py py-class docutils literal"><span class="pre">BaseAAC</span></code></a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.algorithms.aac.A3C">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">A3C</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#A3C"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.A3C" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vanilla Asynchronous Advantage Actor Critic algorithm.</p>
+<p>Based on original code taken from OpenAI repository under MIT licence:
+<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
+<p>Paper: <a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a></p>
+<p>A3C args. is a subset of BaseAAC arguments, see <cite>BaseAAC</cite> class for descriptions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env</strong> – </li>
+<li><strong>task</strong> – </li>
+<li><strong>policy_config</strong> – </li>
+<li><strong>log</strong> – </li>
+<li><strong>random_seed</strong> – </li>
+<li><strong>model_gamma</strong> – </li>
+<li><strong>model_gae_lambda</strong> – </li>
+<li><strong>model_beta</strong> – </li>
+<li><strong>opt_max_env_steps</strong> – </li>
+<li><strong>opt_decay_steps</strong> – </li>
+<li><strong>opt_end_learn_rate</strong> – </li>
+<li><strong>opt_learn_rate</strong> – </li>
+<li><strong>opt_decay</strong> – </li>
+<li><strong>opt_momentum</strong> – </li>
+<li><strong>opt_epsilon</strong> – </li>
+<li><strong>rollout_length</strong> – </li>
+<li><strong>episode_summary_freq</strong> – </li>
+<li><strong>env_render_freq</strong> – </li>
+<li><strong>model_summary_freq</strong> – </li>
+<li><strong>test_mode</strong> – </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.algorithms.aac.PPO">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">PPO</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#PPO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.PPO" title="Permalink to this definition">¶</a></dt>
+<dd><p>AAC with Proximal Policy Optimization surrogate L^Clip loss,
+optionally augmented with auxiliary control tasks.</p>
+<p>paper:
+<a class="reference external" href="https://arxiv.org/pdf/1707.06347.pdf">https://arxiv.org/pdf/1707.06347.pdf</a></p>
+<p>Based on PPO-SGD code from OpenAI <cite>Baselines</cite> repository under MIT licence:
+<a class="reference external" href="https://github.com/openai/baselines">https://github.com/openai/baselines</a></p>
+<p>Async. framework code comes from OpenAI repository under MIT licence:
+<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
+<blockquote>
+<div>PPO args. is a subset of BaseAAC arguments, see <cite>BaseAAC</cite> class for descriptions.</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env</strong> – </li>
+<li><strong>task</strong> – </li>
+<li><strong>policy_config</strong> – </li>
+<li><strong>log</strong> – </li>
+<li><strong>vr_loss</strong> – </li>
+<li><strong>rp_loss</strong> – </li>
+<li><strong>pc_loss</strong> – </li>
+<li><strong>random_seed</strong> – </li>
+<li><strong>model_gamma</strong> – </li>
+<li><strong>model_gae_lambda</strong> – </li>
+<li><strong>model_beta</strong> – </li>
+<li><strong>opt_max_env_steps</strong> – </li>
+<li><strong>opt_decay_steps</strong> – </li>
+<li><strong>opt_end_learn_rate</strong> – </li>
+<li><strong>opt_learn_rate</strong> – </li>
+<li><strong>opt_decay</strong> – </li>
+<li><strong>opt_momentum</strong> – </li>
+<li><strong>opt_epsilon</strong> – </li>
+<li><strong>rollout_length</strong> – </li>
+<li><strong>episode_summary_freq</strong> – </li>
+<li><strong>env_render_freq</strong> – </li>
+<li><strong>model_summary_freq</strong> – </li>
+<li><strong>test_mode</strong> – </li>
+<li><strong>replay_memory_size</strong> – </li>
+<li><strong>replay_rollout_length</strong> – </li>
+<li><strong>use_off_policy_aac</strong> – </li>
+<li><strong>use_reward_prediction</strong> – </li>
+<li><strong>use_pixel_control</strong> – </li>
+<li><strong>use_value_replay</strong> – </li>
+<li><strong>rp_lambda</strong> – </li>
+<li><strong>pc_lambda</strong> – </li>
+<li><strong>vr_lambda</strong> – </li>
+<li><strong>off_aac_lambda</strong> – </li>
+<li><strong>rp_reward_threshold</strong> – </li>
+<li><strong>rp_sequence_size</strong> – </li>
+<li><strong>clip_epsilon</strong> – </li>
+<li><strong>num_epochs</strong> – </li>
+<li><strong>pi_prime_update_period</strong> – </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.algorithms.policy">
+<span id="btgym-algorithms-policy-module"></span><h2>btgym.algorithms.policy module<a class="headerlink" href="#module-btgym.algorithms.policy" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.algorithms.policy.BaseAacPolicy">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.policy.</code><code class="descname">BaseAacPolicy</code><span class="sig-paren">(</span><em>ob_space</em>, <em>ac_space</em>, <em>rp_sequence_size</em>, <em>lstm_class=&lt;class 'tensorflow.python.ops.rnn_cell_impl.BasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>)</em>, <em>aux_estimate=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy.html#BaseAacPolicy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.BaseAacPolicy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base advantage actor-critic LSTM policy estimator with auxiliary control tasks.</p>
+<p>Papers:
+<a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a></p>
+<p><a class="reference external" href="https://arxiv.org/abs/1611.05397">https://arxiv.org/abs/1611.05397</a></p>
+<p>Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,
+reward and state ‘pixel_change’ predictions.
+Expects uni-modal observation as array of shape <cite>ob_space</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ob_space</strong> – dictionary of observation state shapes</li>
+<li><strong>ac_space</strong> – discrete action space shape (length)</li>
+<li><strong>rp_sequence_size</strong> – reward prediction sample length</li>
+<li><strong>lstm_class</strong> – tf.nn.lstm class</li>
+<li><strong>lstm_layers</strong> – tuple of LSTM layers sizes</li>
+<li><strong>aux_estimate</strong> – (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary.</li>
+<li><strong>not used</strong> (<em>**kwargs</em>) – </li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
-<dt id="btgym.algorithms.runner.RunnerThread.run">
-<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#RunnerThread.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.RunnerThread.run" title="Permalink to this definition">¶</a></dt>
-<dd><p>Just keep running.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="function">
-<dt id="btgym.algorithms.runner.env_runner">
-<code class="descclassname">btgym.algorithms.runner.</code><code class="descname">env_runner</code><span class="sig-paren">(</span><em>sess</em>, <em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>summary_writer</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>test</em>, <em>ep_summary</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#env_runner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.env_runner" title="Permalink to this definition">¶</a></dt>
-<dd><p>The logic of the thread runner.
-In brief, it constantly keeps on running
-the policy, and as long as the rollout exceeds a certain length, the thread
-runner appends the rollout to the queue.</p>
+<dt id="btgym.algorithms.policy.BaseAacPolicy.get_initial_features">
+<code class="descname">get_initial_features</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy.html#BaseAacPolicy.get_initial_features"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.BaseAacPolicy.get_initial_features" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns initial context.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env</strong> – environment instance</li>
-<li><strong>policy</strong> – policy instance</li>
-<li><strong>task</strong> – int</li>
-<li><strong>rollout_length</strong> – int</li>
-<li><strong>episode_summary_freq</strong> – int</li>
-<li><strong>env_render_freq</strong> – int</li>
-<li><strong>test</strong> – Atari or BTGyn</li>
-<li><strong>ep_summary</strong> – tf.summary</li>
-</ul>
-</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">LSTM zero-state tuple.</td>
 </tr>
 </tbody>
 </table>
-<dl class="docutils">
-<dt>Yelds:</dt>
-<dd>rollout instance</dd>
-</dl>
 </dd></dl>
 
-</div>
-<div class="section" id="module-btgym.algorithms.a3c">
-<span id="btgym-algorithms-a3c-module"></span><h2>btgym.algorithms.a3c module<a class="headerlink" href="#module-btgym.algorithms.a3c" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="btgym.algorithms.a3c.A3C">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.a3c.</code><code class="descname">A3C</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/a3c.html#A3C"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.a3c.A3C" title="Permalink to this definition">¶</a></dt>
-<dd><p>Vanilla Asynchronous Advantage Actor Critic algorithm.</p>
-<p>Based on original code taken from OpenAI repository under MIT licence:
-<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
-<p>Paper: <a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a></p>
+<dl class="method">
+<dt id="btgym.algorithms.policy.BaseAacPolicy.act">
+<code class="descname">act</code><span class="sig-paren">(</span><em>observation</em>, <em>lstm_state</em>, <em>action_reward</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy.html#BaseAacPolicy.act"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.BaseAacPolicy.act" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predicts action.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env</strong> – envirionment instance</li>
-<li><strong>task</strong> – int</li>
-<li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
-<li><strong>log</strong> – parent log</li>
-<li><strong>random_seed</strong> – int or None</li>
-<li><strong>model_gamma</strong> – gamma discount factor</li>
-<li><strong>model_gae_lambda</strong> – GAE lambda</li>
-<li><strong>model_beta</strong> – entropy regularization beta</li>
-<li><strong>opt_max_train_steps</strong> – train steps to run</li>
-<li><strong>opt_decay_steps</strong> – learn ratio decay steps</li>
-<li><strong>opt_end_learn_rate</strong> – final lerarn rate</li>
-<li><strong>opt_learn_rate</strong> – start learn rate</li>
-<li><strong>opt_decay</strong> – optimizer decay, if apll.</li>
-<li><strong>opt_momentum</strong> – optimizer momentum, if apll.</li>
-<li><strong>opt_epsilon</strong> – optimizer epsilon</li>
-<li><strong>rollout_length</strong> – on-policy rollout length</li>
-<li><strong>episode_summary_freq</strong> – int, write episode summary for every i’th episode</li>
-<li><strong>env_render_freq</strong> – int, write environment rendering summary for every i’th train step</li>
-<li><strong>model_summary_freq</strong> – int, write model summary for every i’th train step</li>
-<li><strong>test_mode</strong> – True: Atari, False: BTGym</li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>observation</strong> – dictionary containing single observation</li>
+<li><strong>lstm_state</strong> – lstm context value</li>
+<li><strong>action_reward</strong> – concatenated last action-reward value</li>
 </ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Action [one-hot], V-fn value, output RNN state</p>
 </td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
-</div>
-<div class="section" id="module-btgym.algorithms.envs">
-<span id="btgym-algorithms-envs-module"></span><h2>btgym.algorithms.envs module<a class="headerlink" href="#module-btgym.algorithms.envs" title="Permalink to this headline">¶</a></h2>
+<dl class="method">
+<dt id="btgym.algorithms.policy.BaseAacPolicy.get_value">
+<code class="descname">get_value</code><span class="sig-paren">(</span><em>observation</em>, <em>lstm_state</em>, <em>action_reward</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy.html#BaseAacPolicy.get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.BaseAacPolicy.get_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates policy V-function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>observation</strong> – single observation value</li>
+<li><strong>lstm_state</strong> – lstm context value</li>
+<li><strong>action_reward</strong> – concatenated last action-reward value</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">V-function value</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.policy.BaseAacPolicy.get_pc_target">
+<code class="descname">get_pc_target</code><span class="sig-paren">(</span><em>state</em>, <em>last_state</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy.html#BaseAacPolicy.get_pc_target"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.BaseAacPolicy.get_pc_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates pixel-control task target.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>state</strong> – single observation value</li>
+<li><strong>last_state</strong> – single observation value</li>
+<li><strong>**kwargs</strong> – not used</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Estimated absolute difference between two subsampled states.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 <div class="section" id="module-btgym.algorithms.losses">
 <span id="btgym-algorithms-losses-module"></span><h2>btgym.algorithms.losses module<a class="headerlink" href="#module-btgym.algorithms.losses" title="Permalink to this headline">¶</a></h2>
@@ -655,137 +850,6 @@ list of related tensorboard summaries.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-btgym.algorithms.memory">
-<span id="btgym-algorithms-memory-module"></span><h2>btgym.algorithms.memory module<a class="headerlink" href="#module-btgym.algorithms.memory" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="btgym.algorithms.memory.Memory">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.memory.</code><code class="descname">Memory</code><span class="sig-paren">(</span><em>history_size</em>, <em>max_sample_size</em>, <em>log</em>, <em>rollout_getter</em>, <em>task=-1</em>, <em>reward_threshold=0.1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/2/library/functions.html#object" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
-<p>Replay memory with rebalanced replay.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">must be filled up before calling sampling methods.</p>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>history_size</strong> – number of experiences stored;</li>
-<li><strong>max_sample_size</strong> – maximum allowed sample size (e.g. off-policy rollout length);</li>
-<li><strong>log</strong> – parent logger;</li>
-<li><strong>rollout_getter</strong> – callable returning instance of Rollout</li>
-<li><strong>task</strong> – parent worker id;</li>
-<li><strong>reward_threshold</strong> – if <a href="#id11"><span class="problematic" id="id12">|experience.reward|</span></a> &gt; reward_threshold: experience is saved as ‘prioritized’;</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="btgym.algorithms.memory.Memory.add_frame">
-<code class="descname">add_frame</code><span class="sig-paren">(</span><em>frame</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.add_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.add_frame" title="Permalink to this definition">¶</a></dt>
-<dd><p>Appends single experience frame to memory.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>frame</strong> – dictionary of values.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.memory.Memory.add_rollout">
-<code class="descname">add_rollout</code><span class="sig-paren">(</span><em>rollout</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.add_rollout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.add_rollout" title="Permalink to this definition">¶</a></dt>
-<dd><p>Adds frames from given rollout to memory with respect to episode continuation.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rollout</strong> – <cite>Rollout</cite> instance.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.memory.Memory.is_full">
-<code class="descname">is_full</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.is_full"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.is_full" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.memory.Memory.fill">
-<code class="descname">fill</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.fill"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.fill" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fills replay memory with initial experiences.
-Supposed to be called by parent worker() just before training begins.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rollout_getter</strong> – callable, returning instance of Rollout.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.memory.Memory.sample_uniform">
-<code class="descname">sample_uniform</code><span class="sig-paren">(</span><em>sequence_size</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.sample_uniform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.sample_uniform" title="Permalink to this definition">¶</a></dt>
-<dd><p>Uniformly samples sequence of successive frames of size <cite>sequence_size</cite> or less (~off-policy rollout).</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sequence_size</strong> – maximum sample size.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">list of ExperienceFrame’s of length &lt;= sequence_size.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.algorithms.memory.Memory.sample_priority">
-<code class="descname">sample_priority</code><span class="sig-paren">(</span><em>size</em>, <em>exact_size=False</em>, <em>skewness=2</em>, <em>sample_attempts=100</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.sample_priority"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.sample_priority" title="Permalink to this definition">¶</a></dt>
-<dd><p>Implements rebalanced replay;
-samples sequence of successive frames from distribution skewed by means of reward of last sample frame.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>size</strong> – sample size, must be &lt;= self.max_sample_size;</li>
-<li><strong>exact_size</strong> – whether accept sample with size less than ‘size’
-or re-sample to get sample of exact size (used for reward prediction task);</li>
-<li><strong>skewness</strong> – int&gt;=1, sampling probability denominator, such as probability of sampling sequence with
-last frame having non-zero reward is: p[non_zero]=1/skewness;</li>
-<li><strong>sample_attempts</strong> – if exact_size=True, sets number of re-sampling attempts
-to get sample of continuous experiences (no <cite>Terminal</cite> frames inside except last one);
-if number is reached - sample returned ‘as is’.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">list of ExperienceFrame’s.</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-</div>
-<div class="section" id="btgym-algorithms-model-module">
-<h2>btgym.algorithms.model module<a class="headerlink" href="#btgym-algorithms-model-module" title="Permalink to this headline">¶</a></h2>
-</div>
-<div class="section" id="btgym-algorithms-aac-policy-module">
-<h2>btgym.algorithms.aac_policy module<a class="headerlink" href="#btgym-algorithms-aac-policy-module" title="Permalink to this headline">¶</a></h2>
-</div>
-<div class="section" id="btgym-algorithms-model-unreal-module">
-<h2>btgym.algorithms.model_unreal module<a class="headerlink" href="#btgym-algorithms-model-unreal-module" title="Permalink to this headline">¶</a></h2>
-</div>
 <div class="section" id="module-btgym.algorithms.nnet_util">
 <span id="btgym-algorithms-nnet-util-module"></span><h2>btgym.algorithms.nnet_util module<a class="headerlink" href="#module-btgym.algorithms.nnet_util" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
@@ -830,7 +894,7 @@ Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.</p>
 
 <dl class="function">
 <dt id="btgym.algorithms.nnet_util.lstm_network">
-<code class="descclassname">btgym.algorithms.nnet_util.</code><code class="descname">lstm_network</code><span class="sig-paren">(</span><em>x</em>, <em>a_r</em>, <em>lstm_class=&lt;class 'tensorflow.python.ops.rnn_cell_impl.BasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>)</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nnet_util.html#lstm_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nnet_util.lstm_network" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.nnet_util.</code><code class="descname">lstm_network</code><span class="sig-paren">(</span><em>x</em>, <em>a_r</em>, <em>sequence_length</em>, <em>lstm_class=&lt;class 'tensorflow.python.ops.rnn_cell_impl.BasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>)</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nnet_util.html#lstm_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nnet_util.lstm_network" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stage2 network: from features to flattened LSTM output.
 Defines [multi-layered] dynamic [possibly shared] LSTM network.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -871,94 +935,29 @@ action sampling function.</td>
 <dl class="function">
 <dt id="btgym.algorithms.nnet_util.pixel_change_2d_estimator">
 <code class="descclassname">btgym.algorithms.nnet_util.</code><code class="descname">pixel_change_2d_estimator</code><span class="sig-paren">(</span><em>ob_space</em>, <em>stride=2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nnet_util.html#pixel_change_2d_estimator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nnet_util.pixel_change_2d_estimator" title="Permalink to this definition">¶</a></dt>
-<dd><p>Defines tf op for estimating <cite>pixel change</cite> as subsampled absolute difference of two states.</p>
+<dd><p>Defines tf operation for estimating <cite>pixel change</cite> as subsampled absolute difference of two states.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="btgym.algorithms.nnet_util.duelling_pc_network">
 <code class="descclassname">btgym.algorithms.nnet_util.</code><code class="descname">duelling_pc_network</code><span class="sig-paren">(</span><em>x</em>, <em>ac_space</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nnet_util.html#duelling_pc_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nnet_util.duelling_pc_network" title="Permalink to this definition">¶</a></dt>
-<dd><p>Stage3 network for <a href="#id9"><span class="problematic" id="id10">`</span></a>pixel control’ task: from LSTM output to Q-aux. features tensor.</p>
-</dd></dl>
-
-</div>
-<div class="section" id="module-btgym.algorithms.ppo">
-<span id="btgym-algorithms-ppo-module"></span><h2>btgym.algorithms.ppo module<a class="headerlink" href="#module-btgym.algorithms.ppo" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="btgym.algorithms.ppo.PPO">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.ppo.</code><code class="descname">PPO</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/ppo.html#PPO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.ppo.PPO" title="Permalink to this definition">¶</a></dt>
-<dd><p>Asynchronous implementation of Proximal Policy Optimization algorithm (L^Clip objective)
-augmented with auxiliary control tasks.</p>
-<p>paper:
-<a class="reference external" href="https://arxiv.org/pdf/1707.06347.pdf">https://arxiv.org/pdf/1707.06347.pdf</a></p>
-<p>Based on PPO-SGD code from OpenAI <cite>Baselines</cite> repository under MIT licence:
-<a class="reference external" href="https://github.com/openai/baselines">https://github.com/openai/baselines</a></p>
-<p>Async. framework code comes from OpenAI repository under MIT licence:
-<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env</strong> – envirionment instance.</li>
-<li><strong>task</strong> – int</li>
-<li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
-<li><strong>log</strong> – parent log</li>
-<li><strong>vr_loss</strong> – callable returning tensor holding value replay loss and summaries</li>
-<li><strong>rp_loss</strong> – callable returning tensor holding reward prediction loss and summaries</li>
-<li><strong>pc_loss</strong> – callable returning tensor holding pixel_control loss and summaries</li>
-<li><strong>random_seed</strong> – int or None</li>
-<li><strong>model_gamma</strong> – gamma discount factor</li>
-<li><strong>model_gae_lambda</strong> – GAE lambda</li>
-<li><strong>model_beta</strong> – entropy regularization beta</li>
-<li><strong>opt_max_train_steps</strong> – train steps to run</li>
-<li><strong>opt_decay_steps</strong> – learn ratio decay steps</li>
-<li><strong>opt_end_learn_rate</strong> – final lerarn rate</li>
-<li><strong>opt_learn_rate</strong> – start learn rate</li>
-<li><strong>opt_decay</strong> – optimizer decay, if apll.</li>
-<li><strong>opt_momentum</strong> – optimizer momentum, if apll.</li>
-<li><strong>opt_epsilon</strong> – optimizer epsilon</li>
-<li><strong>rollout_length</strong> – on-policy rollout length</li>
-<li><strong>episode_summary_freq</strong> – int, write episode summary for every i’th episode</li>
-<li><strong>env_render_freq</strong> – int, write environment rendering summary for every i’th train step</li>
-<li><strong>model_summary_freq</strong> – int, write model summary for every i’th train step</li>
-<li><strong>test_mode</strong> – True: Atari, False: BTGym</li>
-<li><strong>replay_memory_size</strong> – in number of experiences</li>
-<li><strong>replay_rollout_length</strong> – off-policy rollout length</li>
-<li><strong>use_off_policy_aac</strong> – use full PPO off-policy training instead of Value-replay</li>
-<li><strong>use_reward_prediction</strong> – use aux. off-policy reward prediction task</li>
-<li><strong>use_pixel_control</strong> – use aux. off-policy pixel control task</li>
-<li><strong>use_value_replay</strong> – use aux. off-policy value replay task (not used, if use_off_policy_aac=True)</li>
-<li><strong>rp_lambda</strong> – reward prediction loss weight</li>
-<li><strong>pc_lambda</strong> – pixel control loss weight</li>
-<li><strong>vr_lambda</strong> – value replay loss weight</li>
-<li><strong>off_aac_lambda</strong> – off-policy PPO loss weight</li>
-<li><strong>gamma_pc</strong> – NOT USED</li>
-<li><strong>rp_reward_threshold</strong> – reward prediction task classification threshold, above which reward is ‘non-zero’</li>
-<li><strong>rp_sequence_size</strong> – reward prediction sample size, in number of experiences</li>
-<li><strong>clip_epsilon</strong> – PPO: surrogate L^clip epsilon</li>
-<li><strong>num_epochs</strong> – num. of SGD runs for every train step</li>
-<li><strong>pi_prime_update_period</strong> – int, PPO: pi to pi_old update period in number of train steps</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
+<dd><p>Stage3 network for <a href="#id3"><span class="problematic" id="id4">`</span></a>pixel control’ task: from LSTM output to Q-aux. features tensor.</p>
 </dd></dl>
 
 </div>
 <div class="section" id="module-btgym.algorithms.rollout">
 <span id="btgym-algorithms-rollout-module"></span><h2>btgym.algorithms.rollout module<a class="headerlink" href="#module-btgym.algorithms.rollout" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="btgym.algorithms.rollout.make_rollout_getter">
-<code class="descclassname">btgym.algorithms.rollout.</code><code class="descname">make_rollout_getter</code><span class="sig-paren">(</span><em>queue</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#make_rollout_getter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.make_rollout_getter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Rollout getter constructor.</p>
+<dt id="btgym.algorithms.rollout.make_data_getter">
+<code class="descclassname">btgym.algorithms.rollout.</code><code class="descname">make_data_getter</code><span class="sig-paren">(</span><em>queue</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#make_data_getter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.make_data_getter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data stream getter constructor.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>queue</strong> – instance of <cite>Queue</cite> class to get rollouts from.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">callable, returning instance of Rollout.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">callable, returning dictionary of data.</td>
 </tr>
 </tbody>
 </table>
@@ -967,16 +966,16 @@ augmented with auxiliary control tasks.</p>
 <dl class="class">
 <dt id="btgym.algorithms.rollout.Rollout">
 <em class="property">class </em><code class="descclassname">btgym.algorithms.rollout.</code><code class="descname">Rollout</code><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#Rollout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.Rollout" title="Permalink to this definition">¶</a></dt>
-<dd><p>Experience rollout as [nested] dictionary of lists.</p>
+<dd><p>Experience rollout as [nested] dictionary of lists of ndarrays, tuples and rnn states.</p>
 <dl class="method">
 <dt id="btgym.algorithms.rollout.Rollout.add">
-<code class="descname">add</code><span class="sig-paren">(</span><em>values_dict</em>, <em>_dict=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#Rollout.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.Rollout.add" title="Permalink to this definition">¶</a></dt>
-<dd><p>Adds single experience to rollout by appending values to dictionary of lists.</p>
+<code class="descname">add</code><span class="sig-paren">(</span><em>values</em>, <em>_struct=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#Rollout.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.Rollout.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds single experience frame to rollout.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>values_dict</strong> – [nested] dictionary of values.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>values</strong> – [nested] dictionary of values.</td>
 </tr>
 </tbody>
 </table>
@@ -991,22 +990,56 @@ converts it to rollout of same <cite>length</cite>.</p>
 
 <dl class="method">
 <dt id="btgym.algorithms.rollout.Rollout.process">
-<code class="descname">process</code><span class="sig-paren">(</span><em>gamma</em>, <em>gae_lambda=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#Rollout.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.Rollout.process" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts rollout to dictionary of ready-to-feed arrays.
-Computes rollout returns and the advantages.</p>
+<code class="descname">process</code><span class="sig-paren">(</span><em>gamma</em>, <em>gae_lambda=1.0</em>, <em>size=None</em>, <em>time_flat=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#Rollout.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.Rollout.process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts single-trajectory rollout of experiences to dictionary of ready-to-feed arrays.
+Computes rollout returns and the advantages.
+Pads with zeroes to desired length, if size arg is given.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">batch as [nested] dictionary.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>gamma</strong> – discount factor</li>
+<li><strong>gae_lambda</strong> – GAE lambda</li>
+<li><strong>size</strong> – if given and time_flat=False, pads outputs with zeroes along <a href="#id5"><span class="problematic" id="id6">`</span></a>time’ dim. to exact ‘size’.</li>
+<li><strong>time_flat</strong> – reduce time dimension to 1 step by stacking all experiences along batch dimension.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p>[1, time_size, depth] or [1, size, depth] if not time_flatten and <cite>size</cite> is not/given, with single
+<cite>context</cite> entry for entire trajectory, i.e. of size [1, context_depth];</p>
+<p>[batch_size, 1, depth], if time_flatten, with batch_size = time_size and <cite>context</cite> entry for
+every experience frame, i.e. of size [batch_size, context_depth].</p>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">batch as [nested] dictionary of np.arrays, tuples and LSTMStateTuples. of size</p>
+</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.algorithms.rollout.Rollout.extract">
-<code class="descname">extract</code><span class="sig-paren">(</span><em>idx</em>, <em>_struct=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#Rollout.extract"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.Rollout.extract" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.algorithms.rollout.Rollout.process_rp">
+<code class="descname">process_rp</code><span class="sig-paren">(</span><em>reward_threshold=0.1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#Rollout.process_rp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.Rollout.process_rp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Processes rollout process()-alike and estimates reward prediction target for first n-1 frames.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>reward_threshold</strong> – reward values such as <a href="#id7"><span class="problematic" id="id8">|r|</span></a>&gt; reward_threshold are classified as neg. or pos.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Processed batch with size reduced by one and with extra <cite>rp_target</cite> key
+holding one hot encodings for classes {zero, positive, negative}.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.rollout.Rollout.get_frame">
+<code class="descname">get_frame</code><span class="sig-paren">(</span><em>idx</em>, <em>_struct=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#Rollout.get_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.Rollout.get_frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extracts single experience from rollout.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1014,7 +1047,23 @@ Computes rollout returns and the advantages.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>idx</strong> – experience position</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">[nested] dictionary</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">frame as [nested] dictionary</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.rollout.Rollout.pop_frame">
+<code class="descname">pop_frame</code><span class="sig-paren">(</span><em>idx</em>, <em>_struct=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/rollout.html#Rollout.pop_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.rollout.Rollout.pop_frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pops single experience from rollout.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>idx</strong> – experience position</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">frame as [nested] dictionary</td>
 </tr>
 </tbody>
 </table>
@@ -1023,8 +1072,216 @@ Computes rollout returns and the advantages.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="btgym-algorithms-unreal-module">
-<h2>btgym.algorithms.unreal module<a class="headerlink" href="#btgym-algorithms-unreal-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-btgym.algorithms.memory">
+<span id="btgym-algorithms-memory-module"></span><h2>btgym.algorithms.memory module<a class="headerlink" href="#module-btgym.algorithms.memory" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.algorithms.memory.Memory">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.memory.</code><code class="descname">Memory</code><span class="sig-paren">(</span><em>history_size</em>, <em>max_sample_size</em>, <em>priority_sample_size</em>, <em>log</em>, <em>rollout_provider=None</em>, <em>task=-1</em>, <em>reward_threshold=0.1</em>, <em>use_priority_sampling=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replay memory with rebalanced replay based on reward value.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">must be filled up before calling sampling methods.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>history_size</strong> – number of experiences stored;</li>
+<li><strong>max_sample_size</strong> – maximum allowed sample size (e.g. off-policy rollout length);</li>
+<li><strong>priority_sample_size</strong> – sample size of priority_sample() method</li>
+<li><strong>log</strong> – parent logger;</li>
+<li><strong>rollout_provider</strong> – callable returning list of Rollouts NOT USED</li>
+<li><strong>task</strong> – parent worker id;</li>
+<li><strong>reward_threshold</strong> – if <a href="#id9"><span class="problematic" id="id10">|experience.reward|</span></a> &gt; reward_threshold: experience is saved as ‘prioritized’;</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="btgym.algorithms.memory.Memory.add">
+<code class="descname">add</code><span class="sig-paren">(</span><em>frame</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Appends single experience frame to memory.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>frame</strong> – dictionary of values.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.memory.Memory.add_rollout">
+<code class="descname">add_rollout</code><span class="sig-paren">(</span><em>rollout</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.add_rollout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.add_rollout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds frames from given rollout to memory with respect to episode continuation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rollout</strong> – <cite>Rollout</cite> instance.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.memory.Memory.fill">
+<code class="descname">fill</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.fill"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.fill" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fills replay memory with initial experiences. NOT USED.
+Supposed to be called by parent worker() just before training begins.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rollout_getter</strong> – callable, returning list of Rollouts.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.memory.Memory.sample_uniform">
+<code class="descname">sample_uniform</code><span class="sig-paren">(</span><em>sequence_size</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory.sample_uniform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory.sample_uniform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uniformly samples sequence of successive frames of size <cite>sequence_size</cite> or less (~off-policy rollout).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sequence_size</strong> – maximum sample size.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">instance of Rollout of size &lt;= sequence_size.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.memory.Memory._sample_priority">
+<code class="descname">_sample_priority</code><span class="sig-paren">(</span><em>size=None</em>, <em>exact_size=False</em>, <em>skewness=2</em>, <em>sample_attempts=100</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory._sample_priority"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory._sample_priority" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implements rebalanced replay.
+Samples sequence of successive frames from distribution skewed by means of reward of last sample frame.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>size</strong> – sample size, must be &lt;= self.max_sample_size;</li>
+<li><strong>exact_size</strong> – whether accept sample with size less than ‘size’
+or re-sample to get sample of exact size (used for reward prediction task);</li>
+<li><strong>skewness</strong> – int&gt;=1, sampling probability denominator, such as probability of sampling sequence with
+last frame having non-zero reward is: p[non_zero]=1/skewness;</li>
+<li><strong>sample_attempts</strong> – if exact_size=True, sets number of re-sampling attempts
+to get sample of continuous experiences (no <cite>Terminal</cite> frames inside except last one);
+if number is reached - sample returned ‘as is’.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">instance of Rollout().</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.algorithms.envs">
+<span id="btgym-algorithms-envs-module"></span><h2>btgym.algorithms.envs module<a class="headerlink" href="#module-btgym.algorithms.envs" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.algorithms.envs.AtariRescale42x42">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.envs.</code><code class="descname">AtariRescale42x42</code><span class="sig-paren">(</span><em>env_id=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/envs.html#AtariRescale42x42"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.envs.AtariRescale42x42" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gym wrapper, pipes Atari into BTgym algorithms, as later expect observations to be DictSpace.
+Makes Atari environment return state as dictionary with single key ‘external’ holding
+normalized in [0,1] grayscale 42x42 visual output.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>env_id</strong> – conventional Gym id.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.algorithms.runner">
+<span id="btgym-algorithms-runner-module"></span><h2>btgym.algorithms.runner module<a class="headerlink" href="#module-btgym.algorithms.runner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.algorithms.runner.RunnerThread">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.runner.</code><code class="descname">RunnerThread</code><span class="sig-paren">(</span><em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>test</em>, <em>ep_summary</em>, <em>memory_config=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#RunnerThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.RunnerThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Async. framework code comes from OpenAI repository under MIT licence:
+<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
+<p>Despite the fact BTgym is not real-time environment [yet], thread-runner approach is still here. From
+original <cite>universe-starter-agent</cite>:
+<cite>…One of the key distinctions between a normal environment and a universe environment
+is that a universe environment is _real time_.  This means that there should be a thread
+that would constantly interact with the environment and tell it what to do.  This thread is here.</cite></p>
+<p>Another idea is to see ThreadRunner as all-in-one data provider, thus shaping data distribution
+fed to estimator from single place.
+So, replay memory is also here, as well as some service functions (collecting summary data).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env</strong> – environment instance</li>
+<li><strong>policy</strong> – policy instance</li>
+<li><strong>task</strong> – int</li>
+<li><strong>rollout_length</strong> – int</li>
+<li><strong>episode_summary_freq</strong> – int</li>
+<li><strong>env_render_freq</strong> – int</li>
+<li><strong>test</strong> – Atari or BTGyn</li>
+<li><strong>ep_summary</strong> – tf.summary</li>
+<li><strong>memory_config</strong> – replay memory configuration dictionary</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="btgym.algorithms.runner.RunnerThread.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#RunnerThread.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.RunnerThread.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Just keep running.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.runner.env_runner">
+<code class="descclassname">btgym.algorithms.runner.</code><code class="descname">env_runner</code><span class="sig-paren">(</span><em>sess</em>, <em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>summary_writer</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>test</em>, <em>ep_summary</em>, <em>memory_config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#env_runner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.env_runner" title="Permalink to this definition">¶</a></dt>
+<dd><p>The logic of the thread runner.
+In brief, it constantly keeps on running
+the policy, and as long as the rollout exceeds a certain length, the thread
+runner appends all the collected data to the queue.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env</strong> – environment instance</li>
+<li><strong>policy</strong> – policy instance</li>
+<li><strong>task</strong> – int</li>
+<li><strong>rollout_length</strong> – int</li>
+<li><strong>episode_summary_freq</strong> – int</li>
+<li><strong>env_render_freq</strong> – int</li>
+<li><strong>test</strong> – Atari or BTGyn</li>
+<li><strong>ep_summary</strong> – dict of tf.summary op and placeholders</li>
+<li><strong>memory_config</strong> – replay memory configuration dictionary</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="docutils">
+<dt>Yelds:</dt>
+<dd>collected data as dictionary of on_policy, off_policy rollouts and episode statistics.</dd>
+</dl>
+</dd></dl>
+
 </div>
 </div>
 

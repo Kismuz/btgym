@@ -3,13 +3,12 @@
 from __future__ import print_function
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.util.nest import flatten as flatten_nested
 
-from btgym.spaces import DictSpace as ObSpace  # now can be gym.Dict
-from btgym.algorithms import Memory, Rollout, make_data_getter, RunnerThread
+from btgym.spaces import DictSpace as ObSpace  # now can simply be gym.Dict
+from btgym.algorithms import Memory, make_data_getter, RunnerThread
 from btgym.algorithms.math_util import log_uniform
-from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def
-from btgym.algorithms.util import feed_dict_rnn_context, feed_dict_from_nested, batch_stack, _show_struct
+from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def, ppo_loss_def
+from btgym.algorithms.util import feed_dict_rnn_context, feed_dict_from_nested, batch_stack
 
 
 class BaseAAC(object):
@@ -17,7 +16,6 @@ class BaseAAC(object):
     Base Asynchronous Advantage Actor Critic algorithm framework class with auxiliary control tasks and
     option to run several instances of environment for every worker in vectorized fashion, PAAC-like.
     Can be configured to run with different losses and policies.
-
 
     Auxiliary tasks implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
     https://miyosuda.github.io/
@@ -44,7 +42,7 @@ class BaseAAC(object):
                  model_gamma=0.99,  # decay
                  model_gae_lambda=1.00,  # GAE lambda
                  model_beta=0.01,  # entropy regularizer
-                 opt_max_train_steps=10**7,
+                 opt_max_env_steps=10 ** 7,
                  opt_decay_steps=None,
                  opt_end_learn_rate=None,
                  opt_learn_rate=1e-4,
@@ -82,46 +80,75 @@ class BaseAAC(object):
             task:                   int, parent worker id
             policy_config:          policy estimator class and configuration dictionary
             log:                    parent log
-            on_policy_loss:         callable returning tensor holding on_policy training loss and summaries
-            off_policy_loss:        callable returning tensor holding off_policy training loss and summaries
-            vr_loss:                callable returning tensor holding value replay loss and summaries
-            rp_loss:                callable returning tensor holding reward prediction loss and summaries
-            pc_loss:                callable returning tensor holding pixel_control loss and summaries
+            on_policy_loss:         callable returning tensor holding on_policy training loss graph and summaries
+            off_policy_loss:        callable returning tensor holding off_policy training loss graph and summaries
+            vr_loss:                callable returning tensor holding value replay loss graph and summaries
+            rp_loss:                callable returning tensor holding reward prediction loss graph and summaries
+            pc_loss:                callable returning tensor holding pixel_control loss graph and summaries
             random_seed:            int or None
-            model_gamma:            gamma discount factor
-            model_gae_lambda:       GAE lambda
-            model_beta:             entropy regularization beta
-            opt_max_train_steps:    total number of environment steps to run training on
-            opt_decay_steps:        learn ratio decay steps
-            opt_end_learn_rate:     final learn rate
-            opt_learn_rate:         start learn rate
-            opt_decay:              optimizer decay, if apll.
-            opt_momentum:           optimizer momentum, if apll.
-            opt_epsilon:            optimizer epsilon
-            rollout_length:         on-policy rollout length
-            time_flat:              flatten rnn time-steps in rollouts while training
+            model_gamma:            scalar, gamma discount factor
+            model_gae_lambda:       scalar, GAE lambda
+            model_beta:             entropy regularization beta, scalar or [high_bound, low_bound] for log_uniform.
+            opt_max_env_steps:      int, total number of environment steps to run training on.
+            opt_decay_steps:        int, learn ratio decay steps, in number of environment steps.
+            opt_end_learn_rate:     scalar, final learn rate
+            opt_learn_rate:         start learn rate, scalar or [high_bound, low_bound] for log_uniform distr.
+            opt_decay:              scalar, optimizer decay, if apll.
+            opt_momentum:           scalar, optimizer momentum, if apll.
+            opt_epsilon:            scalar, optimizer epsilon
+            rollout_length:         int, on-policy rollout length
+            time_flat:              bool, flatten rnn time-steps in rollouts while training - see `Notes` below
             episode_summary_freq:   int, write episode summary for every i'th episode
             env_render_freq:        int, write environment rendering summary for every i'th train step
             model_summary_freq:     int, write model summary for every i'th train step
-            test_mode:              True: Atari, False: BTGym
-            replay_memory_size:     in number of experiences
-            replay_batch_size:      mini-batch size for off-policy training
-            replay_rollout_length:  off-policy rollout length
-            use_off_policy_aac:     use full AAC off-policy loss instead of Value-replay
-            use_reward_prediction:  use aux. off-policy reward prediction task
-            use_pixel_control:      use aux. off-policy pixel control task
-            use_value_replay:       use aux. off-policy value replay task (not used if use_off_policy_aac=True)
-            rp_lambda:              reward prediction loss weight
-            pc_lambda:              pixel control loss weight
-            vr_lambda:              value replay loss weight
-            off_aac_lambda:         off-policy AAC loss weight
+            test_mode:              bool, True: Atari, False: BTGym
+            replay_memory_size:     int, in number of experiences
+            replay_batch_size:      int, mini-batch size for off-policy training, def = 1
+            replay_rollout_length:  int off-policy rollout length by def. equals on_policy_rollout_length
+            use_off_policy_aac:     bool, use full AAC off-policy loss instead of Value-replay
+            use_reward_prediction:  bool, use aux. off-policy reward prediction task
+            use_pixel_control:      bool, use aux. off-policy pixel control task
+            use_value_replay:       bool, use aux. off-policy value replay task (not used if use_off_policy_aac=True)
+            rp_lambda:              reward prediction loss weight, scalar or [high, low] for log_uniform distr.
+            pc_lambda:              pixel control loss weight, scalar or [high, low] for log_uniform distr.
+            vr_lambda:              value replay loss weight, scalar or [high, low] for log_uniform distr.
+            off_aac_lambda:         off-policy AAC loss weight, scalar or [high, low] for log_uniform distr.
             gamma_pc:               NOT USED
-            rp_reward_threshold:    reward prediction task classification threshold, above which reward is 'non-zero'
-            rp_sequence_size:       reward prediction sample size, in number of experiences
-            clip_epsilon:           PPO: surrogate L^clip epsilon
-            num_epochs:             num. of SGD runs for every train step, def: 1
-            pi_prime_update_period: PPO: pi to pi_old update period in number of train steps, def: 1
-            _use_target_policy:     target policy, tracking behavioral one with `pi_prime_update_period` delay
+            rp_reward_threshold:    scalar, reward prediction classification threshold, above which reward is 'non-zero'
+            rp_sequence_size:       int, reward prediction sample size, in number of experiences
+            clip_epsilon:           scalar, PPO: surrogate L^clip epsilon
+            num_epochs:             int, num. of SGD runs for every train step, val. > 1 should be used with caution.
+            pi_prime_update_period: int, PPO: pi to pi_old update period in number of train steps, def: 1
+            _use_target_policy:     bool, PPO: use target policy (aka pi_old), delayed by `pi_prime_update_period` delay
+
+        Note:
+            - On `time_flat` arg:
+
+                There are two alternatives to run RNN part of policy estimator:
+
+                a. Feed initial RNN state for every experience frame in rollout
+                        (those are stored anyway if we want random memory repaly sampling) and do single time-step RNN
+                        advance for all experiences in a batch; this is when time_flat=True;
+
+                b. Reshape incoming batch after convolution part of network in time-wise fashion
+                        for every rollout in a batch i.e. batch_size=number_of_rollouts and
+                        rnn_timesteps=max_rollout_length. In this case we need to feed initial rnn_states
+                        for rollouts only. There is some little extra work to pad rollouts to max_time_size
+                        and feed true rollout lengths to rnn. Thus, when time_flat=False, we unroll RNN in
+                        specified number of time-steps for every rollout.
+
+                Both options has pros and cons:
+
+                Unrolling dynamic RNN is computationally more expensive but gives clearly faster convergence,
+                    [possibly] due to the fact that RNN states for 2nd, 3rd, ... frames
+                    of rollouts are computed using updated policy estimator, which is supposed to be
+                    closer to optimal one. When time_flattened, every time-step uses RNN states computed
+                    when rollout was collected (i.e. by behavioral policy estimator with older
+                    parameters).
+
+                Nevertheless, time_flatting can be interesting
+                    because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
+                    ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).
         """
         self.log = log
         self.random_seed = random_seed
@@ -162,7 +189,7 @@ class BaseAAC(object):
         self.time_flat = time_flat
 
         # Optimizer
-        self.opt_max_train_steps = opt_max_train_steps
+        self.opt_max_env_steps = opt_max_env_steps
         self.opt_learn_rate = log_uniform(opt_learn_rate, 1)
 
         if opt_end_learn_rate is None:
@@ -171,7 +198,7 @@ class BaseAAC(object):
             self.opt_end_learn_rate = opt_end_learn_rate
 
         if opt_decay_steps is None:
-            self.opt_decay_steps = self.opt_max_train_steps
+            self.opt_decay_steps = self.opt_max_env_steps
         else:
             self.opt_decay_steps = opt_decay_steps
 
@@ -233,13 +260,17 @@ class BaseAAC(object):
         self.log.info('AAC_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}'.
                       format(self.task, self.opt_learn_rate, self.model_beta))
 
-        if self.use_memory:
-            self.log.info('AAC_{}: vr_lambda: {:1.6f}, off_aac_lambda: {:1.6f}, pc_lambda: {:1.6f}, rp_lambda: {:1.6f}'.
-                          format(self.task, self.vr_lambda, self.off_aac_lambda, self.pc_lambda, self.rp_lambda))
+        if self.use_off_policy_aac:
+            self.log.info('AAC_{}: off_aac_lambda: {:1.6f}'.format(self.task, self.off_aac_lambda,))
+
+        if self.use_any_aux_tasks:
+            self.log.info('AAC_{}: vr_lambda: {:1.6f}, pc_lambda: {:1.6f}, rp_lambda: {:1.6f}'.
+                          format(self.task, self.vr_lambda, self.pc_lambda, self.rp_lambda))
+
 
         #self.log.info(
         #    'AAC_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
-        #        format(self.task, self.opt_max_train_steps, self.opt_decay_steps, self.opt_end_learn_rate))
+        #        format(self.task, self.opt_max_env_steps, self.opt_decay_steps, self.opt_end_learn_rate))
 
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
 
@@ -841,4 +872,119 @@ class BaseAAC(object):
         #    except:
         #        print(k, type(v))
 
+
 Unreal = BaseAAC
+
+
+class A3C(BaseAAC):
+    """
+    Vanilla Asynchronous Advantage Actor Critic algorithm.
+
+    Based on original code taken from OpenAI repository under MIT licence:
+    https://github.com/openai/universe-starter-agent
+
+    Paper: https://arxiv.org/abs/1602.01783
+    """
+
+    def __init__(self, **kwargs):
+        """
+        A3C args. is a subset of BaseAAC arguments, see `BaseAAC` class for descriptions.
+
+        Args:
+            env:
+            task:
+            policy_config:
+            log:
+            random_seed:
+            model_gamma:
+            model_gae_lambda:
+            model_beta:
+            opt_max_env_steps:
+            opt_decay_steps:
+            opt_end_learn_rate:
+            opt_learn_rate:
+            opt_decay:
+            opt_momentum:
+            opt_epsilon:
+            rollout_length:
+            episode_summary_freq:
+            env_render_freq:
+            model_summary_freq:
+            test_mode:
+        """
+        super(A3C, self).__init__(
+            on_policy_loss=aac_loss_def,
+            use_off_policy_aac=False,
+            use_reward_prediction=False,
+            use_pixel_control=False,
+            use_value_replay=False,
+            _use_target_policy=False,
+            **kwargs
+        )
+
+
+class PPO(BaseAAC):
+    """
+    AAC with Proximal Policy Optimization surrogate L^Clip loss,
+    optionally augmented with auxiliary control tasks.
+
+    paper:
+    https://arxiv.org/pdf/1707.06347.pdf
+
+    Based on PPO-SGD code from OpenAI `Baselines` repository under MIT licence:
+    https://github.com/openai/baselines
+
+    Async. framework code comes from OpenAI repository under MIT licence:
+    https://github.com/openai/universe-starter-agent
+    """
+    def __init__(self, **kwargs):
+        """
+         PPO args. is a subset of BaseAAC arguments, see `BaseAAC` class for descriptions.
+
+        Args:
+            env:
+            task:
+            policy_config:
+            log:
+            vr_loss:
+            rp_loss:
+            pc_loss:
+            random_seed:
+            model_gamma:
+            model_gae_lambda:
+            model_beta:
+            opt_max_env_steps:
+            opt_decay_steps:
+            opt_end_learn_rate:
+            opt_learn_rate:
+            opt_decay:
+            opt_momentum:
+            opt_epsilon:
+            rollout_length:
+            episode_summary_freq:
+            env_render_freq:
+            model_summary_freq:
+            test_mode:
+            replay_memory_size:
+            replay_rollout_length:
+            use_off_policy_aac:
+            use_reward_prediction:
+            use_pixel_control:
+            use_value_replay:
+            rp_lambda:
+            pc_lambda:
+            vr_lambda:
+            off_aac_lambda:
+            rp_reward_threshold:
+            rp_sequence_size:
+            clip_epsilon:
+            num_epochs:
+            pi_prime_update_period:
+        """
+        super(PPO, self).__init__(
+            on_policy_loss=ppo_loss_def,
+            off_policy_loss=ppo_loss_def,
+            _use_target_policy=True,
+            **kwargs
+        )
+

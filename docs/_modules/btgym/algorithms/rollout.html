@@ -171,11 +171,7 @@
            <div itemprop="articleBody">
             
   <h1>Source code for btgym.algorithms.rollout</h1><div class="highlight"><pre>
-<span></span><span class="c1"># UNREAL implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:</span>
-<span class="c1"># https://miyosuda.github.io/</span>
-<span class="c1"># https://github.com/miyosuda/unreal</span>
-<span class="c1">#</span>
-<span class="c1"># Original A3C code comes from OpenAI repository under MIT licence:</span>
+<span></span><span class="c1"># Original A3C code comes from OpenAI repository under MIT licence:</span>
 <span class="c1"># https://github.com/openai/universe-starter-agent</span>
 <span class="c1">#</span>
 <span class="c1"># Papers:</span>
@@ -185,22 +181,25 @@
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
+<span class="kn">from</span> <span class="nn">tensorflow.contrib.rnn</span> <span class="k">import</span> <span class="n">LSTMStateTuple</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms.math_util</span> <span class="k">import</span> <span class="n">discount</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.util</span> <span class="k">import</span> <span class="n">batch_pad</span>
+
 
 <span class="c1"># Info:</span>
 <span class="n">ExperienceConfig</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="s1">&#39;state&#39;</span><span class="p">,</span> <span class="s1">&#39;action&#39;</span><span class="p">,</span> <span class="s1">&#39;reward&#39;</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">,</span> <span class="s1">&#39;terminal&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;context&#39;</span><span class="p">,</span>
                     <span class="s1">&#39;last_action_reward&#39;</span><span class="p">,</span> <span class="s1">&#39;pixel_change&#39;</span><span class="p">]</span>
 
 
-<div class="viewcode-block" id="make_rollout_getter"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.make_rollout_getter">[docs]</a><span class="k">def</span> <span class="nf">make_rollout_getter</span><span class="p">(</span><span class="n">queue</span><span class="p">):</span>
+<div class="viewcode-block" id="make_data_getter"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.make_data_getter">[docs]</a><span class="k">def</span> <span class="nf">make_data_getter</span><span class="p">(</span><span class="n">queue</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Rollout getter constructor.</span>
+<span class="sd">    Data stream getter constructor.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        queue:     instance of `Queue` class to get rollouts from.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        callable, returning instance of Rollout.</span>
+<span class="sd">        callable, returning dictionary of data.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">pull_rollout_from_queue</span><span class="p">():</span>
@@ -210,33 +209,57 @@
 
 
 <div class="viewcode-block" id="Rollout"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.Rollout">[docs]</a><span class="k">class</span> <span class="nc">Rollout</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Experience rollout as [nested] dictionary of lists.</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Experience rollout as [nested] dictionary of lists of ndarrays, tuples and rnn states.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">Rollout</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="mi">0</span>
 
-<div class="viewcode-block" id="Rollout.add"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.Rollout.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values_dict</span><span class="p">,</span> <span class="n">_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Rollout.add"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.Rollout.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">_struct</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Adds single experience to rollout by appending values to dictionary of lists.</span>
+<span class="sd">        Adds single experience frame to rollout.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            values_dict:    [nested] dictionary of values.</span>
+<span class="sd">            values:    [nested] dictionary of values.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">_dict</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">_dict</span> <span class="o">=</span> <span class="bp">self</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                    <span class="n">_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">_dict</span><span class="o">=</span><span class="n">_dict</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">_struct</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Top level:</span>
+            <span class="n">_struct</span> <span class="o">=</span> <span class="bp">self</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">top</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">top</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_struct</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">_struct</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">_struct</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">_struct</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="n">_struct</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;empty&#39;</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
+            <span class="n">_struct</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="o">*</span><span class="n">pair</span><span class="p">)</span> <span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">_struct</span><span class="p">)])</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">LSTMStateTuple</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="n">LSTMStateTuple</span><span class="p">):</span>
+                <span class="n">_struct</span> <span class="o">=</span> <span class="n">LSTMStateTuple</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">_struct</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">_struct</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">_struct</span> <span class="o">=</span> <span class="n">LSTMStateTuple</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">_struct</span> <span class="o">+=</span> <span class="p">[</span><span class="n">values</span><span class="p">]</span>
 
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                    <span class="n">_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">+=</span> <span class="p">[</span><span class="n">value</span><span class="p">]</span>
+                <span class="n">_struct</span> <span class="o">=</span> <span class="p">[</span><span class="n">values</span><span class="p">]</span>
 
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span><span class="p">]</span></div>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">top</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_struct</span></div>
 
 <div class="viewcode-block" id="Rollout.add_memory_sample"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.Rollout.add_memory_sample">[docs]</a>    <span class="k">def</span> <span class="nf">add_memory_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -246,20 +269,37 @@
         <span class="k">for</span> <span class="n">frame</span> <span class="ow">in</span> <span class="n">sample</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Rollout.process"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.Rollout.process">[docs]</a>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gamma</span><span class="p">,</span> <span class="n">gae_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+<div class="viewcode-block" id="Rollout.process"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.Rollout.process">[docs]</a>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gamma</span><span class="p">,</span> <span class="n">gae_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time_flat</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Converts rollout to dictionary of ready-to-feed arrays.</span>
+<span class="sd">        Converts single-trajectory rollout of experiences to dictionary of ready-to-feed arrays.</span>
 <span class="sd">        Computes rollout returns and the advantages.</span>
+<span class="sd">        Pads with zeroes to desired length, if size arg is given.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            gamma:          discount factor</span>
+<span class="sd">            gae_lambda:     GAE lambda</span>
+<span class="sd">            size:           if given and time_flat=False, pads outputs with zeroes along `time&#39; dim. to exact &#39;size&#39;.</span>
+<span class="sd">            time_flat:      reduce time dimension to 1 step by stacking all experiences along batch dimension.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            batch as [nested] dictionary.</span>
+<span class="sd">            batch as [nested] dictionary of np.arrays, tuples and LSTMStateTuples. of size:</span>
+
+<span class="sd">                [1, time_size, depth] or [1, size, depth] if not time_flatten and `size` is not/given, with single</span>
+<span class="sd">                `context` entry for entire trajectory, i.e. of size [1, context_depth];</span>
+
+<span class="sd">                [batch_size, 1, depth], if time_flatten, with batch_size = time_size and `context` entry for</span>
+<span class="sd">                every experience frame, i.e. of size [batch_size, context_depth].</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># self._check_it()</span>
         <span class="n">batch</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">-</span> <span class="p">{</span><span class="s1">&#39;context&#39;</span><span class="p">,</span> <span class="s1">&#39;reward&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">,</span> <span class="s1">&#39;position&#39;</span><span class="p">}:</span>
             <span class="n">batch</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">as_array</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
 
-        <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># rollout initial LSTM state</span>
+        <span class="k">if</span> <span class="n">time_flat</span><span class="p">:</span>
+            <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">as_array</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">],</span> <span class="n">squeeze_axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># LSTM state for every frame</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_frame</span><span class="p">(</span><span class="mi">0</span><span class="p">)[</span><span class="s1">&#39;context&#39;</span><span class="p">]</span> <span class="c1"># just get rollout initial LSTM state</span>
 
         <span class="c1"># Total accumulated empirical return:</span>
         <span class="n">rewards</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">])</span>
@@ -273,9 +313,56 @@
         <span class="n">delta_t</span> <span class="o">=</span> <span class="n">rewards</span> <span class="o">+</span> <span class="n">gamma</span> <span class="o">*</span> <span class="n">vpred_t</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">vpred_t</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;advantage&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">discount</span><span class="p">(</span><span class="n">delta_t</span><span class="p">,</span> <span class="n">gamma</span> <span class="o">*</span> <span class="n">gae_lambda</span><span class="p">)</span>
 
+        <span class="c1"># Shape it out:</span>
+        <span class="k">if</span> <span class="n">time_flat</span><span class="p">:</span>
+            <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;advantage&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># time length turned batch size</span>
+            <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;time_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">batch</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">])</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;time_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;advantage&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># real non-padded time length</span>
+            <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># want rollout as a trajectory</span>
+
+        <span class="k">if</span> <span class="n">size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">time_flat</span> <span class="ow">and</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;advantage&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">size</span><span class="p">:</span>
+            <span class="c1"># Want all batches to be exact size for further batch stacking:</span>
+            <span class="n">batch</span> <span class="o">=</span> <span class="n">batch_pad</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">to_size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+
         <span class="k">return</span> <span class="n">batch</span></div>
 
-<div class="viewcode-block" id="Rollout.extract"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.Rollout.extract">[docs]</a>    <span class="k">def</span> <span class="nf">extract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">_struct</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Rollout.process_rp"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.Rollout.process_rp">[docs]</a>    <span class="k">def</span> <span class="nf">process_rp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reward_threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Processes rollout process()-alike and estimates reward prediction target for first n-1 frames.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reward_threshold:   reward values such as |r|&gt; reward_threshold are classified as neg. or pos.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Processed batch with size reduced by one and with extra `rp_target` key</span>
+<span class="sd">            holding one hot encodings for classes {zero, positive, negative}.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Remove last frame:</span>
+        <span class="n">last_frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop_frame</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">gamma</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Make one hot vector for target rewards (i.e. reward taken from last of sampled frames):</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">last_frame</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span>
+        <span class="n">rp_t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">r</span> <span class="o">&gt;</span> <span class="n">reward_threshold</span><span class="p">:</span>
+            <span class="n">rp_t</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># positive [010]</span>
+
+        <span class="k">elif</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="o">-</span> <span class="n">reward_threshold</span><span class="p">:</span>
+            <span class="n">rp_t</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># negative [001]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rp_t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># zero [100]</span>
+
+        <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;rp_target&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rp_t</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span><span class="o">...</span><span class="p">]</span>
+        <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;time_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;advantage&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># e.g -1 of original</span>
+
+        <span class="k">return</span> <span class="n">batch</span></div>
+
+<div class="viewcode-block" id="Rollout.get_frame"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.Rollout.get_frame">[docs]</a>    <span class="k">def</span> <span class="nf">get_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">_struct</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Extracts single experience from rollout.</span>
 
@@ -283,30 +370,75 @@
 <span class="sd">            idx:    experience position</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            [nested] dictionary</span>
+<span class="sd">            frame as [nested] dictionary</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># No idx range checks here!</span>
         <span class="k">if</span> <span class="n">_struct</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">_struct</span> <span class="o">=</span> <span class="bp">self</span>
 
-        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_struct</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">_struct</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">_struct</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
             <span class="n">frame</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">_struct</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">frame</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">_struct</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+                <span class="n">frame</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_frame</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">frame</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">tuple</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">get_frame</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">_struct</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="n">LSTMStateTuple</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">LSTMStateTuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_frame</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">_struct</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_frame</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">_struct</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">_struct</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span></div>
 
-    <span class="k">def</span> <span class="nf">as_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">struct</span><span class="p">):</span>
-        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">struct</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span><span class="p">:</span>
-            <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">struct</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">out</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">as_array</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">out</span>
+<div class="viewcode-block" id="Rollout.pop_frame"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.rollout.Rollout.pop_frame">[docs]</a>    <span class="k">def</span> <span class="nf">pop_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">_struct</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Pops single experience from rollout.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            idx:    experience position</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            frame as [nested] dictionary</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># No idx range checks here!</span>
+        <span class="k">if</span> <span class="n">_struct</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_struct</span> <span class="o">=</span> <span class="bp">self</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">_struct</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">_struct</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">frame</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop_frame</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">frame</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">tuple</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">pop_frame</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">_struct</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="n">LSTMStateTuple</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">LSTMStateTuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pop_frame</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">_struct</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop_frame</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">_struct</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
 
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">struct</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">_struct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">as_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">struct</span><span class="p">,</span> <span class="n">squeeze_axis</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">struct</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">struct</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">out</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">as_array</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">squeeze_axis</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">out</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">struct</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">tuple</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">as_array</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">squeeze_axis</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">struct</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">struct</span><span class="p">,</span> <span class="n">LSTMStateTuple</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">LSTMStateTuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">as_array</span><span class="p">(</span><span class="n">struct</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">squeeze_axis</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">as_array</span><span class="p">(</span><span class="n">struct</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">squeeze_axis</span><span class="p">))</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">squeeze_axis</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">struct</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="n">squeeze_axis</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">struct</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_check_it</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_struct</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">_struct</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
