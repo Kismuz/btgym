@@ -270,13 +270,15 @@ Consider reinforcement learning setup for equity/currency trading:
  
  
 ### <a name="news"></a>[News and updates:](#title)
--30.10.17: Major update, some backward incompatibility:
-   - BTGym now can be thougt as two-part package: one is environment itself and the other one is
+- 14.11.17: BaseAAC framework refraction; added per worker batch-training option and LSTM time_flatten option; Atari
+            examples updated; see [Documentation](https://kismuz.github.io/btgym/) for details.
+- 30.10.17: Major update, some backward incompatibility:
+    - BTGym now can be thougt as two-part package: one is environment itself and the other one is
       RL algoritms tuned for solving algo-trading tasks. Some basic work on shaping of later is done. Three advantage
       actor-critic style algorithms are implemented: A3C itself, it's UNREAL extension and PPO. Core logic of these seems
       to be implemented correctly but further extensive BTGym-tuning is ahead.
       For now one can check [atari tests](./examples/atari_tests).
-   - Finally, basic [documentation and API reference](https://kismuz.github.io/btgym/) is now available.
+    - Finally, basic [documentation and API reference](https://kismuz.github.io/btgym/) is now available.
 
 - 27.09.17: A3C [test_4.2](./examples/a3c/a3c_test_4_2_no_feature_signal_conv1d.ipynb) added:
     - some progress on estimator architecture search, state and reward shaping;
