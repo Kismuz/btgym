@@ -27,7 +27,7 @@ Environment API reference
 Algorithms API reference
 ========================
 
-Deep RL algorithms integrated with BTgym : A3C, BaseAAC, PPO.
+Deep RL algorithms integrated with BTgym : A3C, UNREAL, PPO.
 
 .. toctree::
     :maxdepth: 2
