@@ -156,15 +156,11 @@ class _BTgymAnalyzer(bt.Analyzer):
         if is_done:
             self.early_stop()
 
-
         # Strategy housekeeping:
         self.strategy.iteration += 1
         self.strategy.broker_message = '-'
 
-######### Cerebro Subclass
-
-
-##############################  BTgym Server Main  ##############################
+    ##############################  BTgym Server Main  ##############################
 
 
 class BTgymServer(multiprocessing.Process):

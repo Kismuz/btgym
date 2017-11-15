@@ -17,18 +17,4 @@
 #
 ###############################################################################
 
-from gym.envs.registration import register
-
-from .strategy import BTgymBaseStrategy
-from .server import BTgymServer
-from .datafeed import BTgymDataset
-from .dataserver import BTgymDataFeedServer
-# from .monitor import BTgymMonitor
-from .rendering import BTgymRendering
-from .spaces import DictSpace
-from .envs.backtrader import BTgymEnv
-
-register(
-    id='backtrader-v0000',
-    entry_point='btgym.envs:BTgymEnv',
-)
+from .base import BTgymBaseStrategy

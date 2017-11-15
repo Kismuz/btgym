@@ -143,14 +143,14 @@ MyEnvironment = BTgymEnv(dataset=MyDataset,
 ****
 ### <a name="description"></a> [General description](#contents)
 #### <a name="problem"></a> Problem setting
-Consider reinforcement learning setup for equity/currency trading:
+Consider a discrete-time finite-horizon partially observable Markov decision process for equity/currency trading:
 - agent action space is discrete (`buy`, `sell`, `close` [position], `hold` [do nothing]);
 - environment is episodic: maximum  episode duration and episode termination conditions
   are set;
 - for every timestep of the episode agent is given environment state observation as tensor of last
   m price open/high/low/close values for every equity considered and based on that information is making
   trading decisions.
-- agent's goal is to maximize cumulative capital;
+- agent's goal is to maximize expected cumulative capital;
 - classic 'market liquidity' and 'capital impact' assumptions are met.
 - environment setup is set close to real trading conditions, including commissions, order execution delays,
   trading calendar etc.

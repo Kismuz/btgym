@@ -32,7 +32,7 @@ from gym import error, spaces
 
 import backtrader as bt
 
-from btgym import BTgymServer, BTgymStrategy, BTgymDataset, BTgymRendering, BTgymDataFeedServer, DictSpace
+from btgym import BTgymServer, BTgymBaseStrategy, BTgymDataset, BTgymRendering, BTgymDataFeedServer, DictSpace
 
 from btgym.rendering import BTgymNullRendering
 
@@ -128,7 +128,6 @@ class BTgymEnv(gym.Env):
 
 
         """
-
         # Parameters and default values:
         self.params = dict(
 
@@ -280,7 +279,7 @@ class BTgymEnv(gym.Env):
 
             else:
                 # Base class strategy :
-                self.strategy = BTgymStrategy
+                self.strategy = BTgymBaseStrategy
                 msg2 = 'Base Strategy class used.'
 
             # Add, using kwargs on top of defaults:
@@ -311,30 +310,30 @@ class BTgymEnv(gym.Env):
         for key, value in  self.params['strategy'].items():
             self.engine.strats[0][0][2][key] = value
 
-        # For 'raw_state' field min/max values
+        # For 'raw_state' min/max values,
         # the only way is to infer from raw Dataset price values (we already got those from data_server):
+        if 'raw_state' in self.params['strategy']['state_shape'].keys():
+            # Exclude 'volume' from columns we count:
+            self.dataset_columns.remove('volume')
 
-        # Exclude 'volume' from columns we count:
-        self.dataset_columns.remove('volume')
+            #print(self.params['strategy'])
+            #print('self.engine.strats[0][0][2]:', self.engine.strats[0][0][2])
+            #print('self.engine.strats[0][0][0].params:', self.engine.strats[0][0][0].params._gettuple())
 
-        #print(self.params['strategy'])
-        #print('self.engine.strats[0][0][2]:', self.engine.strats[0][0][2])
-        #print('self.engine.strats[0][0][0].params:', self.engine.strats[0][0][0].params._gettuple())
+            # Override with absolute price min and max values:
+            self.params['strategy']['state_shape']['raw_state'].low =\
+                self.engine.strats[0][0][2]['state_shape']['raw_state'].low =\
+                np.zeros(self.params['strategy']['state_shape']['raw_state'].shape) +\
+                self.dataset_stat.loc['min', self.dataset_columns].min()
 
-        # Override with absolute price min and max values:
-        self.params['strategy']['state_shape']['raw_state'].low =\
-            self.engine.strats[0][0][2]['state_shape']['raw_state'].low =\
-            np.zeros(self.params['strategy']['state_shape']['raw_state'].shape) +\
-            self.dataset_stat.loc['min', self.dataset_columns].min()
+            self.params['strategy']['state_shape']['raw_state'].high = \
+                self.engine.strats[0][0][2]['state_shape']['raw_state'].high = \
+                np.zeros(self.params['strategy']['state_shape']['raw_state'].shape) + \
+                self.dataset_stat.loc['max', self.dataset_columns].max()
 
-        self.params['strategy']['state_shape']['raw_state'].high = \
-            self.engine.strats[0][0][2]['state_shape']['raw_state'].high = \
-            np.zeros(self.params['strategy']['state_shape']['raw_state'].shape) + \
-            self.dataset_stat.loc['max', self.dataset_columns].max()
-
-        self.log.info('Inferring `state_raw` high/low values form dataset: {:.6f} / {:.6f}.'.
-                      format(self.dataset_stat.loc['min', self.dataset_columns].min(),
-                             self.dataset_stat.loc['max', self.dataset_columns].max()))
+            self.log.info('Inferring `state_raw` high/low values form dataset: {:.6f} / {:.6f}.'.
+                          format(self.dataset_stat.loc['min', self.dataset_columns].min(),
+                                 self.dataset_stat.loc['max', self.dataset_columns].max()))
 
         # Set observation space shape from engine/strategy parameters:
         self.observation_space = DictSpace(self.params['strategy']['state_shape'])
@@ -359,7 +358,8 @@ class BTgymEnv(gym.Env):
         self.log.info('Environment is ready.')
 
     def _comm_with_timeout(self, socket, message, timeout, connect_timeout_step=0.01,):
-        """Exchanges messages via socket, timeout sensitive.
+        """
+        Exchanges messages via socket, timeout sensitive.
 
         Args:
             socket: zmq connected socket to communicate via;
@@ -399,7 +399,8 @@ class BTgymEnv(gym.Env):
         return response
 
     def _start_server(self):
-        """Configures backtrader REQ/REP server instance and starts server process.
+        """
+        Configures backtrader REQ/REP server instance and starts server process.
         """
 
         # Ensure network resources:
@@ -449,7 +450,8 @@ class BTgymEnv(gym.Env):
         self._closed = False
 
     def _stop_server(self):
-        """Stops BT server process, releases network resources.
+        """
+        Stops BT server process, releases network resources.
         """
         if self.server:
 
@@ -497,7 +499,8 @@ class BTgymEnv(gym.Env):
             return True
 
     def _assert_response(self, response):
-        """Simple watcher:
+        """
+        Simple watcher:
         roughly checks if we really talking to environment (== episode is running).
         Rises exception if response given is not as expected.
         """
@@ -512,7 +515,8 @@ class BTgymEnv(gym.Env):
                        format(response, type(response)))
 
     def _reset(self, state_only=True):  # By default, returns only initial state observation (Gym convention).
-        """Implementation of OpenAI Gym env.reset method.
+        """
+        Implementation of OpenAI Gym env.reset method.
         'Rewinds' backtrader server and starts new episode
         within randomly selected time period.
         """
@@ -587,7 +591,8 @@ class BTgymEnv(gym.Env):
             raise ChildProcessError(msg)
 
     def _step(self, action):
-        """Implementation of OpenAI Gym env.step method.
+        """
+        Implementation of OpenAI Gym env.step method.
         Relies on remote backtrader server for actual environment dynamics computing.
         """
         # Are you in the list, ready to go and all that?
@@ -628,7 +633,8 @@ class BTgymEnv(gym.Env):
         return self.env_response
 
     def _close(self):
-        """Implementation of OpenAI Gym env.close method.
+        """
+        Implementation of OpenAI Gym env.close method.
         Puts BTgym server in Control Mode:
         """
         self._stop_server()
@@ -636,7 +642,8 @@ class BTgymEnv(gym.Env):
         self.log.info('Environment closed.')
 
     def get_stat(self):
-        """Returns last run episode statistics.
+        """
+        Returns last run episode statistics.
 
         Note:
             when invoked, forces running episode to terminate.
@@ -688,7 +695,8 @@ class BTgymEnv(gym.Env):
         return self.rendered_rgb[mode]
 
     def stop(self):
-        """Finishes current episode if any, does nothing otherwise. Leaves server running.
+        """
+        Finishes current episode if any, does nothing otherwise. Leaves server running.
         """
         if self._force_control_mode():
             self.log.info('Episode stop forced.')
@@ -782,13 +790,15 @@ class BTgymEnv(gym.Env):
         #    self.data_socket = None
 
     def _restart_data_server(self):
-        """Restarts data_server.
+        """
+        Restarts data_server.
         """
         self._stop_data_server()
         self._start_data_server()
 
     def _get_dataset_info(self):
-        """Retrieves dataset descriptive statistic.
+        """
+        Retrieves dataset descriptive statistic.
         """
         self.data_socket.send_pyobj({'ctrl': '_get_info'})
         self.data_server_response = self.data_socket.recv_pyobj()
@@ -796,4 +806,4 @@ class BTgymEnv(gym.Env):
         return self.data_server_response['dataset_stat'],\
                self.data_server_response['dataset_columns'],\
                self.data_server_response['pid']
-# asynchronous...
+
