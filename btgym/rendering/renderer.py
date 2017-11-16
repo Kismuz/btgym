@@ -55,23 +55,25 @@ class BTgymRendering():
 
     def __init__(self, render_modes, **kwargs):
         """
-        Plotting controls, can be passed as kwargs:
-        render_state_as_image=True,
-        render_state_channel=0,
-        render_size_human=(6, 3.5),
-        render_size_state=(7, 3.5),
-        render_size_episode=(12,8),
-        render_dpi=75,
-        render_plotstyle='seaborn',
-        render_cmap='PRGn',
-        render_xlabel='Relative timesteps',
-        render_ylabel='Value',
-        render_title='local step: {}, state observation min: {:.4f}, max: {:.4f}',
-        render_boxtext=dict(fontsize=12,
-                            fontweight='bold',
-                            color='w',
-                            bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
-                            )
+        Plotting controls, can be passed as kwargs.
+
+        Args:
+            render_state_as_image=True,
+            render_state_channel=0,
+            render_size_human=(6, 3.5),
+            render_size_state=(7, 3.5),
+            render_size_episode=(12,8),
+            render_dpi=75,
+            render_plotstyle='seaborn',
+            render_cmap='PRGn',
+            render_xlabel='Relative timesteps',
+            render_ylabel='Value',
+            render_title='local step: {}, state observation min: {:.4f}, max: {:.4f}',
+            render_boxtext=dict(fontsize=12,
+                                fontweight='bold',
+                                color='w',
+                                bbox={'facecolor': 'k', 'alpha': 0.3, 'pad': 3},
+                                )
         """
         # Update parameters with relevant kwargs:
         for key, value in kwargs.items():
@@ -100,7 +102,8 @@ class BTgymRendering():
             self.rgb_dict[mode] = self.rgb_empty()
 
     def initialize_pyplot(self):
-        """Call me before use!
+        """
+        Call me before use!
         [Supposed to be done inside already running server process]
         """
         from multiprocessing import Pipe
@@ -152,12 +155,12 @@ class BTgymRendering():
             assert type(info[-1]) == dict
             info_dict = info[-1]
 
-        except:
+        except AssertionError:
             try:
                 assert type(info) == dict
                 info_dict = info
 
-            except:
+            except AssertionError:
                 try:
                     info_dict = {'info': str(dict)}
 
@@ -187,20 +190,22 @@ class BTgymRendering():
         Renders given mode if possible, else
         just passes last already rendered image.
         Returns rgb image as numpy array.
+
         Logic:
-            If `cerebro` arg is received:
+            - If `cerebro` arg is received:
                 render entire episode, using built-in backtrader plotting feature,
                 update stored `episode` image.
 
-            If `step_to_render' arg is received:
-                if mode = 'raw_state':
+            - If `step_to_render' arg is received:
+                - if mode = 'raw_state':
                     render current state observation in conventional 'price' format,
                     update stored `raw_state` image;
-                if mode = something_else':
+                - if mode = something_else':
                     visualise observation as 'seen' by agent,
                     update stored 'agent' image.
 
-            Return `mode` image.
+        Returns:
+             `mode` image.
 
         Note:
             It can actually return several modes in a single dict.
@@ -208,6 +213,7 @@ class BTgymRendering():
         """
         if type(mode_list) == str:
             mode_list = [mode_list]
+
         if cerebro is not None:
             self.rgb_dict['episode'] = self.draw_episode(cerebro)
             # Try to render given episode:
@@ -382,13 +388,17 @@ class BTgymRendering():
         #ax.cla()
         return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
-
     def draw_episode(self, cerebro):
         """
-        Monstrous way to render episode.
-        Due to storage leaks have to encapsulate it in separate process.
+        Hacky way to render episode.
+        Due to backtrader/matplotlib memory leaks have to encapsulate it in separate process.
         Strange but reliable. PID's are driving crazy.
-        Takes cerebro instance, returns rgb array.
+
+        Args:
+            cerebro instance
+
+        Returns:
+            rgb array.
         """
         draw_process = DrawCerebro(cerebro=cerebro,
                                    width=self.render_size_episode[0],

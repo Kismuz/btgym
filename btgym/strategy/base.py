@@ -33,19 +33,18 @@ from btgym.strategy.utils import norm_value, decayed_result
 
 class BTgymBaseStrategy(bt.Strategy):
     """
-    Controls Environment inner dynamics and backtesting logic.
-    Any State, Reward and Info computation logic can be implemented by
-    subclassing BTgymStrategy and overriding at least get_state(), get_reward(),
-    get_info(), is_done() and set_datalines() methods.
+    Controls Environment inner dynamics and backtesting logic. Provides gym'my (State, Action, Reward, Done, Info) data.
+    Any State, Reward and Info computation logic can be implemented by subclassing BTgymStrategy and overriding
+    get_state(), get_reward(), get_info(), is_done() and set_datalines() methods.
     One can always go deeper and override __init__ () and next() methods for desired
-    server cerebro engine behaviour, including order execution etc.
+    server cerebro engine behaviour, including order execution logic etc.
     Since it is bt.Strategy subclass, see:
     https://www.backtrader.com/docu/strategy.html
     for more information.
 
     Note:
-        bt.observers.DrawDown observer will be automatically added [by server process]
-        to BTgymStrategy instance at runtime.
+        - bt.observers.DrawDown observer will be automatically added to BTgymStrategy instance at runtime.
+        - Since it is bt.Strategy subclass, see: https://www.backtrader.com/docu/strategy.html for more information.
     """
     params = dict(
         # Observation state shape is dictionary of Gym spaces,
@@ -53,7 +52,7 @@ class BTgymBaseStrategy(bt.Strategy):
         # By convention first dimension of every Gym Box space is time embedding one;
         # one can define any shape; should match env.observation_space.shape.
         # observation space state min/max values,
-        # For `raw_state' - absolute min/max values from BTgymDataset will be used.
+        # For `raw_state' (default) - absolute min/max values from BTgymDataset will be used.
         state_shape=dict(
             raw_state=spaces.Box(
                 shape=(10, 4),
@@ -77,32 +76,23 @@ class BTgymBaseStrategy(bt.Strategy):
 
     def __init__(self, **kwargs):
         """
+        Due to backtrader convention, any strategy args should be defined by `params` class attr. dictionary or passed
+        as kwargs to bt.Cerebro() class via .addstrategy() method.
 
         Args:
             **kwargs:
-                params = dict(
-                    # Observation state shape is dictionary of Gym spaces,
-                    # at least should contain `raw_state` field.
-                    # By convention first dimension of every Gym Box space is time embedding one;
-                    # one can define any shape; should match env.observation_space.shape.
-                    # observation space state min/max values,
-                    # For `raw_state' - absolute min/max values from BTgymDataset will be used.
-                    state_shape=dict(
-                        raw_state=spaces.Box(
-                            shape=(10, 4),
-                            low=-100, # will get overridden.
-                            high=100,
-                        )
-                    ),
-                    drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.
-                    target_call=10,  # finish episode when reaching profit target, in percent.
-                    dataset_stat=None,  # Summary descriptive statistics for entire dataset and
-                    episode_stat=None,  # current episode. Got updated by server.
-                    portfolio_actions=('hold', 'buy', 'sell', 'close'),  # possible agent actions.
-                    skip_frame=1,  # Number of environment steps to skip before returning next response,
-                                   # e.g. if set to 10 -- agent will interact with environment every 10th episode step;
-                                   # Every other step agent action is assumed to be 'hold'.
-                    )
+                params:                 dictionary containing following keys:
+
+                    state_shape:        Observation state shape is dictionary of Gym spaces, by convention
+                                        first dimension of every Gym Box space is time embedding one;
+                    drawdown_call:      finish episode when hitting this drawdown treshghold , in percent.
+                    target_call:        finish episode when reaching this profit target, in percent.
+                    dataset_stat:       summary descriptive statistics for entire dataset. Internal, updated by server.
+                    episode_stat:       summary descriptive statistics for episode. Internal, updated by server.
+                    portfolio_actions:  possible agent actions.
+                    skip_frame:         number of environment steps to skip before returning next response,
+                                        e.g. if set to 10 -- agent will interact with environment every 10th step;
+                                        every other step agent action is assumed to be 'hold'.
         """
         self.iteration = 1
         self.inner_embedding = 1
@@ -153,8 +143,8 @@ class BTgymBaseStrategy(bt.Strategy):
         )
         self.data.dim_sma.plotinfo.plot = False
 
-        # Sliding staistics accumulators, store normalized at first place last `avg_perod` values,
-        # so it's a bit more efficient than use of bt.Observers:
+        # Sliding staistics accumulators, globally normalized last `avg_perod` values,
+        # so it's a bit more efficient than use bt.Observers:
         sliding_datalines = [
             'broker_cash',
             'broker_value',
@@ -168,7 +158,7 @@ class BTgymBaseStrategy(bt.Strategy):
         ]
         self.sliding_stat = {key: deque(maxlen=self.avg_period) for key in sliding_datalines}
 
-        # Add custom data Lines if any (just a convenience wrapper):
+        # Add custom data Lines if any (convenience wrapper):
         self.set_datalines()
         self.log.debug('Kwargs:\n{}\n'.format(str(kwargs)))
 
@@ -274,20 +264,10 @@ class BTgymBaseStrategy(bt.Strategy):
 
         # TODO: norm. episode duration?
 
-        # print(
-        #    'UNREALIZED: MAX_PNL:{}, MIN_PNL:{}, CURRENT_PNL: {}'.
-        #        format(
-        #          self.lines.max_unrealized_pnl[0],
-        #          self.lines.min_unrealized_pnl[0],
-        #          self.lines.unrealized_pnl[0]
-        #        )
-        #     )
-
     def set_datalines(self):
         """
         Default datalines are: Open, Low, High, Close, Volume.
-        Any other custom data lines, indicators, etc.
-        should be explicitly defined by overriding this method [convention].
+        Any other custom data lines, indicators, etc. should be explicitly defined by overriding this method.
         Invoked once by Strategy.__init__().
         """
         #self.log.warning('Deprecated method. Use __init__  with Super(..., self).__init__(**kwargs) instead.')
@@ -295,11 +275,15 @@ class BTgymBaseStrategy(bt.Strategy):
     def _get_raw_state(self):
         """
         Default state observation composer.
-        Returns time-embedded environment state observation as [n,4] numpy matrix, where
-        4 - number of signal features  == state_shape[1],
-        n - time-embedding length  == state_shape[0] == <set by user>.
 
-        Used by renderer, at least.
+        Returns:
+             and updates time-embedded environment state observation as [n,4] numpy matrix, where:
+                4 - number of signal features  == state_shape[1],
+                n - time-embedding length  == state_shape[0] == <set by user>.
+
+        Note:
+            `self.raw_state` is used to render environment `human` mode and should not be modified.
+
         """
         self.raw_state = np.row_stack(
             (
@@ -314,15 +298,17 @@ class BTgymBaseStrategy(bt.Strategy):
 
     def get_state(self):
         """
-        One can override this method,
-        defining necessary calculations and return arbitrary shaped tensor.
-        It's possible either to compute entire featurized environment state
-        or just pass raw price data to RL algorithm featurizer module.
-        Note1: 'data' referes to bt.startegy datafeeds and should be treated as such.
-        Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in
-        define_datalines().
-        NOTE: while iterating, ._get_raw_state() method is called just before this one,
-        so variable `self.raw_state` is fresh and ready to use.
+        Override this method, defining necessary calculations and return arbitrary shaped tensor.
+        It's option either to compute entire featurized environment state or just pass raw price data
+        to RL algorithm featurizer module.
+
+        Note:
+            - 'data' referes to bt.startegy datafeeds and should be treated as such.
+                Datafeed Lines that are not default to BTgymStrategy should be explicitly defined by
+                 __init__() or define_datalines().
+
+            - while iterating, ._get_raw_state() method is called just before this one,
+                so attr. `self.raw_state` is fresh and ready to use.
         """
         self.update_sliding_stat()
         self.state['raw_state'] = self.raw_state
@@ -331,10 +317,12 @@ class BTgymBaseStrategy(bt.Strategy):
     def get_reward(self):
         """
         Default reward estimator.
-        Computes reward as log utility of current to initial portfolio value ratio.
-        Returns scalar <reward, type=float>.
-        Same principles as for state composer apply. Can return raw portfolio
-        performance statistics or enclose entire reward estimation algorithm.
+
+        Computes `dummy` reward as log utility of current to initial portfolio value ratio.
+        Same principles as for state composer apply.
+
+        Returns:
+             reward scalar, float
         """
         return float(np.log(self.stats.broker.value[0] / self.env.broker.startingcash))
 
@@ -342,9 +330,11 @@ class BTgymBaseStrategy(bt.Strategy):
         """
         Composes information part of environment response,
         can be any object. Override to own taste.
-        Note: Due to 'skip_frame' feature,
-        INFO part of environment response will be a list of all skipped frame's info objects,
-        i.e. [info[-9], info[-8], ..., info[0].
+
+        Note:
+            Due to 'skip_frame' feature, INFO part of environment response transmitted by server can be  a list
+            containing either all skipped frame's info objects, i.e. [info[-9], info[-8], ..., info[0]] or
+            just latest one, [info[0]]. This behaviour is set inside btgym.server._BTgymAnalyzer().next() method.
         """
         return dict(
             step=self.iteration,
@@ -360,11 +350,11 @@ class BTgymBaseStrategy(bt.Strategy):
     def get_done(self):
         """
         Episode termination estimator,
-        defines any trading logic conditions episode stop is called upon,
-        e.g. <OMG! Stop it, we became too rich!> .
-        It is just a structural a convention method.
-        Default method is empty.
-        Expected to return tuple (<is_done, type=bool>, <message, type=str>).
+        defines any trading logic conditions episode stop is called upon, e.g. <OMG! Stop it, we became too rich!>.
+        It is just a structural a convention method. Default method is empty.
+
+        Expected to return:
+            tuple (<is_done, type=bool>, <message, type=str>).
         """
         return False, '-'
 
@@ -372,19 +362,19 @@ class BTgymBaseStrategy(bt.Strategy):
         """
         Default episode termination method,
         checks base conditions episode stop is called upon:
-        1. Reached maximum episode duration. Need to check it explicitly, because <self.is_done> flag
-           is sent as part of environment response.
-        2. Got '_done' signal from outside. E.g. via env.reset() method invoked by outer RL algorithm.
-        3. Hit drawdown threshold.
-        4. Hit target profit treshhold.
+            1. Reached maximum episode duration. Need to check it explicitly, because <self.is_done> flag
+               is sent as part of environment response.
+            2. Got '_done' signal from outside. E.g. via env.reset() method invoked by outer RL algorithm.
+            3. Hit drawdown threshold.
+            4. Hit target profit treshhold.
 
         This method shouldn't be overridden or called explicitly.
 
         Runtime execution logic is:
             terminate episode if:
-            get_done() returned (True, 'something')
-            OR
-            ANY _get_done() default condition is met.
+                get_done() returned (True, 'something')
+                OR
+                ANY _get_done() default condition is met.
         """
         # Base episode termination rules:
         is_done_rules = [
@@ -395,7 +385,6 @@ class BTgymBaseStrategy(bt.Strategy):
             # Party time?
             (self.env.broker.get_value() > self.target_value, 'TARGET REACHED!'),
         ]
-
         # Append custom get_done() results, if any:
         is_done_rules += [self.get_done()]
 

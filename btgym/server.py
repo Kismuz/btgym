@@ -46,9 +46,7 @@ class _BTgymAnalyzer(bt.Analyzer):
     socket = None
 
     def __init__(self):
-        """
-        Inherit logger and ZMQ socket from parent:
-        """
+        # Inherit logger and ZMQ socket from parent:
         self.log = self.strategy.env._log
         self.socket = self.strategy.env._socket
         self.render = self.strategy.env._render
@@ -73,7 +71,7 @@ class _BTgymAnalyzer(bt.Analyzer):
 
     def early_stop(self):
         """
-        Get out.
+        Stop, take picture and get out.
         """
         self.log.debug('RunStop() invoked with {}'.format(self.strategy.broker_message))
 
@@ -120,7 +118,6 @@ class _BTgymAnalyzer(bt.Analyzer):
                             step_to_render=self.step_to_render,
                         )
                     )
-
                 # Episode termination requested:
                 if self.message['ctrl'] == '_done':
                     is_done = True  # redundant
@@ -141,8 +138,10 @@ class _BTgymAnalyzer(bt.Analyzer):
                 msg = 'No <action> key recieved:\n' + msg
                 raise AssertionError(msg)
 
-            # Send response as <o, r, d, i> tuple (Gym convention):
-            self.socket.send_pyobj((state, reward, is_done, self.info_list))
+            # Send response as <o, r, d, i> tuple (Gym convention),
+            # opt to send entire info_list or just latest part:
+            info = [self.info_list[-1]]
+            self.socket.send_pyobj((state, reward, is_done, info))
 
             # Back up step information for rendering.
             # It pays when using skip-frames: will'll get future state otherwise.
