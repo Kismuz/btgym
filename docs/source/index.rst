@@ -21,6 +21,7 @@ Environment API reference
 
     btgym.envs
     btgym
+    btgym.strategy
     btgym.monitor
     btgym.rendering
 

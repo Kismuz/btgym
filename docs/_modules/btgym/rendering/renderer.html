@@ -101,7 +101,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.strategy">btgym.strategy module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.rendering.html">btgym.rendering package</a></li>
 </ul>
@@ -228,23 +228,25 @@
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">render_modes</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Plotting controls, can be passed as kwargs:</span>
-<span class="sd">        render_state_as_image=True,</span>
-<span class="sd">        render_state_channel=0,</span>
-<span class="sd">        render_size_human=(6, 3.5),</span>
-<span class="sd">        render_size_state=(7, 3.5),</span>
-<span class="sd">        render_size_episode=(12,8),</span>
-<span class="sd">        render_dpi=75,</span>
-<span class="sd">        render_plotstyle=&#39;seaborn&#39;,</span>
-<span class="sd">        render_cmap=&#39;PRGn&#39;,</span>
-<span class="sd">        render_xlabel=&#39;Relative timesteps&#39;,</span>
-<span class="sd">        render_ylabel=&#39;Value&#39;,</span>
-<span class="sd">        render_title=&#39;local step: {}, state observation min: {:.4f}, max: {:.4f}&#39;,</span>
-<span class="sd">        render_boxtext=dict(fontsize=12,</span>
-<span class="sd">                            fontweight=&#39;bold&#39;,</span>
-<span class="sd">                            color=&#39;w&#39;,</span>
-<span class="sd">                            bbox={&#39;facecolor&#39;: &#39;k&#39;, &#39;alpha&#39;: 0.3, &#39;pad&#39;: 3},</span>
-<span class="sd">                            )</span>
+<span class="sd">        Plotting controls, can be passed as kwargs.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            render_state_as_image=True,</span>
+<span class="sd">            render_state_channel=0,</span>
+<span class="sd">            render_size_human=(6, 3.5),</span>
+<span class="sd">            render_size_state=(7, 3.5),</span>
+<span class="sd">            render_size_episode=(12,8),</span>
+<span class="sd">            render_dpi=75,</span>
+<span class="sd">            render_plotstyle=&#39;seaborn&#39;,</span>
+<span class="sd">            render_cmap=&#39;PRGn&#39;,</span>
+<span class="sd">            render_xlabel=&#39;Relative timesteps&#39;,</span>
+<span class="sd">            render_ylabel=&#39;Value&#39;,</span>
+<span class="sd">            render_title=&#39;local step: {}, state observation min: {:.4f}, max: {:.4f}&#39;,</span>
+<span class="sd">            render_boxtext=dict(fontsize=12,</span>
+<span class="sd">                                fontweight=&#39;bold&#39;,</span>
+<span class="sd">                                color=&#39;w&#39;,</span>
+<span class="sd">                                bbox={&#39;facecolor&#39;: &#39;k&#39;, &#39;alpha&#39;: 0.3, &#39;pad&#39;: 3},</span>
+<span class="sd">                                )</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Update parameters with relevant kwargs:</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -273,7 +275,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">rgb_dict</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rgb_empty</span><span class="p">()</span>
 
 <div class="viewcode-block" id="BTgymRendering.initialize_pyplot"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.initialize_pyplot">[docs]</a>    <span class="k">def</span> <span class="nf">initialize_pyplot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Call me before use!</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Call me before use!</span>
 <span class="sd">        [Supposed to be done inside already running server process]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="k">import</span> <span class="n">Pipe</span>
@@ -325,12 +328,12 @@
             <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="nb">dict</span>
             <span class="n">info_dict</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 
-        <span class="k">except</span><span class="p">:</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">info</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span>
                 <span class="n">info_dict</span> <span class="o">=</span> <span class="n">info</span>
 
-            <span class="k">except</span><span class="p">:</span>
+            <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">info_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;info&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="nb">dict</span><span class="p">)}</span>
 
@@ -360,20 +363,22 @@
 <span class="sd">        Renders given mode if possible, else</span>
 <span class="sd">        just passes last already rendered image.</span>
 <span class="sd">        Returns rgb image as numpy array.</span>
+
 <span class="sd">        Logic:</span>
-<span class="sd">            If `cerebro` arg is received:</span>
+<span class="sd">            - If `cerebro` arg is received:</span>
 <span class="sd">                render entire episode, using built-in backtrader plotting feature,</span>
 <span class="sd">                update stored `episode` image.</span>
 
-<span class="sd">            If `step_to_render&#39; arg is received:</span>
-<span class="sd">                if mode = &#39;raw_state&#39;:</span>
+<span class="sd">            - If `step_to_render&#39; arg is received:</span>
+<span class="sd">                - if mode = &#39;raw_state&#39;:</span>
 <span class="sd">                    render current state observation in conventional &#39;price&#39; format,</span>
 <span class="sd">                    update stored `raw_state` image;</span>
-<span class="sd">                if mode = something_else&#39;:</span>
+<span class="sd">                - if mode = something_else&#39;:</span>
 <span class="sd">                    visualise observation as &#39;seen&#39; by agent,</span>
 <span class="sd">                    update stored &#39;agent&#39; image.</span>
 
-<span class="sd">            Return `mode` image.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">             `mode` image.</span>
 
 <span class="sd">        Note:</span>
 <span class="sd">            It can actually return several modes in a single dict.</span>
@@ -381,6 +386,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">mode_list</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
             <span class="n">mode_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">mode_list</span><span class="p">]</span>
+
         <span class="k">if</span> <span class="n">cerebro</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">rgb_dict</span><span class="p">[</span><span class="s1">&#39;episode&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">draw_episode</span><span class="p">(</span><span class="n">cerebro</span><span class="p">)</span>
             <span class="c1"># Try to render given episode:</span>
@@ -555,13 +561,17 @@
         <span class="c1">#ax.cla()</span>
         <span class="k">return</span> <span class="n">rgb_array</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">get_width_height</span><span class="p">()[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">3</span><span class="p">,))</span></div>
 
-
 <div class="viewcode-block" id="BTgymRendering.draw_episode"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.draw_episode">[docs]</a>    <span class="k">def</span> <span class="nf">draw_episode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cerebro</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Monstrous way to render episode.</span>
-<span class="sd">        Due to storage leaks have to encapsulate it in separate process.</span>
+<span class="sd">        Hacky way to render episode.</span>
+<span class="sd">        Due to backtrader/matplotlib memory leaks have to encapsulate it in separate process.</span>
 <span class="sd">        Strange but reliable. PID&#39;s are driving crazy.</span>
-<span class="sd">        Takes cerebro instance, returns rgb array.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cerebro instance</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            rgb array.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">draw_process</span> <span class="o">=</span> <span class="n">DrawCerebro</span><span class="p">(</span><span class="n">cerebro</span><span class="o">=</span><span class="n">cerebro</span><span class="p">,</span>
                                    <span class="n">width</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_size_episode</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>

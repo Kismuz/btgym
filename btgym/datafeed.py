@@ -30,10 +30,13 @@ import pandas as pd
 
 class BTgymDataset:
     """
-    Backtrader.feeds class wrapper.
-    Currently pipes CSV[source]->pandas[for efficient sampling]->bt.feeds routine.
+    Base Backtrader.feeds data provider class.
 
-    Implements random episode data sampling.
+    Enables Pipe::
+
+     CSV[source]-->pandas[for efficient sampling]-->bt.feeds routine.
+
+    Implements random and positional episode data sampling.
 
     Suggested usage::
 
@@ -191,6 +194,7 @@ class BTgymDataset:
     def reset(self, data_filename=None, **kwargs):
         """
         Gets instance ready.
+
         Args:
             data_filename:  [opt] string or list of strings.
             kwargs:         not used.
@@ -254,15 +258,17 @@ class BTgymDataset:
 
     def describe(self):
         """
-        Returns summary dataset statistic as pandas dataframe::
-            records count,
-            data mean,
-            data std dev,
-            min value,
-            25% percentile,
-            50% percentile,
-            75% percentile,
-            max value
+        Returns summary dataset statistic as pandas dataframe:
+
+            - records count,
+            - data mean,
+            - data std dev,
+            - min value,
+            - 25% percentile,
+            - 50% percentile,
+            - 75% percentile,
+            - max value
+
         for every data column.
         """
         # Pretty straightforward, using standard pandas utility.
@@ -418,9 +424,10 @@ class BTgymDataset:
             tolerance:  actual start position is uniformly sampled from [position - tolerance, position + tolerance]
 
         Returns:
-             - BTgymDataset instance with number of records ~ max_episode_len,
-                where `~` tolerance is set by `time_gap` param.
-             - `False` if it is not possible to sample instance within set length tolerance.
+             - BTgymDataset instance such as: number of records ~ max_episode_len,
+                where record number tolerance is inferred from `time_gap` param;
+                first data row = `position` +- tolerance
+             - `False` if it is not possible to sample instance with set args.
         """
         try:
             assert not self.data.empty
@@ -505,13 +512,9 @@ class BTgymSequentialTrial(BTgymDataset):
     """
     Sequential Data Trials iterator.
 
-    See Notes at `BTgymTrialRandomIterator` for description and motivation.
+    See `Notes` at `BTgymTrialRandomIterator()` for description and motivation.
 
-    `Trial` is a discrete uniform distribution among all episodes, beginning within `Trail` support interval
-    of length `trial_range`, and with `Trail` mean position within dataset.
-
-    `Trial_sequence` is an ordered sequence of `Trial` distributions resulted by incrementing `trial_mean`
-    parameter with `trial_stride` until the end of entire dataset is reached.
+    For this class, `Trials` are sampled in ordered `sliding timewindow` rather than random fashion.
     """
     trial_params =dict(
         # Trial-sampling params:
@@ -529,14 +532,14 @@ class BTgymSequentialTrial(BTgymDataset):
     def __init__(self, **kwargs):
         """
         Args:
-            **kwargs:       BTgymDataset specific kwargs.
-            trial_range:    dict. containing Trial support interval (time range) in: `days`[, `hours`][, `minutes`].
-            trial_stride:   dict. containing stride interval between Trials in: `days`[, `hours`][, `minutes`].
+            kwargs:         BTgymDataset specific kwargs.
+            trial_range:    dict. containing `Trial` support interval (time range) in: `days`[, `hours`][, `minutes`].
+            trial_stride:   dict. containing stride interval between `Trials` in: `days`[, `hours`][, `minutes`].
 
         Note:
-            - Total number of Trials is inferred upon trial paramters given and overall dataset size.
+            - Total number of `Trials` is inferred upon trial_params given and overall dataset size.
 
-            - Total number of episodes drawn from each Trial is defined when .reset() method is called.
+            - Total number of episodes drawn from each `Trial` is defined when own .reset() method is called.
         """
         self.params.update(self.trial_params)
         super(BTgymSequentialTrial, self).__init__(**kwargs)
@@ -556,9 +559,10 @@ class BTgymSequentialTrial(BTgymDataset):
 
     def sample(self, **kwargs):
         """
-        Randomly uniformly samples from iterating sequence of Trial distributions.
+        Randomly uniformly samples from iterating sequence of `Trial` distributions.
 
-        - Iteratively calling this method results in:
+        Iteratively calling this method results in::
+
                     - randomly draws single episode from first [or specified by `reset()`] Trial;
                 - until predefined number of episodes has been drawn;
                 - advances to the next Trial in Trial_sequence;
@@ -588,8 +592,8 @@ class BTgymSequentialTrial(BTgymDataset):
 
         Args:
             global_step:    position in [0, total_steps] interval to start sampling from.
-            total_steps:    max gym environmnet steps allowed for full sweep over Trials.
-            skip_frame:     BTGym specific, such as: total_btgym_dataset_steps = total_steps * skip_frame.
+            total_steps:    max gym environmnet steps allowed for full sweep over `Trials`.
+            skip_frame:     BTGym specific, such as: `total_btgym_dataset_steps = total_steps * skip_frame`.
         """
         try:
             assert not self.data.empty
@@ -686,29 +690,32 @@ class BTgymRandomTrial(BTgymSequentialTrial):
         partially-observed Markov decision processes (POMDP's) to define optimization objective of learning
         RL algorithm itself, which can [hopefully] be one approach to learning in changing environment.
 
-        Let each `Trial` be discrete uniform distribution among all episodes, beginning within `Trail` support interval
-        of length `trial_range`, and with `Trail` mean position within dataset.
+        Note that BTgym dataset is set of date_time ordered, mainly continuous records.
+        Let each `Trial` be discrete uniform distribution among all episodes, such as for each episode:
+        a) start time lies within particular `Trail support time interval` of `trial_range` time length and
+        b) episode duration is less or equal to `max_episode_duration` constant;
+        let `Trail mean` be particular row or date_time position within dataset timeline.
 
-        Under original BTGym conditions, for each `Trial` data distribution there exists single POMDP.
+        Under original BTGym conditions, for each `Trial` there exists `single POMDP`.
 
-        Let Trial_sequence be a set of Trial distributions resulted by incrementing `trial_mean` parameter
-        with `trial_stride` until the end of entire dataset is reached.
+        Let `Trial_sequence` be a set of `Trials` resulted by incrementing `trial_mean` parameter
+        with `trial_stride` from end to end of dataset timeline.
 
-        Such Trial_sequence casts a set of POMDP's, every element of wich can be considered well-defined in terms
+        Such `Trial_sequence` casts a `set of POMDP's`, every element of wich can be considered well-defined in terms
         of own transition distribution; now it's possible to design optimization objective `...to maximize the expected
         total discounted reward accumulated during a single trial rather than a single episode.` [above paper, 2.2]
 
-        This particular iterator casts unordered set of Trials, while `BTgymSequentialTrial` class sweeps through
-        dataset in time-ordered fashion.
+        This particular iterator casts unordered `set of Trials`, while `BTgymSequentialTrial()` class sweeps through
+        later in time-ordered fashion.
     """
 
     def __init__(self, **kwargs):
         """
         Args:
-            **kwargs:           BTgymDataset specific kwargs.
-            trial_range:        dict. containing Trial support interval (time range) in: `days`[, `hours`][, `minutes`].
-            trial_stride:       dict. containing stride interval between Trials in: `days`[, `hours`][, `minutes`].
-            samples_per_trial:  self-explaining, set explicitly unlike sequential.
+            **kwargs:           BTgymDataset() specific kwargs.
+            trial_range:        dict. containing `Trial support interval` (time range) as: `days`[, `hours`][, `minutes`].
+            trial_stride:       dict. containing `stride interval` between `Trials` as: `days`[, `hours`][, `minutes`].
+            samples_per_trial:  self-explaining; unlike sequential case, has to be set explicitly.
         """
         super(BTgymRandomTrial, self).__init__(**kwargs)
         self.trial_num = 0
@@ -768,9 +775,11 @@ class BTgymRandomTrial(BTgymSequentialTrial):
 
     def sample(self, **kwargs):
         """
-        Randomly uniformly samples episode from Trial which itself been uniformly sampled from Trial' distribution.
+        Randomly uniformly samples episode from `Trial` which in turn has been
+        uniformly sampled from `sequence of Trials`.
 
-        - Iteratively calling this method results in:
+        Iteratively calling this method results in::
+
                     - randomly draws single episode from Trial;
                 - until predefined number of episodes has been drawn;
                 - randomly draws Trial from Trial's distribution;

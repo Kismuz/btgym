@@ -101,7 +101,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.strategy">btgym.strategy module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.rendering.html">btgym.rendering package</a></li>
 </ul>
@@ -205,7 +205,7 @@
 
 <span class="kn">import</span> <span class="nn">backtrader</span> <span class="k">as</span> <span class="nn">bt</span>
 
-<span class="kn">from</span> <span class="nn">btgym</span> <span class="k">import</span> <span class="n">BTgymServer</span><span class="p">,</span> <span class="n">BTgymStrategy</span><span class="p">,</span> <span class="n">BTgymDataset</span><span class="p">,</span> <span class="n">BTgymRendering</span><span class="p">,</span> <span class="n">BTgymDataFeedServer</span><span class="p">,</span> <span class="n">DictSpace</span>
+<span class="kn">from</span> <span class="nn">btgym</span> <span class="k">import</span> <span class="n">BTgymServer</span><span class="p">,</span> <span class="n">BTgymBaseStrategy</span><span class="p">,</span> <span class="n">BTgymDataset</span><span class="p">,</span> <span class="n">BTgymRendering</span><span class="p">,</span> <span class="n">BTgymDataFeedServer</span><span class="p">,</span> <span class="n">DictSpace</span>
 
 <span class="kn">from</span> <span class="nn">btgym.rendering</span> <span class="k">import</span> <span class="n">BTgymNullRendering</span>
 
@@ -266,42 +266,39 @@
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Environment kwargs applying logic:</span>
+<span class="sd">        Environment kwargs applying logic::</span>
 
-<span class="sd">        if &lt;engine&gt; kwarg is given:</span>
-<span class="sd">            do not use default engine and strategy parameters;</span>
-<span class="sd">            ignore &lt;strategy&gt; kwarg and all strategy and engine-related kwargs.</span>
+<span class="sd">            if &lt;engine&gt; kwarg is given:</span>
+<span class="sd">                do not use default engine and strategy parameters;</span>
+<span class="sd">                ignore &lt;strategy&gt; kwarg and all strategy and engine-related kwargs.</span>
 
-<span class="sd">        else (no &lt;engine&gt;):</span>
-<span class="sd">            use default engine parameters;</span>
-<span class="sd">            if any engine-related kwarg is given:</span>
-<span class="sd">                override corresponding default parameter;</span>
+<span class="sd">            else (no &lt;engine&gt;):</span>
+<span class="sd">                use default engine parameters;</span>
+<span class="sd">                if any engine-related kwarg is given:</span>
+<span class="sd">                    override corresponding default parameter;</span>
 
-<span class="sd">            if &lt;strategy&gt; is given:</span>
-<span class="sd">                do not use default strategy parameters;</span>
-<span class="sd">                if any strategy related kwarg is given:</span>
-<span class="sd">                    override corresponding strategy parameter;</span>
+<span class="sd">                if &lt;strategy&gt; is given:</span>
+<span class="sd">                    do not use default strategy parameters;</span>
+<span class="sd">                    if any strategy related kwarg is given:</span>
+<span class="sd">                        override corresponding strategy parameter;</span>
 
-<span class="sd">            else (no &lt;strategy&gt;):</span>
-<span class="sd">                use default strategy parameters;</span>
-<span class="sd">                if any strategy related kwarg is given:</span>
-<span class="sd">                    override corresponding strategy parameter;</span>
+<span class="sd">                else (no &lt;strategy&gt;):</span>
+<span class="sd">                    use default strategy parameters;</span>
+<span class="sd">                    if any strategy related kwarg is given:</span>
+<span class="sd">                        override corresponding strategy parameter;</span>
 
-<span class="sd">        if &lt;dataset&gt; kwarg is given:</span>
-<span class="sd">            do not use default dataset parameters;</span>
-<span class="sd">            ignore dataset related kwargs;</span>
+<span class="sd">            if &lt;dataset&gt; kwarg is given:</span>
+<span class="sd">                do not use default dataset parameters;</span>
+<span class="sd">                ignore dataset related kwargs;</span>
 
-<span class="sd">        else (no &lt;dataset&gt;):</span>
-<span class="sd">            use default dataset parameters;</span>
-<span class="sd">                if  any dataset related kwarg is given:</span>
-<span class="sd">                    override corresponding dataset parameter;</span>
+<span class="sd">            else (no &lt;dataset&gt;):</span>
+<span class="sd">                use default dataset parameters;</span>
+<span class="sd">                    if  any dataset related kwarg is given:</span>
+<span class="sd">                        override corresponding dataset parameter;</span>
 
-<span class="sd">        If any &lt;other&gt; kwarg is given:</span>
-<span class="sd">            override corresponding default parameter.</span>
-
-
+<span class="sd">            If any &lt;other&gt; kwarg is given:</span>
+<span class="sd">                override corresponding default parameter.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-
         <span class="c1"># Parameters and default values:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
 
@@ -453,7 +450,7 @@
 
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># Base class strategy :</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="o">=</span> <span class="n">BTgymStrategy</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="o">=</span> <span class="n">BTgymBaseStrategy</span>
                 <span class="n">msg2</span> <span class="o">=</span> <span class="s1">&#39;Base Strategy class used.&#39;</span>
 
             <span class="c1"># Add, using kwargs on top of defaults:</span>
@@ -484,30 +481,30 @@
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span>  <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 
-        <span class="c1"># For &#39;raw_state&#39; field min/max values</span>
+        <span class="c1"># For &#39;raw_state&#39; min/max values,</span>
         <span class="c1"># the only way is to infer from raw Dataset price values (we already got those from data_server):</span>
+        <span class="k">if</span> <span class="s1">&#39;raw_state&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="c1"># Exclude &#39;volume&#39; from columns we count:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;volume&#39;</span><span class="p">)</span>
 
-        <span class="c1"># Exclude &#39;volume&#39; from columns we count:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;volume&#39;</span><span class="p">)</span>
+            <span class="c1">#print(self.params[&#39;strategy&#39;])</span>
+            <span class="c1">#print(&#39;self.engine.strats[0][0][2]:&#39;, self.engine.strats[0][0][2])</span>
+            <span class="c1">#print(&#39;self.engine.strats[0][0][0].params:&#39;, self.engine.strats[0][0][0].params._gettuple())</span>
 
-        <span class="c1">#print(self.params[&#39;strategy&#39;])</span>
-        <span class="c1">#print(&#39;self.engine.strats[0][0][2]:&#39;, self.engine.strats[0][0][2])</span>
-        <span class="c1">#print(&#39;self.engine.strats[0][0][0].params:&#39;, self.engine.strats[0][0][0].params._gettuple())</span>
+            <span class="c1"># Override with absolute price min and max values:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">low</span> <span class="o">=</span>\
+                <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">low</span> <span class="o">=</span>\
+                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span>\
+                <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
 
-        <span class="c1"># Override with absolute price min and max values:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">low</span> <span class="o">=</span>\
-            <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">low</span> <span class="o">=</span>\
-            <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span>\
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">high</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">high</span> <span class="o">=</span> \
+                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">high</span> <span class="o">=</span> \
-            <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">high</span> <span class="o">=</span> \
-            <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> \
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Inferring `state_raw` high/low values form dataset: </span><span class="si">{:.6f}</span><span class="s1"> / </span><span class="si">{:.6f}</span><span class="s1">.&#39;</span><span class="o">.</span>
-                      <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
-                             <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Inferring `state_raw` high/low values form dataset: </span><span class="si">{:.6f}</span><span class="s1"> / </span><span class="si">{:.6f}</span><span class="s1">.&#39;</span><span class="o">.</span>
+                          <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
+                                 <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()))</span>
 
         <span class="c1"># Set observation space shape from engine/strategy parameters:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">observation_space</span> <span class="o">=</span> <span class="n">DictSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">])</span>
@@ -532,7 +529,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Environment is ready.&#39;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="BTgymEnv._comm_with_timeout"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._comm_with_timeout">[docs]</a>    <span class="k">def</span> <span class="nf">_comm_with_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">socket</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">connect_timeout_step</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,):</span>
-        <span class="sd">&quot;&quot;&quot;Exchanges messages via socket, timeout sensitive.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Exchanges messages via socket, timeout sensitive.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            socket: zmq connected socket to communicate via;</span>
@@ -572,7 +570,8 @@
         <span class="k">return</span> <span class="n">response</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._start_server"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._start_server">[docs]</a>    <span class="k">def</span> <span class="nf">_start_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Configures backtrader REQ/REP server instance and starts server process.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Configures backtrader REQ/REP server instance and starts server process.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># Ensure network resources:</span>
@@ -622,7 +621,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">False</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._stop_server"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._stop_server">[docs]</a>    <span class="k">def</span> <span class="nf">_stop_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Stops BT server process, releases network resources.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stops BT server process, releases network resources.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="p">:</span>
 
@@ -670,7 +670,8 @@
             <span class="k">return</span> <span class="kc">True</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._assert_response"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._assert_response">[docs]</a>    <span class="k">def</span> <span class="nf">_assert_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Simple watcher:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simple watcher:</span>
 <span class="sd">        roughly checks if we really talking to environment (== episode is running).</span>
 <span class="sd">        Rises exception if response given is not as expected.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -678,16 +679,15 @@
             <span class="k">pass</span>
 
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Unexpected environment response: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">Hint: Forgot to call reset()?&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Unexpected environment response: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">Hint: Forgot to call reset() or reset_data()?&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Env response checker received:</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s1">as type: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
                        <span class="nb">format</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">response</span><span class="p">)))</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._reset"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._reset">[docs]</a>    <span class="k">def</span> <span class="nf">_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_only</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>  <span class="c1"># By default, returns only initial state observation (Gym convention).</span>
-        <span class="sd">&quot;&quot;&quot;Implementation of OpenAI Gym env.reset method.</span>
-<span class="sd">        &#39;Rewinds&#39; backtrader server and starts new episode</span>
-<span class="sd">        within randomly selected time period.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implementation of OpenAI Gym env.reset method. Starts new episode.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Data Server check:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
@@ -760,7 +760,8 @@
             <span class="k">raise</span> <span class="ne">ChildProcessError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._step"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._step">[docs]</a>    <span class="k">def</span> <span class="nf">_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Implementation of OpenAI Gym env.step method.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implementation of OpenAI Gym env.step method.</span>
 <span class="sd">        Relies on remote backtrader server for actual environment dynamics computing.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Are you in the list, ready to go and all that?</span>
@@ -801,15 +802,17 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._close"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._close">[docs]</a>    <span class="k">def</span> <span class="nf">_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Implementation of OpenAI Gym env.close method.</span>
-<span class="sd">        Puts BTgym server in Control Mode:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implementation of OpenAI Gym env.close method.</span>
+<span class="sd">        Puts BTgym server in Control Mode.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stop_server</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stop_data_server</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Environment closed.&#39;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="BTgymEnv.get_stat"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv.get_stat">[docs]</a>    <span class="k">def</span> <span class="nf">get_stat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Returns last run episode statistics.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns last run episode statistics.</span>
 
 <span class="sd">        Note:</span>
 <span class="sd">            when invoked, forces running episode to terminate.</span>
@@ -822,13 +825,16 @@
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._render"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._render">[docs]</a>    <span class="k">def</span> <span class="nf">_render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;other_mode&#39;</span><span class="p">,</span> <span class="n">close</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Implementation of OpenAI Gym env.render method.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implementation of OpenAI Gym env.render method.</span>
 <span class="sd">        Visualises current environment state.</span>
+
 <span class="sd">        Args:</span>
-<span class="sd">            `mode` key argument, returns image as rgb_array :</span>
-<span class="sd">                `human` - current state observation as price lines;</span>
-<span class="sd">                `agent` - current processed observation state as RL agent sees it;</span>
-<span class="sd">                `episode` - plotted results of last completed episode.</span>
+<span class="sd">            `mode`:     str, any of these::</span>
+
+<span class="sd">                            `human` - current state observation as price lines;</span>
+<span class="sd">                            `episode` - plotted results of last completed episode.</span>
+<span class="sd">                            [other_key] - corresponding to any custom observation space key</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">close</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
@@ -861,7 +867,8 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rendered_rgb</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="BTgymEnv.stop"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Finishes current episode if any, does nothing otherwise. Leaves server running.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Finishes current episode if any, does nothing otherwise. Leaves server running.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_force_control_mode</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Episode stop forced.&#39;</span><span class="p">)</span></div>
@@ -955,21 +962,55 @@
         <span class="c1">#    self.data_socket = None</span>
 
 <div class="viewcode-block" id="BTgymEnv._restart_data_server"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._restart_data_server">[docs]</a>    <span class="k">def</span> <span class="nf">_restart_data_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Restarts data_server.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Restarts data_server.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stop_data_server</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_start_data_server</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._get_dataset_info"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._get_dataset_info">[docs]</a>    <span class="k">def</span> <span class="nf">_get_dataset_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Retrieves dataset descriptive statistic.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves dataset descriptive statistic.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">({</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_get_info&#39;</span><span class="p">})</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;dataset_stat&#39;</span><span class="p">],</span>\
                <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;dataset_columns&#39;</span><span class="p">],</span>\
-               <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;pid&#39;</span><span class="p">]</span></div></div>
-<span class="c1"># asynchronous...</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;pid&#39;</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="BTgymEnv.reset_data"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv.reset_data">[docs]</a>    <span class="k">def</span> <span class="nf">reset_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resets data provider class used, whatever it means for that class. Gets data_server ready to provide data.</span>
+<span class="sd">        Supposed to be called before first env.reset().</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            when invoked, forces running episode to terminate.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            **kwargs:   data provider class .reset() method specific.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+                <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="p">,</span>
+                <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_reset_data&#39;</span><span class="p">,</span> <span class="s1">&#39;kwargs&#39;</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">},</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Dataset seems ready with response: &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span>
+                               <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]))</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Data_server unreachable with status: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span> \
+                    <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="c1"># For everybody:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_force_control_mode</span><span class="p">()</span></div></div>
 </pre></div>
 
            </div>

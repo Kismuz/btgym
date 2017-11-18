@@ -101,7 +101,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.strategy">btgym.strategy module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.rendering.html">btgym.rendering package</a></li>
 </ul>
@@ -176,13 +176,12 @@
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">print_function</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
-<span class="kn">from</span> <span class="nn">tensorflow.python.util.nest</span> <span class="k">import</span> <span class="n">flatten</span> <span class="k">as</span> <span class="n">flatten_nested</span>
 
-<span class="kn">from</span> <span class="nn">btgym.spaces</span> <span class="k">import</span> <span class="n">DictSpace</span> <span class="k">as</span> <span class="n">ObSpace</span>  <span class="c1"># now can be gym.Dict</span>
-<span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">Memory</span><span class="p">,</span> <span class="n">Rollout</span><span class="p">,</span> <span class="n">make_data_getter</span><span class="p">,</span> <span class="n">RunnerThread</span>
+<span class="kn">from</span> <span class="nn">btgym.spaces</span> <span class="k">import</span> <span class="n">DictSpace</span> <span class="k">as</span> <span class="n">ObSpace</span>  <span class="c1"># now can simply be gym.Dict</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">Memory</span><span class="p">,</span> <span class="n">make_data_getter</span><span class="p">,</span> <span class="n">RunnerThread</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms.math_util</span> <span class="k">import</span> <span class="n">log_uniform</span>
-<span class="kn">from</span> <span class="nn">btgym.algorithms.losses</span> <span class="k">import</span> <span class="n">value_fn_loss_def</span><span class="p">,</span> <span class="n">rp_loss_def</span><span class="p">,</span> <span class="n">pc_loss_def</span><span class="p">,</span> <span class="n">aac_loss_def</span>
-<span class="kn">from</span> <span class="nn">btgym.algorithms.util</span> <span class="k">import</span> <span class="n">feed_dict_rnn_context</span><span class="p">,</span> <span class="n">feed_dict_from_nested</span><span class="p">,</span> <span class="n">batch_stack</span><span class="p">,</span> <span class="n">_show_struct</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.losses</span> <span class="k">import</span> <span class="n">value_fn_loss_def</span><span class="p">,</span> <span class="n">rp_loss_def</span><span class="p">,</span> <span class="n">pc_loss_def</span><span class="p">,</span> <span class="n">aac_loss_def</span><span class="p">,</span> <span class="n">ppo_loss_def</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.util</span> <span class="k">import</span> <span class="n">feed_dict_rnn_context</span><span class="p">,</span> <span class="n">feed_dict_from_nested</span><span class="p">,</span> <span class="n">batch_stack</span>
 
 
 <div class="viewcode-block" id="BaseAAC"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC">[docs]</a><span class="k">class</span> <span class="nc">BaseAAC</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -434,9 +433,13 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: learn_rate: </span><span class="si">{:1.6f}</span><span class="s1">, entropy_beta: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
                       <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span><span class="p">))</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_memory</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: vr_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, off_aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, pc_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, rp_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
-                          <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_off_policy_aac</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: off_aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span><span class="p">,))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: vr_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, pc_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, rp_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
+                          <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span><span class="p">))</span>
+
 
         <span class="c1">#self.log.info(</span>
         <span class="c1">#    &#39;AAC_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},&#39;.</span>

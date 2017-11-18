@@ -168,23 +168,24 @@ class BTgymServer(multiprocessing.Process):
     Expects to receive dictionary, containing at least 'action' field.
 
     Control mode IN::
-        dict(action=<control action, type=str>,), where
-        control action is:
+
+        dict(action=<control action, type=str>,), where control action is:
         '_reset' - rewinds backtrader engine and runs new episode;
         '_getstat' - retrieve episode results and statistics;
         '_stop' - server shut-down.
 
     Control mode OUT::
+
         <string message> - reports current server status;
         <statisic dict> - last run episode statisics.  NotImplemented.
 
         Within-episode signals:
         Episode mode IN:
-        dict(action=<agent_action, type=str>,), where
-        agent_action is:
+        dict(action=<agent_action, type=str>,), where agent_action is:
         {'buy', 'sell', 'hold', 'close', '_done'} - agent or service actions; '_done' - stops current episode;
 
     Episode mode OUT::
+
         response  <tuple>: observation, <array> - observation of the current environment state,
                                                  could be any tensor; default is:
                                                  [4,m] array of <fl32>, where:

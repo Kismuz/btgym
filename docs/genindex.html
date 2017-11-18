@@ -101,7 +101,7 @@
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.strategy">btgym.strategy module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
 </ul>
@@ -292,10 +292,10 @@
 </li>
       <li><a href="btgym.monitor.html#module-btgym.monitor.tensorboard">btgym.monitor.tensorboard (module)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.monitor.html#module-btgym.monitor.tensorboard2">btgym.monitor.tensorboard2 (module)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.rendering.html#module-btgym.rendering.plotter">btgym.rendering.plotter (module)</a>
 </li>
       <li><a href="btgym.rendering.html#module-btgym.rendering.renderer">btgym.rendering.renderer (module)</a>
@@ -304,7 +304,11 @@
 </li>
       <li><a href="btgym.html#module-btgym.spaces">btgym.spaces (module)</a>
 </li>
-      <li><a href="btgym.html#module-btgym.strategy">btgym.strategy (module)</a>
+      <li><a href="btgym.strategy.html#module-btgym.strategy.base">btgym.strategy.base (module)</a>
+</li>
+      <li><a href="btgym.strategy.html#module-btgym.strategy.observers">btgym.strategy.observers (module)</a>
+</li>
+      <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy">BTgymBaseStrategy (class in btgym.strategy.base)</a>
 </li>
       <li><a href="btgym.html#btgym.dataserver.BTgymDataFeedServer">BTgymDataFeedServer (class in btgym.dataserver)</a>
 </li>
@@ -320,11 +324,13 @@
 </li>
       <li><a href="btgym.rendering.html#btgym.rendering.plotter.BTgymPlotter">BTgymPlotter (class in btgym.rendering.plotter)</a>
 </li>
+      <li><a href="btgym.html#btgym.datafeed.BTgymRandomTrial">BTgymRandomTrial (class in btgym.datafeed)</a>
+</li>
       <li><a href="btgym.rendering.html#btgym.rendering.renderer.BTgymRendering">BTgymRendering (class in btgym.rendering.renderer)</a>
 </li>
-      <li><a href="btgym.html#btgym.server.BTgymServer">BTgymServer (class in btgym.server)</a>
+      <li><a href="btgym.html#btgym.datafeed.BTgymSequentialTrial">BTgymSequentialTrial (class in btgym.datafeed)</a>
 </li>
-      <li><a href="btgym.html#btgym.strategy.BTgymStrategy">BTgymStrategy (class in btgym.strategy)</a>
+      <li><a href="btgym.html#btgym.server.BTgymServer">BTgymServer (class in btgym.server)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -394,11 +400,11 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_data">get_data() (btgym.algorithms.aac.BaseAAC method)</a>
 </li>
-      <li><a href="btgym.html#btgym.strategy.BTgymStrategy.get_done">get_done() (btgym.strategy.BTgymStrategy method)</a>
+      <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_done">get_done() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.Rollout.get_frame">get_frame() (btgym.algorithms.rollout.Rollout method)</a>
 </li>
-      <li><a href="btgym.html#btgym.strategy.BTgymStrategy.get_info">get_info() (btgym.strategy.BTgymStrategy method)</a>
+      <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_info">get_info() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.policy.BaseAacPolicy.get_initial_features">get_initial_features() (btgym.algorithms.policy.BaseAacPolicy method)</a>
 </li>
@@ -408,13 +414,13 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.policy.BaseAacPolicy.get_pc_target">get_pc_target() (btgym.algorithms.policy.BaseAacPolicy method)</a>
 </li>
-      <li><a href="btgym.html#btgym.strategy.BTgymStrategy.get_reward">get_reward() (btgym.strategy.BTgymStrategy method)</a>
+      <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_reward">get_reward() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_rp_feeder">get_rp_feeder() (btgym.algorithms.aac.BaseAAC method)</a>
 </li>
       <li><a href="btgym.envs.html#btgym.envs.backtrader.BTgymEnv.get_stat">get_stat() (btgym.envs.backtrader.BTgymEnv method)</a>
 </li>
-      <li><a href="btgym.html#btgym.strategy.BTgymStrategy.get_state">get_state() (btgym.strategy.BTgymStrategy method)</a>
+      <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_state">get_state() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.policy.BaseAacPolicy.get_value">get_value() (btgym.algorithms.policy.BaseAacPolicy method)</a>
 </li>
@@ -464,11 +470,13 @@
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="btgym.html#btgym.strategy.BTgymStrategy.next">next() (btgym.strategy.BTgymStrategy method)</a>
+      <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.next">next() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="btgym.html#btgym.strategy.BTgymStrategy.notify_order">notify_order() (btgym.strategy.BTgymStrategy method)</a>
+      <li><a href="btgym.strategy.html#btgym.strategy.observers.NormPnL">NormPnL (class in btgym.strategy.observers)</a>
+</li>
+      <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.notify_order">notify_order() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -483,6 +491,8 @@
       <li><a href="btgym.algorithms.html#btgym.algorithms.nnet_util.pixel_change_2d_estimator">pixel_change_2d_estimator() (in module btgym.algorithms.nnet_util)</a>
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.Rollout.pop_frame">pop_frame() (btgym.algorithms.rollout.Rollout method)</a>
+</li>
+      <li><a href="btgym.strategy.html#btgym.strategy.observers.Position">Position (class in btgym.strategy.observers)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -508,8 +518,22 @@
 </li>
       <li><a href="btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.render">render() (btgym.rendering.renderer.BTgymRendering method)</a>
 </li>
+      <li><a href="btgym.html#btgym.datafeed.BTgymDataset.reset">reset() (btgym.datafeed.BTgymDataset method)</a>
+
+      <ul>
+        <li><a href="btgym.html#btgym.datafeed.BTgymRandomTrial.reset">(btgym.datafeed.BTgymRandomTrial method)</a>
+</li>
+        <li><a href="btgym.html#btgym.datafeed.BTgymSequentialTrial.reset">(btgym.datafeed.BTgymSequentialTrial method)</a>
+</li>
+      </ul></li>
+      <li><a href="btgym.envs.html#btgym.envs.backtrader.BTgymEnv.reset_data">reset_data() (btgym.envs.backtrader.BTgymEnv method)</a>
+</li>
+      <li><a href="btgym.strategy.html#btgym.strategy.observers.Reward">Reward (class in btgym.strategy.observers)</a>
+</li>
       <li><a href="btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.rgb_empty">rgb_empty() (btgym.rendering.renderer.BTgymRendering method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.Rollout">Rollout (class in btgym.algorithms.rollout)</a>
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.losses.rp_loss_def">rp_loss_def() (in module btgym.algorithms.losses)</a>
@@ -528,8 +552,6 @@
         <li><a href="btgym.html#btgym.server.BTgymServer.run">(btgym.server.BTgymServer method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.runner.RunnerThread">RunnerThread (class in btgym.algorithms.runner)</a>
 </li>
   </ul></td>
@@ -539,15 +561,21 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.html#btgym.datafeed.BTgymDataset.sample">sample() (btgym.datafeed.BTgymDataset method)</a>
+
+      <ul>
+        <li><a href="btgym.html#btgym.datafeed.BTgymRandomTrial.sample">(btgym.datafeed.BTgymRandomTrial method)</a>
 </li>
+        <li><a href="btgym.html#btgym.datafeed.BTgymSequentialTrial.sample">(btgym.datafeed.BTgymSequentialTrial method)</a>
+</li>
+      </ul></li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.memory.Memory.sample_uniform">sample_uniform() (btgym.algorithms.memory.Memory method)</a>
 </li>
       <li><a href="btgym.rendering.html#btgym.rendering.plotter.BTgymPlotter.savefig">savefig() (btgym.rendering.plotter.BTgymPlotter method)</a>
 </li>
-      <li><a href="btgym.html#btgym.strategy.BTgymStrategy.set_datalines">set_datalines() (btgym.strategy.BTgymStrategy method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.set_datalines">set_datalines() (btgym.strategy.base.BTgymBaseStrategy method)</a>
+</li>
       <li><a href="btgym.monitor.html#btgym.monitor.tensorboard.Tensorboard.start">start() (btgym.monitor.tensorboard.Tensorboard method)</a>
 
       <ul>
@@ -587,6 +615,12 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.aac.Unreal">Unreal (in module btgym.algorithms.aac)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.html#btgym.datafeed.BTgymDataset.update_params">update_params() (btgym.datafeed.BTgymDataset method)</a>
+</li>
+      <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.update_sliding_stat">update_sliding_stat() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
   </ul></td>
 </tr></table>

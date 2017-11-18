@@ -101,7 +101,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../btgym.html#module-btgym.strategy">btgym.strategy module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.rendering.html">btgym.rendering package</a></li>
 </ul>
@@ -214,7 +214,7 @@
 <span class="sd">        Configures data server instance.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            dataset:            BTgymDataset instance;</span>
+<span class="sd">            dataset:            BTgymDataset or othe rdata provider class instance;</span>
 <span class="sd">            network_address:    ...to bind to.</span>
 <span class="sd">            log:                parent logger.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -248,27 +248,39 @@
 
         <span class="c1"># Describe dataset:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_stat</span><span class="o">.</span><span class="n">empty</span>
-            <span class="k">pass</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">empty</span>
 
-        <span class="k">except</span><span class="p">:</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_stat</span>
 
         <span class="n">local_step</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">fresh_sample</span> <span class="o">=</span> <span class="kc">False</span>
+
         <span class="c1"># Main loop:</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="c1"># Get random episode dataset:</span>
-            <span class="n">episode_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">is_ready</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">fresh_sample</span><span class="p">:</span>
+                <span class="c1"># Get random episode dataset:</span>
+                <span class="n">episode_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+                <span class="n">fresh_sample</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="c1"># Compose response:</span>
+                <span class="n">data_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">metadata</span><span class="o">=</span><span class="n">episode_dataset</span><span class="o">.</span><span class="n">metadata</span><span class="p">,</span>
+                    <span class="n">datafeed</span><span class="o">=</span><span class="n">episode_dataset</span><span class="o">.</span><span class="n">to_btfeed</span><span class="p">(),</span>
+                    <span class="n">episode_stat</span><span class="o">=</span><span class="n">episode_dataset</span><span class="o">.</span><span class="n">describe</span><span class="p">(),</span>
+                    <span class="n">dataset_stat</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="p">,</span>
+                    <span class="n">local_step</span><span class="o">=</span><span class="n">local_step</span><span class="p">,</span>
+                <span class="p">)</span>
 
-            <span class="c1"># Compose response:</span>
-            <span class="n">data_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-                <span class="n">datafeed</span><span class="o">=</span><span class="n">episode_dataset</span><span class="o">.</span><span class="n">to_btfeed</span><span class="p">(),</span>
-                <span class="n">episode_stat</span><span class="o">=</span><span class="n">episode_dataset</span><span class="o">.</span><span class="n">describe</span><span class="p">(),</span>
-                <span class="n">dataset_stat</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="p">,</span>
-                <span class="n">local_step</span><span class="o">=</span><span class="n">local_step</span><span class="p">,</span>
-            <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">data_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">datafeed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">episode_stat</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">dataset_stat</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="p">,</span>
+                    <span class="n">local_step</span><span class="o">=</span><span class="n">local_step</span><span class="p">,</span>
+                <span class="p">)</span>
 
             <span class="c1"># Stick here with episode data in hand until get request:</span>
             <span class="n">service_input</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
@@ -280,23 +292,45 @@
                 <span class="k">if</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_stop&#39;</span><span class="p">:</span>
                     <span class="c1"># Server shutdown logic:</span>
                     <span class="c1"># send last run statistic, release comm channel and exit:</span>
-                    <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;DataServer is exiting.&#39;</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+                    <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;DataServer is exiting.&#39;</span><span class="p">}</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
                     <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
                     <span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
                     <span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
                     <span class="k">return</span> <span class="kc">None</span>
 
+                <span class="c1"># Reset datafeed:</span>
+                <span class="k">elif</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_reset_data&#39;</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span>
+
+                    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                        <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                    <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;Dataset has been reset with kwargs: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)}</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;DataServer sent: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;data_is_ready: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">is_ready</span><span class="p">))</span>
+                    <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+                    <span class="n">fresh_sample</span> <span class="o">=</span> <span class="kc">False</span>
+
                 <span class="c1"># Send episode datafeed:</span>
                 <span class="k">elif</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_get_data&#39;</span><span class="p">:</span>
-                    <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Sending episode #</span><span class="si">{}</span><span class="s1"> data.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">local_step</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-                    <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">data_dict</span><span class="p">)</span>
-                    <span class="n">local_step</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">is_ready</span><span class="p">:</span>
+                        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Sending episode #</span><span class="si">{}</span><span class="s1"> data.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">local_step</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+                        <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">data_dict</span><span class="p">)</span>
+                        <span class="n">local_step</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">fresh_sample</span> <span class="o">=</span> <span class="kc">False</span>
 
-                    <span class="c1"># Send dataset statisitc:</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;Dataset not ready, waiting for control key &lt;_reset_data&gt;&#39;</span><span class="p">}</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;DataServer sent: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
+                        <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>  <span class="c1"># pairs any other input</span>
+
+                <span class="c1"># Send dataset statisitc:</span>
                 <span class="k">elif</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_get_info&#39;</span><span class="p">:</span>
-                    <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Sending info.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">local_step</span><span class="p">)</span>
+                    <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Sending info for #</span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">local_step</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
                     <span class="c1"># Compose response:</span>
                     <span class="n">info_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
@@ -308,13 +342,13 @@
 
                 <span class="k">else</span><span class="p">:</span>  <span class="c1"># ignore any other input</span>
                     <span class="c1"># NOTE: response dictionary must include &#39;ctrl&#39; key</span>
-                    <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;send control keys:  &lt;_get_data&gt;, &lt;_get_info&gt;, &lt;_stop&gt;.&#39;</span><span class="p">}</span>
+                    <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;waiting for control keys:  &lt;_reset_data&gt;, &lt;_get_data&gt;, &lt;_get_info&gt;, &lt;_stop&gt;.&#39;</span><span class="p">}</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;DataServer sent: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
                     <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>  <span class="c1"># pairs any other input</span>
 
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;No &lt;ctrl&gt; key received:</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;No &lt;ctrl&gt; key received, got:</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">msg</span><span class="p">)}</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
                 <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span> <span class="c1"># pairs input</span></div></div>
 </pre></div>
 

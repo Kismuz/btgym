@@ -36,7 +36,7 @@
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="BTGym 0.0.6 documentation" href="index.html"/>
-        <link rel="next" title="btgym.monitor package" href="btgym.monitor.html"/>
+        <link rel="next" title="btgym.strategy package" href="btgym.strategy.html"/>
         <link rel="prev" title="btgym.envs package" href="btgym.envs.html"/> 
 
   
@@ -102,7 +102,7 @@
 <li class="toctree-l1"><a class="reference internal" href="#module-btgym.dataserver">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#module-btgym.spaces">btgym.spaces module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="#module-btgym.strategy">btgym.strategy module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
 </ul>
@@ -176,9 +176,12 @@
 <dl class="class">
 <dt id="btgym.datafeed.BTgymDataset">
 <em class="property">class </em><code class="descclassname">btgym.datafeed.</code><code class="descname">BTgymDataset</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Backtrader.feeds class wrapper.
-Currently pipes CSV[source]-&gt;pandas[for efficient sampling]-&gt;bt.feeds routine.</p>
-<p>Implements random episode data sampling.</p>
+<dd><p>Base Backtrader.feeds data provider class.</p>
+<p>Enables Pipe:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CSV</span><span class="p">[</span><span class="n">source</span><span class="p">]</span><span class="o">--&gt;</span><span class="n">pandas</span><span class="p">[</span><span class="k">for</span> <span class="n">efficient</span> <span class="n">sampling</span><span class="p">]</span><span class="o">--&gt;</span><span class="n">bt</span><span class="o">.</span><span class="n">feeds</span> <span class="n">routine</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>Implements random and positional episode data sampling.</p>
 <p>Suggested usage:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">---</span><span class="n">user</span> <span class="n">defined</span> <span class="o">---</span>
 <span class="n">Dataset</span> <span class="o">=</span> <span class="n">BTgymDataset</span><span class="p">(</span><span class="o">&lt;</span><span class="n">filename</span><span class="o">&gt;</span><span class="p">,</span><span class="o">&lt;</span><span class="n">params</span><span class="o">&gt;</span><span class="p">)</span>
@@ -233,26 +236,68 @@ time_gap_hours=5,  # if set to be &lt; 1 day,<blockquote>
 </tbody>
 </table>
 <dl class="method">
+<dt id="btgym.datafeed.BTgymDataset.update_params">
+<code class="descname">update_params</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.update_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.update_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Updates instance parameters.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>**kwargs</strong> – any self.params entries</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.datafeed.BTgymDataset.reset">
+<code class="descname">reset</code><span class="sig-paren">(</span><em>data_filename=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets instance ready.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>data_filename</strong> – [opt] string or list of strings.</li>
+<li><strong>kwargs</strong> – not used.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Returns:</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="btgym.datafeed.BTgymDataset.read_csv">
 <code class="descname">read_csv</code><span class="sig-paren">(</span><em>data_filename=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.read_csv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.read_csv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Populates instance by loading data: CSV file –&gt; pandas dataframe.
-:param filename: string or list of strings.</p>
+<dd><p>Populates instance by loading data: CSV file –&gt; pandas dataframe.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data_filename</strong> – [opt] csv data filename as string or list of such strings.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="btgym.datafeed.BTgymDataset.describe">
 <code class="descname">describe</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.describe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.describe" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="docutils">
-<dt>Returns summary dataset statistic as pandas dataframe::</dt>
-<dd>records count,
-data mean,
-data std dev,
-min value,
-25% percentile,
-50% percentile,
-75% percentile,
-max value</dd>
-</dl>
+<dd><p>Returns summary dataset statistic as pandas dataframe:</p>
+<blockquote>
+<div><ul class="simple">
+<li>records count,</li>
+<li>data mean,</li>
+<li>data std dev,</li>
+<li>min value,</li>
+<li>25% percentile,</li>
+<li>50% percentile,</li>
+<li>75% percentile,</li>
+<li>max value</li>
+</ul>
+</div></blockquote>
 <p>for every data column.</p>
 </dd></dl>
 
@@ -272,10 +317,170 @@ max value</dd>
 
 <dl class="method">
 <dt id="btgym.datafeed.BTgymDataset.sample">
-<code class="descname">sample</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.sample" title="Permalink to this definition">¶</a></dt>
-<dd><p>Randomly samples continuous subset of data and
-returns BTgymDataset() instance, containing continuous data episode with
-number of records ~ max_episode_len.</p>
+<code class="descname">sample</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.sample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Randomly samples continuous subset of data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>**kwargs</strong> – not used.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">BTgymDataset instance with number of records ~ max_episode_len,
+where <cite>~</cite> tolerance is set by <cite>time_gap</cite> param.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.datafeed.BTgymSequentialTrial">
+<em class="property">class </em><code class="descclassname">btgym.datafeed.</code><code class="descname">BTgymSequentialTrial</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sequential Data Trials iterator.</p>
+<p>See <cite>Notes</cite> at <cite>BTgymTrialRandomIterator()</cite> for description and motivation.</p>
+<p>For this class, <cite>Trials</cite> are sampled in ordered <cite>sliding timewindow</cite> rather than random fashion.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>kwargs</strong> – BTgymDataset specific kwargs.</li>
+<li><strong>trial_range</strong> – dict. containing <cite>Trial</cite> support interval (time range) in: <cite>days`[, `hours</cite>][, <cite>minutes</cite>].</li>
+<li><strong>trial_stride</strong> – dict. containing stride interval between <cite>Trials</cite> in: <cite>days`[, `hours</cite>][, <cite>minutes</cite>].</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last simple">
+<li>Total number of <cite>Trials</cite> is inferred upon trial_params given and overall dataset size.</li>
+<li>Total number of episodes drawn from each <cite>Trial</cite> is defined when own .reset() method is called.</li>
+</ul>
+</div>
+<dl class="method">
+<dt id="btgym.datafeed.BTgymSequentialTrial.sample">
+<code class="descname">sample</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial.sample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Randomly uniformly samples from iterating sequence of <cite>Trial</cite> distributions.</p>
+<p>Iteratively calling this method results in:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>        - randomly draws single episode from first [or specified by `reset()`] Trial;
+    - until predefined number of episodes has been drawn;
+    - advances to the next Trial in Trial_sequence;
+- until Trial_sequence is exhausted or .reset();
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – not used.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">BTgymDataset instance containing episode data and metadata.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.datafeed.BTgymSequentialTrial.reset">
+<code class="descname">reset</code><span class="sig-paren">(</span><em>global_step=0</em>, <em>total_steps=10000000</em>, <em>skip_frame=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>[Re]starts sampling iterator from specified position.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>global_step</strong> – position in [0, total_steps] interval to start sampling from.</li>
+<li><strong>total_steps</strong> – max gym environmnet steps allowed for full sweep over <cite>Trials</cite>.</li>
+<li><strong>skip_frame</strong> – BTGym specific, such as: <cite>total_btgym_dataset_steps = total_steps * skip_frame</cite>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.datafeed.BTgymRandomTrial">
+<em class="property">class </em><code class="descclassname">btgym.datafeed.</code><code class="descname">BTgymRandomTrial</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymRandomTrial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymRandomTrial" title="Permalink to this definition">¶</a></dt>
+<dd><p>Random Data Trials iterator.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>While these iterators can simply be seen as sliding/random sampling time-windows, the realisation is inspired by
+<cite>FAST REINFORCEMENT LEARNING VIA SLOW REINFORCEMENT LEARNING</cite> paper by Schulman et al.,
+<a class="reference external" href="https://arxiv.org/pdf/1611.02779.pdf">https://arxiv.org/pdf/1611.02779.pdf</a></p>
+<p>Problem: Real-world BTGym POMDP violates condition of having stationary transitional distribution.</p>
+<p>Want: re-present BTGym on-line task as set [actually a well-ordered] of discrete-time finite-horizon discounted
+partially-observed Markov decision processes (POMDP’s) to define optimization objective of learning
+RL algorithm itself, which can [hopefully] be one approach to learning in changing environment.</p>
+<p>Note that BTgym dataset is set of date_time ordered, mainly continuous records.
+Let each <cite>Trial</cite> be discrete uniform distribution among all episodes, such as for each episode:
+a) start time lies within particular <cite>Trail support time interval</cite> of <cite>trial_range</cite> time length and
+b) episode duration is less or equal to <cite>max_episode_duration</cite> constant;
+let <cite>Trail mean</cite> be particular row or date_time position within dataset timeline.</p>
+<p>Under original BTGym conditions, for each <cite>Trial</cite> there exists <cite>single POMDP</cite>.</p>
+<p>Let <cite>Trial_sequence</cite> be a set of <cite>Trials</cite> resulted by incrementing <cite>trial_mean</cite> parameter
+with <cite>trial_stride</cite> from end to end of dataset timeline.</p>
+<p>Such <cite>Trial_sequence</cite> casts a <cite>set of POMDP’s</cite>, every element of wich can be considered well-defined in terms
+of own transition distribution; now it’s possible to design optimization objective <cite>…to maximize the expected
+total discounted reward accumulated during a single trial rather than a single episode.</cite> [above paper, 2.2]</p>
+<p class="last">This particular iterator casts unordered <cite>set of Trials</cite>, while <cite>BTgymSequentialTrial()</cite> class sweeps through
+later in time-ordered fashion.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>**kwargs</strong> – BTgymDataset() specific kwargs.</li>
+<li><strong>trial_range</strong> – dict. containing <cite>Trial support interval</cite> (time range) as: <cite>days`[, `hours</cite>][, <cite>minutes</cite>].</li>
+<li><strong>trial_stride</strong> – dict. containing <cite>stride interval</cite> between <cite>Trials</cite> as: <cite>days`[, `hours</cite>][, <cite>minutes</cite>].</li>
+<li><strong>samples_per_trial</strong> – self-explaining; unlike sequential case, has to be set explicitly.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="btgym.datafeed.BTgymRandomTrial.reset">
+<code class="descname">reset</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymRandomTrial.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymRandomTrial.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>[Re]starts sampling iterator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – not used.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.datafeed.BTgymRandomTrial.sample">
+<code class="descname">sample</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymRandomTrial.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymRandomTrial.sample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Randomly uniformly samples episode from <cite>Trial</cite> which in turn has been
+uniformly sampled from <cite>sequence of Trials</cite>.</p>
+<p>Iteratively calling this method results in:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>        <span class="o">-</span> <span class="n">randomly</span> <span class="n">draws</span> <span class="n">single</span> <span class="n">episode</span> <span class="kn">from</span> <span class="nn">Trial</span><span class="p">;</span>
+    <span class="o">-</span> <span class="n">until</span> <span class="n">predefined</span> <span class="n">number</span> <span class="n">of</span> <span class="n">episodes</span> <span class="n">has</span> <span class="n">been</span> <span class="n">drawn</span><span class="p">;</span>
+    <span class="o">-</span> <span class="n">randomly</span> <span class="n">draws</span> <span class="n">Trial</span> <span class="kn">from</span> <span class="nn">Trial</span><span class="s1">&#39;s distribution;</span>
+<span class="o">-</span> <span class="n">until</span> <span class="n">bored</span><span class="o">.</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – not used.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">BTgymDataset instance containing episode data and metadata.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -294,7 +499,7 @@ Enables efficient data sampling for asynchronous multiply BTgym environments exe
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>dataset</strong> – BTgymDataset instance;</li>
+<li><strong>dataset</strong> – BTgymDataset or othe rdata provider class instance;</li>
 <li><strong>network_address</strong> – …to bind to.</li>
 <li><strong>log</strong> – parent logger.</li>
 </ul>
@@ -318,37 +523,34 @@ Enables efficient data sampling for asynchronous multiply BTgym environments exe
 <em class="property">class </em><code class="descclassname">btgym.server.</code><code class="descname">BTgymServer</code><span class="sig-paren">(</span><em>cerebro=None</em>, <em>render=None</em>, <em>network_address=None</em>, <em>data_network_address=None</em>, <em>connect_timeout=60</em>, <em>log=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/server.html#BTgymServer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.server.BTgymServer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Backtrader server class.</p>
 <p>Expects to receive dictionary, containing at least ‘action’ field.</p>
-<dl class="docutils">
-<dt>Control mode IN::</dt>
-<dd>dict(action=&lt;control action, type=str&gt;,), where
-control action is:
-‘_reset’ - rewinds backtrader engine and runs new episode;
-‘_getstat’ - retrieve episode results and statistics;
-‘_stop’ - server shut-down.</dd>
-<dt>Control mode OUT::</dt>
-<dd><p class="first">&lt;string message&gt; - reports current server status;
-&lt;statisic dict&gt; - last run episode statisics.  NotImplemented.</p>
-<p class="last">Within-episode signals:
-Episode mode IN:
-dict(action=&lt;agent_action, type=str&gt;,), where
-agent_action is:
-{‘buy’, ‘sell’, ‘hold’, ‘close’, ‘_done’} - agent or service actions; ‘_done’ - stops current episode;</p>
-</dd>
-<dt>Episode mode OUT::</dt>
-<dd><dl class="first last docutils">
-<dt>response  &lt;tuple&gt;: observation, &lt;array&gt; - observation of the current environment state,</dt>
-<dd><blockquote class="first">
-<div>could be any tensor; default is:
-[4,m] array of &lt;fl32&gt;, where:
-m - num. of last datafeed values,
-4 - num. of data features (Lines);</div></blockquote>
-<p class="last">reward, &lt;any&gt; - current portfolio statistics for environment reward estimation;
-done, &lt;bool&gt; - episode termination flag;
-info, &lt;list&gt; - auxiliary information.</p>
-</dd>
-</dl>
-</dd>
-</dl>
+<p>Control mode IN:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nb">dict</span><span class="p">(</span><span class="n">action</span><span class="o">=&lt;</span><span class="n">control</span> <span class="n">action</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="o">&gt;</span><span class="p">,),</span> <span class="n">where</span> <span class="n">control</span> <span class="n">action</span> <span class="ow">is</span><span class="p">:</span>
+<span class="s1">&#39;_reset&#39;</span> <span class="o">-</span> <span class="n">rewinds</span> <span class="n">backtrader</span> <span class="n">engine</span> <span class="ow">and</span> <span class="n">runs</span> <span class="n">new</span> <span class="n">episode</span><span class="p">;</span>
+<span class="s1">&#39;_getstat&#39;</span> <span class="o">-</span> <span class="n">retrieve</span> <span class="n">episode</span> <span class="n">results</span> <span class="ow">and</span> <span class="n">statistics</span><span class="p">;</span>
+<span class="s1">&#39;_stop&#39;</span> <span class="o">-</span> <span class="n">server</span> <span class="n">shut</span><span class="o">-</span><span class="n">down</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>Control mode OUT:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">string</span> <span class="n">message</span><span class="o">&gt;</span> <span class="o">-</span> <span class="n">reports</span> <span class="n">current</span> <span class="n">server</span> <span class="n">status</span><span class="p">;</span>
+<span class="o">&lt;</span><span class="n">statisic</span> <span class="nb">dict</span><span class="o">&gt;</span> <span class="o">-</span> <span class="n">last</span> <span class="n">run</span> <span class="n">episode</span> <span class="n">statisics</span><span class="o">.</span>  <span class="bp">NotImplemented</span><span class="o">.</span>
+
+<span class="n">Within</span><span class="o">-</span><span class="n">episode</span> <span class="n">signals</span><span class="p">:</span>
+<span class="n">Episode</span> <span class="n">mode</span> <span class="n">IN</span><span class="p">:</span>
+<span class="nb">dict</span><span class="p">(</span><span class="n">action</span><span class="o">=&lt;</span><span class="n">agent_action</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="o">&gt;</span><span class="p">,),</span> <span class="n">where</span> <span class="n">agent_action</span> <span class="ow">is</span><span class="p">:</span>
+<span class="p">{</span><span class="s1">&#39;buy&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">,</span> <span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;_done&#39;</span><span class="p">}</span> <span class="o">-</span> <span class="n">agent</span> <span class="ow">or</span> <span class="n">service</span> <span class="n">actions</span><span class="p">;</span> <span class="s1">&#39;_done&#39;</span> <span class="o">-</span> <span class="n">stops</span> <span class="n">current</span> <span class="n">episode</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Episode mode OUT:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">response</span>  <span class="o">&lt;</span><span class="nb">tuple</span><span class="o">&gt;</span><span class="p">:</span> <span class="n">observation</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">array</span><span class="o">&gt;</span> <span class="o">-</span> <span class="n">observation</span> <span class="n">of</span> <span class="n">the</span> <span class="n">current</span> <span class="n">environment</span> <span class="n">state</span><span class="p">,</span>
+                                         <span class="n">could</span> <span class="n">be</span> <span class="nb">any</span> <span class="n">tensor</span><span class="p">;</span> <span class="n">default</span> <span class="ow">is</span><span class="p">:</span>
+                                         <span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="n">m</span><span class="p">]</span> <span class="n">array</span> <span class="n">of</span> <span class="o">&lt;</span><span class="n">fl32</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">where</span><span class="p">:</span>
+                                         <span class="n">m</span> <span class="o">-</span> <span class="n">num</span><span class="o">.</span> <span class="n">of</span> <span class="n">last</span> <span class="n">datafeed</span> <span class="n">values</span><span class="p">,</span>
+                                         <span class="mi">4</span> <span class="o">-</span> <span class="n">num</span><span class="o">.</span> <span class="n">of</span> <span class="n">data</span> <span class="n">features</span> <span class="p">(</span><span class="n">Lines</span><span class="p">);</span>
+                   <span class="n">reward</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">any</span><span class="o">&gt;</span> <span class="o">-</span> <span class="n">current</span> <span class="n">portfolio</span> <span class="n">statistics</span> <span class="k">for</span> <span class="n">environment</span> <span class="n">reward</span> <span class="n">estimation</span><span class="p">;</span>
+                   <span class="n">done</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">bool</span><span class="o">&gt;</span> <span class="o">-</span> <span class="n">episode</span> <span class="n">termination</span> <span class="n">flag</span><span class="p">;</span>
+                   <span class="n">info</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">list</span><span class="o">&gt;</span> <span class="o">-</span> <span class="n">auxiliary</span> <span class="n">information</span><span class="o">.</span>
+</pre></div>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -392,134 +594,6 @@ Defines space as nested dictionary of simpler gym spaces.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-btgym.strategy">
-<span id="btgym-strategy-module"></span><h1>btgym.strategy module<a class="headerlink" href="#module-btgym.strategy" title="Permalink to this headline">¶</a></h1>
-<dl class="class">
-<dt id="btgym.strategy.BTgymStrategy">
-<em class="property">class </em><code class="descclassname">btgym.strategy.</code><code class="descname">BTgymStrategy</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy.html#BTgymStrategy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.BTgymStrategy" title="Permalink to this definition">¶</a></dt>
-<dd><p>Controls Environment inner dynamics and backtesting logic.
-Any State, Reward and Info computation logic can be implemented by
-subclassing BTgymStrategy and overriding at least get_state(), get_reward(),
-get_info(), is_done() and set_datalines() methods.
-One can always go deeper and override __init__ () and next() methods for desired
-server cerebro engine behaviour, including order execution etc.
-Since it is bt.Strategy subclass, see:
-<a class="reference external" href="https://www.backtrader.com/docu/strategy.html">https://www.backtrader.com/docu/strategy.html</a>
-for more information.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">bt.observers.DrawDown observer will be automatically added [by server process]
-to BTgymStrategy instance at runtime.</p>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>**kwargs</strong> – <dl class="docutils">
-<dt>params = dict(</dt>
-<dd># Observation state shape is dictionary of Gym spaces,
-# at least should contain <cite>raw_state</cite> field.
-# By convention first dimension of every Gym Box space is time embedding one;
-# one can define any shape; should match env.observation_space.shape.
-# observation space state min/max values,
-# For <a href="#id1"><span class="problematic" id="id2">`</span></a>raw_state’ - absolute min/max values from BTgymDataset will be used.
-state_shape=dict(<blockquote>
-<div><dl class="docutils">
-<dt>raw_state=spaces.Box(</dt>
-<dd>shape=(10, 4),
-low=-100, # will get overridden.
-high=100,</dd>
-</dl>
-<p>)</p>
-</div></blockquote>
-<p>),
-drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.
-target_call=10,  # finish episode when reaching profit target, in percent.
-dataset_stat=None,  # Summary descriptive statistics for entire dataset and
-episode_stat=None,  # current episode. Got updated by server.
-portfolio_actions=(‘hold’, ‘buy’, ‘sell’, ‘close’),  # possible agent actions.
-skip_frame=1,  # Number of environment steps to skip before returning next response,</p>
-<blockquote>
-<div># e.g. if set to 10 – agent will interact with environment every 10th episode step;
-# Every other step agent action is assumed to be ‘hold’.</div></blockquote>
-<p class="last">)</p>
-</dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="btgym.strategy.BTgymStrategy.set_datalines">
-<code class="descname">set_datalines</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy.html#BTgymStrategy.set_datalines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.BTgymStrategy.set_datalines" title="Permalink to this definition">¶</a></dt>
-<dd><p>Default datalines are: Open, Low, High, Close, Volume.
-Any other custom data lines, indicators, etc.
-should be explicitly defined by overriding this method [convention].
-Invoked once by Strategy.__init__().</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.strategy.BTgymStrategy.get_state">
-<code class="descname">get_state</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy.html#BTgymStrategy.get_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.BTgymStrategy.get_state" title="Permalink to this definition">¶</a></dt>
-<dd><p>One can override this method,
-defining necessary calculations and return arbitrary shaped tensor.
-It’s possible either to compute entire featurized environment state
-or just pass raw price data to RL algorithm featurizer module.
-Note1: ‘data’ referes to bt.startegy datafeeds and should be treated as such.
-Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in
-define_datalines().
-NOTE: while iterating, ._get_raw_state() method is called just before this one,
-so variable <cite>self.raw_state</cite> is fresh and ready to use.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.strategy.BTgymStrategy.get_reward">
-<code class="descname">get_reward</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy.html#BTgymStrategy.get_reward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.BTgymStrategy.get_reward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Default reward estimator.
-Computes reward as log utility of current to initial portfolio value ratio.
-Returns scalar &lt;reward, type=float&gt;.
-Same principles as for state composer apply. Can return raw portfolio
-performance statistics or enclose entire reward estimation algorithm.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.strategy.BTgymStrategy.get_info">
-<code class="descname">get_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy.html#BTgymStrategy.get_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.BTgymStrategy.get_info" title="Permalink to this definition">¶</a></dt>
-<dd><p>Composes information part of environment response,
-can be any object. Override to own taste.
-Note: Due to ‘skip_frame’ feature,
-INFO part of environment response will be a list of all skipped frame’s info objects,
-i.e. [info[-9], info[-8], …, info[0].</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.strategy.BTgymStrategy.get_done">
-<code class="descname">get_done</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy.html#BTgymStrategy.get_done"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.BTgymStrategy.get_done" title="Permalink to this definition">¶</a></dt>
-<dd><p>Episode termination estimator,
-defines any trading logic conditions episode stop is called upon,
-e.g. &lt;OMG! Stop it, we became too rich!&gt; .
-It is just a structural a convention method.
-Default method is empty.
-Expected to return tuple (&lt;is_done, type=bool&gt;, &lt;message, type=str&gt;).</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.strategy.BTgymStrategy.notify_order">
-<code class="descname">notify_order</code><span class="sig-paren">(</span><em>order</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy.html#BTgymStrategy.notify_order"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.BTgymStrategy.notify_order" title="Permalink to this definition">¶</a></dt>
-<dd><p>Shamelessly taken from backtrader tutorial.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.strategy.BTgymStrategy.next">
-<code class="descname">next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy.html#BTgymStrategy.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.BTgymStrategy.next" title="Permalink to this definition">¶</a></dt>
-<dd><p>Default implementation.
-Defines one step environment routine for server ‘Episode mode’;
-At least, it should handle order execution logic according to action received.</p>
-</dd></dl>
-
-</dd></dl>
-
-</div>
 
 
            </div>
@@ -531,7 +605,7 @@ At least, it should handle order execution logic according to action received.</
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="btgym.monitor.html" class="btn btn-neutral float-right" title="btgym.monitor package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="btgym.strategy.html" class="btn btn-neutral float-right" title="btgym.strategy package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="btgym.envs.html" class="btn btn-neutral" title="btgym.envs package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

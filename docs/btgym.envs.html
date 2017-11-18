@@ -105,7 +105,7 @@
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.strategy">btgym.strategy module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
 </ul>
@@ -183,46 +183,38 @@
 <em class="property">class </em><code class="descclassname">btgym.envs.backtrader.</code><code class="descname">BTgymEnv</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv" title="Permalink to this definition">¶</a></dt>
 <dd><p>OpenAI Gym environment wrapper for Backtrader backtesting/trading library.</p>
 <p>Environment kwargs applying logic:</p>
-<dl class="docutils">
-<dt>if &lt;engine&gt; kwarg is given:</dt>
-<dd>do not use default engine and strategy parameters;
-ignore &lt;strategy&gt; kwarg and all strategy and engine-related kwargs.</dd>
-<dt>else (no &lt;engine&gt;):</dt>
-<dd><p class="first">use default engine parameters;
-if any engine-related kwarg is given:</p>
-<blockquote>
-<div>override corresponding default parameter;</div></blockquote>
-<dl class="last docutils">
-<dt>if &lt;strategy&gt; is given:</dt>
-<dd><p class="first">do not use default strategy parameters;
-if any strategy related kwarg is given:</p>
-<blockquote class="last">
-<div>override corresponding strategy parameter;</div></blockquote>
-</dd>
-<dt>else (no &lt;strategy&gt;):</dt>
-<dd><p class="first">use default strategy parameters;
-if any strategy related kwarg is given:</p>
-<blockquote class="last">
-<div>override corresponding strategy parameter;</div></blockquote>
-</dd>
-</dl>
-</dd>
-<dt>if &lt;dataset&gt; kwarg is given:</dt>
-<dd>do not use default dataset parameters;
-ignore dataset related kwargs;</dd>
-<dt>else (no &lt;dataset&gt;):</dt>
-<dd><dl class="first last docutils">
-<dt>use default dataset parameters;</dt>
-<dd><dl class="first last docutils">
-<dt>if  any dataset related kwarg is given:</dt>
-<dd>override corresponding dataset parameter;</dd>
-</dl>
-</dd>
-</dl>
-</dd>
-<dt>If any &lt;other&gt; kwarg is given:</dt>
-<dd>override corresponding default parameter.</dd>
-</dl>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="o">&lt;</span><span class="n">engine</span><span class="o">&gt;</span> <span class="n">kwarg</span> <span class="ow">is</span> <span class="n">given</span><span class="p">:</span>
+    <span class="n">do</span> <span class="ow">not</span> <span class="n">use</span> <span class="n">default</span> <span class="n">engine</span> <span class="ow">and</span> <span class="n">strategy</span> <span class="n">parameters</span><span class="p">;</span>
+    <span class="n">ignore</span> <span class="o">&lt;</span><span class="n">strategy</span><span class="o">&gt;</span> <span class="n">kwarg</span> <span class="ow">and</span> <span class="nb">all</span> <span class="n">strategy</span> <span class="ow">and</span> <span class="n">engine</span><span class="o">-</span><span class="n">related</span> <span class="n">kwargs</span><span class="o">.</span>
+
+<span class="k">else</span> <span class="p">(</span><span class="n">no</span> <span class="o">&lt;</span><span class="n">engine</span><span class="o">&gt;</span><span class="p">):</span>
+    <span class="n">use</span> <span class="n">default</span> <span class="n">engine</span> <span class="n">parameters</span><span class="p">;</span>
+    <span class="k">if</span> <span class="nb">any</span> <span class="n">engine</span><span class="o">-</span><span class="n">related</span> <span class="n">kwarg</span> <span class="ow">is</span> <span class="n">given</span><span class="p">:</span>
+        <span class="n">override</span> <span class="n">corresponding</span> <span class="n">default</span> <span class="n">parameter</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="o">&lt;</span><span class="n">strategy</span><span class="o">&gt;</span> <span class="ow">is</span> <span class="n">given</span><span class="p">:</span>
+        <span class="n">do</span> <span class="ow">not</span> <span class="n">use</span> <span class="n">default</span> <span class="n">strategy</span> <span class="n">parameters</span><span class="p">;</span>
+        <span class="k">if</span> <span class="nb">any</span> <span class="n">strategy</span> <span class="n">related</span> <span class="n">kwarg</span> <span class="ow">is</span> <span class="n">given</span><span class="p">:</span>
+            <span class="n">override</span> <span class="n">corresponding</span> <span class="n">strategy</span> <span class="n">parameter</span><span class="p">;</span>
+
+    <span class="k">else</span> <span class="p">(</span><span class="n">no</span> <span class="o">&lt;</span><span class="n">strategy</span><span class="o">&gt;</span><span class="p">):</span>
+        <span class="n">use</span> <span class="n">default</span> <span class="n">strategy</span> <span class="n">parameters</span><span class="p">;</span>
+        <span class="k">if</span> <span class="nb">any</span> <span class="n">strategy</span> <span class="n">related</span> <span class="n">kwarg</span> <span class="ow">is</span> <span class="n">given</span><span class="p">:</span>
+            <span class="n">override</span> <span class="n">corresponding</span> <span class="n">strategy</span> <span class="n">parameter</span><span class="p">;</span>
+
+<span class="k">if</span> <span class="o">&lt;</span><span class="n">dataset</span><span class="o">&gt;</span> <span class="n">kwarg</span> <span class="ow">is</span> <span class="n">given</span><span class="p">:</span>
+    <span class="n">do</span> <span class="ow">not</span> <span class="n">use</span> <span class="n">default</span> <span class="n">dataset</span> <span class="n">parameters</span><span class="p">;</span>
+    <span class="n">ignore</span> <span class="n">dataset</span> <span class="n">related</span> <span class="n">kwargs</span><span class="p">;</span>
+
+<span class="k">else</span> <span class="p">(</span><span class="n">no</span> <span class="o">&lt;</span><span class="n">dataset</span><span class="o">&gt;</span><span class="p">):</span>
+    <span class="n">use</span> <span class="n">default</span> <span class="n">dataset</span> <span class="n">parameters</span><span class="p">;</span>
+        <span class="k">if</span>  <span class="nb">any</span> <span class="n">dataset</span> <span class="n">related</span> <span class="n">kwarg</span> <span class="ow">is</span> <span class="n">given</span><span class="p">:</span>
+            <span class="n">override</span> <span class="n">corresponding</span> <span class="n">dataset</span> <span class="n">parameter</span><span class="p">;</span>
+
+<span class="n">If</span> <span class="nb">any</span> <span class="o">&lt;</span><span class="n">other</span><span class="o">&gt;</span> <span class="n">kwarg</span> <span class="ow">is</span> <span class="n">given</span><span class="p">:</span>
+    <span class="n">override</span> <span class="n">corresponding</span> <span class="n">default</span> <span class="n">parameter</span><span class="o">.</span>
+</pre></div>
+</div>
 <dl class="method">
 <dt id="btgym.envs.backtrader.BTgymEnv._comm_with_timeout">
 <code class="descname">_comm_with_timeout</code><span class="sig-paren">(</span><em>socket</em>, <em>message</em>, <em>timeout</em>, <em>connect_timeout_step=0.01</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._comm_with_timeout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._comm_with_timeout" title="Permalink to this definition">¶</a></dt>
@@ -280,9 +272,7 @@ Rises exception if response given is not as expected.</p>
 <dl class="method">
 <dt id="btgym.envs.backtrader.BTgymEnv._reset">
 <code class="descname">_reset</code><span class="sig-paren">(</span><em>state_only=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._reset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Implementation of OpenAI Gym env.reset method.
-‘Rewinds’ backtrader server and starts new episode
-within randomly selected time period.</p>
+<dd><p>Implementation of OpenAI Gym env.reset method. Starts new episode.</p>
 </dd></dl>
 
 <dl class="method">
@@ -296,7 +286,7 @@ Relies on remote backtrader server for actual environment dynamics computing.</p
 <dt id="btgym.envs.backtrader.BTgymEnv._close">
 <code class="descname">_close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._close" title="Permalink to this definition">¶</a></dt>
 <dd><p>Implementation of OpenAI Gym env.close method.
-Puts BTgym server in Control Mode:</p>
+Puts BTgym server in Control Mode.</p>
 </dd></dl>
 
 <dl class="method">
@@ -313,12 +303,21 @@ Puts BTgym server in Control Mode:</p>
 <dt id="btgym.envs.backtrader.BTgymEnv._render">
 <code class="descname">_render</code><span class="sig-paren">(</span><em>mode='other_mode'</em>, <em>close=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._render" title="Permalink to this definition">¶</a></dt>
 <dd><p>Implementation of OpenAI Gym env.render method.
-Visualises current environment state.
-:param <cite>mode</cite> key argument, returns image as rgb_array:</p>
-<blockquote>
-<div><cite>human</cite> - current state observation as price lines;
-<cite>agent</cite> - current processed observation state as RL agent sees it;
-<cite>episode</cite> - plotted results of last completed episode.</div></blockquote>
+Visualises current environment state.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mode</strong> – <p>str, any of these:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>`human` - current state observation as price lines;
+`episode` - plotted results of last completed episode.
+</pre></div>
+</div>
+<p>[other_key] - corresponding to any custom observation space key</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -372,6 +371,25 @@ Visualises current environment state.
 <dt id="btgym.envs.backtrader.BTgymEnv._get_dataset_info">
 <code class="descname">_get_dataset_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._get_dataset_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._get_dataset_info" title="Permalink to this definition">¶</a></dt>
 <dd><p>Retrieves dataset descriptive statistic.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.envs.backtrader.BTgymEnv.reset_data">
+<code class="descname">reset_data</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv.reset_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv.reset_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resets data provider class used, whatever it means for that class. Gets data_server ready to provide data.
+Supposed to be called before first env.reset().</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">when invoked, forces running episode to terminate.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>**kwargs</strong> – data provider class .reset() method specific.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>

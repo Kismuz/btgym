@@ -93,40 +93,38 @@ class BTgymEnv(gym.Env):
 
     def __init__(self, *args, **kwargs):
         """
-        Environment kwargs applying logic:
+        Environment kwargs applying logic::
 
-        if <engine> kwarg is given:
-            do not use default engine and strategy parameters;
-            ignore <strategy> kwarg and all strategy and engine-related kwargs.
+            if <engine> kwarg is given:
+                do not use default engine and strategy parameters;
+                ignore <strategy> kwarg and all strategy and engine-related kwargs.
 
-        else (no <engine>):
-            use default engine parameters;
-            if any engine-related kwarg is given:
-                override corresponding default parameter;
+            else (no <engine>):
+                use default engine parameters;
+                if any engine-related kwarg is given:
+                    override corresponding default parameter;
 
-            if <strategy> is given:
-                do not use default strategy parameters;
-                if any strategy related kwarg is given:
-                    override corresponding strategy parameter;
+                if <strategy> is given:
+                    do not use default strategy parameters;
+                    if any strategy related kwarg is given:
+                        override corresponding strategy parameter;
 
-            else (no <strategy>):
-                use default strategy parameters;
-                if any strategy related kwarg is given:
-                    override corresponding strategy parameter;
+                else (no <strategy>):
+                    use default strategy parameters;
+                    if any strategy related kwarg is given:
+                        override corresponding strategy parameter;
 
-        if <dataset> kwarg is given:
-            do not use default dataset parameters;
-            ignore dataset related kwargs;
+            if <dataset> kwarg is given:
+                do not use default dataset parameters;
+                ignore dataset related kwargs;
 
-        else (no <dataset>):
-            use default dataset parameters;
-                if  any dataset related kwarg is given:
-                    override corresponding dataset parameter;
+            else (no <dataset>):
+                use default dataset parameters;
+                    if  any dataset related kwarg is given:
+                        override corresponding dataset parameter;
 
-        If any <other> kwarg is given:
-            override corresponding default parameter.
-
-
+            If any <other> kwarg is given:
+                override corresponding default parameter.
         """
         # Parameters and default values:
         self.params = dict(
@@ -516,9 +514,7 @@ class BTgymEnv(gym.Env):
 
     def _reset(self, state_only=True):  # By default, returns only initial state observation (Gym convention).
         """
-        Implementation of OpenAI Gym env.reset method.
-        'Rewinds' backtrader server and starts new episode
-        within randomly selected time period.
+        Implementation of OpenAI Gym env.reset method. Starts new episode.
         """
         # Data Server check:
         if self.data_master:
@@ -635,7 +631,7 @@ class BTgymEnv(gym.Env):
     def _close(self):
         """
         Implementation of OpenAI Gym env.close method.
-        Puts BTgym server in Control Mode:
+        Puts BTgym server in Control Mode.
         """
         self._stop_server()
         self._stop_data_server()
@@ -656,13 +652,16 @@ class BTgymEnv(gym.Env):
             return self.server_response
 
     def _render(self, mode='other_mode', close=False):
-        """Implementation of OpenAI Gym env.render method.
+        """
+        Implementation of OpenAI Gym env.render method.
         Visualises current environment state.
+
         Args:
-            `mode` key argument, returns image as rgb_array :
-                `human` - current state observation as price lines;
-                `agent` - current processed observation state as RL agent sees it;
-                `episode` - plotted results of last completed episode.
+            `mode`:     str, any of these::
+
+                            `human` - current state observation as price lines;
+                            `episode` - plotted results of last completed episode.
+                            [other_key] - corresponding to any custom observation space key
         """
         if close:
             return None
@@ -812,10 +811,11 @@ class BTgymEnv(gym.Env):
         Resets data provider class used, whatever it means for that class. Gets data_server ready to provide data.
         Supposed to be called before first env.reset().
 
-        Treminates current episode if any.
+        Note:
+            when invoked, forces running episode to terminate.
 
         Args:
-            **kwargs:   data provider class specific.
+            **kwargs:   data provider class .reset() method specific.
         """
         if self.data_master:
             self.data_server_response = self._comm_with_timeout(

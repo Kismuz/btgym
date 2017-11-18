@@ -31,11 +31,6 @@ btgym\.spaces module
 
 
 
-btgym\.strategy module
-----------------------
-
-.. automodule:: btgym.strategy
-    :members:
 
 
 
