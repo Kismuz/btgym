@@ -508,7 +508,7 @@ class BTgymEnv(gym.Env):
             pass
 
         else:
-            msg = 'Unexpected environment response: {}\nHint: Forgot to call reset()?'.format(response)
+            msg = 'Unexpected environment response: {}\nHint: Forgot to call reset() or reset_data()?'.format(response)
             raise AssertionError(msg)
 
         self.log.debug('Env response checker received:\n{}\nas type: {}'.
@@ -807,3 +807,34 @@ class BTgymEnv(gym.Env):
                self.data_server_response['dataset_columns'],\
                self.data_server_response['pid']
 
+    def reset_data(self, **kwargs):
+        """
+        Resets data provider class used, whatever it means for that class. Gets data_server ready to provide data.
+        Supposed to be called before first env.reset().
+
+        Treminates current episode if any.
+
+        Args:
+            **kwargs:   data provider class specific.
+        """
+        if self.data_master:
+            self.data_server_response = self._comm_with_timeout(
+                socket=self.data_socket,
+                message={'ctrl': '_reset_data', 'kwargs': kwargs},
+                timeout=self.connect_timeout,
+            )
+            if self.data_server_response['status'] in 'ok':
+                self.log.debug('Dataset seems ready with response: <{}>'.
+                               format(self.data_server_response['message']))
+
+            else:
+                msg = 'Data_server unreachable with status: <{}>.'. \
+                    format(self.data_server_response['status'])
+                self.log.error(msg)
+                raise SystemExit(msg)
+
+        else:
+            pass
+
+        # For everybody:
+        self._force_control_mode()

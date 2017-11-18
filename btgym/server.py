@@ -378,27 +378,39 @@ class BTgymServer(multiprocessing.Process):
             cerebro.addanalyzer(_BTgymAnalyzer,
                                 _name='_env_analyzer',)
 
-            # Get random episode dataset:
-            data_server_response = self._comm_with_timeout(
-                socket=data_socket,
-                message={'ctrl': '_get_data'},
-                timeout=self.connect_timeout,
-            )
-            if data_server_response['status'] in 'ok':
-                self.log.debug('Data_server responded with datafeed in about {} seconds.'.
-                               format(data_server_response['time']))
+            while True:
+                # Get random episode dataset:
+                data_server_response = self._comm_with_timeout(
+                    socket=data_socket,
+                    message={'ctrl': '_get_data'},
+                    timeout=self.connect_timeout,
+                )
+                if data_server_response['status'] in 'ok':
+                    self.log.debug('Data_server responded with datafeed in about {} seconds.'.
+                                   format(data_server_response['time']))
 
-            else:
-                msg = 'BtgymServer: data_server unreachable with status: <{}>.'. \
-                    format(data_server_response['status'])
-                self.log.error(msg)
-                raise ConnectionError(msg)
+                else:
+                    msg = 'BtgymServer: data_server unreachable with status: <{}>.'. \
+                        format(data_server_response['status'])
+                    self.log.error(msg)
+                    raise ConnectionError(msg)
+
+                # Ready or not?
+                try:
+                    assert 'Dataset not ready' in data_server_response['message']['ctrl']
+                    time.sleep(1)
+                    self.log.debug('Assert ok')
+
+                except (AssertionError, KeyError) as e:
+                    self.log.debug('Assert is not ok')
+                    break
 
             episode_datafeed = data_server_response['message']['datafeed']
 
             # Get episode data statistic and pass it to strategy params:
             cerebro.strats[0][0][2]['dataset_stat'] = data_server_response['message']['dataset_stat']
             cerebro.strats[0][0][2]['episode_stat'] = data_server_response['message']['episode_stat']
+            cerebro.strats[0][0][2]['metadata'] = data_server_response['message']['metadata']
 
             # Set nice broker cash plotting:
             cerebro.broker.set_shortcash(False)
