@@ -355,6 +355,15 @@ class BTgymEnv(gym.Env):
 
         self.log.info('Environment is ready.')
 
+    def _seed(self, seed=None):
+        """
+        Sets env. random seed.
+
+        Args:
+            seed:   int or None
+        """
+        np.random.seed(seed)
+
     def _comm_with_timeout(self, socket, message, timeout, connect_timeout_step=0.01,):
         """
         Exchanges messages via socket, timeout sensitive.
@@ -522,6 +531,19 @@ class BTgymEnv(gym.Env):
                 self.log.info('No running data_server found, starting...')
                 self._start_data_server()
 
+            # Dataset status check:
+            self.data_server_response = self._comm_with_timeout(
+                socket=self.data_socket,
+                message={'ctrl': '_get_info'},
+                timeout=self.connect_timeout,
+            )
+            if not self.data_server_response['message']['dataset_is_ready']:
+                self.log.warning(
+                    'Data_master `reset()` is called prior to `reset_data()`.\n' +
+                    'Dataset will be reset with dataset_class [possibly inconsistent] defaults.'
+                )
+                self.reset_data()
+
         # Server process check:
         if not self.server or not self.server.is_alive():
             self.log.info('No running server found, starting...')
@@ -538,20 +560,28 @@ class BTgymEnv(gym.Env):
             self._assert_response(self.env_response)
 
             # Check (once) if state_space is as expected:
-            if self.observation_space.contains(self.env_response[0]):
-                pass
+            try:
+                assert self.observation_space.contains(self.env_response[0])
 
-            else:
+            except (AssertionError, AttributeError) as e:
                 msg1 = ''
-                for k, v in self.observation_space.spaces.items():
-                    msg1 += '[{}]: {}, low: {}, high: {}\n'.format(
-                        k, v, v.low.min(), v.high.max()
-                    )
+                try:
+                    for k, v in self.observation_space.spaces.items():
+                        msg1 += '[{}]: {}, low: {}, high: {}\n'.format(
+                            k, v, v.low.min(), v.high.max()
+                        )
+                except (KeyError, AttributeError, ArithmeticError, ValueError) as e1:
+                    msg1 += '+ something illegible.\n'
+
                 msg2 = ''
-                for k, v in self.env_response[0].items():
-                    msg2 += '[{}]: shape: {}, low: {}, high: {}\n'.format(
-                        k, v.shape, v.min(), v.max()
-                    )
+                try:
+                    for k, v in self.env_response[0].items():
+                        msg2 += '[{}]: shape: {}, low: {}, high: {}\n'.format(
+                            k, v.shape, v.min(), v.max()
+                        )
+                except (KeyError, AttributeError, ArithmeticError, ValueError) as e2:
+                    msg2 += '+ something illegible.\n'
+
                 msg3 = ''
                 for step_info in self.env_response[-1]:
                     msg3 += '{}\n'.format(step_info)
@@ -817,11 +847,23 @@ class BTgymEnv(gym.Env):
         Args:
             **kwargs:   data provider class .reset() method specific.
         """
+        if self.closed:
+            self._start_server()
+            if self.data_master:
+                self._start_data_server()
+            self.closed = False
+
+        else:
+            _ = self._force_control_mode()
+
         if self.data_master:
+            if self.data_server is None or not self.data_server.is_alive():
+                self._restart_data_server()
+
             self.data_server_response = self._comm_with_timeout(
                 socket=self.data_socket,
                 message={'ctrl': '_reset_data', 'kwargs': kwargs},
-                timeout=self.connect_timeout,
+                timeout=10,
             )
             if self.data_server_response['status'] in 'ok':
                 self.log.debug('Dataset seems ready with response: <{}>'.
@@ -836,5 +878,4 @@ class BTgymEnv(gym.Env):
         else:
             pass
 
-        # For everybody:
-        self._force_control_mode()
+

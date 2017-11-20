@@ -337,7 +337,11 @@ class BTgymDataset:
         except AssertionError:
             return 'Data not ready. Call .reset() first.'
 
-        return self._sample_random()
+        episode = self._sample_random()
+        episode.metadata['type'] = 'random_sample'
+        episode.metadata['trial_num'] = False
+        episode.metadata['sample_num'] = False
+        return episode
 
     def _sample_random(self):
         """
@@ -403,6 +407,7 @@ class BTgymDataset:
                 self.log.info('Episode id: <{}>.'.format(episode.filename))
                 episode.data = episode_sample
                 episode.metadata['type'] = 'random_sample'
+                episode.metadata['first_row'] = first_row
                 return episode
 
             else:
@@ -662,7 +667,7 @@ class BTgymSequentialTrial(BTgymDataset):
             # Todo: self.ready = False
 
             self.log.warning(
-                'Trial #{} @ interval: {} <--> {}'.
+                'Trial #{}: from {} to {}'.
                 format(
                     self.trial_num,
                     self.data.index[self.trial_mean_row - int(self.trial_range_row / 2)],
@@ -812,7 +817,7 @@ class BTgymRandomTrial(BTgymSequentialTrial):
             self.trial_mean_row = int(self.trial_range_row / 2) +\
                                   self.trial_stride_row * int(self.total_trials * random.random())
             self.log.warning(
-                'Trial #{} @ interval: {} <--> {}; mean row: {}'.
+                'Trial #{}: from {} to {}; mean row: {}'.
                 format(
                     self.trial_num,
                     self.data.index[self.trial_mean_row - int(self.trial_range_row / 2)],

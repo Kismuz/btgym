@@ -42,11 +42,31 @@ class DevStrat_4_6(BTgymBaseStrategy):
             {
                 'external': spaces.Box(low=-1, high=1, shape=(time_dim, 3)),
                 'internal': spaces.Box(low=-2, high=2, shape=(time_dim, 5)),
+                'metadata': spaces.Dict(
+                    {
+                        'trial_num': spaces.Box(
+                            shape=(),
+                            low=0,
+                            high=10**10
+                        ),
+                        'sample_num': spaces.Box(
+                            shape=(),
+                            low=0,
+                            high=10**10
+                        ),
+                        'first_row': spaces.Box(
+                            shape=(),
+                            low=0,
+                            high=10**10
+                        )
+                    }
+                )
             },
         drawdown_call=5,
         target_call=19,
         portfolio_actions=('hold', 'buy', 'sell', 'close'),
         skip_frame=10,
+        metadata={}
     )
 
     def __init__(self, **kwargs):
@@ -71,6 +91,13 @@ class DevStrat_4_6(BTgymBaseStrategy):
         self.channel_O = bt.Sum(self.data.open, - self.data.open(-1))
         self.channel_H = bt.Sum(self.data.high, - self.data.open)
         self.channel_L = bt.Sum(self.data.low,  - self.data.open)
+
+        # Episodic metadata:
+        self.state['metadata'] = {
+            'trial_num': np.asarray(self.p.metadata['trial_num']),
+            'sample_num': np.asarray(self.p.metadata['sample_num']),
+            'first_row': np.asarray(self.p.metadata['first_row'])
+        }
 
     def get_state(self):
 

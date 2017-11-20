@@ -71,43 +71,45 @@ class BTgymDataFeedServer(multiprocessing.Process):
         socket.bind(self.network_address)
 
         # Actually load data to BTgymDataset instance:
-        self.dataset.read_csv()
-
-        # Describe dataset:
         try:
             assert not self.dataset.data.empty
 
         except (AssertionError, AttributeError) as e:
-            _ = self.dataset.describe()
+            self.dataset.read_csv()
 
-        self.dataset_stat = self.dataset.data_stat
+        # Describe dataset:
+        self.dataset_stat = self.dataset.describe()
 
         local_step = 0
         fresh_sample = False
 
         # Main loop:
         while True:
-            if self.dataset.is_ready and not fresh_sample:
-                # Get random episode dataset:
-                episode_dataset = self.dataset.sample()
-                fresh_sample = True
-                # Compose response:
-                data_dict = dict(
-                    metadata=episode_dataset.metadata,
-                    datafeed=episode_dataset.to_btfeed(),
-                    episode_stat=episode_dataset.describe(),
-                    dataset_stat=self.dataset_stat,
-                    local_step=local_step,
-                )
+            self.log.debug('If_sample: data_ready: {}, fresh_sample: {}'.format(self.dataset.is_ready, fresh_sample))
+            if not fresh_sample:
+                if self.dataset.is_ready:
+                    # Get random episode dataset:
+                    episode = self.dataset.sample()
+                    # Compose response:
+                    data_dict = dict(
+                        metadata=episode.metadata,
+                        datafeed=episode.to_btfeed(),
+                        episode_stat=episode.describe(),
+                        dataset_stat=self.dataset_stat,
+                        local_step=local_step,
+                    )
+                    fresh_sample = True
+                    self.log.debug('Got fresh: episode #{} metadata:\n{}'.format(local_step, episode.metadata))
 
-            else:
-                data_dict = dict(
-                    metadata=None,
-                    datafeed=None,
-                    episode_stat=None,
-                    dataset_stat=self.dataset_stat,
-                    local_step=local_step,
-                )
+                else:
+                    # Dataset not ready, make dummy:
+                    data_dict = dict(
+                        metadata=None,
+                        datafeed=None,
+                        episode_stat=None,
+                        dataset_stat=self.dataset_stat,
+                        local_step=local_step,
+                    )
 
             # Stick here with episode data in hand until get request:
             service_input = socket.recv_pyobj()
@@ -137,23 +139,24 @@ class BTgymDataFeedServer(multiprocessing.Process):
                     self.dataset.reset(**kwargs)
                     message = {'ctrl': 'Dataset has been reset with kwargs: {}'.format(kwargs)}
                     self.log.debug('DataServer sent: ' + str(message))
-                    self.log.debug('data_is_ready: {}'.format(self.dataset.is_ready))
+                    self.log.debug('[_reset_data]: data_is_ready: {}'.format(self.dataset.is_ready))
                     socket.send_pyobj(message)
                     fresh_sample = False
 
                 # Send episode datafeed:
                 elif service_input['ctrl'] == '_get_data':
                     if self.dataset.is_ready:
-                        message = 'Sending episode #{} data.'.format(local_step)
+                        message = 'Sending episode #{} data {}.'.format(local_step, data_dict)
                         self.log.debug(message)
                         socket.send_pyobj(data_dict)
                         local_step += 1
-                        fresh_sample = False
 
                     else:
                         message = {'ctrl': 'Dataset not ready, waiting for control key <_reset_data>'}
                         self.log.debug('DataServer sent: ' + str(message))
                         socket.send_pyobj(message)  # pairs any other input
+                    # Mark current sample as used anyway:
+                    fresh_sample = False
 
                 # Send dataset statisitc:
                 elif service_input['ctrl'] == '_get_info':
@@ -164,6 +167,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
                         dataset_stat=self.dataset_stat,
                         dataset_columns=list(self.dataset.names),
                         pid=self.process.pid,
+                        dataset_is_ready=self.dataset.is_ready
                     )
                     socket.send_pyobj(info_dict)
 

@@ -276,6 +276,9 @@ class BTgymServer(multiprocessing.Process):
         cerebro = None
         episode_result = dict()
 
+        # How long to wait for data_master to reset data:
+        wait_for_data_reset = 300  # seconds
+
         # Set up a comm. channel for server as ZMQ socket
         # to carry both service and data signal
         # !! Reminder: Since we use REQ/REP - messages do go in pairs !!
@@ -378,7 +381,7 @@ class BTgymServer(multiprocessing.Process):
             # Add communication utility:
             cerebro.addanalyzer(_BTgymAnalyzer,
                                 _name='_env_analyzer',)
-
+            wait = 0
             while True:
                 # Get random episode dataset:
                 data_server_response = self._comm_with_timeout(
@@ -399,11 +402,23 @@ class BTgymServer(multiprocessing.Process):
                 # Ready or not?
                 try:
                     assert 'Dataset not ready' in data_server_response['message']['ctrl']
-                    time.sleep(1)
-                    self.log.debug('Assert ok')
+                    if wait <= wait_for_data_reset:
+                        time.sleep(2)
+                        wait += 2
+                        self.log.warning(
+                            'Dataset not ready, waiting time left: {} sec.'.format(wait_for_data_reset - wait)
+                        )
+                    else:
+                        data_server_response = self._comm_with_timeout(
+                            socket=data_socket,
+                            message={'ctrl': '_stop'},
+                            timeout=self.connect_timeout,
+                        )
+                        socket.close()
+                        context.destroy()
+                        raise RuntimeError('Failed to assert Dataset is ready. Exiting.')
 
                 except (AssertionError, KeyError) as e:
-                    self.log.debug('Assert is not ok')
                     break
 
             episode_datafeed = data_server_response['message']['datafeed']
