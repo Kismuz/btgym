@@ -453,7 +453,7 @@ class BaseAAC(object):
             self.ep_summary = dict(
                 # Summary placeholders
                 render_human=tf.placeholder(tf.uint8, [None, None, None, 3]),
-                render_model_input=tf.placeholder(tf.uint8, [None, None, None, 3]),
+                render_model_input_ext=tf.placeholder(tf.uint8, [None, None, None, 3]),
                 render_episode=tf.placeholder(tf.uint8, [None, None, None, 3]),
                 render_atari=tf.placeholder(tf.uint8, [None, None, None, 1]),
                 total_r=tf.placeholder(tf.float32, ),
@@ -465,7 +465,7 @@ class BaseAAC(object):
             self.ep_summary['render_op'] = tf.summary.merge(
                 [
                     tf.summary.image('human', self.ep_summary['render_human']),
-                    tf.summary.image('model_input', self.ep_summary['render_model_input']),
+                    tf.summary.image('model_input_external', self.ep_summary['render_model_input_ext']),
                     tf.summary.image('episode', self.ep_summary['render_episode']),
                 ],
                 name='render'
@@ -804,6 +804,7 @@ class BaseAAC(object):
 
         # Every worker writes episode and model summaries:
         ep_summary_feeder = {}
+
         # Collect episode summaries from all env runners:
         for stat in data['ep_summary']:
             if stat is not None:
@@ -817,6 +818,7 @@ class BaseAAC(object):
             ep_summary_feed_dict = {
                 self.ep_summary[key]: np.average(list) for key, list in ep_summary_feeder.items()
             }
+
             if self.test_mode:
                 # Atari:
                 fetched_episode_stat = sess.run(self.ep_summary['test_stat_op'], ep_summary_feed_dict)

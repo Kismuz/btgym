@@ -30,6 +30,7 @@ import os
 import logging
 import time
 import psutil
+import glob
 from subprocess import PIPE
 import signal
 import numpy as np
@@ -56,6 +57,7 @@ class Launcher():
                  max_env_steps=None,
                  root_random_seed=None,
                  test_mode=False,
+                 purge_previous=0,
                  verbose=0):
         """
 
@@ -68,6 +70,8 @@ class Launcher():
             max_env_steps:      total number of environment steps to run training on
             root_random_seed:   int or None
             test_mode:          if True - use Atari gym env., BTGym otherwise.
+            purge_previous:     int, keep or remove previous log files and saved checkpoints from log_dir, if found:
+                                0 - keep, 1 - ask, 2 - remove
             verbose:            0 - silent, 1 - info, 3 - debug level
 
         Note:
@@ -114,6 +118,7 @@ class Launcher():
         self.max_env_steps = 100 * 10 ** 6
         self.ports_to_use = []
         self.root_random_seed = root_random_seed
+        self.purge_previous = purge_previous
         self.test_mode = test_mode
         self.verbose = verbose
 
@@ -148,9 +153,24 @@ class Launcher():
             np.random.randint(0, 2**30, self.cluster_config['num_workers'] + self.cluster_config['num_ps'])
         )
 
-        if not os.path.exists(self.cluster_config['log_dir']):
+        # Log_dir:
+        if os.path.exists(self.cluster_config['log_dir']):
+            # Remove previous log files and saved model if opted:
+            if self.purge_previous > 0:
+                confirm = 'y'
+                if self.purge_previous < 2:
+                    confirm = input('<{}> already exists. Override[y/n]?'.format(self.cluster_config['log_dir']))
+                if confirm in 'y':
+                    files = glob.glob(self.cluster_config['log_dir'] + '/*')
+                    p = psutil.Popen(['rm', '-R', ] + files, stdout=PIPE, stderr=PIPE)
+                    self.log.warning('Files in <{}> purged.'.format(self.cluster_config['log_dir']))
+
+            else:
+                self.log.warning('Appending to <{}>.'.format(self.cluster_config['log_dir']))
+
+        else:
             os.makedirs(self.cluster_config['log_dir'])
-            self.log.info('{} created.'.format(self.cluster_config['log_dir']))
+            self.log.warning('<{}> created.'.format(self.cluster_config['log_dir']))
 
         for kwarg in ['port', 'data_port']:
             assert kwarg in self.env_config['kwargs'].keys()
@@ -165,6 +185,16 @@ class Launcher():
         env_ports = np.arange(self.cluster_config['num_envs'])
         worker_port = self.env_config['kwargs']['port']  # start value for BTGym comm. port
 
+        #for k, v in self.env_config['kwargs'].items():
+        #    try:
+        #        c = copy.deepcopy(v)
+        #        print('key: {} -- deepcopy ok.'.format(k))
+        #    except:
+        #        print('key: {} -- deepcopy failed!.'.format(k))
+
+        # TODO: Hacky, cause dataset is threadlocked; do pass dataset as class_ref + kwargs_dict:
+        dataset_instance = self.env_config['kwargs'].pop('dataset')
+
         for key, spec_list in self.cluster_spec.items():
             task_index = 0  # referenced further as worker id
             for _id in spec_list:
@@ -174,6 +204,8 @@ class Launcher():
                     # Configure worker BTgym environment:
                     if task_index == 0:
                         env_config['kwargs']['data_master'] = True  # set worker_0 as chief and data_master
+                        env_config['kwargs']['dataset'] = dataset_instance
+                        env_config['kwargs']['render_enabled'] = True
                     else:
                         env_config['kwargs']['data_master'] = False
                         env_config['kwargs']['render_enabled'] = False  # disable rendering for all but chief
@@ -228,15 +260,19 @@ class Launcher():
         cluster['worker'] = all_workers
         return cluster
 
-    def clear_port(self, port):
+    def clear_port(self, port_list):
         """
-        Kills process on specified port, if any.
+        Kills process on specified ports list, if any.
         """
-        p = psutil.Popen(['lsof', '-i:{}'.format(port), '-t'], stdout=PIPE, stderr=PIPE)
-        pid = p.communicate()[0].decode()[:-1]  # retrieving PID
-        if pid is not '':
-            p = psutil.Popen(['kill', pid])
-            self.log.info('port {} cleared'.format(port))
+        if not isinstance(port_list, list):
+            port_list = [port_list]
+
+        for port in port_list:
+            p = psutil.Popen(['lsof', '-i:{}'.format(port), '-t'], stdout=PIPE, stderr=PIPE)
+            pid = p.communicate()[0].decode()[:-1]  # retrieving PID
+            if pid is not '':
+                p = psutil.Popen(['kill', pid])
+                self.log.info('port {} cleared'.format(port))
 
     def _update_config_dict(self, old_dict, new_dict=None):
         """

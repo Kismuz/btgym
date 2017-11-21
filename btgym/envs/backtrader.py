@@ -180,13 +180,12 @@ class BTgymEnv(gym.Env):
         self.metadata = {'render.modes': self.render_modes}
 
         # Verbosity control:
-        self.log = logging.getLogger('Env')
-
-        log_levels = [(0, 'WARNING'), (1, 'INFO'), (2, 'DEBUG'),]
-
-        for key, level in log_levels:
-            if key == self.verbose:
-                self.log.setLevel(level)
+        if True: #self.log is None:
+            self.log = logging.getLogger('Env')
+            log_levels = [(0, 'WARNING'), (1, 'INFO'), (2, 'DEBUG'),]
+            for key, level in log_levels:
+                if key == self.verbose:
+                    self.log.setLevel(level)
 
         # Network parameters:
         self.network_address += str(self.port)
@@ -539,8 +538,7 @@ class BTgymEnv(gym.Env):
             )
             if not self.data_server_response['message']['dataset_is_ready']:
                 self.log.warning(
-                    'Data_master `reset()` is called prior to `reset_data()`.\n' +
-                    'Dataset will be reset with dataset_class [possibly inconsistent] defaults.'
+                    'Data_master `reset()` called prior to `reset_data()` with [possibly inconsistent] defaults.'
                 )
                 self.reset_data()
 

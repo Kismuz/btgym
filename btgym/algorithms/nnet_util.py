@@ -131,10 +131,10 @@ def conv1d(x, num_filters, name, filter_size=3, stride=2, pad="SAME", dtype=tf.f
 def conv_2d_network(x,
                     ob_space,
                     ac_space,
-                    num_layers=4,
-                    num_filters=32,
-                    filter_size=(3, 3),
-                    stride=(2, 2),
+                    conv_2d_num_layers=4,
+                    conv_2d_num_filters=32,
+                    conv_2d_filter_size=(3, 3),
+                    conv_2d_stride=(2, 2),
                     pad="SAME",
                     dtype=tf.float32,
                     collections=None,
@@ -146,9 +146,19 @@ def conv_2d_network(x,
     Returns:
         tensor holding state features;
     """
-    for i in range(num_layers):
+    for i in range(conv_2d_num_layers):
         x = tf.nn.elu(
-            conv2d(x, num_filters, "conv2d_{}".format(i + 1), filter_size, stride, pad, dtype, collections, reuse)
+            conv2d(
+                x,
+                conv_2d_num_filters,
+                "conv2d_{}".format(i + 1),
+                conv_2d_filter_size,
+                conv_2d_stride,
+                pad,
+                dtype,
+                collections,
+                reuse
+            )
         )
     # A3c/BaseAAC original paper design:
     # x = tf.nn.elu(conv2d(x, 16, 'conv2d_1', [8, 8], [4, 4], pad, dtype, collections, reuse))
@@ -159,7 +169,42 @@ def conv_2d_network(x,
     return x
 
 
-def lstm_network(x, a_r, sequence_length, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse=False):
+def conv_1d_network(x,
+                    ob_space,
+                    ac_space,
+                    conv_1d_num_layers=4,
+                    conv_1d_num_filters=32,
+                    conv_1d_filter_size=3,
+                    conv_1d_stride=2,
+                    pad="SAME",
+                    dtype=tf.float32,
+                    collections=None,
+                    reuse=False):
+    """
+    Stage1 network: from preprocessed 1D input to estimated features.
+    Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.
+
+    Returns:
+        tensor holding state features;
+    """
+    for i in range(conv_1d_num_layers):
+        x = tf.nn.elu(
+            conv1d(
+                x,
+                conv_1d_num_filters,
+                "conv1d_{}".format(i + 1),
+                conv_1d_filter_size,
+                conv_1d_stride,
+                pad,
+                dtype,
+                collections,
+                reuse
+            )
+        )
+    return x
+
+
+def lstm_network(x, lstm_sequence_length, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse=False):
     """
     Stage2 network: from features to flattened LSTM output.
     Defines [multi-layered] dynamic [possibly shared] LSTM network.
@@ -172,7 +217,7 @@ def lstm_network(x, a_r, sequence_length, lstm_class=rnn.BasicLSTMCell, lstm_lay
     """
     with tf.variable_scope('lstm', reuse=reuse):
         # Flatten, add action/reward and expand with fake [time] batch? dim to feed LSTM bank:
-        x = tf.concat([x, a_r] ,axis=-1)
+        #x = tf.concat([x, a_r] ,axis=-1)
         #x = tf.concat([batch_flatten(x), a_r], axis=-1)
         #x = tf.expand_dims(x, [0])
 
@@ -194,7 +239,7 @@ def lstm_network(x, a_r, sequence_length, lstm_class=rnn.BasicLSTMCell, lstm_lay
             lstm,
             x,
             initial_state=lstm_state_pl,
-            sequence_length=sequence_length,
+            sequence_length=lstm_sequence_length,
             time_major=False
         )
         #x_out = tf.reshape(lstm_outputs, [-1, lstm_layers[-1]])

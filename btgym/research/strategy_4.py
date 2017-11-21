@@ -31,10 +31,6 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
     Data:
         synthetic/real
-
-    Note:
-
-        call classmethod set_params() before use!
     """
     time_dim = 30
     params = dict(
@@ -137,7 +133,6 @@ class DevStrat_4_6(BTgymBaseStrategy):
             ],
             axis=-1
         )
-        #self.state['raw_state'] = self.raw_state
         return self.state
 
     def get_reward(self):
@@ -154,7 +149,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
         # Check if any trades been closed in given period:
         realized_pnl = np.asarray(self.sliding_stat['realized_pnl'])
-        is_result = realized_pnl!= 0
+        is_result = realized_pnl != 0
 
         # If yes - compute averaged result:
         if is_result.any():
@@ -188,9 +183,9 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
         # Weights are subject to tune:
         self.reward = (
-            + 1.0 * avg_unrealised_pnl * max_to_real_k  # TODO: make it zero when pos.size=0
-            + 0.01 * avg_norm_broker_value
-            + 10.0 * avg_realized_pnl * max_to_real_k
+            + 1.0 * avg_unrealised_pnl #* max_to_real_k  # TODO: make it zero when pos.size=0
+            + 0.1 * avg_norm_broker_value
+            + 100.0 * avg_realized_pnl #* max_to_real_k
             # 'Close-at-the-end' term:
             # - 1.0 * self.exp_scale(avg_norm_episode_duration, gamma=6) * abs_max_norm_exposure
             # 'Do-not-expose-for-too-long' term:

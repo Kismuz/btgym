@@ -144,18 +144,18 @@ def env_runner(sess,
     last_context = policy.get_initial_features()
     length = 0
     local_episode = 0
-    rewards = 0
+    reward_sum = 0
     last_action = np.zeros(env.action_space.n)
     last_action[0] = 1
     last_reward = 0.0
     last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
 
     # Summary averages accumulators:
-    total_r = 0
-    cpu_time = 0
-    final_value = 0
-    total_steps = 0
-    total_steps_atari = 0
+    total_r = []
+    cpu_time = []
+    final_value = []
+    total_steps = []
+    total_steps_atari = []
 
     ep_stat = None
     render_stat = None
@@ -188,7 +188,7 @@ def env_runner(sess,
             last_experience[key] = callback(**locals())
 
         length += 1
-        rewards += reward
+        reward_sum += reward
         last_state = state
         last_context = context
         last_action = action
@@ -227,7 +227,7 @@ def env_runner(sess,
 
                 # Housekeeping:
                 length += 1
-                rewards += reward
+                reward_sum += reward
                 last_state = state
                 last_context = context
                 last_action = action
@@ -241,36 +241,36 @@ def env_runner(sess,
                 # All environment-specific summaries are here due to fact
                 # only runner allowed to interact with environment:
                 # Accumulate values for averaging:
-                total_r += rewards
-                total_steps_atari += length
+                total_r += [reward_sum]
+                total_steps_atari += [length]
                 if not test:
                     episode_stat = env.get_stat()  # get episode statistic
-                    last_i = info[0]  # pull most recent info
-                    cpu_time += episode_stat['runtime'].total_seconds()
-                    final_value += last_i['broker_value']
-                    total_steps += episode_stat['length']
+                    last_i = info[-1]  # pull most recent info
+                    cpu_time += [episode_stat['runtime'].total_seconds()]
+                    final_value += [last_i['broker_value']]
+                    total_steps += [episode_stat['length']]
 
                 # Episode statistic:
                 if local_episode % episode_summary_freq == 0:
                     if not test:
                         # BTgym:
                         ep_stat = dict(
-                            total_r=total_r / episode_summary_freq,
-                            cpu_time=cpu_time / episode_summary_freq,
-                            final_value=final_value / episode_summary_freq,
-                            steps=total_steps / episode_summary_freq
+                            total_r=np.average(total_r),
+                            cpu_time=np.average(cpu_time),
+                            final_value=np.average(final_value),
+                            steps=np.average(total_steps)
                         )
                     else:
                         # Atari:
                         ep_stat = dict(
-                            total_r=total_r / episode_summary_freq,
-                            steps=total_steps_atari / episode_summary_freq
+                            total_r=np.average(total_r),
+                            steps=np.average(total_steps_atari)
                         )
-                    total_r = 0
-                    cpu_time = 0
-                    final_value = 0
-                    total_steps = 0
-                    total_steps_atari = 0
+                    total_r = []
+                    cpu_time = []
+                    final_value = []
+                    total_steps = []
+                    total_steps_atari = []
 
                 if task == 0 and local_episode % env_render_freq == 0 :
                     if not test:
@@ -278,7 +278,7 @@ def env_runner(sess,
 
                         render_stat = dict(
                             render_human=env.render('human')[None,:],
-                            render_model_input=env.render('model_input')[None, :],
+                            render_model_input_ext=env.render('external')[None, :],
                             render_episode=env.render('episode')[None,:],
                         )
                     else:
@@ -292,7 +292,7 @@ def env_runner(sess,
 
                 last_context = policy.get_initial_features()
                 length = 0
-                rewards = 0
+                reward_sum = 0
                 last_action = np.zeros(env.action_space.n)
                 last_action[0] = 1
                 last_reward = 0.0

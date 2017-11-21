@@ -95,6 +95,7 @@ class Worker(multiprocessing.Process):
         self.log_dir = log_dir
         self.max_env_steps = max_env_steps
         self.log = log
+        self.log_level = log_level
         logging.basicConfig()
         self.log = logging.getLogger('{}_{}'.format(self.job_name, self.task))
         self.log.setLevel(log_level)
@@ -140,6 +141,7 @@ class Worker(multiprocessing.Process):
             # Making as many environments as many entries in env_config `port` list:
             self.env_list = []
             env_kwargs = self.env_kwargs.copy()
+            env_kwargs['log'] = self.log
             port_list = env_kwargs.pop('port')
 
             for port in port_list:
