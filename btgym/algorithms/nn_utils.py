@@ -9,7 +9,7 @@ import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
 from tensorflow.contrib.layers import flatten as batch_flatten
 from tensorflow.python.util.nest import flatten as flatten_nested
-from btgym.algorithms.util import rnn_placeholders
+from btgym.algorithms.utils import rnn_placeholders
 
 
 def normalized_columns_initializer(std=1.0):
@@ -138,7 +138,8 @@ def conv_2d_network(x,
                     pad="SAME",
                     dtype=tf.float32,
                     collections=None,
-                    reuse=False):
+                    reuse=False,
+                    **kwargs):
     """
     Stage1 network: from preprocessed 2D input to estimated features.
     Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.
@@ -204,7 +205,7 @@ def conv_1d_network(x,
     return x
 
 
-def lstm_network(x, lstm_sequence_length, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse=False):
+def lstm_network(x, lstm_sequence_length, lstm_class=rnn.BasicLSTMCell, lstm_layers=(256,), reuse=False, **kwargs):
     """
     Stage2 network: from features to flattened LSTM output.
     Defines [multi-layered] dynamic [possibly shared] LSTM network.
@@ -278,34 +279,57 @@ def dense_rp_network(x):
     return logits
 
 
-def pixel_change_2d_estimator(ob_space, stride=2):
+def pixel_change_2d_estimator(ob_space, pc_estimator_stride=(2, 2), **kwargs):
     """
     Defines tf operation for estimating `pixel change` as subsampled absolute difference of two states.
+
+    Note:
+        crops input array by one pix from either side; --> 1D signal to be shaped as [signal_length, 3]
     """
     input_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_state_in')
     input_last_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_last_state_in')
 
     x = tf.abs(tf.subtract(input_state, input_last_state)) # TODO: tf.square?
-    x = tf.expand_dims(x, 0)[:, 1:-1, 1:-1, :]  # fake batch dim and crop
+
+    if x.shape[-2] <= 3:
+        x = tf.expand_dims(x, 0)[:, 1:-1, :, :]  # Assume 1D signal, fake batch dim and crop H dim only
+        #x = tf.transpose(x, perm=[0, 1, 3, 2])  # Swap channels and height for
+    else:
+        x = tf.expand_dims(x, 0)[:, 1:-1, 1:-1, :]  # True 2D,  fake batch dim and crop H, W dims
+
     x = tf.reduce_mean(x, axis=-1, keep_dims=True)
-    # TODO: max_pool may be better? indeed it is.
-    x_out = tf.nn.max_pool(x, [1, stride, stride, 1], [1, stride, stride, 1], 'SAME')
+
+    x_out = tf.nn.max_pool(
+        x,
+        [1, pc_estimator_stride[0], pc_estimator_stride[1], 1],
+        [1, pc_estimator_stride[0], pc_estimator_stride[1], 1],
+        'SAME'
+    )
     return input_state, input_last_state, x_out
 
 
-def duelling_pc_network(x, ac_space, reuse=False):
+def duelling_pc_network(x,
+                        ac_space,
+                        duell_pc_x_inner_shape=(9, 9, 32),
+                        duell_pc_filter_size=(4, 4),
+                        duell_pc_stride=(2, 2),
+                        reuse=False,
+                        **kwargs):
     """
     Stage3 network for `pixel control' task: from LSTM output to Q-aux. features tensor.
     """
-    x = tf.nn.elu(linear(x, 9* 9 * 32, 'pc_dense', normalized_columns_initializer(0.01), reuse=reuse))
-    x = tf.reshape(x, [-1, 9, 9, 32])
-    pc_a = deconv2d(x, ac_space, 'pc_advantage', [4, 4], [2, 2], reuse=reuse)  # [None, 20, 20, ac_size]
-    pc_v = deconv2d(x, 1, 'pc_value_fn', [4, 4], [2, 2], reuse=reuse)  # [None, 20, 20, 1]
+    x = tf.nn.elu(
+        linear(x, np.prod(duell_pc_x_inner_shape), 'pc_dense', normalized_columns_initializer(0.01), reuse=reuse)
+    )
+    x = tf.reshape(x, [-1] + list(duell_pc_x_inner_shape))
+    pc_a = deconv2d(x, ac_space, 'pc_advantage', duell_pc_filter_size, duell_pc_stride, reuse=reuse)  # [None, 20, 20, ac_size]
+    pc_v = deconv2d(x, 1, 'pc_value_fn', duell_pc_filter_size, duell_pc_stride, reuse=reuse)  # [None, 20, 20, 1]
 
     # Q-value estimate using advantage mean,
     # as (9) in "Dueling Network Architectures..." paper:
     # https://arxiv.org/pdf/1511.06581.pdf
-    pc_a_mean = tf.reduce_mean(pc_a, axis=3, keep_dims=True)
+    pc_a_mean = tf.reduce_mean(pc_a, axis=-1, keep_dims=True)
     pc_q = pc_v + pc_a - pc_a_mean  # [None, 20, 20, ac_size]
 
     return pc_q
+

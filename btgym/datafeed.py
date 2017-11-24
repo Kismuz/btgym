@@ -686,7 +686,7 @@ class BTgymRandomTrial(BTgymSequentialTrial):
 
     Note:
         While these iterators can simply be seen as sliding/random sampling time-windows, the realisation is inspired by
-        `FAST REINFORCEMENT LEARNING VIA SLOW REINFORCEMENT LEARNING` paper by Schulman et al.,
+        `FAST REINFORCEMENT LEARNING VIA SLOW REINFORCEMENT LEARNING` paper by Duan et al.,
         https://arxiv.org/pdf/1611.02779.pdf
 
         Problem: Real-world BTGym POMDP violates condition of having stationary transitional distribution.

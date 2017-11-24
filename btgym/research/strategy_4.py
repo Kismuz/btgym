@@ -13,8 +13,6 @@ Research grade code. Can be unstable, buggy, poor performing and generally is su
 
 class DevStrat_4_6(BTgymBaseStrategy):
     """
-    RnD grade code.
-
     Objectives:
         external state data feature search:
             time_embedded three-channeled vector:
@@ -26,18 +24,19 @@ class DevStrat_4_6(BTgymBaseStrategy):
             time_embedded concatenated vector of broker and portfolio statistics
 
         reward shaping search:
-            weighted sum of averaged over time_embedding period broker and portfolio statisitics.
+           potential-based shaping functions
 
 
     Data:
         synthetic/real
     """
-    time_dim = 30
+    time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
     params = dict(
+        # Note fake `Width` dimension to use 2d conv etc.:
         state_shape=
             {
-                'external': spaces.Box(low=-1, high=1, shape=(time_dim, 3)),
-                'internal': spaces.Box(low=-2, high=2, shape=(time_dim, 5)),
+                'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3)),
+                'internal': spaces.Box(low=-2, high=2, shape=(time_dim, 1, 5)),
                 'metadata': spaces.Dict(
                     {
                         'trial_num': spaces.Box(
@@ -114,12 +113,12 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
         # Amplify and squash in [-1,1], seems to be best option as of 4.10.17:
         # T param is supposed to keep most of the signal in 'linear' part of tanh while squashing spikes.
-        self.state['external'] = tanh(x * T)
+        x_market = tanh(x * T)
 
         # Update inner state statistic and compose state:
         self.update_sliding_stat()
 
-        self.state['internal'] = np.concatenate(
+        x_broker = np.concatenate(
             [
                 np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
                 # max_unrealized_pnl[..., None],
@@ -133,64 +132,53 @@ class DevStrat_4_6(BTgymBaseStrategy):
             ],
             axis=-1
         )
+
+        self.state['external'] = x_market[:, None, :]
+        self.state['internal'] = x_broker[:, None, :]
+
         return self.state
 
     def get_reward(self):
+        """
+        Shapes reward function as normalized single trade realized profit/loss,
+        augmented with potential-based reward shaping functions in form of:
+        F(s, a, s`) = gamma * FI(s`) - FI(s);
 
-        # All reward terms for this step are already updated by get_state().
+        - potential FI_1 is current normalized unrealized profit/loss;
+        - potential FI_2 is current normalized broker value.
 
-        # Reward term 1: averaged profit/loss for current opened trade (unrealized p/l):
-        avg_unrealised_pnl = np.average(self.sliding_stat['unrealized_pnl'])
+        Paper:
+            "Policy invariance under reward transformations:
+             Theory and application to reward shaping" by A. Ng et al., 1999;
+             http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf
+        """
 
-        # Reward term 2: averaged broker value, normalized wrt to max drawdown and target bounds.
-        avg_norm_broker_value = np.average(self.sliding_stat['broker_value'])
+        # All sliding statistics for this step are already updated by get_state().
+        #
+        # TODO: window size for stats averaging? Now it is time_dim - 1, can better be other?
+        # TODO: pass actual gamma as strategy param. OR:  maybe: compute reward on algo side?
 
-        # Reward term 3: normalized realized profit/loss:
+        # Potential-based shaping function 1:
+        # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
+        unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl'])
+        f1 = .99 * np.average(unrealised_pnl[1:]) - np.average(unrealised_pnl[:-1])
 
-        # Check if any trades been closed in given period:
-        realized_pnl = np.asarray(self.sliding_stat['realized_pnl'])
-        is_result = realized_pnl != 0
+        # Potential-based shaping function 2:
+        # based on potential of averaged broker value, normalized wrt to max drawdown and target bounds.
+        norm_broker_value = np.asarray(self.sliding_stat['broker_value'])
+        f2 = .99 * np.average(norm_broker_value[1:]) - np.average(norm_broker_value[:-1])
 
-        # If yes - compute averaged result:
-        if is_result.any():
-            avg_realized_pnl = np.average(realized_pnl[is_result])
-            # Realised-to-possible-result weight,
-            # e.g rate at scale [0.1, 2] how achieved result relates to best/worst possible trade scenario:
-            max_to_real_k = np.clip(
-                abs_norm_ratio(
-                    avg_realized_pnl,
-                    np.average(self.sliding_stat['min_unrealized_pnl']),
-                    np.average(self.sliding_stat['max_unrealized_pnl']),
-                ),
-                0.1,
-                2
-            )
-            # print('max_to_real_k:{}, x:{}\na:{}\nb:{}'.
-            # format(
-            #    max_to_real_k,
-            #    avg_realized_pnl,
-            #    np.average(self.min_unrealized_pnl),
-            #    np.average(self.max_unrealized_pnl),
-            #    )
-            # )
-        else:
-            avg_realized_pnl = 0
-            max_to_real_k = 1
-
-        # avg_norm_episode_duration = ...
-        # abs_max_norm_exposure = ...
-        # avg_norm_position_duration = ...
+        # Main reward function: normalized realized profit/loss:
+        realized_pnl = np.asarray(self.sliding_stat['realized_pnl'])[-1]
 
         # Weights are subject to tune:
-        self.reward = (
-            + 1.0 * avg_unrealised_pnl #* max_to_real_k  # TODO: make it zero when pos.size=0
-            + 0.1 * avg_norm_broker_value
-            + 100.0 * avg_realized_pnl #* max_to_real_k
-            # 'Close-at-the-end' term:
-            # - 1.0 * self.exp_scale(avg_norm_episode_duration, gamma=6) * abs_max_norm_exposure
-            # 'Do-not-expose-for-too-long' term:
-            # - 1.0 * self.exp_scale(avg_norm_position_duration, gamma=3)
-        )
+        self.reward = 1.0 * f1 + 1.0 * f2 + 10.0 * realized_pnl
+        # TODO: ------ignore-----:
+        # 'Close-at-the-end' shaping term:
+        # - 1.0 * self.exp_scale(avg_norm_episode_duration, gamma=6) * abs_max_norm_exposure
+        # 'Do-not-expose-for-too-long' shaping term:
+        # - 1.0 * self.exp_scale(avg_norm_position_duration, gamma=3)
+
         self.reward = np.clip(self.reward, -1, 1)
 
         return self.reward

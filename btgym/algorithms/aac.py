@@ -6,9 +6,9 @@ import tensorflow as tf
 
 from btgym.spaces import DictSpace as ObSpace  # now can simply be gym.Dict
 from btgym.algorithms import Memory, make_data_getter, RunnerThread
-from btgym.algorithms.math_util import log_uniform
+from btgym.algorithms.math_utils import log_uniform
 from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def, ppo_loss_def
-from btgym.algorithms.util import feed_dict_rnn_context, feed_dict_from_nested, batch_stack
+from btgym.algorithms.utils import feed_dict_rnn_context, feed_dict_from_nested, batch_stack
 
 
 class BaseAAC(object):
@@ -62,9 +62,9 @@ class BaseAAC(object):
                  use_reward_prediction=False,
                  use_pixel_control=False,
                  use_value_replay=False,
-                 rp_lambda=1,  # aux tasks loss weights
-                 pc_lambda=0.1,
-                 vr_lambda=1,
+                 rp_lambda=1.0,  # aux tasks loss weights
+                 pc_lambda=1.0,
+                 vr_lambda=1.0,
                  off_aac_lambda=1,
                  gamma_pc=0.9,  # pixel change gamma-decay - not used
                  rp_reward_threshold=0.1,  # r.prediction: abs.rewards values bigger than this are considered non-zero
@@ -284,7 +284,7 @@ class BaseAAC(object):
             }
         )
         # Start building graphs:
-
+        self.log.debug('AAC_{}: started building graphs'.format(self.task))
         # PS:
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             self.network = self.make_policy('global')

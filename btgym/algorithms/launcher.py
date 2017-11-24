@@ -159,7 +159,7 @@ class Launcher():
             if self.purge_previous > 0:
                 confirm = 'y'
                 if self.purge_previous < 2:
-                    confirm = input('<{}> already exists. Override[y/n]?'.format(self.cluster_config['log_dir']))
+                    confirm = input('<{}> already exists. Override[y/n]? '.format(self.cluster_config['log_dir']))
                 if confirm in 'y':
                     files = glob.glob(self.cluster_config['log_dir'] + '/*')
                     p = psutil.Popen(['rm', '-R', ] + files, stdout=PIPE, stderr=PIPE)

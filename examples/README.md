@@ -2,9 +2,15 @@
 
 ****
 
-- **[Atari tests](./atari_tests)**: Gym-Atari tests for A3C, BaseAAC, PPO.
+Developmnet code 4.6 as of 24.11.17:
 
-- **[A3C for BTgym](./a3c)**: TEMPORARILY OUT OF SERVICE
+- **[A3C_4_6](./a3c_random_on_synth_or_real_data_4_6.ipynb)**: A3C demo on synthetic or real financial data 
+- **[UNREAL_4_6](./unreal_random_on_synth_or_real_data_4_6.ipynb)**: UNREAL/PPO demo on synthetic or real financial data
+
+[<img src="./img/2017-11-23_12.52.26.png" width="400">](./img/2017-11-23_12.52.26.png) [<img src="./img/2017-11-24_18.37.50.png" width="400">](./img/2017-11-24_18.37.50.png) 
+
+****
+- **[Atari tests](./atari_tests)**: Gym-Atari tests for A3C, BaseAAC, PPO.
 
 - **[BTgym setup for asynchronous training](./async_btgym_workers.ipynb)**: getting ready for A3C.
 

@@ -9,8 +9,8 @@
 import numpy as np
 
 from tensorflow.contrib.rnn import LSTMStateTuple
-from btgym.algorithms.math_util import discount
-from btgym.algorithms.util import batch_pad
+from btgym.algorithms.math_utils import discount
+from btgym.algorithms.utils import batch_pad
 
 
 # Info:

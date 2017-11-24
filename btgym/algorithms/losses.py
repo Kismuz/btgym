@@ -1,6 +1,6 @@
 import tensorflow as tf
 import  numpy as np
-from btgym.algorithms.math_util import cat_entropy, kl_divergence
+from btgym.algorithms.math_utils import cat_entropy, kl_divergence
 
 
 def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_logits,
