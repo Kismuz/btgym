@@ -449,6 +449,9 @@
         <span class="n">cerebro</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">episode_result</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
 
+        <span class="c1"># How long to wait for data_master to reset data:</span>
+        <span class="n">wait_for_data_reset</span> <span class="o">=</span> <span class="mi">300</span>  <span class="c1"># seconds</span>
+
         <span class="c1"># Set up a comm. channel for server as ZMQ socket</span>
         <span class="c1"># to carry both service and data signal</span>
         <span class="c1"># !! Reminder: Since we use REQ/REP - messages do go in pairs !!</span>
@@ -551,7 +554,7 @@
             <span class="c1"># Add communication utility:</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">addanalyzer</span><span class="p">(</span><span class="n">_BTgymAnalyzer</span><span class="p">,</span>
                                 <span class="n">_name</span><span class="o">=</span><span class="s1">&#39;_env_analyzer&#39;</span><span class="p">,)</span>
-
+            <span class="n">wait</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
                 <span class="c1"># Get random episode dataset:</span>
                 <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
@@ -572,11 +575,23 @@
                 <span class="c1"># Ready or not?</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="k">assert</span> <span class="s1">&#39;Dataset not ready&#39;</span> <span class="ow">in</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span>
-                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Assert ok&#39;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">wait</span> <span class="o">&lt;=</span> <span class="n">wait_for_data_reset</span><span class="p">:</span>
+                        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+                        <span class="n">wait</span> <span class="o">+=</span> <span class="mi">2</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                            <span class="s1">&#39;Dataset not ready, waiting time left: </span><span class="si">{}</span><span class="s1"> sec.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">wait_for_data_reset</span> <span class="o">-</span> <span class="n">wait</span><span class="p">)</span>
+                        <span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+                            <span class="n">socket</span><span class="o">=</span><span class="n">data_socket</span><span class="p">,</span>
+                            <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_stop&#39;</span><span class="p">},</span>
+                            <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span><span class="p">,</span>
+                        <span class="p">)</span>
+                        <span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                        <span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+                        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Failed to assert Dataset is ready. Exiting.&#39;</span><span class="p">)</span>
 
                 <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Assert is not ok&#39;</span><span class="p">)</span>
                     <span class="k">break</span>
 
             <span class="n">episode_datafeed</span> <span class="o">=</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;datafeed&#39;</span><span class="p">]</span>

@@ -179,9 +179,9 @@
 
 <span class="kn">from</span> <span class="nn">btgym.spaces</span> <span class="k">import</span> <span class="n">DictSpace</span> <span class="k">as</span> <span class="n">ObSpace</span>  <span class="c1"># now can simply be gym.Dict</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">Memory</span><span class="p">,</span> <span class="n">make_data_getter</span><span class="p">,</span> <span class="n">RunnerThread</span>
-<span class="kn">from</span> <span class="nn">btgym.algorithms.math_util</span> <span class="k">import</span> <span class="n">log_uniform</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.math_utils</span> <span class="k">import</span> <span class="n">log_uniform</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms.losses</span> <span class="k">import</span> <span class="n">value_fn_loss_def</span><span class="p">,</span> <span class="n">rp_loss_def</span><span class="p">,</span> <span class="n">pc_loss_def</span><span class="p">,</span> <span class="n">aac_loss_def</span><span class="p">,</span> <span class="n">ppo_loss_def</span>
-<span class="kn">from</span> <span class="nn">btgym.algorithms.util</span> <span class="k">import</span> <span class="n">feed_dict_rnn_context</span><span class="p">,</span> <span class="n">feed_dict_from_nested</span><span class="p">,</span> <span class="n">batch_stack</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.utils</span> <span class="k">import</span> <span class="n">feed_dict_rnn_context</span><span class="p">,</span> <span class="n">feed_dict_from_nested</span><span class="p">,</span> <span class="n">batch_stack</span>
 
 
 <div class="viewcode-block" id="BaseAAC"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC">[docs]</a><span class="k">class</span> <span class="nc">BaseAAC</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -235,9 +235,9 @@
                  <span class="n">use_reward_prediction</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="n">use_pixel_control</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="n">use_value_replay</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                 <span class="n">rp_lambda</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># aux tasks loss weights</span>
-                 <span class="n">pc_lambda</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
-                 <span class="n">vr_lambda</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">rp_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># aux tasks loss weights</span>
+                 <span class="n">pc_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                 <span class="n">vr_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
                  <span class="n">off_aac_lambda</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                  <span class="n">gamma_pc</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>  <span class="c1"># pixel change gamma-decay - not used</span>
                  <span class="n">rp_reward_threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>  <span class="c1"># r.prediction: abs.rewards values bigger than this are considered non-zero</span>
@@ -457,7 +457,7 @@
             <span class="p">}</span>
         <span class="p">)</span>
         <span class="c1"># Start building graphs:</span>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: started building graphs&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
         <span class="c1"># PS:</span>
         <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">replica_device_setter</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">worker_device</span><span class="o">=</span><span class="n">worker_device</span><span class="p">)):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_policy</span><span class="p">(</span><span class="s1">&#39;global&#39;</span><span class="p">)</span>
@@ -626,7 +626,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
                 <span class="c1"># Summary placeholders</span>
                 <span class="n">render_human</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span>
-                <span class="n">render_model_input</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span>
+                <span class="n">render_model_input_ext</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span>
                 <span class="n">render_episode</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span>
                 <span class="n">render_atari</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
                 <span class="n">total_r</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">),</span>
@@ -638,7 +638,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
                 <span class="p">[</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="s1">&#39;human&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_human&#39;</span><span class="p">]),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="s1">&#39;model_input&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_model_input&#39;</span><span class="p">]),</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="s1">&#39;model_input_external&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_model_input_ext&#39;</span><span class="p">]),</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="s1">&#39;episode&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_episode&#39;</span><span class="p">]),</span>
                 <span class="p">],</span>
                 <span class="n">name</span><span class="o">=</span><span class="s1">&#39;render&#39;</span>
@@ -977,6 +977,7 @@
 
         <span class="c1"># Every worker writes episode and model summaries:</span>
         <span class="n">ep_summary_feeder</span> <span class="o">=</span> <span class="p">{}</span>
+
         <span class="c1"># Collect episode summaries from all env runners:</span>
         <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;ep_summary&#39;</span><span class="p">]:</span>
             <span class="k">if</span> <span class="n">stat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -990,6 +991,7 @@
             <span class="n">ep_summary_feed_dict</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="nb">list</span> <span class="ow">in</span> <span class="n">ep_summary_feeder</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
             <span class="p">}</span>
+
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
                 <span class="c1"># Atari:</span>
                 <span class="n">fetched_episode_stat</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_stat_op&#39;</span><span class="p">],</span> <span class="n">ep_summary_feed_dict</span><span class="p">)</span>

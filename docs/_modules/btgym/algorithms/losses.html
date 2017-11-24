@@ -173,7 +173,7 @@
   <h1>Source code for btgym.algorithms.losses</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 <span class="kn">import</span>  <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">btgym.algorithms.math_util</span> <span class="k">import</span> <span class="n">cat_entropy</span><span class="p">,</span> <span class="n">kl_divergence</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.math_utils</span> <span class="k">import</span> <span class="n">cat_entropy</span><span class="p">,</span> <span class="n">kl_divergence</span>
 
 
 <div class="viewcode-block" id="aac_loss_def"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.losses.aac_loss_def">[docs]</a><span class="k">def</span> <span class="nf">aac_loss_def</span><span class="p">(</span><span class="n">act_target</span><span class="p">,</span> <span class="n">adv_target</span><span class="p">,</span> <span class="n">r_target</span><span class="p">,</span> <span class="n">pi_logits</span><span class="p">,</span> <span class="n">pi_vf</span><span class="p">,</span> <span class="n">pi_prime_logits</span><span class="p">,</span>

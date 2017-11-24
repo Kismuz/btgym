@@ -510,7 +510,11 @@
         <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
             <span class="k">return</span> <span class="s1">&#39;Data not ready. Call .reset() first.&#39;</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_random</span><span class="p">()</span></div>
+        <span class="n">episode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_random</span><span class="p">()</span>
+        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;random_sample&#39;</span>
+        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;trial_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">episode</span></div>
 
     <span class="k">def</span> <span class="nf">_sample_random</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -576,6 +580,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Episode id: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">episode</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
                 <span class="n">episode</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">episode_sample</span>
                 <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;random_sample&#39;</span>
+                <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;first_row&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">first_row</span>
                 <span class="k">return</span> <span class="n">episode</span>
 
             <span class="k">else</span><span class="p">:</span>
@@ -835,7 +840,7 @@
             <span class="c1"># Todo: self.ready = False</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1"> @ interval: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1">: from </span><span class="si">{}</span><span class="s1"> to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
                 <span class="nb">format</span><span class="p">(</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>
@@ -854,7 +859,7 @@
 
 <span class="sd">    Note:</span>
 <span class="sd">        While these iterators can simply be seen as sliding/random sampling time-windows, the realisation is inspired by</span>
-<span class="sd">        `FAST REINFORCEMENT LEARNING VIA SLOW REINFORCEMENT LEARNING` paper by Schulman et al.,</span>
+<span class="sd">        `FAST REINFORCEMENT LEARNING VIA SLOW REINFORCEMENT LEARNING` paper by Duan et al.,</span>
 <span class="sd">        https://arxiv.org/pdf/1611.02779.pdf</span>
 
 <span class="sd">        Problem: Real-world BTGym POMDP violates condition of having stationary transitional distribution.</span>
@@ -985,7 +990,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span>\
                                   <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_row</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span> <span class="o">*</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">())</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1"> @ interval: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">; mean row: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1">: from </span><span class="si">{}</span><span class="s1"> to </span><span class="si">{}</span><span class="s1">; mean row: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
                 <span class="nb">format</span><span class="p">(</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>

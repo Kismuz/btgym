@@ -181,8 +181,8 @@
 <span class="c1"># Async. framework code comes from OpenAI repository under MIT licence:</span>
 <span class="c1"># https://github.com/openai/universe-starter-agent</span>
 <span class="c1">#</span>
-<span class="kn">from</span> <span class="nn">btgym.algorithms.nnet_util</span> <span class="k">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">btgym.algorithms.util</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.nn_utils</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.utils</span> <span class="k">import</span> <span class="o">*</span>
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 <span class="kn">from</span> <span class="nn">tensorflow.contrib.layers</span> <span class="k">import</span> <span class="n">flatten</span> <span class="k">as</span> <span class="n">batch_flatten</span>
 
@@ -197,8 +197,14 @@
 <span class="sd">    https://arxiv.org/abs/1611.05397</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ob_space</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">rp_sequence_size</span><span class="p">,</span>
-                 <span class="n">lstm_class</span><span class="o">=</span><span class="n">rnn</span><span class="o">.</span><span class="n">BasicLSTMCell</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,),</span> <span class="n">aux_estimate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">ob_space</span><span class="p">,</span>
+                 <span class="n">ac_space</span><span class="p">,</span>
+                 <span class="n">rp_sequence_size</span><span class="p">,</span>
+                 <span class="n">lstm_class</span><span class="o">=</span><span class="n">rnn</span><span class="o">.</span><span class="n">BasicLSTMCell</span><span class="p">,</span>
+                 <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,),</span>
+                 <span class="n">aux_estimate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,</span>
 <span class="sd">        reward and state &#39;pixel_change&#39; predictions.</span>
@@ -239,7 +245,7 @@
 
         <span class="c1"># Base on-policy AAC network:</span>
         <span class="c1"># Conv. layers:</span>
-        <span class="n">on_aac_x</span> <span class="o">=</span> <span class="n">conv_2d_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ac_space</span><span class="p">)</span>
+        <span class="n">on_aac_x</span> <span class="o">=</span> <span class="n">conv_2d_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ac_space</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="c1"># Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:</span>
         <span class="n">x_shape_dynamic</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">on_aac_x</span><span class="p">)</span>
@@ -249,19 +255,32 @@
         <span class="n">on_a_r_in</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_a_r_in</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">ac_space</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
         <span class="n">on_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span> <span class="n">on_aac_x</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])])</span>
 
+        <span class="c1"># Feed last action_reward [, internal obs. state] into LSTM along with external state features:</span>
+        <span class="n">on_stage2_input</span> <span class="o">=</span> <span class="p">[</span><span class="n">on_aac_x</span><span class="p">,</span> <span class="n">on_a_r_in</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="s1">&#39;internal&#39;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="n">x_int_shape_static</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+            <span class="n">x_int</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">],</span>
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_int_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])]</span>
+            <span class="p">)</span>
+            <span class="n">on_stage2_input</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_int</span><span class="p">)</span>
+
+        <span class="n">on_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">on_stage2_input</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
         <span class="c1"># LSTM layer takes conv. features and concatenated last action_reward tensor:</span>
         <span class="p">[</span><span class="n">on_x_lstm_out</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_init_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_state_out</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_state_pl_flatten</span><span class="p">]</span> <span class="o">=</span>\
-            <span class="n">lstm_network</span><span class="p">(</span><span class="n">on_aac_x</span><span class="p">,</span> <span class="n">on_a_r_in</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_time_length</span><span class="p">,</span> <span class="n">lstm_class</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="p">,</span> <span class="p">)</span>
+            <span class="n">lstm_network</span><span class="p">(</span><span class="n">on_aac_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_time_length</span><span class="p">,</span> <span class="n">lstm_class</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="p">)</span>
 
         <span class="c1"># Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:</span>
         <span class="n">x_shape_static</span> <span class="o">=</span> <span class="n">on_x_lstm_out</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
         <span class="n">on_x_lstm_out</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">on_x_lstm_out</span><span class="p">,</span> <span class="p">[</span><span class="n">x_shape_dynamic</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x_shape_static</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
 
-        <span class="c1"># aac policy and value outputs and action-sampling function:</span>
+        <span class="c1"># Aac policy and value outputs and action-sampling function:</span>
         <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_logits</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_vf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_sample</span><span class="p">]</span> <span class="o">=</span> <span class="n">dense_aac_network</span><span class="p">(</span><span class="n">on_x_lstm_out</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">)</span>
 
         <span class="c1"># Off-policy AAC network (shared):</span>
-        <span class="n">off_aac_x</span> <span class="o">=</span> <span class="n">conv_2d_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">off_aac_x</span> <span class="o">=</span> <span class="n">conv_2d_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="c1"># Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:</span>
         <span class="n">x_shape_dynamic</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">off_aac_x</span><span class="p">)</span>
@@ -271,8 +290,20 @@
         <span class="n">off_a_r_in</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_a_r_in</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">ac_space</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
         <span class="n">off_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span> <span class="n">off_aac_x</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])])</span>
 
+        <span class="n">off_stage2_input</span> <span class="o">=</span> <span class="p">[</span><span class="n">off_aac_x</span><span class="p">,</span> <span class="n">off_a_r_in</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="s1">&#39;internal&#39;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="n">x_int_shape_static</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+            <span class="n">off_x_int</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">],</span>
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_int_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])]</span>
+            <span class="p">)</span>
+            <span class="n">off_stage2_input</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">off_x_int</span><span class="p">)</span>
+
+        <span class="n">off_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">off_stage2_input</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
         <span class="p">[</span><span class="n">off_x_lstm_out</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_lstm_state_pl_flatten</span><span class="p">]</span> <span class="o">=</span>\
-            <span class="n">lstm_network</span><span class="p">(</span><span class="n">off_aac_x</span><span class="p">,</span> <span class="n">off_a_r_in</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_time_length</span><span class="p">,</span> <span class="n">lstm_class</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">lstm_network</span><span class="p">(</span><span class="n">off_aac_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_time_length</span><span class="p">,</span> <span class="n">lstm_class</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="c1"># Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:</span>
         <span class="n">x_shape_static</span> <span class="o">=</span> <span class="n">off_x_lstm_out</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
@@ -285,7 +316,7 @@
         <span class="c1"># Define pixels-change estimation function:</span>
         <span class="c1"># Yes, it rather env-specific but for atari case it is handy to do it here, see self.get_pc_target():</span>
         <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_change_state_in</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_change_last_state_in</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">]</span> <span class="o">=</span>\
-            <span class="n">pixel_change_2d_estimator</span><span class="p">(</span><span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">])</span>
+            <span class="n">pixel_change_2d_estimator</span><span class="p">(</span><span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">pc_batch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pc_time_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_time_length</span>
@@ -298,7 +329,7 @@
         <span class="n">pc_x</span> <span class="o">=</span> <span class="n">off_x_lstm_out</span>
 
         <span class="c1"># PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pc_q</span> <span class="o">=</span> <span class="n">duelling_pc_network</span><span class="p">(</span><span class="n">pc_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_q</span> <span class="o">=</span> <span class="n">duelling_pc_network</span><span class="p">(</span><span class="n">pc_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="c1"># Aux2: `Value function replay` network:</span>
         <span class="c1"># VR network is fully shared with ppo network but with `value` only output:</span>
@@ -316,7 +347,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">rp_batch_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rp_batch_size&#39;</span><span class="p">)</span>
 
         <span class="c1"># Shared conv. output:</span>
-        <span class="n">rp_x</span> <span class="o">=</span> <span class="n">conv_2d_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_state_in</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">rp_x</span> <span class="o">=</span> <span class="n">conv_2d_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_state_in</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="c1"># Flatten batch-wise:</span>
         <span class="n">rp_x_shape_static</span> <span class="o">=</span> <span class="n">rp_x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
@@ -426,6 +457,263 @@
 
         <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">,</span> <span class="n">feeder</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span><span class="o">...</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span></div></div>
 
+
+<div class="viewcode-block" id="Aac1dPolicy"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.policy.Aac1dPolicy">[docs]</a><span class="k">class</span> <span class="nc">Aac1dPolicy</span><span class="p">(</span><span class="n">BaseAacPolicy</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    AAC policy for one-dimensional signal obs. state.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">ob_space</span><span class="p">,</span>
+                 <span class="n">ac_space</span><span class="p">,</span>
+                 <span class="n">rp_sequence_size</span><span class="p">,</span>
+                 <span class="n">lstm_class</span><span class="o">=</span><span class="n">rnn</span><span class="o">.</span><span class="n">BasicLSTMCell</span><span class="p">,</span>
+                 <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,),</span>
+                 <span class="n">aux_estimate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,</span>
+<span class="sd">        reward and state &#39;pixel_change&#39; predictions.</span>
+<span class="sd">        Expects bi-modal observation as dict: `external`, `internal`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ob_space:           dictionary of observation state shapes</span>
+<span class="sd">            ac_space:           discrete action space shape (length)</span>
+<span class="sd">            rp_sequence_size:   reward prediction sample length</span>
+<span class="sd">            lstm_class:         tf.nn.lstm class</span>
+<span class="sd">            lstm_layers:        tuple of LSTM layers sizes</span>
+<span class="sd">            aux_estimate:       (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary.</span>
+<span class="sd">            **kwargs            not used</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">conv_2d_filter_size</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                <span class="n">conv_2d_stride</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                <span class="n">pc_estimator_stride</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                <span class="n">duell_pc_x_inner_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>  <span class="c1"># [6,3,32] if swapping W-C dims</span>
+                <span class="n">duell_pc_filter_size</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="n">duell_pc_stride</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Aac1dPolicy</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">ob_space</span><span class="p">,</span>
+            <span class="n">ac_space</span><span class="p">,</span>
+            <span class="n">rp_sequence_size</span><span class="p">,</span>
+            <span class="n">lstm_class</span><span class="p">,</span>
+            <span class="n">lstm_layers</span><span class="p">,</span>
+            <span class="n">aux_estimate</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span></div>
+
+<span class="k">class</span> <span class="nc">__Aac1dPolicy</span><span class="p">(</span><span class="n">BaseAacPolicy</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    DEVELOPMENT: AAC policy for one-dimensional signal obs. state.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">ob_space</span><span class="p">,</span>
+                 <span class="n">ac_space</span><span class="p">,</span>
+                 <span class="n">rp_sequence_size</span><span class="p">,</span>
+                 <span class="n">lstm_class</span><span class="o">=</span><span class="n">rnn</span><span class="o">.</span><span class="n">BasicLSTMCell</span><span class="p">,</span>
+                 <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,),</span>
+                 <span class="n">aux_estimate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,</span>
+<span class="sd">        reward and state &#39;pixel_change&#39; predictions.</span>
+<span class="sd">        Expects uni-modal observation as array of shape `ob_space`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ob_space:           dictionary of observation state shapes</span>
+<span class="sd">            ac_space:           discrete action space shape (length)</span>
+<span class="sd">            rp_sequence_size:   reward prediction sample length</span>
+<span class="sd">            lstm_class:         tf.nn.lstm class</span>
+<span class="sd">            lstm_layers:        tuple of LSTM layers sizes</span>
+<span class="sd">            aux_estimate:       (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary.</span>
+<span class="sd">            **kwargs            not used</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span> <span class="o">=</span> <span class="n">ob_space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span> <span class="o">=</span> <span class="n">ac_space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rp_sequence_size</span> <span class="o">=</span> <span class="n">rp_sequence_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lstm_class</span> <span class="o">=</span> <span class="n">lstm_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lstm_layers</span> <span class="o">=</span> <span class="n">lstm_layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aux_estimate</span> <span class="o">=</span> <span class="n">aux_estimate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Placeholders for obs. state input:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span> <span class="o">=</span> <span class="n">nested_placeholders</span><span class="p">(</span><span class="n">ob_space</span><span class="p">,</span> <span class="n">batch_dim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy_state_in&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span> <span class="o">=</span> <span class="n">nested_placeholders</span><span class="p">(</span><span class="n">ob_space</span><span class="p">,</span> <span class="n">batch_dim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy_state_in_pl&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rp_state_in</span> <span class="o">=</span> <span class="n">nested_placeholders</span><span class="p">(</span><span class="n">ob_space</span><span class="p">,</span> <span class="n">batch_dim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rp_state_in&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Placeholders for concatenated action [one-hot] and reward [scalar]:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">on_a_r_in</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ac_space</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy_action_reward_in_pl&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">off_a_r_in</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ac_space</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy_action_reward_in_pl&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Placeholders for rnn batch and time-step dimensions:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy_batch_size&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">on_time_length</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy_sequence_size&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy_batch_size&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">off_time_length</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy_sequence_size&#39;</span><span class="p">)</span>
+
+        <span class="c1"># TODO: DEV, move in policy subclass def:</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">conv_2d_filter_size</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+            <span class="n">conv_2d_stride</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+            <span class="n">pc_estimator_stride</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+            <span class="n">duell_pc_x_inner_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>  <span class="c1"># [6,3,32] if swapping W-C dims</span>
+            <span class="n">duell_pc_filter_size</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">duell_pc_stride</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Base on-policy AAC network:</span>
+        <span class="c1"># Conv. layers:</span>
+        <span class="c1">#on_aac_x = conv_1d_network(self.on_state_in[&#39;external&#39;], ob_space[&#39;external&#39;], ac_space, **kwargs)</span>
+        <span class="n">on_aac_x</span> <span class="o">=</span> <span class="n">conv_2d_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ac_space</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:</span>
+        <span class="n">x_shape_dynamic</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">on_aac_x</span><span class="p">)</span>
+        <span class="n">max_seq_len</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">x_shape_dynamic</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="n">x_shape_static</span> <span class="o">=</span> <span class="n">on_aac_x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+
+        <span class="n">on_a_r_in</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_a_r_in</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">ac_space</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">on_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span> <span class="n">on_aac_x</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])])</span>
+
+        <span class="c1"># Feed last action_reward [, internal obs. state] into LSTM along with external state features:</span>
+        <span class="n">on_stage2_input</span> <span class="o">=</span> <span class="p">[</span><span class="n">on_aac_x</span><span class="p">,</span> <span class="n">on_a_r_in</span><span class="p">]</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;POLICY: got here 1&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;internal&#39;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="n">x_int_shape_static</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+            <span class="n">x_int</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">],</span>
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_int_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])]</span>
+            <span class="p">)</span>
+            <span class="n">on_stage2_input</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_int</span><span class="p">)</span>
+
+        <span class="n">on_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">on_stage2_input</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;POLICY: got here 2&#39;</span><span class="p">)</span>
+
+        <span class="c1"># LSTM layer takes conv. features and concatenated last action_reward tensor:</span>
+        <span class="p">[</span><span class="n">on_x_lstm_out</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_init_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_state_out</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_state_pl_flatten</span><span class="p">]</span> <span class="o">=</span>\
+            <span class="n">lstm_network</span><span class="p">(</span><span class="n">on_aac_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_time_length</span><span class="p">,</span> <span class="n">lstm_class</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="p">)</span>
+
+        <span class="c1"># Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:</span>
+        <span class="n">x_shape_static</span> <span class="o">=</span> <span class="n">on_x_lstm_out</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+        <span class="n">on_x_lstm_out</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">on_x_lstm_out</span><span class="p">,</span> <span class="p">[</span><span class="n">x_shape_dynamic</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x_shape_static</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+
+        <span class="c1"># Aac policy and value outputs and action-sampling function:</span>
+        <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_logits</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_vf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_sample</span><span class="p">]</span> <span class="o">=</span> <span class="n">dense_aac_network</span><span class="p">(</span><span class="n">on_x_lstm_out</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">)</span>
+
+        <span class="c1"># Off-policy AAC network (shared):</span>
+        <span class="c1">#off_aac_x = conv_1d_network(self.off_state_in[&#39;external&#39;], ob_space[&#39;external&#39;], ac_space, reuse=True, **kwargs)</span>
+        <span class="n">off_aac_x</span> <span class="o">=</span> <span class="n">conv_2d_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:</span>
+        <span class="n">x_shape_dynamic</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">off_aac_x</span><span class="p">)</span>
+        <span class="n">max_seq_len</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">x_shape_dynamic</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="n">x_shape_static</span> <span class="o">=</span> <span class="n">off_aac_x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+
+        <span class="n">off_a_r_in</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_a_r_in</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">ac_space</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">off_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span> <span class="n">off_aac_x</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])])</span>
+
+        <span class="n">off_stage2_input</span> <span class="o">=</span> <span class="p">[</span><span class="n">off_aac_x</span><span class="p">,</span> <span class="n">off_a_r_in</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="s1">&#39;internal&#39;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="n">x_int_shape_static</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+            <span class="n">off_x_int</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">],</span>
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_int_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])]</span>
+            <span class="p">)</span>
+            <span class="n">off_stage2_input</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">off_x_int</span><span class="p">)</span>
+
+        <span class="n">off_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">off_stage2_input</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="p">[</span><span class="n">off_x_lstm_out</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_lstm_state_pl_flatten</span><span class="p">]</span> <span class="o">=</span>\
+            <span class="n">lstm_network</span><span class="p">(</span><span class="n">off_aac_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_time_length</span><span class="p">,</span> <span class="n">lstm_class</span><span class="p">,</span> <span class="n">lstm_layers</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:</span>
+        <span class="n">x_shape_static</span> <span class="o">=</span> <span class="n">off_x_lstm_out</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+        <span class="n">off_x_lstm_out</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">off_x_lstm_out</span><span class="p">,</span> <span class="p">[</span><span class="n">x_shape_dynamic</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x_shape_static</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+
+        <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_logits</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_vf</span><span class="p">,</span> <span class="n">_</span><span class="p">]</span> <span class="o">=</span>\
+            <span class="n">dense_aac_network</span><span class="p">(</span><span class="n">off_x_lstm_out</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Aux1: `Pixel control` network:</span>
+        <span class="c1"># Define pixels-change estimation function:</span>
+        <span class="c1"># Yes, it rather env-specific but it is handy to do it here, see self.get_pc_target():</span>
+        <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_change_state_in</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_change_last_state_in</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="n">pixel_change_2d_estimator</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">]),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;pc_target: &#39;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_batch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_time_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_time_length</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_state_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_a_r_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a_r_in</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_lstm_state_pl_flatten</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_lstm_state_pl_flatten</span>
+
+        <span class="c1"># Shared conv and lstm nets, same off-policy batch:</span>
+        <span class="n">pc_x</span> <span class="o">=</span> <span class="n">off_x_lstm_out</span>
+
+        <span class="c1"># PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_q</span> <span class="o">=</span> <span class="n">duelling_pc_network</span><span class="p">(</span><span class="n">pc_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;pc_q: &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_q</span><span class="p">)</span>
+
+        <span class="c1"># Aux2: `Value function replay` network:</span>
+        <span class="c1"># VR network is fully shared with ppo network but with `value` only output:</span>
+        <span class="c1"># and has same off-policy batch pass with off_ppo network:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vr_batch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vr_time_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_time_length</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">vr_state_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vr_a_r_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_a_r_in</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">vr_lstm_state_pl_flatten</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_lstm_state_pl_flatten</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vr_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_vf</span>
+
+        <span class="c1"># Aux3: `Reward prediction` network:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rp_batch_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rp_batch_size&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Shared conv. output:</span>
+        <span class="n">rp_x</span> <span class="o">=</span> <span class="n">conv_2d_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_state_in</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ob_space</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Flatten batch-wise:</span>
+        <span class="n">rp_x_shape_static</span> <span class="o">=</span> <span class="n">rp_x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+        <span class="n">rp_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">rp_x</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_batch_size</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">rp_x_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_sequence_size</span><span class="o">-</span><span class="mi">1</span><span class="p">)])</span>
+
+        <span class="c1"># RP output:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rp_logits</span> <span class="o">=</span> <span class="n">dense_rp_network</span><span class="p">(</span><span class="n">rp_x</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;rp_logits:&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_logits</span><span class="p">)</span>
+
+        <span class="c1"># Batch-norm related (useless, ignore):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_phase</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_phase</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder_with_default</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span>
+                <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;train_phase_flag_pl&#39;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_ops</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">UPDATE_OPS</span><span class="p">)</span>
+        <span class="c1"># Add moving averages to save list:</span>
+        <span class="n">moving_var_list</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">GLOBAL_VARIABLES</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable_scope</span><span class="p">()</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;.*moving.*&#39;</span><span class="p">)</span>
+        <span class="n">renorm_var_list</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">GLOBAL_VARIABLES</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable_scope</span><span class="p">()</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;.*renorm.*&#39;</span><span class="p">)</span>
+
+        <span class="c1"># What to save:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">TRAINABLE_VARIABLES</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable_scope</span><span class="p">()</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span> <span class="o">+=</span> <span class="n">moving_var_list</span> <span class="o">+</span> <span class="n">renorm_var_list</span>
+
+        <span class="c1"># Callbacks:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_estimate</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">[</span><span class="s1">&#39;pixel_change&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pc_target</span>
 </pre></div>
 
            </div>

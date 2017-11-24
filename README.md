@@ -265,13 +265,21 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  - [x] UNREAL implementation for BTgym;
  - [x] PPO implementation for BTgym;
  - [ ] risk-sensitive agents implementation;
- - [ ] sequential and sliding time-window sampling;
+ - [ ] sequential and sliding time-window sampling IN PROGRESS;
  - [ ] multiply instruments trading;
  
  
 ### <a name="news"></a>[News and updates:](#title)
+- 24.11.17: A3C/UNREAL finally adapted to work with BTGym envirionments.
+    - Examples with synthetic simple data(sine wawe) and historic financial data added,
+      see [examples directory](./examples/);
+    - Results on potential-based functions reward shaping in `/research/DevStartegy_4_6`;
+    - Work on Sequential/random Trials Data iterators (kind of sliding time-window) in progress,
+      start approaching the toughest part: non-stationarity battle is ahead.
+
 - 14.11.17: BaseAAC framework refraction; added per worker batch-training option and LSTM time_flatten option; Atari
             examples updated; see [Documentation](https://kismuz.github.io/btgym/) for details.
+            
 - 30.10.17: Major update, some backward incompatibility:
     - BTGym now can be thougt as two-part package: one is environment itself and the other one is
       RL algoritms tuned for solving algo-trading tasks. Some basic work on shaping of later is done. Three advantage
