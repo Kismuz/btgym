@@ -4,8 +4,8 @@
 
 Developmnet code 4.6 as of 24.11.17:
 
-- **[A3C_4_6](./a3c_random_on_synth_or_real_data_4_6.ipynb)**: A3C demo on synthetic or real financial data 
-- **[UNREAL_4_6](./unreal_random_on_synth_or_real_data_4_6.ipynb)**: UNREAL/PPO demo on synthetic or real financial data
+- **[A3C_4_6](./a3c_random_on_synth_or_real_data_4_6.ipynb)**: A3C demo on synthetic or real historic data 
+- **[UNREAL_4_6](./unreal_random_on_synth_or_real_data_4_6.ipynb)**: UNREAL/PPO demo on synthetic or real historic data
 
 [<img src="./img/2017-11-23_12.52.26.png" width="400">](./img/2017-11-23_12.52.26.png) [<img src="./img/2017-11-24_18.37.50.png" width="400">](./img/2017-11-24_18.37.50.png) 
 

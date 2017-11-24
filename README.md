@@ -270,7 +270,7 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  
  
 ### <a name="news"></a>[News and updates:](#title)
-- 24.11.17: A3C/UNREAL finally adapted to work with BTGym envirionments.
+- 24.11.17: A3C/UNREAL finally adapted to work with BTGym environments.
     - Examples with synthetic simple data(sine wawe) and historic financial data added,
       see [examples directory](./examples/);
     - Results on potential-based functions reward shaping in `/research/DevStartegy_4_6`;
