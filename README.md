@@ -107,10 +107,10 @@ Maximum environment flexibility is achieved by explicitly defining and passing `
 ```python
 from gym import spaces
 import backtrader as bt
-from btgym import BTgymDataset, BTgymStrategy, BTgymEnv
+from btgym import BTgymDataset, BTgymBaseStrategy, BTgymEnv
  
 MyCerebro = bt.Cerebro()
-MyCerebro.addstrategy(BTgymStrategy,
+MyCerebro.addstrategy(BTgymBaseStrategy,
                       state_shape={'raw_state': spaces.Box(low=0,high=1,shape=(20,4))},
                       skip_frame=5,
                       state_low=None,
