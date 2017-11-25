@@ -5,6 +5,7 @@ from btgym.strategy.base import BTgymBaseStrategy
 from btgym.strategy.utils import tanh, abs_norm_ratio
 
 from gym import spaces
+from btgym import DictSpace
 
 """
 Research grade code. Can be unstable, buggy, poor performing and generally is subject to change.
@@ -37,7 +38,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
             {
                 'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3)),
                 'internal': spaces.Box(low=-2, high=2, shape=(time_dim, 1, 5)),
-                'metadata': spaces.Dict(
+                'metadata': DictSpace(
                     {
                         'trial_num': spaces.Box(
                             shape=(),
