@@ -30,6 +30,8 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
 Installation
 ------------
 
+It is highly recommended to run BTGym in designated virtual environment.
+
 Clone or copy btgym repository to local disk, cd to it and run: `pip install -e .` to install package and all dependencies::
 
     git clone https://github.com/Kismuz/btgym.git
@@ -46,6 +48,11 @@ To update to latest version::
 
     pip install --upgrade -e .
 
+Note:
+    BTGym requres Matplotlib version 2.0.2, downgrade your installation if you have version 2.1::
+
+        pip install matplotlib==2.0.2
+
 Quickstart
 ----------
 
@@ -60,9 +67,7 @@ Adding more controls may look like::
     from btgym import BTgymEnv
 
     MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
-                             episode_len_days=2,
-                             episode_len_hours=23,
-                             episode_len_minutes=55,
+                             episode_duration={'days': 2, 'hours': 23, 'minutes': 55},
                              drawdown_call=50,
                              state_shape=(4,20),
                              port=5555,
@@ -76,9 +81,7 @@ Same one but registering environment in Gym preferred way::
     from btgym import BTgymEnv
 
     env_params = dict(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
-                      episode_len_days=2,
-                      episode_len_hours=23,
-                      episode_len_minutes=55,
+                      episode_duration={'days': 2, 'hours': 23, 'minutes': 55},
                       drawdown_call=50,
                       state_shape=(20,4),
                       port=5555,
@@ -94,7 +97,7 @@ Maximum environment flexibility is achieved by explicitly defining and passing `
 
     from gym import spaces
     import backtrader as bt
-    from btgym import BTgymDataset, BTgymStrategy, BTgymEnv
+    from btgym import BTgymDataset, BTgymBaseStrategy, BTgymEnv
 
     MyCerebro = bt.Cerebro()
     MyCerebro.addstrategy(BTgymStrategy,
@@ -113,11 +116,8 @@ Maximum environment flexibility is achieved by explicitly defining and passing `
     MyDataset = BTgymDataset(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
                              start_weekdays=[0, 1, 2, 4],
                              start_00=True,
-                             episode_len_days=0,
-                             episode_len_hours=23,
-                             episode_len_minutes=55,
-                             time_gap_days=0,
-                             time_gap_hours=5,
+                             episode_duration={'days': 0, 'hours': 23, 'minutes': 55},
+                             time_gap={'hours': 5},
                              )
 
     MyEnvironment = BTgymEnv(dataset=MyDataset,

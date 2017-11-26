@@ -72,7 +72,7 @@ class DrawCerebro(multiprocessing.Process):
                                 iplot=False,
                                 figfilename='_tmp_btgym_render.png',
                                )[0][0]
-
+        #fig.canvas.draw()
         rgb_string = fig.canvas.tostring_rgb()
         rgb_shape = fig.canvas.get_width_height()[::-1] + (3,)
         rgb_array = np.fromstring(rgb_string, dtype=np.uint8, sep='')
