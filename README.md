@@ -60,7 +60,7 @@ To update to latest version::
 
     pip install --upgrade -e .
 
-###### Note:
+##### Note:
 BTGym requres Matplotlib version 2.0.2, downgrade your installation if you have version 2.1:
 
     pip install matplotlib==2.0.2
@@ -87,9 +87,9 @@ MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv
                          )
 ```
 
-###### See more options at [Documentation: Quickstart >>](https://kismuz.github.io/btgym/intro.html#quickstart)
+##### See more options at [Documentation: Quickstart >>](https://kismuz.github.io/btgym/intro.html#quickstart)
 
-###### and how-to's in [Examples directory >>](./examples).
+##### and how-to's in [Examples directory >>](./examples).
 ****
 ### <a name="description"></a> [General description](#contents)
 #### <a name="problem"></a> Problem setting
@@ -181,18 +181,17 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
 
 ****
 ### <a name="issues"></a> [Current issues and limitations:](#title)
-
+- requres Matplotlib version 2.0.2;
 - matplotlib backend warning: appears when importing pyplot and using `%matplotlib inline` magic
   before btgym import. It's recommended to import btacktrader and btgym first to ensure proper backend
-  choice.
+  choice;
 - not tested with Python < 3.5;
-- doesn't seem to work under Windows;
+- doesn't seem to work correctly under Windows;
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
 - no built-in dataset splitting to training/cv/testing subsets;
 - only one equity/currency pair can be traded;
 - ~~no 'skip-frames' implementation within environment;~~ done
-- env.get_stat() method is returning strategy analyzers results only. No observers yet.
 - ~~no plotting features, except if using pycharm integration observer.~~
     ~~Not sure if it is suited for intraday strategies.~~ [partially] done
 - ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ fixed 
