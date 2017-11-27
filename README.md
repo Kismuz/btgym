@@ -200,9 +200,9 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
 ### <a name="roadmap"></a> [TODO's and Road Map:](#title)
  - [x] refine logic for parameters applying priority (engine vs strategy vs kwargs vs defaults);
  - [X] API reference;
- - [ ] examples;
+ - [x] examples;
  - [x] frame-skipping feature;
- - [ ] dataset tr/cv/t splitting feature;
+ - [ ] dataset tr/cv/t approach IN PROGRESS;
  - [x] state rendering;
  - [ ] retrieving results for observers;
  - [x] proper rendering for entire episode;
@@ -213,6 +213,8 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  - [x] A3C implementation for BTgym;
  - [x] UNREAL implementation for BTgym;
  - [x] PPO implementation for BTgym;
+ - [ ] RL^2 / MAML / DARLA adaptations;
+ - [ ] learning from demonstrations;
  - [ ] risk-sensitive agents implementation;
  - [ ] sequential and sliding time-window sampling IN PROGRESS;
  - [ ] multiply instruments trading;
