@@ -33,7 +33,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
     """
     time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
     params = dict(
-        # Note fake `Width` dimension to use 2d conv etc.:
+        # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
             {
                 'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3)),

@@ -192,11 +192,11 @@ class Launcher():
         #    except:
         #        print('key: {} -- deepcopy failed!.'.format(k))
 
-        # TODO: Hacky, cause dataset is threadlocked; do pass dataset as class_ref + kwargs_dict:
+        # TODO: Hacky, cause dataset is threadlocked; do: pass dataset as class_ref + kwargs_dict:
         dataset_instance = self.env_config['kwargs'].pop('dataset')
 
         for key, spec_list in self.cluster_spec.items():
-            task_index = 0  # referenced further as worker id
+            task_index = 0  # referenced farther as worker id
             for _id in spec_list:
                 env_config = copy.deepcopy(self.env_config)
                 worker_config = {}

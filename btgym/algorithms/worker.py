@@ -137,32 +137,47 @@ class Worker(multiprocessing.Process):
             )
             self.log.debug('worker_{} tf.server started.'.format(self.task))
 
-            self.log.debug('making environment.')
+            self.log.debug('worker_{}: making environments:'.format(self.task))
             # Making as many environments as many entries in env_config `port` list:
+            # TODO: Hacky-II: only one example of parallel [all] environments can be data-master and renderer
+            # TODO: measure data_server lags, maybe launch several instances
             self.env_list = []
             env_kwargs = self.env_kwargs.copy()
             env_kwargs['log'] = self.log
             port_list = env_kwargs.pop('port')
+            data_master = env_kwargs.pop('data_master')
+            render_enabled = env_kwargs.pop('render_enabled')
 
             for port in port_list:
                 if not self.test_mode:
                     # Assume BTgym env. class:
-                    self.log.debug('worker_{} is data_master: {}'.format(self.task, self.env_kwargs['data_master']))
+                    self.log.debug('worker_{}, env @port_{} is data_master: {}'.format(self.task, port, data_master))
                     try:
-                        self.env_list.append(self.env_class(port=port, **env_kwargs))
+                        self.env_list.append(
+                            self.env_class(
+                                port=port,
+                                data_master=data_master,
+                                render_enabled=render_enabled,
+                                **env_kwargs
+                            )
+                        )
+                        data_master = False
+                        render_enabled = False
+                        self.log.debug('worker_{}: Set BTGym environment @port_{}.'.format(self.task, port))
 
                     except:
-                        raise SystemExit(' Worker_{} failed to make BTgym environment'.format(self.task))
+                        raise RuntimeError(' worker_{}: failed to make BTGym environment'.format(self.task))
 
                 else:
                     # Assume atari testing:
                     try:
                         self.env_list.append(self.env_class(env_kwargs['gym_id']))
+                        self.log.debug('worker_{}: Set Gyn/Atari environment.'.format(self.task))
 
                     except:
-                        raise SystemExit(' Worker_{} failed to make Gym environment'.format(self.task))
+                        raise SystemExit(' worker_{} failed to make Gym/Atari environment'.format(self.task))
 
-            self.log.debug('worker_{}:envronment ok.'.format(self.task))
+
 
             # Define trainer:
             trainer = self.trainer_class(

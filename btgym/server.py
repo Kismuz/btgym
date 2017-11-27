@@ -405,14 +405,14 @@ class BTgymServer(multiprocessing.Process):
                     if wait <= wait_for_data_reset:
                         time.sleep(2)
                         wait += 2
-                        self.log.warning(
+                        self.log.info(
                             'Dataset not ready, waiting time left: {} sec.'.format(wait_for_data_reset - wait)
                         )
                     else:
                         data_server_response = self._comm_with_timeout(
                             socket=data_socket,
                             message={'ctrl': '_stop'},
-                            timeout=self.connect_timeout,
+                            timeout=5,
                         )
                         socket.close()
                         context.destroy()

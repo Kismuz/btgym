@@ -13,7 +13,7 @@ Documentation and community:
 https://gym.openai.com/
 ****
 ### <a name="outline"></a>Outline:
-General purpose of this wrapper is to provide gym-integrated framework for
+General purpose of this project is to provide gym-integrated framework for
 running reinforcement learning experiments 
 in [close to] real world algorithmic trading environments.
 
@@ -21,11 +21,14 @@ in [close to] real world algorithmic trading environments.
 
 ```
 DISCLAIMER:
-This package is neither out-of-the-box-moneymaker, nor it provides ready-to-converge RL solutions.
-Rather, it is framework for setting experiments with complex, non stationary, time-series based environments.
-I have no idea what kind of algorithm and setup will solve it [if any]. Explore on your own!
+Code presented here is research/development grade.
+Can be unstable, buggy, poor performing and is subject to change.
+
+Note that this package is neither out-of-the-box-moneymaker, nor it provides ready-to-converge RL solutions.
+Think of it as framework for setting experiments with complex, non stationary, time-series based environments.
+I have no idea what kind of algorithm and setup will solve it [if any]. This is work in progress.
 ```
-###### This work is in early development stage. Expect some surprises.
+
 ****
 ### <a name="contents"></a>Contents
 - [Installation](#install)
