@@ -224,6 +224,11 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  
  
 ### <a name="news"></a>[News and updates:](#title)
+- 29.11.17: Basic meta-learning RL^2 functionality implemented.
+    - See [Trial_Iterator Class](https://kismuz.github.io/btgym/btgym.html#btgym.datafeed.BTgymRandomTrial) and
+    [RL^2 policy](https://kismuz.github.io/btgym/btgym.html#btgym.research.policy_rl2.AacRL2Policy) for description.
+    - Effectiveness is not tested yet, examples are to follw.
+
 - 24.11.17: A3C/UNREAL finally adapted to work with BTGym environments.
     - Examples with synthetic simple data(sine wawe) and historic financial data added,
       see [examples directory](./examples/);
