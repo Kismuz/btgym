@@ -14,7 +14,6 @@ BTGym DOCs
 Environment API reference
 =========================
 
-
 .. toctree::
     :maxdepth: 2
 
@@ -38,6 +37,16 @@ Deep RL algorithms integrated with BTgym : A3C, UNREAL, PPO.
 
 .. toctree::
     :maxdepth: 2
+
+Experimental code API reference
+===============================
+Research grade code. Can be unstable, buggy, poor performing and generally is subject to change.
+
+.. toctree::
+    :maxdepth: 2
+
+    btgym.research
+
 
 Indices and tables
 ==================

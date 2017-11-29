@@ -108,6 +108,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.algorithms.html">btgym.algorithms package</a></li>
 </ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../btgym.research.html">btgym.research package</a></li>
+</ul>
 
             
           
@@ -578,14 +581,14 @@
                     <span class="k">if</span> <span class="n">wait</span> <span class="o">&lt;=</span> <span class="n">wait_for_data_reset</span><span class="p">:</span>
                         <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
                         <span class="n">wait</span> <span class="o">+=</span> <span class="mi">2</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
                             <span class="s1">&#39;Dataset not ready, waiting time left: </span><span class="si">{}</span><span class="s1"> sec.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">wait_for_data_reset</span> <span class="o">-</span> <span class="n">wait</span><span class="p">)</span>
                         <span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
                             <span class="n">socket</span><span class="o">=</span><span class="n">data_socket</span><span class="p">,</span>
                             <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_stop&#39;</span><span class="p">},</span>
-                            <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span><span class="p">,</span>
+                            <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
                         <span class="p">)</span>
                         <span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
                         <span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>

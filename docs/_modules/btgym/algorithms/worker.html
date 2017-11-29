@@ -108,6 +108,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.algorithms.html">btgym.algorithms package</a></li>
 </ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.research.html">btgym.research package</a></li>
+</ul>
 
             
           
@@ -310,32 +313,47 @@
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1"> tf.server started.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;making environment.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">: making environments:&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
             <span class="c1"># Making as many environments as many entries in env_config `port` list:</span>
+            <span class="c1"># TODO: Hacky-II: only one example of parallel [all] environments can be data-master and renderer</span>
+            <span class="c1"># TODO: measure data_server lags, maybe launch several instances</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="n">env_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
             <span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;log&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span>
             <span class="n">port_list</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;port&#39;</span><span class="p">)</span>
+            <span class="n">data_master</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;data_master&#39;</span><span class="p">)</span>
+            <span class="n">render_enabled</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;render_enabled&#39;</span><span class="p">)</span>
 
             <span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">port_list</span><span class="p">:</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
                     <span class="c1"># Assume BTgym env. class:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1"> is data_master: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;data_master&#39;</span><span class="p">]))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">, env @port_</span><span class="si">{}</span><span class="s1"> is data_master: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">data_master</span><span class="p">))</span>
                     <span class="k">try</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="o">**</span><span class="n">env_kwargs</span><span class="p">))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span>
+                                <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span>
+                                <span class="n">data_master</span><span class="o">=</span><span class="n">data_master</span><span class="p">,</span>
+                                <span class="n">render_enabled</span><span class="o">=</span><span class="n">render_enabled</span><span class="p">,</span>
+                                <span class="o">**</span><span class="n">env_kwargs</span>
+                            <span class="p">)</span>
+                        <span class="p">)</span>
+                        <span class="n">data_master</span> <span class="o">=</span> <span class="kc">False</span>
+                        <span class="n">render_enabled</span> <span class="o">=</span> <span class="kc">False</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">: Set BTGym environment @port_</span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
 
                     <span class="k">except</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39; Worker_</span><span class="si">{}</span><span class="s1"> failed to make BTgym environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+                        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39; worker_</span><span class="si">{}</span><span class="s1">: failed to make BTGym environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
 
                 <span class="k">else</span><span class="p">:</span>
                     <span class="c1"># Assume atari testing:</span>
                     <span class="k">try</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span><span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;gym_id&#39;</span><span class="p">]))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">: Set Gyn/Atari environment.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
 
                     <span class="k">except</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39; Worker_</span><span class="si">{}</span><span class="s1"> failed to make Gym environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+                        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39; worker_</span><span class="si">{}</span><span class="s1"> failed to make Gym/Atari environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">:envronment ok.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+
 
             <span class="c1"># Define trainer:</span>
             <span class="n">trainer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span><span class="p">(</span>

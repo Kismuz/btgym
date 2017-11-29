@@ -207,8 +207,9 @@ class BaseAacPolicy(object):
         if self.aux_estimate:
             self.callback['pixel_change'] = self.get_pc_target
 
-    def get_initial_features(self):
-        """Returns initial context.
+    def get_initial_features(self, **kwargs):
+        """
+        Returns initial context.
 
         Returns:
             LSTM zero-state tuple.
@@ -334,7 +335,7 @@ class Aac1dPolicy(BaseAacPolicy):
 
 class __Aac1dPolicy(BaseAacPolicy):
     """
-    DEVELOPMENT: AAC policy for one-dimensional signal obs. state.
+    DEPRECATED: AAC policy for one-dimensional signal obs. state.
     """
 
     def __init__(self,

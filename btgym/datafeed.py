@@ -591,7 +591,7 @@ class BTgymSequentialTrial(BTgymDataset):
         episode.metadata['sample_num'] = self.sample_num
         return episode
 
-    def reset(self, global_step=0, total_steps=10000000, skip_frame=10):
+    def reset(self, global_step=0, total_steps=None, skip_frame=10):
         """
         [Re]starts sampling iterator from specified position.
 
@@ -607,11 +607,15 @@ class BTgymSequentialTrial(BTgymDataset):
             self.read_csv()
 
         # Total gym-environment steps and step training starts with:
-        self.total_steps = total_steps
-        self.global_step = global_step
+        if total_steps is not None:
+            self.total_steps = total_steps
+            self.global_step = global_step
+            assert self.global_step < self.total_steps, 'Outer space jumps not supported. Got: global_step={} of {}.'.\
+                format(self.global_step, self.total_steps)
 
-        assert self.global_step < self.total_steps, 'Outer space jumps not supported. Got: global_step={} [of {}].'.\
-            format(self.global_step, self.total_steps)
+        else:
+            self.global_step = 0
+            self.total_steps = -1
 
         # Infer cardinality of distribution over Trials:
         self.total_trials = int((self.data_range_delta - self.trial_range_delta) / self.trial_stride_delta)
@@ -619,9 +623,15 @@ class BTgymSequentialTrial(BTgymDataset):
         assert self.total_trials > 0, 'Trial`s cardinality below 1. Hint: check data parameters consistency.'
 
         # Number of samples to draw from each Trial distribution:
-        self.samples_per_trial = int(self.total_steps / (self.total_trials * self.episode_num_records / skip_frame))
+        if self.total_steps > 0:
+            self.samples_per_trial = int(self.total_steps / (self.total_trials * self.episode_num_records / skip_frame))
+
+        else:
+            self.log.warning('`reset_data()` got total_steps=None -> samples_per_trial={}, iterating from 0'.
+                             format(self.samples_per_trial))
 
         assert self.samples_per_trial > 0, 'Number of samples per trial below 1. Hint: check parameters consistency.'
+
         # Current trial to start with:
         self.trial_num = int(self.total_trials * self.global_step / self.total_steps)
 
@@ -632,7 +642,6 @@ class BTgymSequentialTrial(BTgymDataset):
         self.trial_stride_row = int(self.data.shape[0] * (self.trial_stride_delta / self.data_range_delta))
 
         self.sample_num = 0
-        #self.sample_rnd_num = 0
 
         # Mean of first Trial:
         self.trial_mean_row = int(self.trial_range_row / 2) + self.trial_stride_row * self.trial_num

@@ -143,12 +143,18 @@ class BTgymRendering():
             state = np.asarray(state[mode])
 
         elif len(state[mode].shape) == 3:
-            state = np.asarray(state[mode][:, :, self.render_state_channel])
+            if state[mode].shape[1] == 1:
+                # Assume 2nd dim (H) is fake expansion for 1D input, so can render all channels:
+                state = np.asarray(state[mode][:, 0, :])
+
+            else:
+                # Assume it is HWC 2D input, only can render single channel:
+                state = np.asarray(state[mode][:, :, self.render_state_channel])
 
         else:
             raise NotImplementedError(
                 '2D rendering can be done for obs. state tensor with rank <= 3; ' +\
-                'state shape received: {}'.format(np.asarray(state[mode]).shape))
+                'got state shape: {}'.format(np.asarray(state[mode]).shape))
 
         # Figure out how to deal with info output:
         try:

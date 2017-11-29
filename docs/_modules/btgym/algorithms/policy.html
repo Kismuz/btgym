@@ -108,6 +108,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.algorithms.html">btgym.algorithms package</a></li>
 </ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.research.html">btgym.research package</a></li>
+</ul>
 
             
           
@@ -380,8 +383,9 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_estimate</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">[</span><span class="s1">&#39;pixel_change&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pc_target</span>
 
-<div class="viewcode-block" id="BaseAacPolicy.get_initial_features"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.policy.BaseAacPolicy.get_initial_features">[docs]</a>    <span class="k">def</span> <span class="nf">get_initial_features</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Returns initial context.</span>
+<div class="viewcode-block" id="BaseAacPolicy.get_initial_features"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.policy.BaseAacPolicy.get_initial_features">[docs]</a>    <span class="k">def</span> <span class="nf">get_initial_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns initial context.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            LSTM zero-state tuple.</span>
@@ -507,7 +511,7 @@
 
 <span class="k">class</span> <span class="nc">__Aac1dPolicy</span><span class="p">(</span><span class="n">BaseAacPolicy</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    DEVELOPMENT: AAC policy for one-dimensional signal obs. state.</span>
+<span class="sd">    DEPRECATED: AAC policy for one-dimensional signal obs. state.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>

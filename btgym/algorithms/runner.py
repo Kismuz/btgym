@@ -141,7 +141,7 @@ def env_runner(sess,
         memory = _DummyMemory()
 
     last_state = env.reset()
-    last_context = policy.get_initial_features()
+    last_context = policy.get_initial_features(state=last_state)
     length = 0
     local_episode = 0
     reward_sum = 0
@@ -168,8 +168,6 @@ def env_runner(sess,
 
         # argmax to convert from one-hot:
         state, reward, terminal, info = env.step(action.argmax())
-        #if not test:
-        #    state = state['model_input']
 
         # Partially collect first experience of rollout:
         last_experience = {
@@ -181,7 +179,6 @@ def env_runner(sess,
             'terminal': terminal,
             'context': last_context,
             'last_action_reward': last_action_reward,
-            #'pixel_change': 0 #policy.get_pc_target(state, last_state),
         }
         # Execute user-defined callbacks to policy, if any:
         for key, callback in policy.callback.items():
@@ -287,10 +284,7 @@ def env_runner(sess,
 
                 # New episode:
                 last_state = env.reset()
-                #if not test:
-                #    last_state = last_state['model_input']
-
-                last_context = policy.get_initial_features()
+                last_context = policy.get_initial_features(state=last_state, context=last_context)
                 length = 0
                 reward_sum = 0
                 last_action = np.zeros(env.action_space.n)

@@ -108,6 +108,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.algorithms.html">btgym.algorithms package</a></li>
 </ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.research.html">btgym.research package</a></li>
+</ul>
 
             
           
@@ -365,11 +368,11 @@
         <span class="c1">#    except:</span>
         <span class="c1">#        print(&#39;key: {} -- deepcopy failed!.&#39;.format(k))</span>
 
-        <span class="c1"># TODO: Hacky, cause dataset is threadlocked; do pass dataset as class_ref + kwargs_dict:</span>
+        <span class="c1"># TODO: Hacky, cause dataset is threadlocked; do: pass dataset as class_ref + kwargs_dict:</span>
         <span class="n">dataset_instance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;dataset&#39;</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">spec_list</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">task_index</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># referenced further as worker id</span>
+            <span class="n">task_index</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># referenced farther as worker id</span>
             <span class="k">for</span> <span class="n">_id</span> <span class="ow">in</span> <span class="n">spec_list</span><span class="p">:</span>
                 <span class="n">env_config</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">)</span>
                 <span class="n">worker_config</span> <span class="o">=</span> <span class="p">{}</span>

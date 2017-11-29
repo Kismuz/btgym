@@ -108,6 +108,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.algorithms.html">btgym.algorithms package</a></li>
 </ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.research.html">btgym.research package</a></li>
+</ul>
 
             
           
@@ -316,12 +319,18 @@
             <span class="n">state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">])</span>
 
         <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
-            <span class="n">state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">][:,</span> <span class="p">:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_state_channel</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># Assume 2nd dim (H) is fake expansion for 1D input, so can render all channels:</span>
+                <span class="n">state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:])</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Assume it is HWC 2D input, only can render single channel:</span>
+                <span class="n">state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">][:,</span> <span class="p">:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_state_channel</span><span class="p">])</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
                 <span class="s1">&#39;2D rendering can be done for obs. state tensor with rank &lt;= 3; &#39;</span> <span class="o">+</span>\
-                <span class="s1">&#39;state shape received: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">])</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+                <span class="s1">&#39;got state shape: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="n">mode</span><span class="p">])</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
 
         <span class="c1"># Figure out how to deal with info output:</span>
         <span class="k">try</span><span class="p">:</span>
