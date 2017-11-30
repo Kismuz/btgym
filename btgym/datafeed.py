@@ -338,7 +338,7 @@ class BTgymDataset:
             return 'Data not ready. Call .reset() first.'
 
         episode = self._sample_random()
-        episode.metadata['type'] = 'random_sample'
+        episode.metadata['type'] = False  # always `train`
         episode.metadata['trial_num'] = False
         episode.metadata['sample_num'] = False
         return episode
@@ -521,17 +521,19 @@ class BTgymSequentialTrial(BTgymDataset):
 
     For this class, `Trials` are sampled in ordered `sliding timewindow` rather than random fashion.
     """
-    trial_params =dict(
+    trial_params = dict(
         # Trial-sampling params:
-        trial_range=dict(  # Trial time range in days, hours, minutes:
+        train_range=dict(  # Trial time range in days, hours, minutes:
             days=7,
             hours=0,
         ),
-        trial_stride=dict(
+        test_range=dict(  # Test time period in days, hours, minutes:
             days=7,
             hours=0,
         ),
-        samples_per_trial=0
+        train_samples=0,
+        test_samples=0,
+        trial_start_00=True
     )
 
     def __init__(self, **kwargs):
@@ -540,6 +542,8 @@ class BTgymSequentialTrial(BTgymDataset):
             kwargs:         BTgymDataset specific kwargs.
             trial_range:    dict. containing `Trial` support interval (time range) in: `days`[, `hours`][, `minutes`].
             trial_stride:   dict. containing stride interval between `Trials` in: `days`[, `hours`][, `minutes`].
+            test_range:
+            samples_per_test:
 
         Note:
             - Total number of `Trials` is inferred upon trial_params given and overall dataset size.
@@ -550,17 +554,22 @@ class BTgymSequentialTrial(BTgymDataset):
         super(BTgymSequentialTrial, self).__init__(**kwargs)
 
         # Timedeltas:
-        self.trial_range_delta = datetime.timedelta(**self.trial_range)
-        self.trial_stride_delta = datetime.timedelta(**self.trial_stride)
+        self.train_range_delta = datetime.timedelta(**self.train_range)
+        self.test_range_delta = datetime.timedelta(**self.test_range)
 
-        self.trial_range_row = 0
-        self.trial_stride_row = 0
-        self.trial_mean_row = 0
+        self.train_range_row = 0
+        self.test_range_row = 0
+        self.train_mean_row = 0
+
+        self.test_range_row = 0
+        self.test_mean_row = 0
+
         self.global_step = 0
         self.total_steps = 0
         self.total_trials = 0
         self.trial_num = 0
-        self.sample_num = 0
+        self.train_sample_num = 0
+        self.test_sample_num = 0
 
     def sample(self, **kwargs):
         """
@@ -585,10 +594,10 @@ class BTgymSequentialTrial(BTgymDataset):
         except AssertionError:
             return 'Data not ready. Call .reset() first.'
 
-        episode = self._trial_sample_sequential()
-        episode.metadata['type'] = 'sequential_trial_sample'
-        episode.metadata['trial_num'] = self.trial_num
-        episode.metadata['sample_num'] = self.sample_num
+        episode, trial_num, type, sample_num = self._trial_sample_sequential()
+        episode.metadata['type'] = type  # 0 - train, 1 - test
+        episode.metadata['trial_num'] = trial_num
+        episode.metadata['sample_num'] = sample_num
         return episode
 
     def reset(self, global_step=0, total_steps=None, skip_frame=10):
@@ -617,76 +626,138 @@ class BTgymSequentialTrial(BTgymDataset):
             self.global_step = 0
             self.total_steps = -1
 
+        # Trial train support interval in number of records:
+        self.train_range_row = int( self.train_range_delta.total_seconds() / (self.timeframe * 60))
+
+        # Trial test support interval in number of records:
+        self.test_range_row = int( self.test_range_delta.total_seconds() / (self.timeframe * 60))
+
         # Infer cardinality of distribution over Trials:
-        self.total_trials = int((self.data_range_delta - self.trial_range_delta) / self.trial_stride_delta)
+
+        self.total_trials = int(
+            (self.data.shape[0] - self.train_range_row - self.test_range_row) / self.test_range_row
+        )
 
         assert self.total_trials > 0, 'Trial`s cardinality below 1. Hint: check data parameters consistency.'
 
-        # Number of samples to draw from each Trial distribution:
+        # Infer number of train samples to draw from each Trial distribution:
         if self.total_steps > 0:
-            self.samples_per_trial = int(self.total_steps / (self.total_trials * self.episode_num_records / skip_frame))
+            self.train_samples = int(self.total_steps / (self.total_trials * self.episode_num_records / skip_frame))
 
         else:
-            self.log.warning('`reset_data()` got total_steps=None -> samples_per_trial={}, iterating from 0'.
-                             format(self.samples_per_trial))
+            self.log.warning('`reset_data()` got total_steps=None -> train_samples={}, iterating from 0'.
+                             format(self.train_samples))
 
-        assert self.samples_per_trial > 0, 'Number of samples per trial below 1. Hint: check parameters consistency.'
+        assert self.train_samples > 0, 'Number of train samples per trial below 1. Hint: check parameters consistency.'
+        assert self.test_samples > 0, 'Number of test samples per trial below 1. Hint: check parameters consistency.'
 
         # Current trial to start with:
         self.trial_num = int(self.total_trials * self.global_step / self.total_steps)
 
-        # Trial support interval in number of records:
-        self.trial_range_row = int(self.data.shape[0] * (self.trial_range_delta / self.data_range_delta))
+        #print('self.train_range_delta:', self.train_range_delta.total_seconds())
+        #print('self.train_range_row:', self.train_range_row)
+        #print('self.test_range_delta:', self.test_range_delta)
 
-        # Sequential step size:
-        self.trial_stride_row = int(self.data.shape[0] * (self.trial_stride_delta / self.data_range_delta))
+        self.train_sample_num = 0
+        self.test_sample_num = 0
 
-        self.sample_num = 0
+        # Mean of first train-Trial:
+        self.train_mean_row = int(self.train_range_row / 2) + self.test_range_row * self.trial_num
+        #print('self.train_mean_row:', self.train_mean_row)
 
-        # Mean of first Trial:
-        self.trial_mean_row = int(self.trial_range_row / 2) + self.trial_stride_row * self.trial_num
+        # If trial_start_00 option set, get index of first record of that day:
+        if self.trial_start_00:
+            train_first_row = self.train_mean_row - int(self.train_range_row / 2) + 1
+            train_first_day = self.data[train_first_row:train_first_row + 1].index[0]
+            self.train_mean_row = self.data.index.get_loc(train_first_day.date(), method='nearest') + \
+                                  int(self.train_range_row / 2)
+            self.log.warning('Trial train start time adjusted to <00:00>')
+
+        # Mean of first test-Trial:
+        self.test_mean_row = self.train_mean_row + int((self.train_range_row + self.test_range_row) / 2) + 1
+        #print('self.test_mean_row:', self.test_mean_row)
 
         self.log.warning(
-            '\nTrial interval: {}; stride: {}.\nTrials cardinality: {}; iterating from: {}.\nEpisodes per trial: {}.\n'.
-            format(
-                self.trial_range_delta,
-                self.trial_stride_delta,
+            (
+                '\nTrial train interval: {}; test interval: {}.' +
+                '\nTrials cardinality: {}; iterating from: {}.' +
+                '\nTrain episodes per trial: {}; test episodes per trial: {}'
+            ).format(
+                self.train_range_delta,
+                self.test_range_delta,
                 self.total_trials,
                 self.trial_num,
-                self.samples_per_trial
+                self.train_samples,
+                self.test_samples
             )
         )
         self.log.warning(
-            'Trial #{} @ interval: {} <--> {}'.
+            'Trial #{}:\nTraining @: {} <--> {};\nTesting  @: {} <--> {}'.
             format(
                 self.trial_num,
-                self.data.index[self.trial_mean_row - int(self.trial_range_row / 2)],
-                self.data.index[self.trial_mean_row + int(self.trial_range_row / 2)]
+                self.data.index[self.train_mean_row - int(self.train_range_row / 2)],
+                self.data.index[self.train_mean_row + int(self.train_range_row / 2)],
+                self.data.index[self.test_mean_row - int(self.test_range_row / 2)],
+                self.data.index[self.test_mean_row + int(self.test_range_row / 2)],
+            )
+        )
+        self.log.debug(
+            'Trial #{} rows: training @: {} <--> {}; testing @: {} <--> {}'.
+            format(
+                self.trial_num,
+                self.train_mean_row - int(self.train_range_row / 2),
+                self.train_mean_row + int(self.train_range_row / 2),
+                self.test_mean_row - int(self.test_range_row / 2),
+                self.test_mean_row + int(self.test_range_row / 2),
             )
         )
         self.is_ready = True
 
     def _trial_sample_sequential(self):
-        if self.sample_num >= self.samples_per_trial:
-            self.trial_num += 1
-            self.sample_num = 0
-            self.trial_mean_row += self.trial_stride_row
+        # Have we done with training?
+        if self.train_sample_num >= self.train_samples:
+            # Have we done with testing?
+            if self.test_sample_num >= self.test_samples:
+                self.trial_num += 1
+                self.train_sample_num = 0
+                self.test_sample_num = 0
+                self.train_mean_row += self.test_range_row
+                assert self.trial_num <= self.total_trials, 'Trial`s sequence exhausted.'  # Todo: self.ready = False
 
-            assert self.trial_num <= self.total_trials, 'Trial`s sequence exhausted.'
-            # Todo: self.ready = False
+                # If trial_start_00 option set, get index of first record of that day:
+                if self.trial_start_00:
+                    train_first_row = self.train_mean_row - int(self.train_range_row / 2) + 1
+                    train_first_day = self.data[train_first_row:train_first_row + 1].index[0]
+                    #print('adj_train_first_day:', train_first_day)
+                    self.train_mean_row = self.data.index.get_loc(train_first_day.date(), method='nearest') + \
+                                          int(self.train_range_row / 2)
+                    #self.log.warning('Trial train start time adjusted to <00:00> :{}'.format(self.train_mean_row))
+                self.test_mean_row = self.train_mean_row + int((self.train_range_row + self.test_range_row) / 2) + 1
 
-            self.log.warning(
-                'Trial #{}: from {} to {}'.
-                format(
-                    self.trial_num,
-                    self.data.index[self.trial_mean_row - int(self.trial_range_row / 2)],
-                    self.data.index[self.trial_mean_row + int(self.trial_range_row / 2)]
+                self.log.warning(
+                    'Trial #{}:\nTraining @: {} <--> {};\nTesting  @: {} <--> {}'.
+                    format(
+                        self.trial_num,
+                        self.data.index[self.train_mean_row - int(self.train_range_row / 2)],
+                        self.data.index[self.train_mean_row + int(self.train_range_row / 2)],
+                        self.data.index[self.test_mean_row - int(self.test_range_row / 2)],
+                        self.data.index[self.test_mean_row + int(self.test_range_row / 2)],
+                    )
                 )
-            )
-        self.sample_num += 1
-        self.log.debug('Trial sample #{}'.format(self.sample_num))
+            else:
+                self.test_sample_num +=1
+                self.log.debug('Test sample #{}'.format(self.test_sample_num))
+                return self._sample_position(
+                    position=self.test_mean_row,
+                    tolerance=int(self.test_range_row / 2)
+                ), self.trial_num, True , self.test_sample_num
 
-        return self._sample_position(position=self.trial_mean_row, tolerance=int(self.trial_range_row / 2))
+        self.train_sample_num += 1
+        self.log.debug('Trial sample #{}'.format(self.train_sample_num))
+        return self._sample_position(
+            position=self.train_mean_row,
+            tolerance=int(self.train_range_row / 2)
+        ), self.trial_num, False, self.train_sample_num
 
 
 class BTgymRandomTrial(BTgymSequentialTrial):
@@ -748,7 +819,7 @@ class BTgymRandomTrial(BTgymSequentialTrial):
             self.read_csv()
 
         # Infer cardinality of distribution over Trials:
-        self.total_trials = int((self.data_range_delta - self.trial_range_delta) / self.trial_stride_delta)
+        self.total_trials = int((self.data_range_delta - self.train_range_delta) / self.test_range_delta)
 
         assert self.total_trials > 0, 'Trial`s cardinality below 1. Hint: check data parameters consistency.'
 
@@ -756,10 +827,10 @@ class BTgymRandomTrial(BTgymSequentialTrial):
         self.trial_num = 0
 
         # Trial support interval in number of records:
-        self.trial_range_row = int(self.data.shape[0] * (self.trial_range_delta / self.data_range_delta))
+        self.trial_range_row = int(self.data.shape[0] * (self.train_range_delta / self.data_range_delta))
 
         # Sequential step size:
-        self.trial_stride_row = int(self.data.shape[0] * (self.trial_stride_delta / self.data_range_delta))
+        self.trial_stride_row = int(self.data.shape[0] * (self.test_range_delta / self.data_range_delta))
 
         self.sample_num = 0
 
@@ -770,10 +841,10 @@ class BTgymRandomTrial(BTgymSequentialTrial):
         self.log.warning(
             '\nTrial support interval: {}; mean stride: {}\nTrials cardinality: {}\nEpisodes per trial: {}.\n'.
                 format(
-                self.trial_range_delta,
-                self.trial_stride_delta,
+                self.train_range_delta,
+                self.test_range_delta,
                 self.total_trials,
-                self.samples_per_trial
+                self.train_samples
             )
         )
         self.log.warning(
@@ -814,13 +885,13 @@ class BTgymRandomTrial(BTgymSequentialTrial):
         episode = self._trial_sample_random()
 
         # Metadata:
-        episode.metadata['type'] = 'random_trial_sample'
+        episode.metadata['type'] = False # Always `train`
         episode.metadata['trial_num'] = self.trial_num
         episode.metadata['sample_num'] = self.sample_num
         return episode
 
     def _trial_sample_random(self):
-        if self.sample_num >= self.samples_per_trial:
+        if self.sample_num >= self.train_samples:
             self.trial_num += 1
             self.sample_num = 0
             self.trial_mean_row = int(self.trial_range_row / 2) +\

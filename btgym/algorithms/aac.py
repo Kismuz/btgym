@@ -462,34 +462,44 @@ class BaseAAC(object):
                 steps=tf.placeholder(tf.int32, ),
             )
             # Environmnet rendering:
-            self.ep_summary['render_op'] = tf.summary.merge(
+            self.ep_summary['btgym_render_op'] = tf.summary.merge(
                 [
                     tf.summary.image('human', self.ep_summary['render_human']),
                     tf.summary.image('model_input_external', self.ep_summary['render_model_input_ext']),
                     tf.summary.image('episode', self.ep_summary['render_episode']),
                 ],
-                name='render'
+                name='render_btgym'
             )
             # For Atari:
-            self.ep_summary['test_render_op'] = tf.summary.image("model/state", self.ep_summary['render_atari'])
+            self.ep_summary['atari_render_op'] = tf.summary.image("model/state", self.ep_summary['render_atari'])
 
             # Episode stat. summary:
-            self.ep_summary['stat_op'] = tf.summary.merge(
+            self.ep_summary['btgym_stat_op'] = tf.summary.merge(
                 [
-                    tf.summary.scalar('episode/total_reward', self.ep_summary['total_r']),
-                    tf.summary.scalar('episode/cpu_time_sec', self.ep_summary['cpu_time']),
-                    tf.summary.scalar('episode/final_value', self.ep_summary['final_value']),
-                    tf.summary.scalar('episode/env_steps', self.ep_summary['steps'])
+                    tf.summary.scalar('episode_train/total_reward', self.ep_summary['total_r']),
+                    tf.summary.scalar('episode_train/cpu_time_sec', self.ep_summary['cpu_time']),
+                    tf.summary.scalar('episode_train/final_value', self.ep_summary['final_value']),
+                    tf.summary.scalar('episode_train/env_steps', self.ep_summary['steps'])
                 ],
-                name='episode'
+                name='episode_train_btgym'
             )
-            self.ep_summary['test_stat_op'] = tf.summary.merge(
+            # Test episode stat. summary:
+            self.ep_summary['test_btgym_stat_op'] = tf.summary.merge(
+                [
+                    tf.summary.scalar('episode_test/total_reward', self.ep_summary['total_r']),
+                    tf.summary.scalar('episode_test/final_value', self.ep_summary['final_value']),
+                    tf.summary.scalar('episode_test/env_steps', self.ep_summary['steps'])
+                ],
+                name='episode_test_btgym'
+            )
+            self.ep_summary['atari_stat_op'] = tf.summary.merge(
                 [
                     tf.summary.scalar('episode/total_reward', self.ep_summary['total_r']),
                     tf.summary.scalar('episode/steps', self.ep_summary['steps'])
                 ],
                 name='episode_atari'
             )
+
             # Replay memory_config:
             if self.use_memory:
                 memory_config = dict(
@@ -802,10 +812,10 @@ class BaseAAC(object):
             if self.use_value_replay:
                 feed_dict.update(self.get_vr_feeder(off_policy_batch))
 
-        # Every worker writes episode and model summaries:
+        # Every worker writes train episode and model summaries:
         ep_summary_feeder = {}
 
-        # Collect episode summaries from all env runners:
+        # Collect train episode summaries from all env runners:
         for stat in data['ep_summary']:
             if stat is not None:
                 for key in stat.keys():
@@ -821,14 +831,34 @@ class BaseAAC(object):
 
             if self.test_mode:
                 # Atari:
-                fetched_episode_stat = sess.run(self.ep_summary['test_stat_op'], ep_summary_feed_dict)
+                fetched_episode_stat = sess.run(self.ep_summary['atari_stat_op'], ep_summary_feed_dict)
 
             else:
                 # BTGym
-                fetched_episode_stat = sess.run(self.ep_summary['stat_op'], ep_summary_feed_dict)
+                fetched_episode_stat = sess.run(self.ep_summary['btgym_stat_op'], ep_summary_feed_dict)
 
             self.summary_writer.add_summary(fetched_episode_stat, sess.run(self.global_episode))
             self.summary_writer.flush()
+
+        # Every worker writes test episode  summaries:
+        test_ep_summary_feeder = {}
+
+        # Collect test episode summaries:
+        for stat in data['test_ep_summary']:
+            if stat is not None:
+                for key in stat.keys():
+                    if key in ep_summary_feeder.keys():
+                        test_ep_summary_feeder[key] += [stat[key]]
+                    else:
+                        test_ep_summary_feeder[key] = [stat[key]]
+                        # Average values among thread_runners, if any, and write episode summary:
+            if test_ep_summary_feeder != {}:
+                test_ep_summary_feed_dict = {
+                    self.ep_summary[key]: np.average(list) for key, list in test_ep_summary_feeder.items()
+                }
+                fetched_test_episode_stat = sess.run(self.ep_summary['test_btgym_stat_op'], test_ep_summary_feed_dict)
+                self.summary_writer.add_summary(fetched_test_episode_stat, sess.run(self.global_episode))
+                self.summary_writer.flush()
 
         wirte_model_summary =\
             self.local_steps % self.model_summary_freq == 0
@@ -840,10 +870,10 @@ class BaseAAC(object):
                     self.ep_summary[key]: pic for key, pic in data['render_summary'][0].items()
                 }
                 if self.test_mode:
-                    renderings = sess.run(self.ep_summary['test_render_op'], render_feed_dict)
+                    renderings = sess.run(self.ep_summary['atari_render_op'], render_feed_dict)
 
                 else:
-                    renderings = sess.run(self.ep_summary['render_op'], render_feed_dict)
+                    renderings = sess.run(self.ep_summary['btgym_render_op'], render_feed_dict)
 
                 self.summary_writer.add_summary(renderings, sess.run(self.global_episode))
                 self.summary_writer.flush()

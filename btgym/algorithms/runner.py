@@ -104,7 +104,7 @@ def env_runner(sess,
                summary_writer,
                episode_summary_freq,
                env_render_freq,
-               test,
+               atari_test,
                ep_summary,
                memory_config):
     """
@@ -120,7 +120,7 @@ def env_runner(sess,
         rollout_length:         int
         episode_summary_freq:   int
         env_render_freq:        int
-        test:                   Atari or BTGyn
+        atari_test:             bool, Atari or BTGyn
         ep_summary:             dict of tf.summary op and placeholders
         memory_config:          replay memory configuration dictionary
 
@@ -129,14 +129,7 @@ def env_runner(sess,
     """
     if memory_config is not None:
         memory = memory_config['class_ref'](**memory_config['kwargs'])
-        """
-            history_size=memory_config['size'],
-            max_sample_size=rollout_length,
-            reward_threshold=memory_config['rp_reward_threshold'],
-            task=task,
-            log=None,
-            rollout_provider=None
-        """
+
     else:
         memory = _DummyMemory()
 
@@ -158,6 +151,7 @@ def env_runner(sess,
     total_steps_atari = []
 
     ep_stat = None
+    test_ep_stat = None
     render_stat = None
 
     while True:
@@ -199,7 +193,7 @@ def env_runner(sess,
 
                 # Argmax to convert from one-hot:
                 state, reward, terminal, info = env.step(action.argmax())
-                #if not test:
+                #if not atari_test:
                 #        state = state['model_input']
 
                 # Partially collect next experience:
@@ -240,38 +234,57 @@ def env_runner(sess,
                 # Accumulate values for averaging:
                 total_r += [reward_sum]
                 total_steps_atari += [length]
-                if not test:
+                if not atari_test:
                     episode_stat = env.get_stat()  # get episode statistic
                     last_i = info[-1]  # pull most recent info
                     cpu_time += [episode_stat['runtime'].total_seconds()]
                     final_value += [last_i['broker_value']]
                     total_steps += [episode_stat['length']]
+                #print('ep. metadata:', state['metadata'])
 
-                # Episode statistic:
-                if local_episode % episode_summary_freq == 0:
-                    if not test:
-                        # BTgym:
-                        ep_stat = dict(
-                            total_r=np.average(total_r),
-                            cpu_time=np.average(cpu_time),
-                            final_value=np.average(final_value),
-                            steps=np.average(total_steps)
-                        )
+                # Episode statistics:
+                try:
+                    # Was it test episode ( `type` in metadata is not zero)?
+                    if not atari_test and state['metadata']['type']:
+                        is_test_episode = True
+
                     else:
-                        # Atari:
-                        ep_stat = dict(
-                            total_r=np.average(total_r),
-                            steps=np.average(total_steps_atari)
-                        )
-                    total_r = []
-                    cpu_time = []
-                    final_value = []
-                    total_steps = []
-                    total_steps_atari = []
+                        is_test_episode = False
+
+                except KeyError:
+                    is_test_episode = False
+
+                if is_test_episode:
+                    test_ep_stat = dict(
+                        total_r=total_r[-1],
+                        final_value=final_value[-1],
+                        steps=total_steps[-1]
+                    )
+                else:
+                    if local_episode % episode_summary_freq == 0:
+                        if not atari_test:
+                            # BTgym:
+                            ep_stat = dict(
+                                total_r=np.average(total_r),
+                                cpu_time=np.average(cpu_time),
+                                final_value=np.average(final_value),
+                                steps=np.average(total_steps)
+                            )
+                        else:
+                            # Atari:
+                            ep_stat = dict(
+                                total_r=np.average(total_r),
+                                steps=np.average(total_steps_atari)
+                            )
+                        total_r = []
+                        cpu_time = []
+                        final_value = []
+                        total_steps = []
+                        total_steps_atari = []
 
                 if task == 0 and local_episode % env_render_freq == 0 :
-                    if not test:
-                        # Render environment (chief worker only, and not in atari test mode):
+                    if not atari_test:
+                        # Render environment (chief worker only, and not in atari atari_test mode):
 
                         render_stat = dict(
                             render_human=env.render('human')[None,:],
@@ -342,10 +355,12 @@ def env_runner(sess,
                 off_policy=memory.sample_uniform(sequence_size=rollout_length),
                 off_policy_rp=memory.sample_priority(exact_size=True),
                 ep_summary=ep_stat,
+                test_ep_summary=test_ep_stat,
                 render_summary=render_stat,
             )
             yield data
 
             ep_stat = None
+            test_ep_stat = None
             render_stat = None
 

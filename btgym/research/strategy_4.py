@@ -40,6 +40,11 @@ class DevStrat_4_6(BTgymBaseStrategy):
                 'internal': spaces.Box(low=-2, high=2, shape=(time_dim, 1, 5)),
                 'metadata': DictSpace(
                     {
+                        'type': spaces.Box(
+                            shape=(),
+                            low=0,
+                            high=1
+                        ),
                         'trial_num': spaces.Box(
                             shape=(),
                             low=0,
@@ -90,6 +95,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
         # Episodic metadata:
         self.state['metadata'] = {
+            'type': np.asarray(self.p.metadata['type']),
             'trial_num': np.asarray(self.p.metadata['trial_num']),
             'sample_num': np.asarray(self.p.metadata['sample_num']),
             'first_row': np.asarray(self.p.metadata['first_row'])
