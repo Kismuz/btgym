@@ -162,12 +162,12 @@ class DevStrat_4_6(BTgymBaseStrategy):
         # Potential-based shaping function 1:
         # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
         unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl'])
-        f1 = .99 * np.average(unrealised_pnl[1:]) - np.average(unrealised_pnl[:-1])
+        f1 = .95 * np.average(unrealised_pnl[1:]) - np.average(unrealised_pnl[:-1])
 
         # Potential-based shaping function 2:
         # based on potential of averaged broker value, normalized wrt to max drawdown and target bounds.
         norm_broker_value = np.asarray(self.sliding_stat['broker_value'])
-        f2 = .99 * np.average(norm_broker_value[1:]) - np.average(norm_broker_value[:-1])
+        f2 = .95 * np.average(norm_broker_value[1:]) - np.average(norm_broker_value[:-1])
 
         # Main reward function: normalized realized profit/loss:
         realized_pnl = np.asarray(self.sliding_stat['realized_pnl'])[-1]

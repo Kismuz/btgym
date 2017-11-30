@@ -228,7 +228,7 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
     - See [Trial_Iterator Class](https://kismuz.github.io/btgym/btgym.html#btgym.datafeed.BTgymRandomTrial) and
     [RL^2 policy](https://kismuz.github.io/btgym/btgym.research.html#btgym.research.policy_rl2.AacRL2Policy)
     for description.
-    - Effectiveness is not tested yet, examples are to follw.
+    - Effectiveness is not tested yet, examples are to follow.
 
 - 24.11.17: A3C/UNREAL finally adapted to work with BTGym environments.
     - Examples with synthetic simple data(sine wawe) and historic financial data added,
