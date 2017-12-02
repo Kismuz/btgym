@@ -255,6 +255,7 @@ def env_runner(sess,
                     is_test_episode = False
 
                 if is_test_episode:
+                    #print(task, total_r)
                     test_ep_stat = dict(
                         total_r=total_r[-1],
                         final_value=final_value[-1],
