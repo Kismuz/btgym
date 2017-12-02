@@ -413,7 +413,7 @@ than first train episode of the new <cite>Trial</cite> will be sampled and retur
 <dt id="btgym.datafeed.BTgymSequentialTrial.sample">
 <code class="descname">sample</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial.sample" title="Permalink to this definition">¶</a></dt>
 <dd><p>Randomly uniformly samples from iterating sequence of <cite>Trial</cite> train/test distributions.</p>
-<p>Iteratively calling this method results in:</p>
+<p>Sampling loop:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span>        - randomly draws single episode from first [or specified by `reset()`] Trial train distribution;
     - until predefined number of episodes has been drawn;
         - randomly draws single episode from first [or specified by `reset()`] Trial test distribution;

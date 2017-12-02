@@ -624,7 +624,7 @@ class BTgymSequentialTrial(BTgymDataset):
         """
         Randomly uniformly samples from iterating sequence of `Trial` train/test distributions.
 
-        Iteratively calling this method results in::
+        Sampling loop::
 
                     - randomly draws single episode from first [or specified by `reset()`] Trial train distribution;
                 - until predefined number of episodes has been drawn;
