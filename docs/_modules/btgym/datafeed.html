@@ -798,11 +798,13 @@
 
 <div class="viewcode-block" id="BTgymSequentialTrial.sample"><a class="viewcode-back" href="../../btgym.html#btgym.datafeed.BTgymSequentialTrial.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Randomly uniformly samples from iterating sequence of `Trial` distributions.</span>
+<span class="sd">        Randomly uniformly samples from iterating sequence of `Trial` train/test distributions.</span>
 
 <span class="sd">        Iteratively calling this method results in::</span>
 
-<span class="sd">                    - randomly draws single episode from first [or specified by `reset()`] Trial;</span>
+<span class="sd">                    - randomly draws single episode from first [or specified by `reset()`] Trial train distribution;</span>
+<span class="sd">                - until predefined number of episodes has been drawn;</span>
+<span class="sd">                    - randomly draws single episode from first [or specified by `reset()`] Trial test distribution;</span>
 <span class="sd">                - until predefined number of episodes has been drawn;</span>
 <span class="sd">                - advances to the next Trial in Trial_sequence;</span>
 <span class="sd">            - until Trial_sequence is exhausted or .reset();</span>
@@ -811,7 +813,7 @@
 <span class="sd">            kwargs:     not used.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            BTgymDataset instance containing episode data and metadata.</span>
+<span class="sd">            `BTgymDataset` instance containing episode data [and metadata].</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_ready</span>

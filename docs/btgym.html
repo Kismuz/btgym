@@ -412,9 +412,11 @@ than first train episode of the new <cite>Trial</cite> will be sampled and retur
 <dl class="method">
 <dt id="btgym.datafeed.BTgymSequentialTrial.sample">
 <code class="descname">sample</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial.sample" title="Permalink to this definition">¶</a></dt>
-<dd><p>Randomly uniformly samples from iterating sequence of <cite>Trial</cite> distributions.</p>
+<dd><p>Randomly uniformly samples from iterating sequence of <cite>Trial</cite> train/test distributions.</p>
 <p>Iteratively calling this method results in:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>        - randomly draws single episode from first [or specified by `reset()`] Trial;
+<div class="highlight-default"><div class="highlight"><pre><span></span>        - randomly draws single episode from first [or specified by `reset()`] Trial train distribution;
+    - until predefined number of episodes has been drawn;
+        - randomly draws single episode from first [or specified by `reset()`] Trial test distribution;
     - until predefined number of episodes has been drawn;
     - advances to the next Trial in Trial_sequence;
 - until Trial_sequence is exhausted or .reset();
@@ -426,7 +428,7 @@ than first train episode of the new <cite>Trial</cite> will be sampled and retur
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – not used.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">BTgymDataset instance containing episode data and metadata.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><cite>BTgymDataset</cite> instance containing episode data [and metadata].</td>
 </tr>
 </tbody>
 </table>

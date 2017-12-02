@@ -622,11 +622,13 @@ class BTgymSequentialTrial(BTgymDataset):
 
     def sample(self, **kwargs):
         """
-        Randomly uniformly samples from iterating sequence of `Trial` distributions.
+        Randomly uniformly samples from iterating sequence of `Trial` train/test distributions.
 
         Iteratively calling this method results in::
 
-                    - randomly draws single episode from first [or specified by `reset()`] Trial;
+                    - randomly draws single episode from first [or specified by `reset()`] Trial train distribution;
+                - until predefined number of episodes has been drawn;
+                    - randomly draws single episode from first [or specified by `reset()`] Trial test distribution;
                 - until predefined number of episodes has been drawn;
                 - advances to the next Trial in Trial_sequence;
             - until Trial_sequence is exhausted or .reset();
@@ -635,7 +637,7 @@ class BTgymSequentialTrial(BTgymDataset):
             kwargs:     not used.
 
         Returns:
-            BTgymDataset instance containing episode data and metadata.
+            `BTgymDataset` instance containing episode data [and metadata].
         """
         try:
             assert self.is_ready
