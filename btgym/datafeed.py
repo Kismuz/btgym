@@ -422,16 +422,18 @@ class BTgymDataset:
 
     def _sample_position(self, position, tolerance=10):
         """
-        Samples continuous subset of data, starting from given 'position' with allowed `tolerance`.
+        Samples continuous subset of data, starting from given 'position' with allowed `tolerance`,
+        such as entire episode running time lies within [position - tolerance, position + tolerance] interval.
 
         Args:
-            position:   position of record to start subset from.
-            tolerance:  actual start position is uniformly sampled from [position - tolerance, position + tolerance]
+            position:   position of record to start subset from;
+            tolerance:  number of rows (records);
 
         Returns:
-             - BTgymDataset instance such as: number of records ~ max_episode_len,
-                where record number tolerance is inferred from `time_gap` param;
-                first data row = `position` +- tolerance
+             - BTgymDataset instance such as:
+                1. number of records ~ max_episode_len, subj. to `time_gap` param;
+                2. actual episode start position is uniformly sampled
+                   from [position - tolerance, position + tolerance - episode duration ] interval;
              - `False` if it is not possible to sample instance with set args.
         """
         try:
@@ -461,14 +463,14 @@ class BTgymDataset:
 
         # # Keep sampling random enter points until all conditions are met:
         while attempts <= max_attempts:
-            first_row = position - tolerance + round(2 * tolerance * random.random())
+            first_row = position - tolerance + round((2 * tolerance - sample_num_records) * random.random())
             episode_first_day = self.data[first_row:first_row + 1].index[0]
             self.log.debug('Sample start: {}, weekday: {}.'.format(episode_first_day, episode_first_day.weekday()))
 
             # Keep sampling until good day:
             while not episode_first_day.weekday() in self.start_weekdays:
                 self.log.debug('Not a good day to start, resampling...')
-                first_row = position - tolerance + round(2 * tolerance * random.random())
+                first_row = position - tolerance + round((2 * tolerance - sample_num_records) * random.random())
                 episode_first_day = self.data[first_row:first_row + 1].index[0]
                 self.log.debug('Sample start: {}, weekday: {}.'.format(episode_first_day, episode_first_day.weekday()))
                 attempts += 1
@@ -516,6 +518,9 @@ class BTgymDataset:
 class BTgymSequentialTrial(BTgymDataset):
     """
     Sequential Data Trials iterator.
+
+    WARNING:
+        Train/test Overlap Bug is here! to fix
 
     See `Notes` at `BTgymTrialRandomIterator()` for description and motivation.
 

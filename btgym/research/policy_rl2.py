@@ -22,10 +22,11 @@ class AacRL2Policy(Aac1dPolicy):
     def get_initial_features(self, state, context=None):
         """
         Returns RNN initial context.
-        Basically, it looks for episode `trial_num` metadata in initial `state` and
-        if `trial_num` has been changed form last method call - RNN context is reset;
-        else it assumes this is new episode of same trial and carry context on to new episode;
-        if no context arg is provided - assumes it is initial episode of training and resets.
+        Basically, RNN context is reset if:
+            - episode  initial `state` `trial_num` metadata has been changed form last call (new train trial started);
+            - episode metatdata `type` is non-zero (test episode);
+            - no context arg is provided (initial episode of training);
+        Else, it assumes this is new episode of same train trial has started and carries context on to new episode;
 
         Episode metadata are provided by DataTrialIterator, which is shaping Trial data distribution in this case,
         and delivered through env.strategy as separate key in observation dictionary.
@@ -38,20 +39,22 @@ class AacRL2Policy(Aac1dPolicy):
             RNN zero-state tuple if new trial is detected or same `context`.
         """
         try:
-            if state['metadata']['trial_num'] != self.current_trial_num or context is None:
-                # Assume new or initial trial, reset context:
+            if state['metadata']['trial_num'] != self.current_trial_num or context is None or state['metadata']['type']:
+                # Assume new/initial trial or test, reset context:
                 sess = tf.get_default_session()
                 new_context = sess.run(self.on_lstm_init_state)
                 print('RL^2 policy context reset')
 
             else:
-                # Asssume same trial, keep context chain:
+                # Asssume same training trial, keep context chain:
                 new_context = context
-
+            # Keep trial number:
             self.current_trial_num = state['metadata']['trial_num']
 
         except KeyError:
-            raise KeyError('RL^2 policy: expected observation state dict. to have keys `metadata`-`trial_num`, got: {}'.
-                           format(state.keys()))
+            raise KeyError(
+                'RL^2 policy: expected observation state dict. to have keys [`metadata`]:[`trial_num`,`type`]; got: {}'.
+                format(state.keys())
+            )
 
         return new_context

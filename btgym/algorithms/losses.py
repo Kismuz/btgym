@@ -36,12 +36,17 @@ def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_lo
 
         loss = pi_loss + vf_loss - entropy * entropy_beta
 
+        mean_vf = tf.reduce_mean(pi_vf)
+
         summaries = [
             tf.summary.scalar('policy_loss', pi_loss),
             tf.summary.scalar('value_loss', vf_loss),
         ]
         if verbose:
-            summaries += [tf.summary.scalar('entropy', entropy)]
+            summaries += [
+                tf.summary.scalar('entropy', entropy),
+                tf.summary.scalar('value_fn', mean_vf),
+            ]
 
     return loss, summaries
 
@@ -106,7 +111,7 @@ def ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_lo
                 tf.summary.scalar('entropy', entropy),
                 tf.summary.scalar('Dkl_old_new', mean_kl_old_new),
                 tf.summary.scalar('pi_ratio', mean_pi_ratio),
-                tf.summary.scalar('value_f', mean_vf),
+                tf.summary.scalar('value_fn', mean_vf),
             ]
 
     return loss, summaries
