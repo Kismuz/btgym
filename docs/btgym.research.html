@@ -256,10 +256,15 @@ depending on episode metadata received.</p>
 <dt id="btgym.research.policy_rl2.AacRL2Policy.get_initial_features">
 <code class="descname">get_initial_features</code><span class="sig-paren">(</span><em>state</em>, <em>context=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/policy_rl2.html#AacRL2Policy.get_initial_features"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.policy_rl2.AacRL2Policy.get_initial_features" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns RNN initial context.
-Basically, it looks for episode <cite>trial_num</cite> metadata in initial <cite>state</cite> and
-if <cite>trial_num</cite> has been changed form last method call - RNN context is reset;
-else it assumes this is new episode of same trial and carry context on to new episode;
-if no context arg is provided - assumes it is initial episode of training and resets.</p>
+Basically, RNN context is reset if:</p>
+<blockquote>
+<div><ul class="simple">
+<li>episode  initial <cite>state</cite> <cite>trial_num</cite> metadata has been changed form last call (new train trial started);</li>
+<li>episode metatdata <cite>type</cite> is non-zero (test episode);</li>
+<li>no context arg is provided (initial episode of training);</li>
+</ul>
+</div></blockquote>
+<p>Else, it assumes this is new episode of same train trial has started and carries context on to new episode;</p>
 <p>Episode metadata are provided by DataTrialIterator, which is shaping Trial data distribution in this case,
 and delivered through env.strategy as separate key in observation dictionary.</p>
 <table class="docutils field-list" frame="void" rules="none">

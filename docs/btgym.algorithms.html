@@ -482,9 +482,11 @@ ensuring iid property and allowing, say, proper batch normalisation (this has ye
 <dl class="method">
 <dt id="btgym.algorithms.aac.BaseAAC.process">
 <code class="descname">process</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.process" title="Permalink to this definition">¶</a></dt>
-<dd><p>Grabs a on_policy_rollout that’s been produced by the thread runner,
-samples off_policy rollout[s] from replay memory and updates the parameters.
-The update is then sent to the parameter server.</p>
+<dd><p>Grabs a on_policy_rollout that’s been produced by the thread runner. If data identified as ‘train data’ -
+samples off_policy rollout[s] from replay memory and updates the parameters; writes summaries if any.
+The update is then sent to the parameter server.
+If on_policy_rollout contains ‘test data’ -  no policy update is performed and learn rate is set to zero;
+Meanwile test data are stored in replay memory.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1192,7 +1194,7 @@ So, replay memory is also here, as well as some service functions (collecting su
 
 <dl class="function">
 <dt id="btgym.algorithms.runner.env_runner">
-<code class="descclassname">btgym.algorithms.runner.</code><code class="descname">env_runner</code><span class="sig-paren">(</span><em>sess</em>, <em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>summary_writer</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>test</em>, <em>ep_summary</em>, <em>memory_config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#env_runner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.env_runner" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.runner.</code><code class="descname">env_runner</code><span class="sig-paren">(</span><em>sess</em>, <em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>summary_writer</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>atari_test</em>, <em>ep_summary</em>, <em>memory_config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#env_runner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.env_runner" title="Permalink to this definition">¶</a></dt>
 <dd><p>The logic of the thread runner.
 In brief, it constantly keeps on running
 the policy, and as long as the rollout exceeds a certain length, the thread
@@ -1208,7 +1210,7 @@ runner appends all the collected data to the queue.</p>
 <li><strong>rollout_length</strong> – int</li>
 <li><strong>episode_summary_freq</strong> – int</li>
 <li><strong>env_render_freq</strong> – int</li>
-<li><strong>test</strong> – Atari or BTGyn</li>
+<li><strong>atari_test</strong> – bool, Atari or BTGyn</li>
 <li><strong>ep_summary</strong> – dict of tf.summary op and placeholders</li>
 <li><strong>memory_config</strong> – replay memory configuration dictionary</li>
 </ul>

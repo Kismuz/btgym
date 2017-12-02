@@ -433,14 +433,14 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span> <span class="o">=</span> <span class="n">_use_target_policy</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: learn_rate: </span><span class="si">{:1.6f}</span><span class="s1">, entropy_beta: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: learn_rate: </span><span class="si">{:1.6f}</span><span class="s1">, entropy_beta: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
                       <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_off_policy_aac</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: off_aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span><span class="p">,))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: off_aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span><span class="p">,))</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: vr_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, pc_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, rp_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: vr_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, pc_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, rp_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
                           <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span><span class="p">))</span>
 
 
@@ -484,7 +484,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()))</span>
 
             <span class="c1">#  Learning rate annealing:</span>
-            <span class="n">learn_rate</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">polynomial_decay</span><span class="p">(</span>
+            <span class="n">learn_rate_decayed</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">polynomial_decay</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">opt_decay_steps</span><span class="p">,</span>
@@ -492,7 +492,11 @@
                 <span class="n">power</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                 <span class="n">cycle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="n">clip_epsilon</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clip_epsilon</span> <span class="o">*</span> <span class="n">learn_rate</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="n">clip_epsilon</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clip_epsilon</span> <span class="o">*</span> <span class="n">learn_rate_decayed</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+            <span class="c1"># Freeze training if train_phase is False:</span>
+            <span class="n">train_learn_rate</span> <span class="o">=</span> <span class="n">learn_rate_decayed</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">train_phase</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">AAC_</span><span class="si">{}</span><span class="s1">: learn rate ok&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
 
             <span class="c1"># On-policy AAC loss definition:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_act_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_action_pl&quot;</span><span class="p">)</span>
@@ -594,11 +598,11 @@
             <span class="c1"># Since every observation mod. has same batch size - just take first key in a row:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">inc_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">on_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]])[</span><span class="mi">0</span><span class="p">])</span>
 
-            <span class="c1"># Each worker gets a different set of adam optimizer parameters</span>
-            <span class="n">opt</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">AdamOptimizer</span><span class="p">(</span><span class="n">learn_rate</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
+            <span class="c1"># Each worker gets a different set of adam optimizer parameters:</span>
+            <span class="n">opt</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">AdamOptimizer</span><span class="p">(</span><span class="n">train_learn_rate</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
 
             <span class="c1">#opt = tf.train.RMSPropOptimizer(</span>
-            <span class="c1">#    learning_rate=learn_rate,</span>
+            <span class="c1">#    learning_rate=train_learn_rate,</span>
             <span class="c1">#    decay=self.opt_decay,</span>
             <span class="c1">#    momentum=self.opt_momentum,</span>
             <span class="c1">#    epsilon=self.opt_epsilon,</span>
@@ -613,7 +617,7 @@
                 <span class="n">model_summaries</span> <span class="o">+=</span> <span class="p">[</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;grad_global_norm&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_norm</span><span class="p">(</span><span class="n">grads</span><span class="p">)),</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;var_global_norm&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_norm</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">)),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;learn_rate&quot;</span><span class="p">,</span> <span class="n">learn_rate</span><span class="p">),</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;learn_rate&quot;</span><span class="p">,</span> <span class="n">learn_rate_decayed</span><span class="p">),</span>  <span class="c1"># cause actual rate is a jaggy due to testing</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;total_loss&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span>
                 <span class="p">]</span>
 
@@ -638,34 +642,44 @@
                 <span class="n">steps</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="p">),</span>
             <span class="p">)</span>
             <span class="c1"># Environmnet rendering:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;btgym_render_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
                 <span class="p">[</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="s1">&#39;human&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_human&#39;</span><span class="p">]),</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="s1">&#39;model_input_external&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_model_input_ext&#39;</span><span class="p">]),</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="s1">&#39;episode&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_episode&#39;</span><span class="p">]),</span>
                 <span class="p">],</span>
-                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;render&#39;</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;render_btgym&#39;</span>
             <span class="p">)</span>
             <span class="c1"># For Atari:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_render_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="s2">&quot;model/state&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_atari&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;atari_render_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="s2">&quot;model/state&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_atari&#39;</span><span class="p">])</span>
 
             <span class="c1"># Episode stat. summary:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;btgym_stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
                 <span class="p">[</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode/total_reward&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r&#39;</span><span class="p">]),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode/cpu_time_sec&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;cpu_time&#39;</span><span class="p">]),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode/final_value&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;final_value&#39;</span><span class="p">]),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode/env_steps&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">])</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/total_reward&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r&#39;</span><span class="p">]),</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/cpu_time_sec&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;cpu_time&#39;</span><span class="p">]),</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/final_value&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;final_value&#39;</span><span class="p">]),</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/env_steps&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">])</span>
                 <span class="p">],</span>
-                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode&#39;</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode_train_btgym&#39;</span>
             <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="c1"># Test episode stat. summary:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_btgym_stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_test/total_reward&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r&#39;</span><span class="p">]),</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_test/final_value&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;final_value&#39;</span><span class="p">]),</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_test/env_steps&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">])</span>
+                <span class="p">],</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode_test_btgym&#39;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;atari_stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
                 <span class="p">[</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode/total_reward&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r&#39;</span><span class="p">]),</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode/steps&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">])</span>
                 <span class="p">],</span>
                 <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode_atari&#39;</span>
             <span class="p">)</span>
+
             <span class="c1"># Replay memory_config:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_memory</span><span class="p">:</span>
                 <span class="n">memory_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
@@ -860,20 +874,33 @@
 
 <div class="viewcode-block" id="BaseAAC.process"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.process">[docs]</a>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Grabs a on_policy_rollout that&#39;s been produced by the thread runner,</span>
-<span class="sd">        samples off_policy rollout[s] from replay memory and updates the parameters.</span>
+<span class="sd">        Grabs a on_policy_rollout that&#39;s been produced by the thread runner. If data identified as &#39;train data&#39; -</span>
+<span class="sd">        samples off_policy rollout[s] from replay memory and updates the parameters; writes summaries if any.</span>
 <span class="sd">        The update is then sent to the parameter server.</span>
+<span class="sd">        If on_policy_rollout contains &#39;test data&#39; -  no policy update is performed and learn rate is set to zero;</span>
+<span class="sd">        Meanwile test data are stored in replay memory.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Collect data from child thread runners:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+
+        <span class="c1"># Test or train: if at least one rollout from parallel runners is test rollout -</span>
+        <span class="c1"># set learn rate to zero for entire minibatch. Doh.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">is_train</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">env</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">env</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;on_policy&#39;</span><span class="p">]])</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">is_train</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="c1"># Copy weights from local policy to local target policy:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">pi_prime_update_period</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi_prime</span><span class="p">)</span>
 
-        <span class="c1"># Copy weights from shared to local new_policy:</span>
-        <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">is_train</span><span class="p">:</span>
+            <span class="c1"># If there is no testing rollouts  - copy weights from shared to local new_policy:</span>
+            <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi</span><span class="p">)</span>
 
-        <span class="c1"># Collect data from child thread runners:</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+        <span class="c1">#self.log.debug(&#39;is_train: {}&#39;.format(is_train))</span>
 
         <span class="c1"># Process minibatch for on-policy train step:</span>
         <span class="n">on_policy_rollouts</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;on_policy&#39;</span><span class="p">]</span>
@@ -900,7 +927,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_act_target</span><span class="p">:</span> <span class="n">on_policy_batch</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">],</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_adv_target</span><span class="p">:</span> <span class="n">on_policy_batch</span><span class="p">[</span><span class="s1">&#39;advantage&#39;</span><span class="p">],</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_r_target</span><span class="p">:</span> <span class="n">on_policy_batch</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">],</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">local_network</span><span class="o">.</span><span class="n">train_phase</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">local_network</span><span class="o">.</span><span class="n">train_phase</span><span class="p">:</span> <span class="n">is_train</span><span class="p">,</span>  <span class="c1"># Zeroes learn rate, [+ batch_norm]</span>
             <span class="p">}</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span><span class="p">:</span>
@@ -978,10 +1005,10 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_value_replay</span><span class="p">:</span>
                 <span class="n">feed_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_vr_feeder</span><span class="p">(</span><span class="n">off_policy_batch</span><span class="p">))</span>
 
-        <span class="c1"># Every worker writes episode and model summaries:</span>
+        <span class="c1"># Every worker writes train episode and model summaries:</span>
         <span class="n">ep_summary_feeder</span> <span class="o">=</span> <span class="p">{}</span>
 
-        <span class="c1"># Collect episode summaries from all env runners:</span>
+        <span class="c1"># Look for train episode summaries from all env runners:</span>
         <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;ep_summary&#39;</span><span class="p">]:</span>
             <span class="k">if</span> <span class="n">stat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">stat</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
@@ -997,14 +1024,34 @@
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
                 <span class="c1"># Atari:</span>
-                <span class="n">fetched_episode_stat</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_stat_op&#39;</span><span class="p">],</span> <span class="n">ep_summary_feed_dict</span><span class="p">)</span>
+                <span class="n">fetched_episode_stat</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;atari_stat_op&#39;</span><span class="p">],</span> <span class="n">ep_summary_feed_dict</span><span class="p">)</span>
 
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># BTGym</span>
-                <span class="n">fetched_episode_stat</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;stat_op&#39;</span><span class="p">],</span> <span class="n">ep_summary_feed_dict</span><span class="p">)</span>
+                <span class="n">fetched_episode_stat</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;btgym_stat_op&#39;</span><span class="p">],</span> <span class="n">ep_summary_feed_dict</span><span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">add_summary</span><span class="p">(</span><span class="n">fetched_episode_stat</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_episode</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+        <span class="c1"># Every worker writes test episode  summaries:</span>
+        <span class="n">test_ep_summary_feeder</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Look for test episode summaries:</span>
+        <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;test_ep_summary&#39;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">stat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">stat</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">test_ep_summary_feeder</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                        <span class="n">test_ep_summary_feeder</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">+=</span> <span class="p">[</span><span class="n">stat</span><span class="p">[</span><span class="n">key</span><span class="p">]]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">test_ep_summary_feeder</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">stat</span><span class="p">[</span><span class="n">key</span><span class="p">]]</span>
+                        <span class="c1"># Average values among thread_runners, if any, and write episode summary:</span>
+            <span class="k">if</span> <span class="n">test_ep_summary_feeder</span> <span class="o">!=</span> <span class="p">{}:</span>
+                <span class="n">test_ep_summary_feed_dict</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="nb">list</span> <span class="ow">in</span> <span class="n">test_ep_summary_feeder</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="p">}</span>
+                <span class="n">fetched_test_episode_stat</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_btgym_stat_op&#39;</span><span class="p">],</span> <span class="n">test_ep_summary_feed_dict</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">add_summary</span><span class="p">(</span><span class="n">fetched_test_episode_stat</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_episode</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
 
         <span class="n">wirte_model_summary</span> <span class="o">=</span>\
             <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_summary_freq</span> <span class="o">==</span> <span class="mi">0</span>
@@ -1016,10 +1063,10 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span> <span class="n">pic</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">pic</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;render_summary&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
                 <span class="p">}</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
-                    <span class="n">renderings</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_render_op&#39;</span><span class="p">],</span> <span class="n">render_feed_dict</span><span class="p">)</span>
+                    <span class="n">renderings</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;atari_render_op&#39;</span><span class="p">],</span> <span class="n">render_feed_dict</span><span class="p">)</span>
 
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">renderings</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_op&#39;</span><span class="p">],</span> <span class="n">render_feed_dict</span><span class="p">)</span>
+                    <span class="n">renderings</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;btgym_render_op&#39;</span><span class="p">],</span> <span class="n">render_feed_dict</span><span class="p">)</span>
 
                 <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">add_summary</span><span class="p">(</span><span class="n">renderings</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_episode</span><span class="p">))</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
@@ -1049,6 +1096,7 @@
         <span class="c1">#        print(k, v.shape)</span>
         <span class="c1">#    except:</span>
         <span class="c1">#        print(k, type(v))</span>
+
 
 
 <span class="n">Unreal</span> <span class="o">=</span> <span class="n">BaseAAC</span>
@@ -1165,6 +1213,7 @@
             <span class="n">_use_target_policy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span>
         <span class="p">)</span></div>
+
 
 </pre></div>
 

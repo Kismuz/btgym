@@ -142,9 +142,9 @@ class BTgymDataset:
                     episode_len_days=1,  # Maximum episode time duration in days, hours, minutes:
                     episode_len_hours=23,
                     episode_len_minutes=55,
-                    time_gap_days=0,  # Maximum data time gap allowed within sample in days, hours. Thereby,
-                    time_gap_hours=5,  # if set to be < 1 day,
-                        samples containing weekends and holidays gaps will be rejected.
+                    time_gap_days=0,  #  Data omittance threshold: maximum data time gap allowed within sample
+                    time_gap_hours=5, # in days, hours. Thereby, if set to be < 1 day,
+                                      # samples containing weekends and holidays gaps will be rejected.
         """
         # To log or not to log:
         try:
@@ -518,13 +518,57 @@ class BTgymDataset:
 class BTgymSequentialTrial(BTgymDataset):
     """
     Sequential Data Trials iterator.
+    Enables sliding time-window training and testing for the dataset consisiting of time-ordered records.
 
-    WARNING:
-        Train/test Overlap Bug is here! to fix
+    Single Trial is defined by:
 
-    See `Notes` at `BTgymTrialRandomIterator()` for description and motivation.
+    - support train and test intervals::
 
-    For this class, `Trials` are sampled in ordered `sliding timewindow` rather than random fashion.
+        [train_start_time <-> train_end_time], [test_start_time <-> test_end_time],
+        such as:
+        train_start_time < train_end_time + 1 = test_start_time < test_end_time,
+        where `1` stands for next closest time.
+
+    - number of train episodes to draw from train support interval;
+
+    - number of test episodes to draw from test support interval;
+
+    Data iterating:
+
+    If training is started from the beginningg of the dataset, `train_start_time` is set to that of first record,
+    for example, for the start of the year::
+
+        Trial train interval: 19 days, 23:59:00; test interval: 2 days, 23:59:00;
+        Train episodes per trial: 1000; test episodes per trial: 10, iterating from 0-th
+
+    Then first trial intervals will be (note that omitted data periods like holidays are excluded)::
+
+        Training interval: 2016-01-03 17:01:00 <--> 2016-01-31 17:14:00;
+        Testing  interval: 2016-01-31 17:15:00 <--> 2016-02-03 17:14:00;
+
+    Since `reset_data()` method call, every call to `BTgymSequentialTrial.sample()` method will return uniformly drawn
+    train episode from train interval, until max. number of samples is reached ( here - 1000).
+    Than each next call to `sample()` will return uniformly drawn episode from test interval,
+    until again max. number is reached (here - 10).
+
+    Next call to `sample()` will result in following: next `Trial` will be formed such as::
+
+        train_start_time_next_trial = `test_end_time_previous_trial + 1
+
+    i.e. `Trial` will be shifted by the duration of test period,
+    than first train episode of the new `Trial` will be sampled and returned.
+
+    Repeats until entire dataset is exhausted.
+
+    Note that while train periods are overlapping, test periods form a partition.
+
+    Here, next trial will be::
+
+        Training @: 2016-01-06 00:00:00 <--> 2016-02-03 00:10:00;
+        Testing  @: 2016-02-03 00:12:00 <--> 2016-02-08 00:13:00
+
+
+    See description at `BTgymTrialRandomIterator()` for motivation.
     """
     trial_params = dict(
         # Trial-sampling params:
@@ -545,15 +589,15 @@ class BTgymSequentialTrial(BTgymDataset):
         """
         Args:
             kwargs:         BTgymDataset specific kwargs.
-            trial_range:    dict. containing `Trial` support interval (time range) in: `days`[, `hours`][, `minutes`].
-            trial_stride:   dict. containing stride interval between `Trials` in: `days`[, `hours`][, `minutes`].
-            test_range:
-            samples_per_test:
+            train_range:    dict. containing `Trial` train interval in: `days`[, `hours`][, `minutes`];
+            test_range:     dict. containing `Trial` test interval in: `days`[, `hours`][, `minutes`];
+            train_samples:  number of episodes to draw from single `Trial train interval`;
+            test_samples:   number of episodes to draw from `Trial test interval`;
+            trial_start_00: `Trial` start time will be set to that of first record of the day (usually 00:00);
+
 
         Note:
-            - Total number of `Trials` is inferred upon trial_params given and overall dataset size.
-
-            - Total number of episodes drawn from each `Trial` is defined when own .reset() method is called.
+            - Total number of `Trials` (cardinality) is inferred upon args given and overall dataset size.
         """
         self.params.update(self.trial_params)
         super(BTgymSequentialTrial, self).__init__(**kwargs)

@@ -198,10 +198,11 @@
 <div class="viewcode-block" id="AacRL2Policy.get_initial_features"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.policy_rl2.AacRL2Policy.get_initial_features">[docs]</a>    <span class="k">def</span> <span class="nf">get_initial_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns RNN initial context.</span>
-<span class="sd">        Basically, it looks for episode `trial_num` metadata in initial `state` and</span>
-<span class="sd">        if `trial_num` has been changed form last method call - RNN context is reset;</span>
-<span class="sd">        else it assumes this is new episode of same trial and carry context on to new episode;</span>
-<span class="sd">        if no context arg is provided - assumes it is initial episode of training and resets.</span>
+<span class="sd">        Basically, RNN context is reset if:</span>
+<span class="sd">            - episode  initial `state` `trial_num` metadata has been changed form last call (new train trial started);</span>
+<span class="sd">            - episode metatdata `type` is non-zero (test episode);</span>
+<span class="sd">            - no context arg is provided (initial episode of training);</span>
+<span class="sd">        Else, it assumes this is new episode of same train trial has started and carries context on to new episode;</span>
 
 <span class="sd">        Episode metadata are provided by DataTrialIterator, which is shaping Trial data distribution in this case,</span>
 <span class="sd">        and delivered through env.strategy as separate key in observation dictionary.</span>
@@ -214,21 +215,23 @@
 <span class="sd">            RNN zero-state tuple if new trial is detected or same `context`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;trial_num&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_trial_num</span> <span class="ow">or</span> <span class="n">context</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="c1"># Assume new or initial trial, reset context:</span>
+            <span class="k">if</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;trial_num&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_trial_num</span> <span class="ow">or</span> <span class="n">context</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]:</span>
+                <span class="c1"># Assume new/initial trial or test, reset context:</span>
                 <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_session</span><span class="p">()</span>
                 <span class="n">new_context</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_init_state</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;RL^2 policy context reset&#39;</span><span class="p">)</span>
 
             <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># Asssume same trial, keep context chain:</span>
+                <span class="c1"># Asssume same training trial, keep context chain:</span>
                 <span class="n">new_context</span> <span class="o">=</span> <span class="n">context</span>
-
+            <span class="c1"># Keep trial number:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">current_trial_num</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;trial_num&#39;</span><span class="p">]</span>
 
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s1">&#39;RL^2 policy: expected observation state dict. to have keys `metadata`-`trial_num`, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
-                           <span class="nb">format</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="s1">&#39;RL^2 policy: expected observation state dict. to have keys [`metadata`]:[`trial_num`,`type`]; got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                <span class="nb">format</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">new_context</span></div></div>
 </pre></div>

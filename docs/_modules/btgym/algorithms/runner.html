@@ -280,7 +280,7 @@
                <span class="n">summary_writer</span><span class="p">,</span>
                <span class="n">episode_summary_freq</span><span class="p">,</span>
                <span class="n">env_render_freq</span><span class="p">,</span>
-               <span class="n">test</span><span class="p">,</span>
+               <span class="n">atari_test</span><span class="p">,</span>
                <span class="n">ep_summary</span><span class="p">,</span>
                <span class="n">memory_config</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -296,7 +296,7 @@
 <span class="sd">        rollout_length:         int</span>
 <span class="sd">        episode_summary_freq:   int</span>
 <span class="sd">        env_render_freq:        int</span>
-<span class="sd">        test:                   Atari or BTGyn</span>
+<span class="sd">        atari_test:             bool, Atari or BTGyn</span>
 <span class="sd">        ep_summary:             dict of tf.summary op and placeholders</span>
 <span class="sd">        memory_config:          replay memory configuration dictionary</span>
 
@@ -305,14 +305,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">memory_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">memory</span> <span class="o">=</span> <span class="n">memory_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">](</span><span class="o">**</span><span class="n">memory_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">])</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">            history_size=memory_config[&#39;size&#39;],</span>
-<span class="sd">            max_sample_size=rollout_length,</span>
-<span class="sd">            reward_threshold=memory_config[&#39;rp_reward_threshold&#39;],</span>
-<span class="sd">            task=task,</span>
-<span class="sd">            log=None,</span>
-<span class="sd">            rollout_provider=None</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+
     <span class="k">else</span><span class="p">:</span>
         <span class="n">memory</span> <span class="o">=</span> <span class="n">_DummyMemory</span><span class="p">()</span>
 
@@ -334,6 +327,7 @@
     <span class="n">total_steps_atari</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="n">ep_stat</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">test_ep_stat</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">render_stat</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
@@ -375,7 +369,7 @@
 
                 <span class="c1"># Argmax to convert from one-hot:</span>
                 <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">terminal</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">argmax</span><span class="p">())</span>
-                <span class="c1">#if not test:</span>
+                <span class="c1">#if not atari_test:</span>
                 <span class="c1">#        state = state[&#39;model_input&#39;]</span>
 
                 <span class="c1"># Partially collect next experience:</span>
@@ -416,38 +410,58 @@
                 <span class="c1"># Accumulate values for averaging:</span>
                 <span class="n">total_r</span> <span class="o">+=</span> <span class="p">[</span><span class="n">reward_sum</span><span class="p">]</span>
                 <span class="n">total_steps_atari</span> <span class="o">+=</span> <span class="p">[</span><span class="n">length</span><span class="p">]</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">atari_test</span><span class="p">:</span>
                     <span class="n">episode_stat</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get_stat</span><span class="p">()</span>  <span class="c1"># get episode statistic</span>
                     <span class="n">last_i</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># pull most recent info</span>
                     <span class="n">cpu_time</span> <span class="o">+=</span> <span class="p">[</span><span class="n">episode_stat</span><span class="p">[</span><span class="s1">&#39;runtime&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()]</span>
                     <span class="n">final_value</span> <span class="o">+=</span> <span class="p">[</span><span class="n">last_i</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">]]</span>
                     <span class="n">total_steps</span> <span class="o">+=</span> <span class="p">[</span><span class="n">episode_stat</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]]</span>
+                <span class="c1">#print(&#39;ep. metadata:&#39;, state[&#39;metadata&#39;])</span>
 
-                <span class="c1"># Episode statistic:</span>
-                <span class="k">if</span> <span class="n">local_episode</span> <span class="o">%</span> <span class="n">episode_summary_freq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
-                        <span class="c1"># BTgym:</span>
-                        <span class="n">ep_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-                            <span class="n">total_r</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_r</span><span class="p">),</span>
-                            <span class="n">cpu_time</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">cpu_time</span><span class="p">),</span>
-                            <span class="n">final_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">final_value</span><span class="p">),</span>
-                            <span class="n">steps</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_steps</span><span class="p">)</span>
-                        <span class="p">)</span>
+                <span class="c1"># Episode statistics:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Was it test episode ( `type` in metadata is not zero)?</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">atari_test</span> <span class="ow">and</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]:</span>
+                        <span class="n">is_test_episode</span> <span class="o">=</span> <span class="kc">True</span>
+
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="c1"># Atari:</span>
-                        <span class="n">ep_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-                            <span class="n">total_r</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_r</span><span class="p">),</span>
-                            <span class="n">steps</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_steps_atari</span><span class="p">)</span>
-                        <span class="p">)</span>
-                    <span class="n">total_r</span> <span class="o">=</span> <span class="p">[]</span>
-                    <span class="n">cpu_time</span> <span class="o">=</span> <span class="p">[]</span>
-                    <span class="n">final_value</span> <span class="o">=</span> <span class="p">[]</span>
-                    <span class="n">total_steps</span> <span class="o">=</span> <span class="p">[]</span>
-                    <span class="n">total_steps_atari</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="n">is_test_episode</span> <span class="o">=</span> <span class="kc">False</span>
+
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="n">is_test_episode</span> <span class="o">=</span> <span class="kc">False</span>
+
+                <span class="k">if</span> <span class="n">is_test_episode</span><span class="p">:</span>
+                    <span class="c1">#print(task, total_r)</span>
+                    <span class="n">test_ep_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                        <span class="n">total_r</span><span class="o">=</span><span class="n">total_r</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">final_value</span><span class="o">=</span><span class="n">final_value</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">steps</span><span class="o">=</span><span class="n">total_steps</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">local_episode</span> <span class="o">%</span> <span class="n">episode_summary_freq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">atari_test</span><span class="p">:</span>
+                            <span class="c1"># BTgym:</span>
+                            <span class="n">ep_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                                <span class="n">total_r</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_r</span><span class="p">),</span>
+                                <span class="n">cpu_time</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">cpu_time</span><span class="p">),</span>
+                                <span class="n">final_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">final_value</span><span class="p">),</span>
+                                <span class="n">steps</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_steps</span><span class="p">)</span>
+                            <span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="c1"># Atari:</span>
+                            <span class="n">ep_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                                <span class="n">total_r</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_r</span><span class="p">),</span>
+                                <span class="n">steps</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_steps_atari</span><span class="p">)</span>
+                            <span class="p">)</span>
+                        <span class="n">total_r</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="n">cpu_time</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="n">final_value</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="n">total_steps</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="n">total_steps_atari</span> <span class="o">=</span> <span class="p">[]</span>
 
                 <span class="k">if</span> <span class="n">task</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">local_episode</span> <span class="o">%</span> <span class="n">env_render_freq</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">:</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
-                        <span class="c1"># Render environment (chief worker only, and not in atari test mode):</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">atari_test</span><span class="p">:</span>
+                        <span class="c1"># Render environment (chief worker only, and not in atari atari_test mode):</span>
 
                         <span class="n">render_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
                             <span class="n">render_human</span><span class="o">=</span><span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;human&#39;</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:],</span>
@@ -518,11 +532,13 @@
                 <span class="n">off_policy</span><span class="o">=</span><span class="n">memory</span><span class="o">.</span><span class="n">sample_uniform</span><span class="p">(</span><span class="n">sequence_size</span><span class="o">=</span><span class="n">rollout_length</span><span class="p">),</span>
                 <span class="n">off_policy_rp</span><span class="o">=</span><span class="n">memory</span><span class="o">.</span><span class="n">sample_priority</span><span class="p">(</span><span class="n">exact_size</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
                 <span class="n">ep_summary</span><span class="o">=</span><span class="n">ep_stat</span><span class="p">,</span>
+                <span class="n">test_ep_summary</span><span class="o">=</span><span class="n">test_ep_stat</span><span class="p">,</span>
                 <span class="n">render_summary</span><span class="o">=</span><span class="n">render_stat</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">yield</span> <span class="n">data</span>
 
             <span class="n">ep_stat</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">test_ep_stat</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="n">render_stat</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 </pre></div>

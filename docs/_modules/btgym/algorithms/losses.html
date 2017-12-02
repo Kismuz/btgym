@@ -212,12 +212,17 @@
 
         <span class="n">loss</span> <span class="o">=</span> <span class="n">pi_loss</span> <span class="o">+</span> <span class="n">vf_loss</span> <span class="o">-</span> <span class="n">entropy</span> <span class="o">*</span> <span class="n">entropy_beta</span>
 
+        <span class="n">mean_vf</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">pi_vf</span><span class="p">)</span>
+
         <span class="n">summaries</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;policy_loss&#39;</span><span class="p">,</span> <span class="n">pi_loss</span><span class="p">),</span>
             <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;value_loss&#39;</span><span class="p">,</span> <span class="n">vf_loss</span><span class="p">),</span>
         <span class="p">]</span>
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-            <span class="n">summaries</span> <span class="o">+=</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;entropy&#39;</span><span class="p">,</span> <span class="n">entropy</span><span class="p">)]</span>
+            <span class="n">summaries</span> <span class="o">+=</span> <span class="p">[</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;entropy&#39;</span><span class="p">,</span> <span class="n">entropy</span><span class="p">),</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;value_fn&#39;</span><span class="p">,</span> <span class="n">mean_vf</span><span class="p">),</span>
+            <span class="p">]</span>
 
     <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">summaries</span></div>
 
@@ -282,7 +287,7 @@
                 <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;entropy&#39;</span><span class="p">,</span> <span class="n">entropy</span><span class="p">),</span>
                 <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;Dkl_old_new&#39;</span><span class="p">,</span> <span class="n">mean_kl_old_new</span><span class="p">),</span>
                 <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;pi_ratio&#39;</span><span class="p">,</span> <span class="n">mean_pi_ratio</span><span class="p">),</span>
-                <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;value_f&#39;</span><span class="p">,</span> <span class="n">mean_vf</span><span class="p">),</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;value_fn&#39;</span><span class="p">,</span> <span class="n">mean_vf</span><span class="p">),</span>
             <span class="p">]</span>
 
     <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">summaries</span></div>

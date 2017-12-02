@@ -224,6 +224,10 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  
  
 ### <a name="news"></a>[News and updates:](#title)
+- 02.12.17: Basic `sliding time-window train/test` framework implemented via 
+            [BTgymSequentialTrial()](https://kismuz.github.io/btgym/btgym.html#btgym.datafeed.BTgymSequentialTrial)
+            class.
+            
 - 29.11.17: Basic meta-learning RL^2 functionality implemented.
     - See [Trial_Iterator Class](https://kismuz.github.io/btgym/btgym.html#btgym.datafeed.BTgymRandomTrial) and
     [RL^2 policy](https://kismuz.github.io/btgym/btgym.research.html#btgym.research.policy_rl2.AacRL2Policy)

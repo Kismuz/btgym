@@ -318,9 +318,9 @@
 <span class="sd">                    episode_len_days=1,  # Maximum episode time duration in days, hours, minutes:</span>
 <span class="sd">                    episode_len_hours=23,</span>
 <span class="sd">                    episode_len_minutes=55,</span>
-<span class="sd">                    time_gap_days=0,  # Maximum data time gap allowed within sample in days, hours. Thereby,</span>
-<span class="sd">                    time_gap_hours=5,  # if set to be &lt; 1 day,</span>
-<span class="sd">                        samples containing weekends and holidays gaps will be rejected.</span>
+<span class="sd">                    time_gap_days=0,  #  Data omittance threshold: maximum data time gap allowed within sample</span>
+<span class="sd">                    time_gap_hours=5, # in days, hours. Thereby, if set to be &lt; 1 day,</span>
+<span class="sd">                                      # samples containing weekends and holidays gaps will be rejected.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># To log or not to log:</span>
         <span class="k">try</span><span class="p">:</span>
@@ -514,7 +514,7 @@
             <span class="k">return</span> <span class="s1">&#39;Data not ready. Call .reset() first.&#39;</span>
 
         <span class="n">episode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_random</span><span class="p">()</span>
-        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;random_sample&#39;</span>
+        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># always `train`</span>
         <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;trial_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">return</span> <span class="n">episode</span></div>
@@ -598,16 +598,18 @@
 
     <span class="k">def</span> <span class="nf">_sample_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">tolerance</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Samples continuous subset of data, starting from given &#39;position&#39; with allowed `tolerance`.</span>
+<span class="sd">        Samples continuous subset of data, starting from given &#39;position&#39; with allowed `tolerance`,</span>
+<span class="sd">        such as entire episode running time lies within [position - tolerance, position + tolerance] interval.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            position:   position of record to start subset from.</span>
-<span class="sd">            tolerance:  actual start position is uniformly sampled from [position - tolerance, position + tolerance]</span>
+<span class="sd">            position:   position of record to start subset from;</span>
+<span class="sd">            tolerance:  number of rows (records);</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">             - BTgymDataset instance such as: number of records ~ max_episode_len,</span>
-<span class="sd">                where record number tolerance is inferred from `time_gap` param;</span>
-<span class="sd">                first data row = `position` +- tolerance</span>
+<span class="sd">             - BTgymDataset instance such as:</span>
+<span class="sd">                1. number of records ~ max_episode_len, subj. to `time_gap` param;</span>
+<span class="sd">                2. actual episode start position is uniformly sampled</span>
+<span class="sd">                   from [position - tolerance, position + tolerance - episode duration ] interval;</span>
 <span class="sd">             - `False` if it is not possible to sample instance with set args.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
@@ -637,14 +639,14 @@
 
         <span class="c1"># # Keep sampling random enter points until all conditions are met:</span>
         <span class="k">while</span> <span class="n">attempts</span> <span class="o">&lt;=</span> <span class="n">max_attempts</span><span class="p">:</span>
-            <span class="n">first_row</span> <span class="o">=</span> <span class="n">position</span> <span class="o">-</span> <span class="n">tolerance</span> <span class="o">+</span> <span class="nb">round</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">tolerance</span> <span class="o">*</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">())</span>
+            <span class="n">first_row</span> <span class="o">=</span> <span class="n">position</span> <span class="o">-</span> <span class="n">tolerance</span> <span class="o">+</span> <span class="nb">round</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">tolerance</span> <span class="o">-</span> <span class="n">sample_num_records</span><span class="p">)</span> <span class="o">*</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">())</span>
             <span class="n">episode_first_day</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">first_row</span><span class="p">:</span><span class="n">first_row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sample start: </span><span class="si">{}</span><span class="s1">, weekday: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">episode_first_day</span><span class="p">,</span> <span class="n">episode_first_day</span><span class="o">.</span><span class="n">weekday</span><span class="p">()))</span>
 
             <span class="c1"># Keep sampling until good day:</span>
             <span class="k">while</span> <span class="ow">not</span> <span class="n">episode_first_day</span><span class="o">.</span><span class="n">weekday</span><span class="p">()</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_weekdays</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Not a good day to start, resampling...&#39;</span><span class="p">)</span>
-                <span class="n">first_row</span> <span class="o">=</span> <span class="n">position</span> <span class="o">-</span> <span class="n">tolerance</span> <span class="o">+</span> <span class="nb">round</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">tolerance</span> <span class="o">*</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">())</span>
+                <span class="n">first_row</span> <span class="o">=</span> <span class="n">position</span> <span class="o">-</span> <span class="n">tolerance</span> <span class="o">+</span> <span class="nb">round</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">tolerance</span> <span class="o">-</span> <span class="n">sample_num_records</span><span class="p">)</span> <span class="o">*</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">())</span>
                 <span class="n">episode_first_day</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">first_row</span><span class="p">:</span><span class="n">first_row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sample start: </span><span class="si">{}</span><span class="s1">, weekday: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">episode_first_day</span><span class="p">,</span> <span class="n">episode_first_day</span><span class="o">.</span><span class="n">weekday</span><span class="p">()))</span>
                 <span class="n">attempts</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -692,51 +694,107 @@
 <div class="viewcode-block" id="BTgymSequentialTrial"><a class="viewcode-back" href="../../btgym.html#btgym.datafeed.BTgymSequentialTrial">[docs]</a><span class="k">class</span> <span class="nc">BTgymSequentialTrial</span><span class="p">(</span><span class="n">BTgymDataset</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Sequential Data Trials iterator.</span>
+<span class="sd">    Enables sliding time-window training and testing for the dataset consisiting of time-ordered records.</span>
 
-<span class="sd">    See `Notes` at `BTgymTrialRandomIterator()` for description and motivation.</span>
+<span class="sd">    Single Trial is defined by:</span>
 
-<span class="sd">    For this class, `Trials` are sampled in ordered `sliding timewindow` rather than random fashion.</span>
+<span class="sd">    - support train and test intervals::</span>
+
+<span class="sd">        [train_start_time &lt;-&gt; train_end_time], [test_start_time &lt;-&gt; test_end_time],</span>
+<span class="sd">        such as:</span>
+<span class="sd">        train_start_time &lt; train_end_time + 1 = test_start_time &lt; test_end_time,</span>
+<span class="sd">        where `1` stands for next closest time.</span>
+
+<span class="sd">    - number of train episodes to draw from train support interval;</span>
+
+<span class="sd">    - number of test episodes to draw from test support interval;</span>
+
+<span class="sd">    Data iterating:</span>
+
+<span class="sd">    If training is started from the beginningg of the dataset, `train_start_time` is set to that of first record,</span>
+<span class="sd">    for example, for the start of the year::</span>
+
+<span class="sd">        Trial train interval: 19 days, 23:59:00; test interval: 2 days, 23:59:00;</span>
+<span class="sd">        Train episodes per trial: 1000; test episodes per trial: 10, iterating from 0-th</span>
+
+<span class="sd">    Then first trial intervals will be (note that omitted data periods like holidays are excluded)::</span>
+
+<span class="sd">        Training interval: 2016-01-03 17:01:00 &lt;--&gt; 2016-01-31 17:14:00;</span>
+<span class="sd">        Testing  interval: 2016-01-31 17:15:00 &lt;--&gt; 2016-02-03 17:14:00;</span>
+
+<span class="sd">    Since `reset_data()` method call, every call to `BTgymSequentialTrial.sample()` method will return uniformly drawn</span>
+<span class="sd">    train episode from train interval, until max. number of samples is reached ( here - 1000).</span>
+<span class="sd">    Than each next call to `sample()` will return uniformly drawn episode from test interval,</span>
+<span class="sd">    until again max. number is reached (here - 10).</span>
+
+<span class="sd">    Next call to `sample()` will result in following: next `Trial` will be formed such as::</span>
+
+<span class="sd">        train_start_time_next_trial = `test_end_time_previous_trial + 1</span>
+
+<span class="sd">    i.e. `Trial` will be shifted by the duration of test period,</span>
+<span class="sd">    than first train episode of the new `Trial` will be sampled and returned.</span>
+
+<span class="sd">    Repeats until entire dataset is exhausted.</span>
+
+<span class="sd">    Note that while train periods are overlapping, test periods form a partition.</span>
+
+<span class="sd">    Here, next trial will be::</span>
+
+<span class="sd">        Training @: 2016-01-06 00:00:00 &lt;--&gt; 2016-02-03 00:10:00;</span>
+<span class="sd">        Testing  @: 2016-02-03 00:12:00 &lt;--&gt; 2016-02-08 00:13:00</span>
+
+
+<span class="sd">    See description at `BTgymTrialRandomIterator()` for motivation.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">trial_params</span> <span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+    <span class="n">trial_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
         <span class="c1"># Trial-sampling params:</span>
-        <span class="n">trial_range</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>  <span class="c1"># Trial time range in days, hours, minutes:</span>
+        <span class="n">train_range</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>  <span class="c1"># Trial time range in days, hours, minutes:</span>
             <span class="n">days</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
             <span class="n">hours</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
         <span class="p">),</span>
-        <span class="n">trial_stride</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+        <span class="n">test_range</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>  <span class="c1"># Test time period in days, hours, minutes:</span>
             <span class="n">days</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
             <span class="n">hours</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
         <span class="p">),</span>
-        <span class="n">samples_per_trial</span><span class="o">=</span><span class="mi">0</span>
+        <span class="n">train_samples</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">test_samples</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">trial_start_00</span><span class="o">=</span><span class="kc">True</span>
     <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Args:</span>
 <span class="sd">            kwargs:         BTgymDataset specific kwargs.</span>
-<span class="sd">            trial_range:    dict. containing `Trial` support interval (time range) in: `days`[, `hours`][, `minutes`].</span>
-<span class="sd">            trial_stride:   dict. containing stride interval between `Trials` in: `days`[, `hours`][, `minutes`].</span>
+<span class="sd">            train_range:    dict. containing `Trial` train interval in: `days`[, `hours`][, `minutes`];</span>
+<span class="sd">            test_range:     dict. containing `Trial` test interval in: `days`[, `hours`][, `minutes`];</span>
+<span class="sd">            train_samples:  number of episodes to draw from single `Trial train interval`;</span>
+<span class="sd">            test_samples:   number of episodes to draw from `Trial test interval`;</span>
+<span class="sd">            trial_start_00: `Trial` start time will be set to that of first record of the day (usually 00:00);</span>
+
 
 <span class="sd">        Note:</span>
-<span class="sd">            - Total number of `Trials` is inferred upon trial_params given and overall dataset size.</span>
-
-<span class="sd">            - Total number of episodes drawn from each `Trial` is defined when own .reset() method is called.</span>
+<span class="sd">            - Total number of `Trials` (cardinality) is inferred upon args given and overall dataset size.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_params</span><span class="p">)</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">BTgymSequentialTrial</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="c1"># Timedeltas:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trial_range_delta</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_delta</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_stride</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_range_delta</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_range_delta</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">test_range</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_row</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_mean_row</span> <span class="o">=</span> <span class="mi">0</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_sample_num</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_sample_num</span> <span class="o">=</span> <span class="mi">0</span>
 
 <div class="viewcode-block" id="BTgymSequentialTrial.sample"><a class="viewcode-back" href="../../btgym.html#btgym.datafeed.BTgymSequentialTrial.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -761,10 +819,10 @@
         <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
             <span class="k">return</span> <span class="s1">&#39;Data not ready. Call .reset() first.&#39;</span>
 
-        <span class="n">episode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trial_sample_sequential</span><span class="p">()</span>
-        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;sequential_trial_sample&#39;</span>
-        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;trial_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span>
-        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span>
+        <span class="n">episode</span><span class="p">,</span> <span class="n">trial_num</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">sample_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trial_sample_sequential</span><span class="p">()</span>
+        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">type</span>  <span class="c1"># 0 - train, 1 - test</span>
+        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;trial_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trial_num</span>
+        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sample_num</span>
         <span class="k">return</span> <span class="n">episode</span></div>
 
 <div class="viewcode-block" id="BTgymSequentialTrial.reset"><a class="viewcode-back" href="../../btgym.html#btgym.datafeed.BTgymSequentialTrial.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">global_step</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">total_steps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_frame</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
@@ -793,76 +851,138 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
 
+        <span class="c1"># Trial train support interval in number of records:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_range_delta</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timeframe</span> <span class="o">*</span> <span class="mi">60</span><span class="p">))</span>
+
+        <span class="c1"># Trial test support interval in number of records:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_range_delta</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timeframe</span> <span class="o">*</span> <span class="mi">60</span><span class="p">))</span>
+
         <span class="c1"># Infer cardinality of distribution over Trials:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">data_range_delta</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_range_delta</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_delta</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span>
+        <span class="p">)</span>
 
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Trial`s cardinality below 1. Hint: check data parameters consistency.&#39;</span>
 
-        <span class="c1"># Number of samples to draw from each Trial distribution:</span>
+        <span class="c1"># Infer number of train samples to draw from each Trial distribution:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">samples_per_trial</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">episode_num_records</span> <span class="o">/</span> <span class="n">skip_frame</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_samples</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">episode_num_records</span> <span class="o">/</span> <span class="n">skip_frame</span><span class="p">))</span>
 
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;`reset_data()` got total_steps=None -&gt; samples_per_trial=</span><span class="si">{}</span><span class="s1">, iterating from 0&#39;</span><span class="o">.</span>
-                             <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples_per_trial</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;`reset_data()` got total_steps=None -&gt; train_samples=</span><span class="si">{}</span><span class="s1">, iterating from 0&#39;</span><span class="o">.</span>
+                             <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_samples</span><span class="p">))</span>
 
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples_per_trial</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Number of samples per trial below 1. Hint: check parameters consistency.&#39;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_samples</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Number of train samples per trial below 1. Hint: check parameters consistency.&#39;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_samples</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Number of test samples per trial below 1. Hint: check parameters consistency.&#39;</span>
 
         <span class="c1"># Current trial to start with:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">)</span>
 
-        <span class="c1"># Trial support interval in number of records:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_delta</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_range_delta</span><span class="p">))</span>
+        <span class="c1">#print(&#39;self.train_range_delta:&#39;, self.train_range_delta.total_seconds())</span>
+        <span class="c1">#print(&#39;self.train_range_row:&#39;, self.train_range_row)</span>
+        <span class="c1">#print(&#39;self.test_range_delta:&#39;, self.test_range_delta)</span>
 
-        <span class="c1"># Sequential step size:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_delta</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_range_delta</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_sample_num</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_sample_num</span> <span class="o">=</span> <span class="mi">0</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Mean of first train-Trial:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span>
+        <span class="c1">#print(&#39;self.train_mean_row:&#39;, self.train_mean_row)</span>
 
-        <span class="c1"># Mean of first Trial:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_row</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span>
+        <span class="c1"># If trial_start_00 option set, get index of first record of that day:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_start_00</span><span class="p">:</span>
+            <span class="n">train_first_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">train_first_day</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">train_first_row</span><span class="p">:</span><span class="n">train_first_row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">train_first_day</span><span class="o">.</span><span class="n">date</span><span class="p">(),</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">)</span> <span class="o">+</span> \
+                                  <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Trial train start time adjusted to &lt;00:00&gt;&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Mean of first test-Trial:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_mean_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">+</span> <span class="nb">int</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="c1">#print(&#39;self.test_mean_row:&#39;, self.test_mean_row)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-            <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Trial interval: </span><span class="si">{}</span><span class="s1">; stride: </span><span class="si">{}</span><span class="s1">.</span><span class="se">\n</span><span class="s1">Trials cardinality: </span><span class="si">{}</span><span class="s1">; iterating from: </span><span class="si">{}</span><span class="s1">.</span><span class="se">\n</span><span class="s1">Episodes per trial: </span><span class="si">{}</span><span class="s1">.</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span>
-            <span class="nb">format</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">trial_range_delta</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_delta</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Trial train interval: </span><span class="si">{}</span><span class="s1">; test interval: </span><span class="si">{}</span><span class="s1">.&#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Trials cardinality: </span><span class="si">{}</span><span class="s1">; iterating from: </span><span class="si">{}</span><span class="s1">.&#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Train episodes per trial: </span><span class="si">{}</span><span class="s1">; test episodes per trial: </span><span class="si">{}</span><span class="s1">&#39;</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_range_delta</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_range_delta</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">samples_per_trial</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_samples</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_samples</span>
             <span class="p">)</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-            <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1"> @ interval: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+            <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1">:</span><span class="se">\n</span><span class="s1">Training @: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">;</span><span class="se">\n</span><span class="s1">Testing  @: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
             <span class="nb">format</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">test_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">test_mean_row</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1"> rows: training @: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">; testing @: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+            <span class="nb">format</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_mean_row</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span>
             <span class="p">)</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_ready</span> <span class="o">=</span> <span class="kc">True</span></div>
 
     <span class="k">def</span> <span class="nf">_trial_sample_sequential</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples_per_trial</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_row</span>
+        <span class="c1"># Have we done with training?</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_sample_num</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_samples</span><span class="p">:</span>
+            <span class="c1"># Have we done with testing?</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_sample_num</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_samples</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_sample_num</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_sample_num</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span>
+                <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span><span class="p">,</span> <span class="s1">&#39;Trial`s sequence exhausted.&#39;</span>  <span class="c1"># Todo: self.ready = False</span>
 
-            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span><span class="p">,</span> <span class="s1">&#39;Trial`s sequence exhausted.&#39;</span>
-            <span class="c1"># Todo: self.ready = False</span>
+                <span class="c1"># If trial_start_00 option set, get index of first record of that day:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_start_00</span><span class="p">:</span>
+                    <span class="n">train_first_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="n">train_first_day</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">train_first_row</span><span class="p">:</span><span class="n">train_first_row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="c1">#print(&#39;adj_train_first_day:&#39;, train_first_day)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">train_first_day</span><span class="o">.</span><span class="n">date</span><span class="p">(),</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">)</span> <span class="o">+</span> \
+                                          <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+                    <span class="c1">#self.log.warning(&#39;Trial train start time adjusted to &lt;00:00&gt; :{}&#39;.format(self.train_mean_row))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_mean_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">+</span> <span class="nb">int</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1">: from </span><span class="si">{}</span><span class="s1"> to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
-                <span class="nb">format</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span><span class="p">,</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1">:</span><span class="se">\n</span><span class="s1">Training @: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">;</span><span class="se">\n</span><span class="s1">Testing  @: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                    <span class="nb">format</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">test_mean_row</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">test_mean_row</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)],</span>
+                    <span class="p">)</span>
                 <span class="p">)</span>
-            <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Trial sample #</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_sample_num</span> <span class="o">+=</span><span class="mi">1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Test sample #</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_sample_num</span><span class="p">))</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_position</span><span class="p">(</span>
+                    <span class="n">position</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_mean_row</span><span class="p">,</span>
+                    <span class="n">tolerance</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+                <span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span><span class="p">,</span> <span class="kc">True</span> <span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_sample_num</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_position</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span><span class="p">,</span> <span class="n">tolerance</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_sample_num</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Trial sample #</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_sample_num</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_position</span><span class="p">(</span>
+            <span class="n">position</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_mean_row</span><span class="p">,</span>
+            <span class="n">tolerance</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_sample_num</span></div>
 
 
 <div class="viewcode-block" id="BTgymRandomTrial"><a class="viewcode-back" href="../../btgym.html#btgym.datafeed.BTgymRandomTrial">[docs]</a><span class="k">class</span> <span class="nc">BTgymRandomTrial</span><span class="p">(</span><span class="n">BTgymSequentialTrial</span><span class="p">):</span>
@@ -924,7 +1044,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">read_csv</span><span class="p">()</span>
 
         <span class="c1"># Infer cardinality of distribution over Trials:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">data_range_delta</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_range_delta</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_delta</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">data_range_delta</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_range_delta</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_range_delta</span><span class="p">)</span>
 
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Trial`s cardinality below 1. Hint: check data parameters consistency.&#39;</span>
 
@@ -932,10 +1052,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="c1"># Trial support interval in number of records:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_delta</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_range_delta</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_range_delta</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_range_delta</span><span class="p">))</span>
 
         <span class="c1"># Sequential step size:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_delta</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_range_delta</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_range_delta</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_range_delta</span><span class="p">))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">=</span> <span class="mi">0</span>
 
@@ -946,10 +1066,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
             <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Trial support interval: </span><span class="si">{}</span><span class="s1">; mean stride: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">Trials cardinality: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">Episodes per trial: </span><span class="si">{}</span><span class="s1">.</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span>
                 <span class="nb">format</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">trial_range_delta</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">trial_stride_delta</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_range_delta</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_range_delta</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">total_trials</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">samples_per_trial</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_samples</span>
             <span class="p">)</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
@@ -990,13 +1110,13 @@
         <span class="n">episode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trial_sample_random</span><span class="p">()</span>
 
         <span class="c1"># Metadata:</span>
-        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;random_trial_sample&#39;</span>
+        <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1"># Always `train`</span>
         <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;trial_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span>
         <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span>
         <span class="k">return</span> <span class="n">episode</span></div>
 
     <span class="k">def</span> <span class="nf">_trial_sample_random</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples_per_trial</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_samples</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">trial_num</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">trial_mean_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_range_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span>\

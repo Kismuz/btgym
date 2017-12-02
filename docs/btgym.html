@@ -230,9 +230,9 @@ start_00=True,  # Episode start time will be set to first record of the day (usu
 episode_len_days=1,  # Maximum episode time duration in days, hours, minutes:
 episode_len_hours=23,
 episode_len_minutes=55,
-time_gap_days=0,  # Maximum data time gap allowed within sample in days, hours. Thereby,
-time_gap_hours=5,  # if set to be &lt; 1 day,<blockquote>
-<div>samples containing weekends and holidays gaps will be rejected.</div></blockquote>
+time_gap_days=0,  #  Data omittance threshold: maximum data time gap allowed within sample
+time_gap_hours=5, # in days, hours. Thereby, if set to be &lt; 1 day,<blockquote>
+<div># samples containing weekends and holidays gaps will be rejected.</div></blockquote>
 </div></blockquote>
 </td>
 </tr>
@@ -340,17 +340,64 @@ where <cite>~</cite> tolerance is set by <cite>time_gap</cite> param.</td>
 <dl class="class">
 <dt id="btgym.datafeed.BTgymSequentialTrial">
 <em class="property">class </em><code class="descclassname">btgym.datafeed.</code><code class="descname">BTgymSequentialTrial</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sequential Data Trials iterator.</p>
-<p>See <cite>Notes</cite> at <cite>BTgymTrialRandomIterator()</cite> for description and motivation.</p>
-<p>For this class, <cite>Trials</cite> are sampled in ordered <cite>sliding timewindow</cite> rather than random fashion.</p>
+<dd><p>Sequential Data Trials iterator.
+Enables sliding time-window training and testing for the dataset consisiting of time-ordered records.</p>
+<p>Single Trial is defined by:</p>
+<ul>
+<li><p class="first">support train and test intervals:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>[train_start_time &lt;-&gt; train_end_time], [test_start_time &lt;-&gt; test_end_time],
+such as:
+train_start_time &lt; train_end_time + 1 = test_start_time &lt; test_end_time,
+where `1` stands for next closest time.
+</pre></div>
+</div>
+</li>
+<li><p class="first">number of train episodes to draw from train support interval;</p>
+</li>
+<li><p class="first">number of test episodes to draw from test support interval;</p>
+</li>
+</ul>
+<p>Data iterating:</p>
+<p>If training is started from the beginningg of the dataset, <cite>train_start_time</cite> is set to that of first record,
+for example, for the start of the year:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Trial</span> <span class="n">train</span> <span class="n">interval</span><span class="p">:</span> <span class="mi">19</span> <span class="n">days</span><span class="p">,</span> <span class="mi">23</span><span class="p">:</span><span class="mi">59</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span> <span class="n">test</span> <span class="n">interval</span><span class="p">:</span> <span class="mi">2</span> <span class="n">days</span><span class="p">,</span> <span class="mi">23</span><span class="p">:</span><span class="mi">59</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span>
+<span class="n">Train</span> <span class="n">episodes</span> <span class="n">per</span> <span class="n">trial</span><span class="p">:</span> <span class="mi">1000</span><span class="p">;</span> <span class="n">test</span> <span class="n">episodes</span> <span class="n">per</span> <span class="n">trial</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="n">iterating</span> <span class="kn">from</span> <span class="mi">0</span><span class="o">-</span><span class="n">th</span>
+</pre></div>
+</div>
+<p>Then first trial intervals will be (note that omitted data periods like holidays are excluded):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Training</span> <span class="n">interval</span><span class="p">:</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">03</span> <span class="mi">17</span><span class="p">:</span><span class="mi">01</span><span class="p">:</span><span class="mi">00</span> <span class="o">&lt;--&gt;</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">31</span> <span class="mi">17</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span>
+<span class="n">Testing</span>  <span class="n">interval</span><span class="p">:</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">31</span> <span class="mi">17</span><span class="p">:</span><span class="mi">15</span><span class="p">:</span><span class="mi">00</span> <span class="o">&lt;--&gt;</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">03</span> <span class="mi">17</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Since <cite>reset_data()</cite> method call, every call to <cite>BTgymSequentialTrial.sample()</cite> method will return uniformly drawn
+train episode from train interval, until max. number of samples is reached ( here - 1000).
+Than each next call to <cite>sample()</cite> will return uniformly drawn episode from test interval,
+until again max. number is reached (here - 10).</p>
+<p>Next call to <cite>sample()</cite> will result in following: next <cite>Trial</cite> will be formed such as:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>train_start_time_next_trial = `test_end_time_previous_trial + 1
+</pre></div>
+</div>
+<p>i.e. <cite>Trial</cite> will be shifted by the duration of test period,
+than first train episode of the new <cite>Trial</cite> will be sampled and returned.</p>
+<p>Repeats until entire dataset is exhausted.</p>
+<p>Note that while train periods are overlapping, test periods form a partition.</p>
+<p>Here, next trial will be:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Training</span> <span class="o">@</span><span class="p">:</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">06</span> <span class="mi">00</span><span class="p">:</span><span class="mi">00</span><span class="p">:</span><span class="mi">00</span> <span class="o">&lt;--&gt;</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">03</span> <span class="mi">00</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span>
+<span class="n">Testing</span>  <span class="o">@</span><span class="p">:</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">03</span> <span class="mi">00</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="mi">00</span> <span class="o">&lt;--&gt;</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">08</span> <span class="mi">00</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span><span class="mi">00</span>
+</pre></div>
+</div>
+<p>See description at <cite>BTgymTrialRandomIterator()</cite> for motivation.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>kwargs</strong> – BTgymDataset specific kwargs.</li>
-<li><strong>trial_range</strong> – dict. containing <cite>Trial</cite> support interval (time range) in: <cite>days`[, `hours</cite>][, <cite>minutes</cite>].</li>
-<li><strong>trial_stride</strong> – dict. containing stride interval between <cite>Trials</cite> in: <cite>days`[, `hours</cite>][, <cite>minutes</cite>].</li>
+<li><strong>train_range</strong> – dict. containing <cite>Trial</cite> train interval in: <cite>days`[, `hours</cite>][, <cite>minutes</cite>];</li>
+<li><strong>test_range</strong> – dict. containing <cite>Trial</cite> test interval in: <cite>days`[, `hours</cite>][, <cite>minutes</cite>];</li>
+<li><strong>train_samples</strong> – number of episodes to draw from single <cite>Trial train interval</cite>;</li>
+<li><strong>test_samples</strong> – number of episodes to draw from <cite>Trial test interval</cite>;</li>
+<li><strong>trial_start_00</strong> – <cite>Trial</cite> start time will be set to that of first record of the day (usually 00:00);</li>
 </ul>
 </td>
 </tr>
@@ -359,8 +406,7 @@ where <cite>~</cite> tolerance is set by <cite>time_gap</cite> param.</td>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <ul class="last simple">
-<li>Total number of <cite>Trials</cite> is inferred upon trial_params given and overall dataset size.</li>
-<li>Total number of episodes drawn from each <cite>Trial</cite> is defined when own .reset() method is called.</li>
+<li>Total number of <cite>Trials</cite> (cardinality) is inferred upon args given and overall dataset size.</li>
 </ul>
 </div>
 <dl class="method">
