@@ -28,6 +28,7 @@ import zmq
 import copy
 
 import time
+import random
 from datetime import timedelta
 
 import backtrader as bt
@@ -232,9 +233,12 @@ class BTgymServer(multiprocessing.Process):
         self.connect_timeout = connect_timeout # server connection timeout in seconds.
         self.connect_timeout_step = 0.01
 
-    def _comm_with_timeout(self, socket, message, timeout, connect_timeout_step=0.01,):
+    def _comm_with_timeout(self, socket, message):
         """
         Exchanges messages via socket with timeout.
+
+        Note:
+            socket zmq.RCVTIMEO and zmq.SNDTIMEO should be set to some finite number of milliseconds
 
         Returns:
             dictionary:
@@ -247,21 +251,27 @@ class BTgymServer(multiprocessing.Process):
         )
         try:
             socket.send_pyobj(message)
-        except:
-            response['status'] = 'send_failed'
+
+        except zmq.ZMQError as e:
+            if e.errno == zmq.EAGAIN:
+                response['status'] = 'send_failed_due_to_connect_timeout'
+
+            else:
+                response['status'] = 'send_failed_for_unknown_reason'
             return response
 
-        for i in itertools.count():
-            try:
-                response['message'] = socket.recv_pyobj(flags=zmq.NOBLOCK)
-                response['time'] = i * connect_timeout_step
-                break
+        start = time.time()
+        try:
+            response['message'] = socket.recv_pyobj()
+            response['time'] =  time.time() - start
 
-            except:
-                time.sleep(connect_timeout_step)
-                if i >= timeout / connect_timeout_step:
-                    response['status'] = 'receive_failed'
-                    return response
+        except zmq.ZMQError as e:
+            if e.errno == zmq.EAGAIN:
+                response['status'] = 'receive_failed_due_to_connect_timeout'
+
+            else:
+                response['status'] = 'receive_failed_for_unknown_reason'
+            return response
 
         return response
 
@@ -279,15 +289,21 @@ class BTgymServer(multiprocessing.Process):
         # How long to wait for data_master to reset data:
         wait_for_data_reset = 300  # seconds
 
+        connect_timeout = 60  # in seconds
+
         # Set up a comm. channel for server as ZMQ socket
         # to carry both service and data signal
         # !! Reminder: Since we use REQ/REP - messages do go in pairs !!
         context = zmq.Context()
         socket = context.socket(zmq.REP)
+        socket.setsockopt(zmq.RCVTIMEO, connect_timeout * 1000)
+        socket.setsockopt(zmq.SNDTIMEO, connect_timeout * 1000)
         socket.bind(self.network_address)
 
         data_context = zmq.Context()
         data_socket = data_context.socket(zmq.REQ)
+        data_socket.setsockopt(zmq.RCVTIMEO, connect_timeout * 1000)
+        data_socket.setsockopt(zmq.SNDTIMEO, connect_timeout * 1000)
         data_socket.connect(self.data_network_address)
 
         # Check connection:
@@ -295,8 +311,7 @@ class BTgymServer(multiprocessing.Process):
 
         data_server_response = self._comm_with_timeout(
             socket=data_socket,
-            message={'ctrl': 'ping!'},
-            timeout=self.connect_timeout,
+            message={'ctrl': 'ping!'}
         )
         if data_server_response['status'] in 'ok':
             self.log.debug('BTgymServer: Data_server seems ready with response: <{}>'.
@@ -386,8 +401,7 @@ class BTgymServer(multiprocessing.Process):
                 # Get random episode dataset:
                 data_server_response = self._comm_with_timeout(
                     socket=data_socket,
-                    message={'ctrl': '_get_data'},
-                    timeout=self.connect_timeout,
+                    message={'ctrl': '_get_data'}
                 )
                 if data_server_response['status'] in 'ok':
                     self.log.debug('Data_server responded with datafeed in about {} seconds.'.
@@ -403,16 +417,16 @@ class BTgymServer(multiprocessing.Process):
                 try:
                     assert 'Dataset not ready' in data_server_response['message']['ctrl']
                     if wait <= wait_for_data_reset:
-                        time.sleep(2)
-                        wait += 2
+                        pause = random.random() * 2
+                        time.sleep(pause)
+                        wait += pause
                         self.log.info(
-                            'Dataset not ready, waiting time left: {} sec.'.format(wait_for_data_reset - wait)
+                            'Dataset not ready, waiting time left: {:4.2f} sec.'.format(wait_for_data_reset - wait)
                         )
                     else:
                         data_server_response = self._comm_with_timeout(
                             socket=data_socket,
-                            message={'ctrl': '_stop'},
-                            timeout=5,
+                            message={'ctrl': '_stop'}
                         )
                         socket.close()
                         context.destroy()
