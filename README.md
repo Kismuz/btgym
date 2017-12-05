@@ -224,6 +224,8 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  
  
 ### <a name="news"></a>[News and updates:](#title)
+- 5.12.17: Inner btgym comm. fixes >> speedup ~5%.
+
 - 02.12.17: Basic `sliding time-window train/test` framework implemented via 
             [BTgymSequentialTrial()](https://kismuz.github.io/btgym/btgym.html#btgym.datafeed.BTgymSequentialTrial)
             class.
