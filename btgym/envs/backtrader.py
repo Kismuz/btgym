@@ -73,7 +73,7 @@ class BTgymEnv(gym.Env):
 
     # Connection timeout:
     connect_timeout = 60  # server connection timeout in seconds.
-    connect_timeout_step = 0.01  # time between retries in seconds.
+    #connect_timeout_step = 0.01  # time between retries in seconds.
 
     # Rendering:
     render_enabled = True
@@ -363,15 +363,16 @@ class BTgymEnv(gym.Env):
         """
         np.random.seed(seed)
 
-    def _comm_with_timeout(self, socket, message, timeout, connect_timeout_step=0.01,):
+    def _comm_with_timeout(self, socket, message,):
         """
         Exchanges messages via socket, timeout sensitive.
 
         Args:
             socket: zmq connected socket to communicate via;
             message: message to send;
-            timeout: max time to wait for response;
-            connect_timeout_step: time increments between retries.
+
+        Note:
+            socket zmq.RCVTIMEO and zmq.SNDTIMEO should be set to some finite number of milliseconds.
 
         Returns:
             dictionary:
@@ -379,28 +380,33 @@ class BTgymEnv(gym.Env):
                 message: received message if status == `ok` or None;
                 time: remote side response time.
         """
-        response=dict(
+        response = dict(
             status='ok',
             message=None,
         )
         try:
             socket.send_pyobj(message)
 
-        except:
-            response['status'] = 'send_failed'
+        except zmq.ZMQError as e:
+            if e.errno == zmq.EAGAIN:
+                response['status'] = 'send_failed_due_to_connect_timeout'
+
+            else:
+                response['status'] = 'send_failed_for_unknown_reason'
             return response
 
-        for i in itertools.count():
-            try:
-                response['message'] = socket.recv_pyobj(flags=zmq.NOBLOCK)
-                response['time'] = i * connect_timeout_step
-                break
+        start = time.time()
+        try:
+            response['message'] = socket.recv_pyobj()
+            response['time'] = time.time() - start
 
-            except:
-                time.sleep(connect_timeout_step)
-                if i >= timeout / connect_timeout_step:
-                    response['status'] = 'receive_failed'
-                    return response
+        except zmq.ZMQError as e:
+            if e.errno == zmq.EAGAIN:
+                response['status'] = 'receive_failed_due_to_connect_timeout'
+
+            else:
+                response['status'] = 'receive_failed_for_unknown_reason'
+            return response
 
         return response
 
@@ -422,6 +428,8 @@ class BTgymEnv(gym.Env):
         # Set up client channel:
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REQ)
+        self.socket.setsockopt(zmq.RCVTIMEO, self.connect_timeout * 1000)
+        self.socket.setsockopt(zmq.SNDTIMEO, self.connect_timeout * 1000)
         self.socket.connect(self.network_address)
 
         # Configure and start server:
@@ -441,8 +449,7 @@ class BTgymEnv(gym.Env):
 
         self.server_response = self._comm_with_timeout(
             socket=self.socket,
-            message={'ctrl': 'ping!'},
-            timeout=self.connect_timeout,
+            message={'ctrl': 'ping!'}
         )
         if self.server_response['status'] in 'ok':
             self.log.debug('Server seems ready with response: <{}>'.
@@ -533,8 +540,7 @@ class BTgymEnv(gym.Env):
             # Dataset status check:
             self.data_server_response = self._comm_with_timeout(
                 socket=self.data_socket,
-                message={'ctrl': '_get_info'},
-                timeout=self.connect_timeout,
+                message={'ctrl': '_get_info'}
             )
             if not self.data_server_response['message']['dataset_is_ready']:
                 self.log.warning(
@@ -644,8 +650,7 @@ class BTgymEnv(gym.Env):
         # Send action to backtrader engine, receive environment response
         env_response = self._comm_with_timeout(
             socket=self.socket,
-            message={'action': self.server_actions[action]},
-            timeout=self.connect_timeout,
+            message={'action': self.server_actions[action]}
         )
         if not env_response['status'] in 'ok':
             msg = 'Env.step: server unreachable with status: <{}>.'.format(env_response['status'])
@@ -771,6 +776,8 @@ class BTgymEnv(gym.Env):
         # Set up client channel:
         self.data_context = zmq.Context()
         self.data_socket = self.data_context.socket(zmq.REQ)
+        self.data_socket.setsockopt(zmq.RCVTIMEO, self.connect_timeout * 1000)
+        self.data_socket.setsockopt(zmq.SNDTIMEO, self.connect_timeout * 1000)
         self.data_socket.connect(self.data_network_address)
 
         # Check connection:
@@ -778,8 +785,7 @@ class BTgymEnv(gym.Env):
 
         self.data_server_response = self._comm_with_timeout(
             socket=self.data_socket,
-            message={'ctrl': 'ping!'},
-            timeout=self.connect_timeout,
+            message={'ctrl': 'ping!'}
         )
         if self.data_server_response['status'] in 'ok':
             self.log.debug('Data_server seems ready with response: <{}>'.
@@ -860,8 +866,7 @@ class BTgymEnv(gym.Env):
 
             self.data_server_response = self._comm_with_timeout(
                 socket=self.data_socket,
-                message={'ctrl': '_reset_data', 'kwargs': kwargs},
-                timeout=10,
+                message={'ctrl': '_reset_data', 'kwargs': kwargs}
             )
             if self.data_server_response['status'] in 'ok':
                 self.log.debug('Dataset seems ready with response: <{}>'.
