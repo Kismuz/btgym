@@ -16,12 +16,12 @@ from tensorflow.contrib.layers import flatten as batch_flatten
 
 class BaseAacPolicy(object):
     """
-    Base advantage actor-critic LSTM policy estimator with auxiliary control tasks.
+    Base advantage actor-critic Convolution-LSTM policy estimator with auxiliary control tasks.
 
     Papers:
-    https://arxiv.org/abs/1602.01783
 
-    https://arxiv.org/abs/1611.05397
+        https://arxiv.org/abs/1602.01783
+        https://arxiv.org/abs/1611.05397
     """
 
     def __init__(self,
