@@ -244,3 +244,19 @@ simple Request/Reply pattern (every request should be paired with reply message)
                 Check episode termination conditions
                 Wait for incoming <action> message
                 Send (state, reward, done, info) response
+
+A3C framework
+---------------------------------------
+
+BTGym can be thougt as two-part package:
+one is environment itself and the other one is collection RL algoritms tuned for solving algo-trading tasks.
+Here is workwlow diagram for BTgym A3C training framework.
+Three advantage actor-critic style algorithms are implemented: A3C itself, it's UNREAL extension and PPO.
+
+Note that while base training framework is itself is somewhat stable,
+exact algorithms implementations and corresponding BTgym startegies, state and reward shaping methods,
+data providers etc. are subject to experiments and changes.
+
+.. image:: btgym_a3c_framework.png
+   :scale: 70 %
+   :alt: A3C framework workwlow image

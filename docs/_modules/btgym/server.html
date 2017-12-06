@@ -94,6 +94,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../intro.html#a3c-framework">A3C framework</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.envs.html">btgym.envs package</a></li>
@@ -204,6 +205,7 @@
 <span class="kn">import</span> <span class="nn">copy</span>
 
 <span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">timedelta</span>
 
 <span class="kn">import</span> <span class="nn">backtrader</span> <span class="k">as</span> <span class="nn">bt</span>
@@ -408,9 +410,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span> <span class="o">=</span> <span class="n">connect_timeout</span> <span class="c1"># server connection timeout in seconds.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout_step</span> <span class="o">=</span> <span class="mf">0.01</span>
 
-    <span class="k">def</span> <span class="nf">_comm_with_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">socket</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">connect_timeout_step</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,):</span>
+    <span class="k">def</span> <span class="nf">_comm_with_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">socket</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Exchanges messages via socket with timeout.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            socket zmq.RCVTIMEO and zmq.SNDTIMEO should be set to some finite number of milliseconds</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            dictionary:</span>
@@ -423,21 +428,27 @@
         <span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-        <span class="k">except</span><span class="p">:</span>
-            <span class="n">response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;send_failed&#39;</span>
+
+        <span class="k">except</span> <span class="n">zmq</span><span class="o">.</span><span class="n">ZMQError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="n">zmq</span><span class="o">.</span><span class="n">EAGAIN</span><span class="p">:</span>
+                <span class="n">response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;send_failed_due_to_connect_timeout&#39;</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;send_failed_for_unknown_reason&#39;</span>
             <span class="k">return</span> <span class="n">response</span>
 
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">():</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">(</span><span class="n">flags</span><span class="o">=</span><span class="n">zmq</span><span class="o">.</span><span class="n">NOBLOCK</span><span class="p">)</span>
-                <span class="n">response</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">connect_timeout_step</span>
-                <span class="k">break</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+            <span class="n">response</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span>  <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
 
-            <span class="k">except</span><span class="p">:</span>
-                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">connect_timeout_step</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="n">timeout</span> <span class="o">/</span> <span class="n">connect_timeout_step</span><span class="p">:</span>
-                    <span class="n">response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;receive_failed&#39;</span>
-                    <span class="k">return</span> <span class="n">response</span>
+        <span class="k">except</span> <span class="n">zmq</span><span class="o">.</span><span class="n">ZMQError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="n">zmq</span><span class="o">.</span><span class="n">EAGAIN</span><span class="p">:</span>
+                <span class="n">response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;receive_failed_due_to_connect_timeout&#39;</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;receive_failed_for_unknown_reason&#39;</span>
+            <span class="k">return</span> <span class="n">response</span>
 
         <span class="k">return</span> <span class="n">response</span>
 
@@ -455,15 +466,21 @@
         <span class="c1"># How long to wait for data_master to reset data:</span>
         <span class="n">wait_for_data_reset</span> <span class="o">=</span> <span class="mi">300</span>  <span class="c1"># seconds</span>
 
+        <span class="n">connect_timeout</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># in seconds</span>
+
         <span class="c1"># Set up a comm. channel for server as ZMQ socket</span>
         <span class="c1"># to carry both service and data signal</span>
         <span class="c1"># !! Reminder: Since we use REQ/REP - messages do go in pairs !!</span>
         <span class="n">context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
         <span class="n">socket</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">REP</span><span class="p">)</span>
+        <span class="n">socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">RCVTIMEO</span><span class="p">,</span> <span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="n">socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">SNDTIMEO</span><span class="p">,</span> <span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
         <span class="n">socket</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">network_address</span><span class="p">)</span>
 
         <span class="n">data_context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
         <span class="n">data_socket</span> <span class="o">=</span> <span class="n">data_context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">REQ</span><span class="p">)</span>
+        <span class="n">data_socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">RCVTIMEO</span><span class="p">,</span> <span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="n">data_socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">SNDTIMEO</span><span class="p">,</span> <span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
         <span class="n">data_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span><span class="p">)</span>
 
         <span class="c1"># Check connection:</span>
@@ -471,8 +488,7 @@
 
         <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
             <span class="n">socket</span><span class="o">=</span><span class="n">data_socket</span><span class="p">,</span>
-            <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;ping!&#39;</span><span class="p">},</span>
-            <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;ping!&#39;</span><span class="p">}</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;BTgymServer: Data_server seems ready with response: &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span>
@@ -562,8 +578,7 @@
                 <span class="c1"># Get random episode dataset:</span>
                 <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
                     <span class="n">socket</span><span class="o">=</span><span class="n">data_socket</span><span class="p">,</span>
-                    <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_get_data&#39;</span><span class="p">},</span>
-                    <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span><span class="p">,</span>
+                    <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_get_data&#39;</span><span class="p">}</span>
                 <span class="p">)</span>
                 <span class="k">if</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Data_server responded with datafeed in about </span><span class="si">{}</span><span class="s1"> seconds.&#39;</span><span class="o">.</span>
@@ -579,16 +594,16 @@
                 <span class="k">try</span><span class="p">:</span>
                     <span class="k">assert</span> <span class="s1">&#39;Dataset not ready&#39;</span> <span class="ow">in</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span>
                     <span class="k">if</span> <span class="n">wait</span> <span class="o">&lt;=</span> <span class="n">wait_for_data_reset</span><span class="p">:</span>
-                        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-                        <span class="n">wait</span> <span class="o">+=</span> <span class="mi">2</span>
+                        <span class="n">pause</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">2</span>
+                        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">pause</span><span class="p">)</span>
+                        <span class="n">wait</span> <span class="o">+=</span> <span class="n">pause</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                            <span class="s1">&#39;Dataset not ready, waiting time left: </span><span class="si">{}</span><span class="s1"> sec.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">wait_for_data_reset</span> <span class="o">-</span> <span class="n">wait</span><span class="p">)</span>
+                            <span class="s1">&#39;Dataset not ready, waiting time left: </span><span class="si">{:4.2f}</span><span class="s1"> sec.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">wait_for_data_reset</span> <span class="o">-</span> <span class="n">wait</span><span class="p">)</span>
                         <span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
                             <span class="n">socket</span><span class="o">=</span><span class="n">data_socket</span><span class="p">,</span>
-                            <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_stop&#39;</span><span class="p">},</span>
-                            <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                            <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_stop&#39;</span><span class="p">}</span>
                         <span class="p">)</span>
                         <span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
                         <span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>

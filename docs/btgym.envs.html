@@ -234,27 +234,33 @@
 
 <dl class="method">
 <dt id="btgym.envs.backtrader.BTgymEnv._comm_with_timeout">
-<code class="descname">_comm_with_timeout</code><span class="sig-paren">(</span><em>socket</em>, <em>message</em>, <em>timeout</em>, <em>connect_timeout_step=0.01</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._comm_with_timeout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._comm_with_timeout" title="Permalink to this definition">¶</a></dt>
+<code class="descname">_comm_with_timeout</code><span class="sig-paren">(</span><em>socket</em>, <em>message</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._comm_with_timeout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._comm_with_timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Exchanges messages via socket, timeout sensitive.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>socket</strong> – zmq connected socket to communicate via;</li>
 <li><strong>message</strong> – message to send;</li>
-<li><strong>timeout</strong> – max time to wait for response;</li>
-<li><strong>connect_timeout_step</strong> – time increments between retries.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">status: communication result;
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">socket zmq.RCVTIMEO and zmq.SNDTIMEO should be set to some finite number of milliseconds.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">status: communication result;
 message: received message if status == <cite>ok</cite> or None;
-time: remote side response time.</p>
-</td>
+time: remote side response time.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dictionary</p>
-</td>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dictionary</td>
 </tr>
 </tbody>
 </table>

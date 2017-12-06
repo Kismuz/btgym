@@ -95,6 +95,7 @@
 <li class="toctree-l1"><a class="reference internal" href="#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#a3c-framework">A3C framework</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
@@ -445,6 +446,17 @@ all state computations are performed one step ahead:</li>
             <span class="n">Send</span> <span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span><span class="p">)</span> <span class="n">response</span>
 </pre></div>
 </div>
+</div>
+<div class="section" id="a3c-framework">
+<h1>A3C framework<a class="headerlink" href="#a3c-framework" title="Permalink to this headline">¶</a></h1>
+<p>BTGym can be thougt as two-part package:
+one is environment itself and the other one is collection RL algoritms tuned for solving algo-trading tasks.
+Here is workwlow diagram for BTgym A3C training framework.
+Three advantage actor-critic style algorithms are implemented: A3C itself, it’s UNREAL extension and PPO.</p>
+<p>Note that while base training framework is itself is somewhat stable,
+exact algorithms implementations and corresponding BTgym startegies, state and reward shaping methods,
+data providers etc. are subject to experiments and changes.</p>
+<a class="reference internal image-reference" href="_images/btgym_a3c_framework.png"><img alt="A3C framework workwlow image" src="_images/btgym_a3c_framework.png" style="width: 630.6999999999999px; height: 891.8px;" /></a>
 </div>
 
 

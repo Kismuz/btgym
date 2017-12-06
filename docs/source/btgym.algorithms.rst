@@ -37,10 +37,10 @@ btgym\.algorithms\.losses module
 
 
 
-btgym\.algorithms\.nnet\_util module
+btgym\.algorithms\.nn\_utils module
 ------------------------------------
 
-.. automodule:: btgym.algorithms.nnet_util
+.. automodule:: btgym.algorithms.nn_utils
     :members:
 
 

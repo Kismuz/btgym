@@ -94,6 +94,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework">A3C framework</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.envs.html">btgym.envs package</a></li>
@@ -192,12 +193,12 @@
 
 <div class="viewcode-block" id="BaseAacPolicy"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.policy.BaseAacPolicy">[docs]</a><span class="k">class</span> <span class="nc">BaseAacPolicy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Base advantage actor-critic LSTM policy estimator with auxiliary control tasks.</span>
+<span class="sd">    Base advantage actor-critic Convolution-LSTM policy estimator with auxiliary control tasks.</span>
 
 <span class="sd">    Papers:</span>
-<span class="sd">    https://arxiv.org/abs/1602.01783</span>
 
-<span class="sd">    https://arxiv.org/abs/1611.05397</span>
+<span class="sd">        https://arxiv.org/abs/1602.01783</span>
+<span class="sd">        https://arxiv.org/abs/1611.05397</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
