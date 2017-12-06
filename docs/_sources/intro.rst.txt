@@ -145,30 +145,11 @@ In short:
 ****
 
 
-**Data flow**::
+.. image:: btgym_env_operation.png
+   :scale: 80 %
+   :alt: btgym environment operation
 
-        `
-                    BTgym Environment                                 RL Framework
-                                                   +-+
-           (episode mode)  +<-----<action>--- -----| |<--------------------------------------+
-                  |        |                       |e|                                       |
-                  +<------>+------<       state >->|n|--->[feature *]---><state>--+->[agent]-+
-                  |        |      < observation >  |v|    [estimator]             |     |
-                  |        |                       |.|                            |     |
-            [Backtrader]   +-----<  portfolio >--->|s|--->[reward  *]---><reward>-+     |
-            [Server    ]   |     < statistics >    |t|    [estimator]                   |
-               |           |                       |e|                                  |
-               |           +------<is_done>------->|p|--+>[runner **]<----------------->+
-          (control mode)   |                       | |  |    |
-               |           +------<aux.info>--- -->| |--+    |
-               |                                   +-+       |
-               +--<'_stop'><------------------->|env._stop|--+
-               |                                             |
-               +--<'_reset'><------------------>|env.reset|--+
 
-        * - can be done on server side;
-        ** - RL framework specific module;
-        `
 **Workflow sample**:
 
 1. Define backtesting `BTgymStrategy(bt.Strategy)`, which will control Environment inner dynamics and backtesting logic.
@@ -179,12 +160,14 @@ In short:
 
 2. Instantiate `Cerbro()`, add `BTgymStrategy()`, backtrader `Sizers`, `Analyzers` and `Observers` (if needed).
 
+
 3. Define dataset by passing CSV datafile and parameters to BTgymDataset instance.
     - `BTgymDataset()` is simply `Backtrader.feeds` class wrapper,
       which pipes `CSV`[source]->`pandas`[for efficient sampling]->`bt.feeds` routine
       and implements random episode data sampling.
 
 4. Initialize (or register and `make()`) gym environment with `Cerebro()` and `BTgymDataset()` along with other kwargs.
+
 
 5. Run your favorite RL algorithm:
     - start episode by calling `env.reset()`;
@@ -194,7 +177,7 @@ In short:
 
 **Server operation details:**
 
-Backtrader server starts when `env.reset()` method is called for first time , runs as separate process, follows
+Backtrader server starts when `env.reset()` method is called for first time, runs as separate process, follows
 simple Request/Reply pattern (every request should be paired with reply message) and operates one of two modes:
 
     - Control mode: initial mode, accepts only `_reset`, `_stop` and `_getstat` messages. Any other message is ignored
@@ -250,7 +233,7 @@ A3C framework
 
 BTGym can be thougt as two-part package:
 one is environment itself and the other one is collection RL algoritms tuned for solving algo-trading tasks.
-Here is workwlow diagram for BTgym A3C training framework.
+Below is BTgym A3C training framework operation diagram.
 Three advantage actor-critic style algorithms are implemented: A3C itself, it's UNREAL extension and PPO.
 
 Note that while base training framework is itself is somewhat stable,
@@ -258,5 +241,5 @@ exact algorithms implementations and corresponding BTgym startegies, state and r
 data providers etc. are subject to experiments and changes.
 
 .. image:: btgym_a3c_framework.png
-   :scale: 70 %
+   :scale: 80 %
    :alt: A3C framework workwlow image

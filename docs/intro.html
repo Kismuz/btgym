@@ -315,31 +315,7 @@ queries like <cite>env.reset()</cite> and <cite>env.step()</cite> by repeatedly 
 backtesting <cite>Cerebro</cite> engine on it. See OpenAI Gym documentation for details: <a class="reference external" href="https://gym.openai.com/docs">https://gym.openai.com/docs</a></li>
 </ul>
 <hr class="docutils" />
-<p><strong>Data flow</strong>:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>`
-            BTgym Environment                                 RL Framework
-                                           +-+
-   (episode mode)  +&lt;-----&lt;action&gt;--- -----| |&lt;--------------------------------------+
-          |        |                       |e|                                       |
-          +&lt;------&gt;+------&lt;       state &gt;-&gt;|n|---&gt;[feature *]---&gt;&lt;state&gt;--+-&gt;[agent]-+
-          |        |      &lt; observation &gt;  |v|    [estimator]             |     |
-          |        |                       |.|                            |     |
-    [Backtrader]   +-----&lt;  portfolio &gt;---&gt;|s|---&gt;[reward  *]---&gt;&lt;reward&gt;-+     |
-    [Server    ]   |     &lt; statistics &gt;    |t|    [estimator]                   |
-       |           |                       |e|                                  |
-       |           +------&lt;is_done&gt;-------&gt;|p|--+&gt;[runner **]&lt;-----------------&gt;+
-  (control mode)   |                       | |  |    |
-       |           +------&lt;aux.info&gt;--- --&gt;| |--+    |
-       |                                   +-+       |
-       +--&lt;&#39;_stop&#39;&gt;&lt;-------------------&gt;|env._stop|--+
-       |                                             |
-       +--&lt;&#39;_reset&#39;&gt;&lt;------------------&gt;|env.reset|--+
-
-* - can be done on server side;
-** - RL framework specific module;
-`
-</pre></div>
-</div>
+<a class="reference internal image-reference" href="_images/btgym_env_operation.png"><img alt="btgym environment operation" src="_images/btgym_env_operation.png" style="width: 720.8000000000001px; height: 1019.2px;" /></a>
 <p><strong>Workflow sample</strong>:</p>
 <ol class="arabic simple">
 <li><dl class="first docutils">
@@ -378,7 +354,7 @@ and implements random episode data sampling.</li>
 </ol>
 <hr class="docutils" />
 <p><strong>Server operation details:</strong></p>
-<p>Backtrader server starts when <cite>env.reset()</cite> method is called for first time , runs as separate process, follows
+<p>Backtrader server starts when <cite>env.reset()</cite> method is called for first time, runs as separate process, follows
 simple Request/Reply pattern (every request should be paired with reply message) and operates one of two modes:</p>
 <blockquote>
 <div><ul>
@@ -451,12 +427,12 @@ all state computations are performed one step ahead:</li>
 <h1>A3C framework<a class="headerlink" href="#a3c-framework" title="Permalink to this headline">¶</a></h1>
 <p>BTGym can be thougt as two-part package:
 one is environment itself and the other one is collection RL algoritms tuned for solving algo-trading tasks.
-Here is workwlow diagram for BTgym A3C training framework.
+Below is BTgym A3C training framework operation diagram.
 Three advantage actor-critic style algorithms are implemented: A3C itself, it’s UNREAL extension and PPO.</p>
 <p>Note that while base training framework is itself is somewhat stable,
 exact algorithms implementations and corresponding BTgym startegies, state and reward shaping methods,
 data providers etc. are subject to experiments and changes.</p>
-<a class="reference internal image-reference" href="_images/btgym_a3c_framework.png"><img alt="A3C framework workwlow image" src="_images/btgym_a3c_framework.png" style="width: 630.6999999999999px; height: 891.8px;" /></a>
+<a class="reference internal image-reference" href="_images/btgym_a3c_framework.png"><img alt="A3C framework workwlow image" src="_images/btgym_a3c_framework.png" style="width: 720.8000000000001px; height: 1019.2px;" /></a>
 </div>
 
 
