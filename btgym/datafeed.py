@@ -374,12 +374,17 @@ class BTgymDataset:
             self.log.debug('Episode start: {}, weekday: {}.'.format(episode_first_day, episode_first_day.weekday()))
 
             # Keep sampling until good day:
-            while not episode_first_day.weekday() in self.start_weekdays:
+            while not episode_first_day.weekday() in self.start_weekdays and attempts <= max_attempts:
                 self.log.debug('Not a good day to start, resampling...')
                 first_row = int((self.data.shape[0] - self.episode_num_records - 1) * random.random())
                 episode_first_day = self.data[first_row:first_row + 1].index[0]
                 self.log.debug('Episode start: {}, weekday: {}.'.format(episode_first_day, episode_first_day.weekday()))
                 attempts +=1
+
+            # Check if managed to get proper weekday:
+            assert attempts <= max_attempts, \
+                'Quitting after {} sampling attempts. Hint: check sampling params / dataset consistency.'. \
+                format(attempts)
 
             # If 00 option set, get index of first record of that day:
             if self.start_00:
@@ -444,14 +449,9 @@ class BTgymDataset:
 
         sample_num_records = self.episode_num_records
 
-        try:
-            assert tolerance / 2 < position\
-                   < int((self.data.shape[0] - sample_num_records - int(tolerance / 2) - 1))
-
-        except AssertionError:
-            self.log.warning('Cannot sample with size {}, starting from position {}+-{} from dataset of {} records'.
-                             format(sample_num_records, position, tolerance, self.data.shape[0]))
-            return False
+        assert tolerance / 2 < position < int((self.data.shape[0] - sample_num_records - int(tolerance / 2) - 1)), \
+            'Cannot sample with size {}, starting from position {}+-{} from dataset of {} records'.\
+             format(sample_num_records, position, tolerance, self.data.shape[0])
 
         self.log.debug('Maximum sample time duration set to: {}.'.format(self.max_episode_len))
         self.log.debug('Respective number of steps: {}.'.format(sample_num_records))
@@ -461,6 +461,8 @@ class BTgymDataset:
         max_attempts = 100
         attempts = 0
 
+        self.log.debug('Data_pos_sample(): started with position={}, tolerance={}'.format(position, tolerance))
+
         # # Keep sampling random enter points until all conditions are met:
         while attempts <= max_attempts:
             first_row = position - tolerance + round((2 * tolerance - sample_num_records) * random.random())
@@ -468,12 +470,17 @@ class BTgymDataset:
             self.log.debug('Sample start: {}, weekday: {}.'.format(episode_first_day, episode_first_day.weekday()))
 
             # Keep sampling until good day:
-            while not episode_first_day.weekday() in self.start_weekdays:
+            while not episode_first_day.weekday() in self.start_weekdays and attempts <= max_attempts:
                 self.log.debug('Not a good day to start, resampling...')
                 first_row = position - tolerance + round((2 * tolerance - sample_num_records) * random.random())
                 episode_first_day = self.data[first_row:first_row + 1].index[0]
                 self.log.debug('Sample start: {}, weekday: {}.'.format(episode_first_day, episode_first_day.weekday()))
                 attempts += 1
+
+            # Check if managed to get proper weekday:
+            assert attempts <= max_attempts, \
+                'Quitting after {} sampling attempts. Hint: check sampling params / dataset consistency.'.\
+                format(attempts)
 
             # If 00 option set, get index of first record of that day:
             if self.start_00:
@@ -505,14 +512,14 @@ class BTgymDataset:
                 return episode
 
             else:
-                self.log.debug('Duration too big, resampling...\n')
+                self.log.debug('Attempt {}: duration too big, resampling, ...\n'.format(attempts))
                 attempts += 1
 
         # Got here -> sanity check failed:
         msg = ('Quitting after {} sampling attempts.' +
                'Hint: check sampling params / dataset consistency.').format(attempts)
         self.log.warning(msg)
-        return False
+        raise AssertionError(msg)
 
 
 class BTgymSequentialTrial(BTgymDataset):
@@ -649,6 +656,7 @@ class BTgymSequentialTrial(BTgymDataset):
         episode.metadata['type'] = type  # 0 - train, 1 - test
         episode.metadata['trial_num'] = trial_num
         episode.metadata['sample_num'] = sample_num
+        self.log.debug('Seq_Data_Iterator: sample is ready with metadata: {}'.format(episode.metadata))
         return episode
 
     def reset(self, global_step=0, total_steps=None, skip_frame=10):
@@ -804,7 +812,7 @@ class BTgymSequentialTrial(BTgymDataset):
                 ), self.trial_num, True , self.test_sample_num
 
         self.train_sample_num += 1
-        self.log.debug('Trial sample #{}'.format(self.train_sample_num))
+        self.log.debug('Train sample #{}'.format(self.train_sample_num))
         return self._sample_position(
             position=self.train_mean_row,
             tolerance=int(self.train_range_row / 2)

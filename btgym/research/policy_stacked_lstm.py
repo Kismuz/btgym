@@ -5,6 +5,7 @@ from tensorflow.contrib.layers import flatten as batch_flatten
 
 from btgym.algorithms import BaseAacPolicy
 
+
 class StackedLstmPolicy(BaseAacPolicy):
     """
     Conv.-Stacked_LSTM policy, based on `NAV A3C agent` architecture from
@@ -227,3 +228,75 @@ class StackedLstmPolicy(BaseAacPolicy):
         # Callbacks:
         if self.aux_estimate:
             self.callback['pixel_change'] = self.get_pc_target
+
+
+class AacStckedRL2Policy(StackedLstmPolicy):
+    """
+    ATTEMPT:
+    implement two-level RL^2
+    This policy class in conjunction with DataTrialIterator classes from btgym.datafeed
+    is aimed to implement RL^2 algorithm by Duan et al.
+
+    Paper:
+    `FAST REINFORCEMENT LEARNING VIA SLOW REINFORCEMENT LEARNING`,
+    https://arxiv.org/pdf/1611.02779.pdf
+
+    The only difference from Base policy is `get_initial_features()` method, which has been changed
+    either to reset RNN context to zero-state or return context from the end of previous episode,
+    depending on episode metadata received.
+    """
+    def __init__(self, **kwargs):
+        super(AacStckedRL2Policy, self).__init__(**kwargs)
+        self.current_trial_num = -1  # always give initial context at first call
+
+    def get_initial_features(self, state, context=None):
+        """
+        Returns RNN initial context.
+        RNN_1 (lower) context is reset at every call.
+
+        RNN_2 (upper) context is reset if:
+            - episode  initial `state` `trial_num` metadata has been changed form last call (new train trial started);
+            - episode metatdata `type` is non-zero (test episode);
+            - no context arg is provided (initial episode of training);
+            - else assumes this is new episode of same train trial has started and carries context on to new episode;
+
+        Episode metadata are provided by DataTrialIterator, which is shaping Trial data distribution in this case,
+        and delivered through env.strategy as separate key in observation dictionary.
+
+        Args:
+            state:      initial episode state (result of env.reset())
+            context:    last previous episode RNN state (last_context of runner)
+
+        Returns:
+            2_RNN zero-state tuple.
+
+        Raises:
+            KeyError if [`metadata`]:[`trial_num`,`type`] keys not found
+
+        Note:
+            to work correctly, `trial_num' should increase at least sometimes or level_2 RNN never gets reset.
+        """
+        try:
+            sess = tf.get_default_session()
+            new_context = list(sess.run(self.on_lstm_init_state))
+            if state['metadata']['trial_num'] != self.current_trial_num or context is None or state['metadata']['type']:
+                # Assume new/initial trial or test sample, reset_1, 2 context:
+                print('RL^2 policy context 1, 2 reset')
+
+            else:
+                # Asssume same training trial, keep context_2 same as received:
+                new_context[-1] = context[-1]
+                #print('RL^2 policy context 1, reset')
+            # Back to tuple:
+            new_context = tuple(new_context)
+            # Keep trial number:
+            self.current_trial_num = state['metadata']['trial_num']
+
+
+        except KeyError:
+            raise KeyError(
+                'RL^2 policy: expected observation state dict. to have keys [`metadata`]:[`trial_num`,`type`]; got: {}'.
+                format(state.keys())
+            )
+
+        return new_context

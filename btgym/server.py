@@ -408,7 +408,7 @@ class BTgymServer(multiprocessing.Process):
                                    format(data_server_response['time']))
 
                 else:
-                    msg = 'BtgymServer: data_server unreachable with status: <{}>.'. \
+                    msg = 'BtgymServer_sampling_attempt: data_server unreachable with status: <{}>.'. \
                         format(data_server_response['status'])
                     self.log.error(msg)
                     raise ConnectionError(msg)

@@ -5,4 +5,4 @@
 
 from .strategy_4 import DevStrat_4_6
 from .policy_rl2 import AacRL2Policy
-from .policy_stacked_lstm import StackedLstmPolicy
+from .policy_stacked_lstm import StackedLstmPolicy, AacStckedRL2Policy
