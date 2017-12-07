@@ -134,6 +134,7 @@ class _BTgymAnalyzer(bt.Analyzer):
             # Store agent action:
             if 'action' in self.message: # now it should!
                 self.strategy.action = self.message['action']
+                self.strategy.last_action = self.message['action']
 
             else:
                 msg = 'No <action> key recieved:\n' + msg

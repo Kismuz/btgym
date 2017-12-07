@@ -23,6 +23,8 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
         internal state data feature search:
             time_embedded concatenated vector of broker and portfolio statistics
+            time_embedded vector of last actions recieved (one-hot)
+            time_embedded vector of rewards
 
         reward shaping search:
            potential-based shaping functions
@@ -32,12 +34,15 @@ class DevStrat_4_6(BTgymBaseStrategy):
         synthetic/real
     """
     time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
+    portfolio_actions = ('hold', 'buy', 'sell', 'close')
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
             {
                 'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3)),
                 'internal': spaces.Box(low=-2, high=2, shape=(time_dim, 1, 5)),
+                'action': spaces.Box(low=0, high=1, shape=(time_dim, 1, len(portfolio_actions))),
+                'reward': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 1)),
                 'metadata': DictSpace(
                     {
                         'type': spaces.Box(
@@ -65,7 +70,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
             },
         drawdown_call=5,
         target_call=19,
-        portfolio_actions=('hold', 'buy', 'sell', 'close'),
+        portfolio_actions=portfolio_actions,
         skip_frame=10,
         metadata={}
     )
@@ -142,6 +147,8 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
         self.state['external'] = x_market[:, None, :]
         self.state['internal'] = x_broker[:, None, :]
+        self.state['action'] = np.asarray(self.sliding_stat['action'])[:, None, :]
+        self.state['reward'] = np.asarray(self.sliding_stat['reward'])[:, None, None]
 
         return self.state
 
@@ -189,3 +196,4 @@ class DevStrat_4_6(BTgymBaseStrategy):
         self.reward = np.clip(self.reward, -1, 1)
 
         return self.reward
+
