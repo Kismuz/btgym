@@ -895,6 +895,7 @@ class BaseAAC(object):
                 self.summary_writer.add_summary(renderings, sess.run(self.global_episode))
                 self.summary_writer.flush()
 
+        #fetches = [self.train_op, self.local_network.debug]  # include policy debug shapes
         fetches = [self.train_op]
 
         if wirte_model_summary:
@@ -915,13 +916,18 @@ class BaseAAC(object):
 
         self.local_steps += 1
 
+        # print debug info:
+        #for k, v in fetched[1].items():
+        #    print('{}: {}'.format(k,v))
+        #print('\n')
+
         #for k, v in feed_dict.items():
         #    try:
         #        print(k, v.shape)
         #    except:
         #        print(k, type(v))
 
-
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 Unreal = BaseAAC
 

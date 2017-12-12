@@ -128,6 +128,9 @@ class Rollout(dict):
         else:
             batch['context'] = self.get_frame(0)['context'] # just get rollout initial LSTM state
 
+        #print('batch_context:')
+        #self._check_it(batch['context'])
+
         # Total accumulated empirical return:
         rewards = np.asarray(self['reward'])
         rollout_r = self['r'][-1][0]  # bootstrapped V_next or 0 if terminal
@@ -274,8 +277,14 @@ class Rollout(dict):
             for key, value in _struct.items():
                 print(key, ':')
                 self._check_it(_struct=value)
+
+        elif type(_struct) == tuple or type(_struct) == list:
+            print('tuple/list:')
+            for value in _struct:
+                self._check_it(_struct=value)
+
         else:
             try:
-                print('length {}, type {}, shape {}\n'.format(len(_struct), type(_struct[0]), _struct[0].shape))
+                print('length: {}, type: {}, shape of element: {}\n'.format(len(_struct), type(_struct[0]), _struct[0].shape))
             except:
-                print('length {}, type {}\n'.format(len(_struct), type(_struct[0])))
+                print('length: {}, type: {}\n'.format(len(_struct), type(_struct[0])))

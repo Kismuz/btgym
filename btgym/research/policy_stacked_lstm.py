@@ -44,6 +44,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             dict(
                 conv_2d_filter_size=[3, 1],
                 conv_2d_stride=[2, 1],
+                conv_2d_num_filters=64,
                 pc_estimator_stride=[2, 1],
                 duell_pc_x_inner_shape=(6, 1, 32),  # [6,3,32] if swapping W-C dims
                 duell_pc_filter_size=(4, 1),
@@ -58,6 +59,8 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.lstm_layers = lstm_layers
         self.aux_estimate = aux_estimate
         self.callback = {}
+
+        self.debug = {}
 
         # Placeholders for obs. state input:
         self.on_state_in = nested_placeholders(ob_space, batch_dim=None, name='on_policy_state_in')
@@ -87,38 +90,119 @@ class StackedLstmPolicy(BaseAacPolicy):
         on_a_r_in = tf.reshape(self.on_a_r_in, [self.on_batch_size, max_seq_len, ac_space + 1])
         on_aac_x = tf.reshape( on_aac_x, [self.on_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
 
-        # Feed last action_reward into first LSTM layer along with encoded `external` state features:
-        on_stage2_1_input = [on_aac_x, on_a_r_in]
-        on_aac_x = tf.concat(on_stage2_1_input, axis=-1)
-
-        # First LSTM layer takes concatenated encoded `external` state and last action_reward tensor:
-        [on_x_lstm_1_out, self.on_lstm_1_init_state, self.on_lstm_1_state_out, self.on_lstm_1_state_pl_flatten] =\
-            lstm_network(on_aac_x, self.on_time_length, lstm_class, (lstm_layers[0],), name='lstm_1')
-
-        # Second LSTM layer takes concatenated encoded 'external' state, LSTM_1 output,
-        # last_action_reward and `internal_state` tensors:
-        on_stage2_2_input = [on_x_lstm_1_out] + on_stage2_1_input
-
-        if 'internal' in list(self.on_state_in.keys()):
+        # Prepare `internal` state, if any:
+        if False and 'internal' in list(self.on_state_in.keys()):
             x_int_shape_static = self.on_state_in['internal'].get_shape().as_list()
-            x_int = tf.reshape(
+            x_internal = tf.reshape(
                 self.on_state_in['internal'],
                 [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
             )
-            on_stage2_2_input.append(x_int)
+            self.debug['state_internal'] = tf.shape(self.on_state_in['internal'])
+            x_internal = [x_internal]
 
+        else:
+            x_internal = []
+
+        if 'internal' in list(self.on_state_in.keys()):
+            x_internal = conv_2d_network(
+                self.on_state_in['internal'],
+                ob_space['internal'],
+                ac_space,
+                name='conv1d_internal',
+                #conv_2d_layer_ref=conv2d_dw,
+                conv_2d_num_filters=32,
+                conv_2d_num_layers=2,
+                conv_2d_filter_size=[3, 1],
+                conv_2d_stride=[2, 1],
+            )
+            x_int_shape_static = x_internal.get_shape().as_list()
+            x_internal = [tf.reshape(x_internal, [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])])]
+            self.debug['state_internal_enc'] = tf.shape(x_internal)
+
+        else:
+            x_internal = []
+
+        if 'reward' in list(self.on_state_in.keys()):
+            x_rewards_shape_static = self.on_state_in['reward'].get_shape().as_list()
+            x_rewards = tf.reshape(
+                self.on_state_in['reward'],
+                [self.on_batch_size, max_seq_len, np.prod(x_rewards_shape_static[1:])]
+            )
+            self.debug['rewards'] = tf.shape(x_rewards)
+            x_rewards = [x_rewards]
+
+        else:
+            x_rewards = []
+
+        self.debug['conv_input_to_lstm1'] = tf.shape(on_aac_x)
+
+        # Feed last last_reward into LSTM_1 layer along with encoded `external` state features:
+        on_stage2_1_input = [on_aac_x, on_a_r_in[..., -1][..., None]] #+ x_internal
+        #on_stage2_1_input = [on_aac_x] + x_rewards
+
+        # Feed last last_action, encoded `external` state,  `internal` state into LSTM_2:
+        #on_stage2_2_input = [on_aac_x, on_a_r_in[..., :-1]]
+        on_stage2_2_input = [on_aac_x, on_a_r_in] + x_internal
+
+        # LSTM_1 full input:
+        on_aac_x = tf.concat(on_stage2_1_input, axis=-1)
+
+        self.debug['concat_input_to_lstm1'] = tf.shape(on_aac_x)
+
+        # First LSTM layer takes encoded `external` state:
+        [on_x_lstm_1_out, self.on_lstm_1_init_state, self.on_lstm_1_state_out, self.on_lstm_1_state_pl_flatten] =\
+            lstm_network(on_aac_x, self.on_time_length, lstm_class, (lstm_layers[0],), name='lstm_1')
+
+        self.debug['on_x_lstm_1_out'] = tf.shape(on_x_lstm_1_out)
+        self.debug['self.on_lstm_1_state_out'] = tf.shape(self.on_lstm_1_state_out)
+        self.debug['self.on_lstm_1_state_pl_flatten'] = tf.shape(self.on_lstm_1_state_pl_flatten)
+
+        # For time_flat only: Reshape on_lstm_1_state_out from [1,2,20,size] -->[20,1,2,size] --> [20,1, 2xsize]:
+        reshape_lstm_1_state_out = tf.transpose(self.on_lstm_1_state_out, [2, 0, 1, 3])
+        reshape_lstm_1_state_out_shape_static = reshape_lstm_1_state_out.get_shape().as_list()
+        reshape_lstm_1_state_out = tf.reshape(
+            reshape_lstm_1_state_out,
+            [self.on_batch_size, max_seq_len, np.prod(reshape_lstm_1_state_out_shape_static[-2:])],
+        )
+        #self.debug['reshape_lstm_1_state_out'] = tf.shape(reshape_lstm_1_state_out)
+
+        # Take policy logits off first LSTM-dense layer:
+        # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
+        x_shape_static = on_x_lstm_1_out.get_shape().as_list()
+        rsh_on_x_lstm_1_out = tf.reshape(on_x_lstm_1_out, [x_shape_dynamic[0], x_shape_static[-1]])
+
+        self.debug['reshaped_on_x_lstm_1_out'] = tf.shape(rsh_on_x_lstm_1_out)
+
+        # Aac policy and value outputs and action-sampling function:
+        [self.on_logits, _, self.on_sample] = dense_aac_network(rsh_on_x_lstm_1_out, ac_space, name='on_aac_dense_pi')
+
+        # Second LSTM layer takes concatenated encoded 'external' state, LSTM_1 output,
+        # last_action and `internal_state` (if present) tensors:
+        on_stage2_2_input += [on_x_lstm_1_out]
+
+        # Try: feed context instead of output
+        #on_stage2_2_input = [reshape_lstm_1_state_out] + on_stage2_1_input
+
+        # LSTM_2 full input:
         on_aac_x = tf.concat(on_stage2_2_input, axis=-1)
+
+        self.debug['on_stage2_2_input'] = tf.shape(on_aac_x)
 
         [on_x_lstm_2_out, self.on_lstm_2_init_state, self.on_lstm_2_state_out, self.on_lstm_2_state_pl_flatten] = \
             lstm_network(on_aac_x, self.on_time_length, lstm_class, (lstm_layers[-1],), name='lstm_2')
 
+        self.debug['on_x_lstm_2_out'] = tf.shape(on_x_lstm_2_out)
+        self.debug['self.on_lstm_2_state_out'] = tf.shape(self.on_lstm_2_state_out)
+        self.debug['self.on_lstm_2_state_pl_flatten'] = tf.shape(self.on_lstm_2_state_pl_flatten)
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = on_x_lstm_2_out.get_shape().as_list()
         on_x_lstm_out = tf.reshape(on_x_lstm_2_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-        # Aac policy and value outputs and action-sampling function:
-        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(on_x_lstm_out, ac_space)
+        self.debug['reshaped_on_x_lstm_out'] = tf.shape(on_x_lstm_out)
+
+        # Aac value function:
+        [_, self.on_vf, _] = dense_aac_network(on_x_lstm_out, ac_space, name='on_aac_dense_vfn')
 
         # Concatenate LSTM placeholders, init. states and context:
         self.on_lstm_init_state = (self.on_lstm_1_init_state, self.on_lstm_2_init_state)
@@ -230,7 +314,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             self.callback['pixel_change'] = self.get_pc_target
 
 
-class AacStckedRL2Policy(StackedLstmPolicy):
+class AacStackedRL2Policy(StackedLstmPolicy):
     """
     ATTEMPT:
     implement two-level RL^2
@@ -245,20 +329,23 @@ class AacStckedRL2Policy(StackedLstmPolicy):
     either to reset RNN context to zero-state or return context from the end of previous episode,
     depending on episode metadata received.
     """
-    def __init__(self, **kwargs):
-        super(AacStckedRL2Policy, self).__init__(**kwargs)
+    def __init__(self, lstm_2_init_period=100, **kwargs):
+        super(AacStackedRL2Policy, self).__init__(**kwargs)
         self.current_trial_num = -1  # always give initial context at first call
+        self.lstm_2_init_period = lstm_2_init_period
+        self.current_ep_num = 0
 
     def get_initial_features(self, state, context=None):
         """
         Returns RNN initial context.
         RNN_1 (lower) context is reset at every call.
 
-        RNN_2 (upper) context is reset if:
+        RNN_2 (upper) context is reset:
+            - every `lstm_2_init_period' episodes;
             - episode  initial `state` `trial_num` metadata has been changed form last call (new train trial started);
             - episode metatdata `type` is non-zero (test episode);
             - no context arg is provided (initial episode of training);
-            - else assumes this is new episode of same train trial has started and carries context on to new episode;
+            - ... else carries context on to new episode;
 
         Episode metadata are provided by DataTrialIterator, which is shaping Trial data distribution in this case,
         and delivered through env.strategy as separate key in observation dictionary.
@@ -279,9 +366,12 @@ class AacStckedRL2Policy(StackedLstmPolicy):
         try:
             sess = tf.get_default_session()
             new_context = list(sess.run(self.on_lstm_init_state))
-            if state['metadata']['trial_num'] != self.current_trial_num or context is None or state['metadata']['type']:
+            if state['metadata']['trial_num'] != self.current_trial_num\
+                    or context is None\
+                    or state['metadata']['type']\
+                    or self.current_ep_num % self.lstm_2_init_period == 0:
                 # Assume new/initial trial or test sample, reset_1, 2 context:
-                print('RL^2 policy context 1, 2 reset')
+                pass #print('RL^2 policy context 1, 2 reset')
 
             else:
                 # Asssume same training trial, keep context_2 same as received:
@@ -298,5 +388,5 @@ class AacStckedRL2Policy(StackedLstmPolicy):
                 'RL^2 policy: expected observation state dict. to have keys [`metadata`]:[`trial_num`,`type`]; got: {}'.
                 format(state.keys())
             )
-
+        self.current_ep_num +=1
         return new_context

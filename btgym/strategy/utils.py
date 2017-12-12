@@ -43,6 +43,20 @@ def norm_value(current_value, start_value, drawdown_call, target_call, epsilon=1
     return x
 
 
+def __norm_value(current_value, start_value, drawdown_call, target_call, epsilon=1e-8):
+    """
+    Current value, piece-wise linear normalized in [-1,1] and zero-centered  at `start_value`
+    """
+    drawdown_call /= 100
+    target_call /= 100
+    x = np.asarray(current_value)
+    x1 = (1 / (start_value * drawdown_call)) * x[x < start_value] - 1 / drawdown_call
+    x2 = (1 / (start_value * target_call)) * x[x >= start_value] - 1 / target_call
+    x = np.concatenate([x1, x2], axis=-1)
+    x = np.squeeze(np.clip(x, -1, 1))
+    return x
+
+
 def decayed_result(trade_result, current_value, start_value, drawdown_call, target_call, gamma=1.0):
     """
     Normalized in [-1,1] trade result, lineary decayed wrt current_value.
@@ -54,9 +68,29 @@ def decayed_result(trade_result, current_value, start_value, drawdown_call, targ
     return x
 
 
-def exp_scale(x, gamma=4):
+def exp_scale(x, gamma=4, epsilon=1e-10):
     """
-    Returns exp. scaled value in [0.01,1] for x in [0,1]; gamma controls steepness.
+    Returns exp. scaled value in [epsilon, 1] for x in [0, 1]; gamma controls steepness.
     """
     x = np.asarray(x) + 1
-    return np.clip(np.exp(x ** gamma - 2 ** gamma), 0.01, 1)
+    return np.clip(np.exp(x ** gamma - 2 ** gamma), epsilon, 1)
+
+
+def discounted_average(x, gamma=1):
+    """
+    Returns gamma_power weighted average of 2D input array along 0-axis.
+
+    Args:
+        x:      scalar or array of rank <= 2.
+        gamma: discount, <=1.
+
+    Returns:
+        Array of rank 1 of averages along zero axis. For x of shape[n,m] AVG computed as:
+        AVG[j] = (x[0,j]*gamma^(n) + x[1,j]*gamma^(n-1) +...+  x[n,j]*gamma^(0)) / n
+
+    """
+    x = np.asarray(x)
+    while len(x.shape) < 2:
+        x = x[..., None]
+    gamma = gamma * np.ones(x.shape)
+    return np.squeeze(np.average(x, weights=(gamma ** np.arange(x.shape[0])[..., None])[::-1], axis=0))
