@@ -220,3 +220,18 @@ def rp_loss_def(rp_targets, pi_rp_logits, name='_rp_', verbose=False):
             summaries = []
 
     return loss, summaries
+
+
+def state_min_max_loss_def(ohlc_targets, min_max_state, name='_mml_', verbose=False):
+    with tf.name_scope(name + '/min_max'):
+        hi = tf.reduce_max(ohlc_targets)
+        low = tf.reduce_min(ohlc_targets)
+        loss = tf.reduce_mean(tf.square(hi - min_max_state[:,0]) + tf.square(low - min_max_state[:,1]))
+
+        if verbose:
+            summaries = [tf.summary.scalar('state_mm_loss', loss), ]
+
+        else:
+            summaries = []
+
+    return loss, summaries

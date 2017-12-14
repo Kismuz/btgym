@@ -44,7 +44,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             dict(
                 conv_2d_filter_size=[3, 1],
                 conv_2d_stride=[2, 1],
-                conv_2d_num_filters=64,
+                conv_2d_num_filters=32,
                 pc_estimator_stride=[2, 1],
                 duell_pc_x_inner_shape=(6, 1, 32),  # [6,3,32] if swapping W-C dims
                 duell_pc_filter_size=(4, 1),
@@ -82,7 +82,22 @@ class StackedLstmPolicy(BaseAacPolicy):
         # Conv. layers:
         on_aac_x = conv_2d_network(self.on_state_in['external'], ob_space['external'], ac_space, **kwargs)
 
-        # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
+        # Aux min/max_loss:
+        if 'raw_state' in list(self.on_state_in.keys()):
+            self.raw_state = self.on_state_in['raw_state']
+            self.state_min_max = tf.nn.elu(
+                linear(
+                    batch_flatten(on_aac_x),
+                    2,
+                    "min_max",
+                    normalized_columns_initializer(0.01)
+                )
+            )
+        else:
+            self.raw_state = None
+            self.state_min_max = None
+
+            # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
         x_shape_dynamic = tf.shape(on_aac_x)
         max_seq_len = tf.cast(x_shape_dynamic[0] / self.on_batch_size, tf.int32)
         x_shape_static = on_aac_x.get_shape().as_list()
@@ -91,36 +106,38 @@ class StackedLstmPolicy(BaseAacPolicy):
         on_aac_x = tf.reshape( on_aac_x, [self.on_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
 
         # Prepare `internal` state, if any:
-        if False and 'internal' in list(self.on_state_in.keys()):
-            x_int_shape_static = self.on_state_in['internal'].get_shape().as_list()
-            x_internal = tf.reshape(
-                self.on_state_in['internal'],
-                [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
-            )
-            self.debug['state_internal'] = tf.shape(self.on_state_in['internal'])
-            x_internal = [x_internal]
+        if True:
+            if 'internal' in list(self.on_state_in.keys()):
+                x_int_shape_static = self.on_state_in['internal'].get_shape().as_list()
+                on_x_internal = tf.reshape(
+                    self.on_state_in['internal'],
+                    [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
+                )
+                self.debug['state_internal'] = tf.shape(self.on_state_in['internal'])
+                on_x_internal = [on_x_internal]
 
-        else:
-            x_internal = []
+            else:
+                on_x_internal = []
 
-        if 'internal' in list(self.on_state_in.keys()):
-            x_internal = conv_2d_network(
-                self.on_state_in['internal'],
-                ob_space['internal'],
-                ac_space,
-                name='conv1d_internal',
-                #conv_2d_layer_ref=conv2d_dw,
-                conv_2d_num_filters=32,
-                conv_2d_num_layers=2,
-                conv_2d_filter_size=[3, 1],
-                conv_2d_stride=[2, 1],
-            )
-            x_int_shape_static = x_internal.get_shape().as_list()
-            x_internal = [tf.reshape(x_internal, [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])])]
-            self.debug['state_internal_enc'] = tf.shape(x_internal)
+        if False:
+            if 'internal' in list(self.on_state_in.keys()):
+                on_x_internal = conv_2d_network(
+                    self.on_state_in['internal'],
+                    ob_space['internal'],
+                    ac_space,
+                    name='conv1d_internal',
+                    #conv_2d_layer_ref=conv2d_dw,
+                    conv_2d_num_filters=32,
+                    conv_2d_num_layers=2,
+                    conv_2d_filter_size=[3, 1],
+                    conv_2d_stride=[2, 1],
+                )
+                x_int_shape_static = on_x_internal.get_shape().as_list()
+                on_x_internal = [tf.reshape(on_x_internal, [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])])]
+                self.debug['state_internal_enc'] = tf.shape(on_x_internal)
 
-        else:
-            x_internal = []
+            else:
+                on_x_internal = []
 
         if 'reward' in list(self.on_state_in.keys()):
             x_rewards_shape_static = self.on_state_in['reward'].get_shape().as_list()
@@ -137,12 +154,10 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.debug['conv_input_to_lstm1'] = tf.shape(on_aac_x)
 
         # Feed last last_reward into LSTM_1 layer along with encoded `external` state features:
-        on_stage2_1_input = [on_aac_x, on_a_r_in[..., -1][..., None]] #+ x_internal
-        #on_stage2_1_input = [on_aac_x] + x_rewards
+        on_stage2_1_input = [on_aac_x, on_a_r_in[..., -1][..., None]] #+ on_x_internal
 
-        # Feed last last_action, encoded `external` state,  `internal` state into LSTM_2:
-        #on_stage2_2_input = [on_aac_x, on_a_r_in[..., :-1]]
-        on_stage2_2_input = [on_aac_x, on_a_r_in] + x_internal
+        # Feed last_action, encoded `external` state,  `internal` state into LSTM_2:
+        on_stage2_2_input = [on_aac_x, on_a_r_in] + on_x_internal
 
         # LSTM_1 full input:
         on_aac_x = tf.concat(on_stage2_1_input, axis=-1)
@@ -173,8 +188,8 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         self.debug['reshaped_on_x_lstm_1_out'] = tf.shape(rsh_on_x_lstm_1_out)
 
-        # Aac policy and value outputs and action-sampling function:
-        [self.on_logits, _, self.on_sample] = dense_aac_network(rsh_on_x_lstm_1_out, ac_space, name='on_aac_dense_pi')
+        # Aac policy output and action-sampling function:
+        [self.on_logits, _, self.on_sample] = dense_aac_network(rsh_on_x_lstm_1_out, ac_space, name='aac_dense_pi')
 
         # Second LSTM layer takes concatenated encoded 'external' state, LSTM_1 output,
         # last_action and `internal_state` (if present) tensors:
@@ -202,7 +217,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.debug['reshaped_on_x_lstm_out'] = tf.shape(on_x_lstm_out)
 
         # Aac value function:
-        [_, self.on_vf, _] = dense_aac_network(on_x_lstm_out, ac_space, name='on_aac_dense_vfn')
+        [_, self.on_vf, _] = dense_aac_network(on_x_lstm_out, ac_space, name='aac_dense_vfn')
 
         # Concatenate LSTM placeholders, init. states and context:
         self.on_lstm_init_state = (self.on_lstm_1_init_state, self.on_lstm_2_init_state)
@@ -223,27 +238,51 @@ class StackedLstmPolicy(BaseAacPolicy):
             off_a_r_in = tf.reshape(self.off_a_r_in, [self.off_batch_size, max_seq_len, ac_space + 1])
             off_aac_x = tf.reshape( off_aac_x, [self.off_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
 
-            off_stage2_input = [off_aac_x, off_a_r_in]
-
+            # Prepare `internal` state, if any:
             if 'internal' in list(self.off_state_in.keys()):
-                x_int_shape_static = self.off_state_in['internal'].get_shape().as_list()
-                off_x_int = tf.reshape(
+                x_int_shape_static = self.on_state_in['internal'].get_shape().as_list()
+                off_x_internal = tf.reshape(
                     self.off_state_in['internal'],
                     [self.off_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
                 )
-                off_stage2_input.append(off_x_int)
+                off_x_internal = [on_x_internal]
 
-            off_aac_x = tf.concat(off_stage2_input, axis=-1)
+            else:
+                off_x_internal = []
 
-            [off_x_lstm_out, _, _, self.off_lstm_state_pl_flatten] =\
-                lstm_network(off_aac_x, self.off_time_length, lstm_class, lstm_layers, reuse=True)
+            off_stage2_1_input = [off_aac_x, off_a_r_in[..., -1][..., None]] #+ off_x_internal
+
+            off_stage2_2_input =  [off_aac_x, off_a_r_in] + off_x_internal
+
+            off_aac_x = tf.concat(off_stage2_1_input, axis=-1)
+
+            [off_x_lstm_1_out, _, _, self.off_lstm_1_state_pl_flatten] =\
+                lstm_network(off_aac_x, self.off_time_length, lstm_class, lstm_layers[0], name='lstm_1', reuse=True)
 
             # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
-            x_shape_static = off_x_lstm_out.get_shape().as_list()
-            off_x_lstm_out = tf.reshape(off_x_lstm_out, [x_shape_dynamic[0], x_shape_static[-1]])
+            x_shape_static = off_x_lstm_1_out.get_shape().as_list()
+            rsh_off_x_lstm_1_out = tf.reshape(off_x_lstm_1_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-            [self.off_logits, self.off_vf, _] =\
-                dense_aac_network(off_x_lstm_out, ac_space, reuse=True)
+            [self.off_logits, _, _] =\
+                dense_aac_network(rsh_off_x_lstm_1_out, ac_space, name='aac_dense_pi', reuse=True)
+
+            off_stage2_2_input += [off_x_lstm_1_out]
+
+            # LSTM_2 full input:
+            off_aac_x = tf.concat(off_stage2_2_input, axis=-1)
+
+            [off_x_lstm_2_out, _, _, self.off_lstm_2_state_pl_flatten] = \
+                lstm_network(off_aac_x, self.off_time_length, lstm_class, (lstm_layers[-1],), name='lstm_2')
+
+            # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
+            x_shape_static = off_x_lstm_2_out.get_shape().as_list()
+            off_x_lstm_out = tf.reshape(off_x_lstm_2_out, [x_shape_dynamic[0], x_shape_static[-1]])
+
+            # Aac value function:
+            [_, self.off_vf, _] = dense_aac_network(off_x_lstm_out, ac_space, name='aac_dense_vfn', reuse=True)
+
+            self.off_lstm_state_pl_flatten = self.off_lstm_1_state_pl_flatten + self.off_lstm_2_state_pl_flatten
+
 
             # Aux1: `Pixel control` network:
             # Define pixels-change estimation function:

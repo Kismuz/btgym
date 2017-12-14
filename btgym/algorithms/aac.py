@@ -7,7 +7,7 @@ import tensorflow as tf
 from btgym.spaces import DictSpace as ObSpace  # now can simply be gym.Dict
 from btgym.algorithms import Memory, make_data_getter, RunnerThread
 from btgym.algorithms.math_utils import log_uniform
-from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def, ppo_loss_def
+from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def, ppo_loss_def, state_min_max_loss_def
 from btgym.algorithms.utils import feed_dict_rnn_context, feed_dict_from_nested, batch_stack
 
 
@@ -342,6 +342,17 @@ class BaseAAC(object):
             # Start accumulating total loss:
             self.loss = on_pi_loss
             model_summaries = on_pi_summaries
+
+            # wrong EXPERIMENT:
+            if False:
+                min_max_loss, min_max_summaries = state_min_max_loss_def(
+                    ohlc_targets=pi.raw_state,
+                    min_max_state=pi.state_min_max,
+                    name='on_policy',
+                    verbose=True
+                )
+                self.loss = self.loss + 0.1 * min_max_loss
+                model_summaries += min_max_summaries
 
             # Off-policy losses:
             self.off_pi_act_target = tf.placeholder(

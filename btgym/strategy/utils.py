@@ -34,7 +34,7 @@ def norm_log_value(current_value, start_value, drawdown_call, target_call, epsil
 
 def norm_value(current_value, start_value, drawdown_call, target_call, epsilon=1e-8):
     """
-    Current value normalized in [-1,1] wrt upper and lower bounds
+    Current value normalized in [-1,1] wrt upper and lower bounds.
     """
     x = np.asarray(current_value)
     x = (x / start_value - 1) * 100

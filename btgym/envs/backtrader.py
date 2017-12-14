@@ -527,6 +527,35 @@ class BTgymEnv(gym.Env):
         self.log.debug('Env response checker received:\n{}\nas type: {}'.
                        format(response, type(response)))
 
+    def _print_space(self, space, _tab=''):
+        """
+        TODO: MAKe IT WORK
+        Parses observation space shape or response.
+
+        Args:
+            space: gym observation space or response.
+
+        Returns:
+            description as string.
+        """
+        response = ''
+        if type(space) in [dict]:
+            for key, value in space.items():
+                response += '\n{}{}:\n{}'.format(_tab, key, self._print_space(value, '   '))
+
+        elif type(space) in [tuple, list]:
+            for i in space:
+                response += self._print_space(i, '   ')
+
+        else:
+            try:
+                response += '\n{}{}, low: {}, high: {}'.format(_tab, space, space.low.min(), space.high.max())
+
+            except (KeyError, AttributeError, ArithmeticError, ValueError) as e:
+                response += '-------'
+
+        return response
+
     def _reset(self, state_only=True):  # By default, returns only initial state observation (Gym convention).
         """
         Implementation of OpenAI Gym env.reset method. Starts new episode.
@@ -585,6 +614,9 @@ class BTgymEnv(gym.Env):
                         )
                 except (KeyError, AttributeError, ArithmeticError, ValueError) as e2:
                     msg2 += '+ something illegible.\n'
+
+                #msg1 = self._print_space(self.observation_space.spaces)
+                #msg2 = self._print_space(self.env_response[0])
 
                 msg3 = ''
                 for step_info in self.env_response[-1]:

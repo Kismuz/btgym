@@ -55,7 +55,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
             {
                 'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3)),
                 'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5)),
-                'action': spaces.Box(low=0, high=1, shape=(avg_period, 1, len(portfolio_actions))),
+                'action': spaces.Box(low=0, high=1, shape=(avg_period, 1, 1)),
                 'reward': spaces.Box(low=-1, high=1, shape=(avg_period, 1, 1)),
                 'metadata': DictSpace(
                     {
@@ -159,7 +159,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
         self.state['external'] = x_market[:, None, :]
         self.state['internal'] = x_broker[:, None, :]
-        self.state['action'] = np.asarray(self.sliding_stat['action'])[:, None, :]
+        self.state['action'] = np.asarray(self.sliding_stat['action'])[:, None, None]
         self.state['reward'] = np.asarray(self.sliding_stat['reward'])[:, None, None]
 
         return self.state
@@ -211,6 +211,12 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
 
 class DevStrat_4_7(DevStrat_4_6):
+    """
+    _4_6 +:
+    Sliding statistics avg_perid disentangled from time embedding dim;
+    Only one last step used for internal state;
+    Reweighting reward terms;
+    """
 
     # Time embedding period:
     time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
@@ -227,16 +233,17 @@ class DevStrat_4_7(DevStrat_4_6):
     # Possible agent actions:
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
 
-    gamma = 0.95  # MDP gamma decay
+    gamma = 1.0  # should be MDP gamma decay, but undiscounted works better <- ??!
 
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
         {
             'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3)),
-            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 7)),
-            'action': spaces.Box(low=0, high=1, shape=(avg_period, 1, 1)),
-            'reward': spaces.Box(low=-1, high=1, shape=(avg_period, 1, 1)),
+            'internal': spaces.Box(low=-2, high=2, shape=(1, 1, 5)),
+            'raw_state': spaces.Box(low=-10, high=10, shape=(time_dim, 4)),
+            #'action': spaces.Box(low=0, high=1, shape=(avg_period, 1, 1)),
+            #'reward': spaces.Box(low=-1, high=1, shape=(avg_period, 1, 1)),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -305,8 +312,8 @@ class DevStrat_4_7(DevStrat_4_6):
                 np.asarray(self.sliding_stat['broker_cash'])[..., None],
                 np.asarray(self.sliding_stat['exposure'])[..., None],
                 #np.asarray(self.sliding_stat['episode_step'])[..., None],
-                np.asarray(self.sliding_stat['reward'])[..., None],
-                np.asarray(self.sliding_stat['action'])[..., None],
+                #np.asarray(self.sliding_stat['reward'])[..., None],
+                #np.asarray(self.sliding_stat['action'])[..., None],
                 # norm_position_duration[...,None],
                 # max_unrealized_pnl[..., None],
                 # min_unrealized_pnl[..., None],
@@ -318,9 +325,11 @@ class DevStrat_4_7(DevStrat_4_6):
         #x_broker = x_broker[-1, ...][None, ...]
 
         self.state['external'] = x_market[:, None, :]
-        self.state['internal'] = x_broker[:, None, :]
-        self.state['action'] = np.asarray(self.sliding_stat['action'])[:, None, None]
-        self.state['reward'] = np.asarray(self.sliding_stat['reward'])[:, None, None]
+        #self.state['internal'] = x_broker[:, None, :]
+        self.state['internal'] = x_broker[-1, None, None, :]
+        self.state['raw_state'] = self.raw_state
+        #self.state['action'] = np.asarray(self.sliding_stat['action'])[:, None, None]
+        #self.state['reward'] = np.asarray(self.sliding_stat['reward'])[:, None, None]
 
         return self.state
 
@@ -341,27 +350,23 @@ class DevStrat_4_7(DevStrat_4_6):
         """
 
         # All sliding statistics for this step are already updated by get_state().
-        #
-        # TODO: window size for stats averaging? Now it is time_dim - 1, can better be other?
-        # TODO: pass actual gamma as strategy param. OR:  maybe: compute reward on algo side?
-
         debug = {}
 
         # Potential-based shaping function 1:
         # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
         unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl'])
-        #f1 = self.p.gamma * np.average(unrealised_pnl[1:]) - np.average(unrealised_pnl[:-1])
-        f1 = self.p.gamma * discounted_average(unrealised_pnl[1:], self.p.gamma)\
-             - discounted_average(unrealised_pnl[:-1], self.p.gamma)
+        f1 = self.p.gamma * np.average(unrealised_pnl[1:]) - np.average(unrealised_pnl[:-1])
+        #f1 = self.p.gamma * discounted_average(unrealised_pnl[1:], self.p.gamma)\
+        #     - discounted_average(unrealised_pnl[:-1], self.p.gamma)
 
         debug['f1'] = f1
 
         # Potential-based shaping function 2:
         # based on potential of averaged broker value, normalized wrt to max drawdown and target bounds.
         norm_broker_value = np.asarray(self.sliding_stat['broker_value'])
-        #f2 = self.p.gamma * np.average(norm_broker_value[1:]) - np.average(norm_broker_value[:-1])
-        f2 = self.p.gamma * discounted_average(norm_broker_value[1:], self.p.gamma)\
-             - discounted_average(norm_broker_value[:-1], self.p.gamma)
+        f2 = self.p.gamma * np.average(norm_broker_value[1:]) - np.average(norm_broker_value[:-1])
+        #f2 = self.p.gamma * discounted_average(norm_broker_value[1:], self.p.gamma)\
+        #     - discounted_average(norm_broker_value[:-1], self.p.gamma)
 
         debug['f2'] = f2
 
@@ -369,10 +374,11 @@ class DevStrat_4_7(DevStrat_4_6):
         # negative potential of abs. size of position, exponentially weighted wrt. episode steps
         abs_exposure = np.abs(np.asarray(self.sliding_stat['exposure']))
         time = np.asarray(self.sliding_stat['episode_step'])
-        time_w = exp_scale(np.average(time[:-1]), gamma=5)
-        time_w_prime = exp_scale(np.average(time[1:]), gamma=5)
+        #time_w = exp_scale(np.average(time[:-1]), gamma=5)
+        #time_w_prime = exp_scale(np.average(time[1:]), gamma=5)
         #f3 = - 1.0 * time_w_prime * np.average(abs_exposure[1:]) #+ time_w * np.average(abs_exposure[:-1])
-        f3 = - self.p.gamma * exp_scale(time[-1], gamma=3) * abs_exposure[-1] + exp_scale(time[-2], gamma=3) * abs_exposure[-2]
+        f3 = - self.p.gamma * exp_scale(time[-1], gamma=3) * abs_exposure[-1] + \
+             exp_scale(time[-2], gamma=3) * abs_exposure[-2]
         debug['f3'] = f3
 
         # Main reward function: normalized realized profit/loss:
@@ -380,7 +386,7 @@ class DevStrat_4_7(DevStrat_4_6):
         debug['f_real_pnl'] = 10 * realized_pnl
 
         # Weights are subject to tune:
-        self.reward = 1.0 * f1 + 1.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl
+        self.reward = 1.0 * f1 + 2.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl
 
         debug['r'] = self.reward
         debug['b_v'] = self.sliding_stat['broker_value'][-1]
