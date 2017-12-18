@@ -22,6 +22,8 @@ from gym import spaces
 
 from collections import OrderedDict
 
+#DictSpace = spaces.Dict
+
 
 class DictSpace(spaces.Dict):
     """

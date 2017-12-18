@@ -1,8 +1,10 @@
 import numpy as np
 
 import backtrader as bt
+import backtrader.indicators as btind
+
 from btgym.strategy.base import BTgymBaseStrategy
-from btgym.strategy.utils import tanh, abs_norm_ratio, exp_scale, discounted_average
+from btgym.strategy.utils import tanh, abs_norm_ratio, exp_scale, discounted_average, log_transform
 
 from gym import spaces
 from btgym import DictSpace
@@ -118,8 +120,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
             'first_row': np.asarray(self.p.metadata['first_row'])
         }
 
-    def get_state(self):
-
+    def get_market_state(self):
         T = 2e3  # EURUSD
         # T = 1e2 # EURUSD, Z-norm
         # T = 1 # BTCUSD
@@ -139,9 +140,9 @@ class DevStrat_4_6(BTgymBaseStrategy):
         # T param is supposed to keep most of the signal in 'linear' part of tanh while squashing spikes.
         x_market = tanh(x * T)
 
-        # Update inner state statistic and compose state:
-        self.update_sliding_stat()
+        return x_market[:, None, :]
 
+    def get_broker_state(self):
         x_broker = np.concatenate(
             [
                 np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
@@ -156,9 +157,15 @@ class DevStrat_4_6(BTgymBaseStrategy):
             ],
             axis=-1
         )
+        return x_broker[:, None, :]
 
-        self.state['external'] = x_market[:, None, :]
-        self.state['internal'] = x_broker[:, None, :]
+    def get_state(self):
+
+        # Update inner state statistic and compose state:
+        self.update_sliding_stat()
+
+        self.state['external'] = self.get_market_state()
+        self.state['internal'] = self.get_broker_state()
         self.state['action'] = np.asarray(self.sliding_stat['action'])[:, None, None]
         self.state['reward'] = np.asarray(self.sliding_stat['reward'])[:, None, None]
 
@@ -182,7 +189,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
         # All sliding statistics for this step are already updated by get_state().
         #
         # TODO: window size for stats averaging? Now it is time_dim - 1, can better be other?
-        # TODO: pass actual gamma as strategy param. OR:  maybe: compute reward on algo side?
+        # TODO: pass actual gamma as strategy param.
 
         # Potential-based shaping function 1:
         # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
@@ -213,9 +220,8 @@ class DevStrat_4_6(BTgymBaseStrategy):
 class DevStrat_4_7(DevStrat_4_6):
     """
     _4_6 +:
-    Sliding statistics avg_perid disentangled from time embedding dim;
-    Only one last step used for internal state;
-    Reweighting reward terms;
+    Sliding statistics avg_period disentangled from time embedding dim;
+    Only one last step sliding stats are used for internal state;
     """
 
     # Time embedding period:
@@ -233,7 +239,7 @@ class DevStrat_4_7(DevStrat_4_6):
     # Possible agent actions:
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
 
-    gamma = 1.0  # should be MDP gamma decay, but undiscounted works better <- ??!
+    gamma = 1.0  # fi_gamma, should be MDP gamma decay, but somehow undiscounted works better <- ??!
 
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
@@ -241,7 +247,7 @@ class DevStrat_4_7(DevStrat_4_6):
         {
             'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3)),
             'internal': spaces.Box(low=-2, high=2, shape=(1, 1, 5)),
-            'raw_state': spaces.Box(low=-10, high=10, shape=(time_dim, 4)),
+            #'raw_state': spaces.Box(low=-10, high=10, shape=(time_dim, 4)),
             #'action': spaces.Box(low=0, high=1, shape=(avg_period, 1, 1)),
             #'reward': spaces.Box(low=-1, high=1, shape=(avg_period, 1, 1)),
             'metadata': DictSpace(
@@ -280,56 +286,28 @@ class DevStrat_4_7(DevStrat_4_6):
     def __init__(self, **kwargs):
         super(DevStrat_4_7, self).__init__(**kwargs)
 
-    def get_state(self):
-
-        T = 2e3  # EURUSD
-        # T = 1e2 # EURUSD, Z-norm
-        # T = 1 # BTCUSD
-
-        x = np.stack(
+    def get_broker_state(self):
+        x_broker = np.stack(
             [
-                np.frombuffer(self.channel_O.get(size=self.time_dim)),
-                np.frombuffer(self.channel_H.get(size=self.time_dim)),
-                np.frombuffer(self.channel_L.get(size=self.time_dim)),
-            ],
-            axis=-1
+                self.sliding_stat['broker_value'][-1],
+                self.sliding_stat['unrealized_pnl'][-1],
+                self.sliding_stat['realized_pnl'][-1],
+                self.sliding_stat['broker_cash'][-1],
+                self.sliding_stat['exposure'][-1],
+                # self.sliding_stat['episode_step'][-1],
+                # self.sliding_stat['reward'][-1],
+                # self.sliding_stat['action'][-1],
+                # norm_position_duration[-1],
+            ]
         )
-        # Log-scale: NOT used. Seems to hurt performance.
-        # x = log_transform(x)
+        return x_broker[None, None, :]
 
-        # Amplify and squash in [-1,1], seems to be best option as of 4.10.17:
-        # T param is supposed to keep most of the signal in 'linear' part of tanh while squashing spikes.
-        x_market = tanh(x * T)
-
+    def get_state(self):
         # Update inner state statistic and compose state:
         self.update_sliding_stat()
 
-        x_broker = np.concatenate(
-            [
-                np.asarray(self.sliding_stat['broker_value'])[..., None],
-                np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
-                np.asarray(self.sliding_stat['realized_pnl'])[..., None],
-                np.asarray(self.sliding_stat['broker_cash'])[..., None],
-                np.asarray(self.sliding_stat['exposure'])[..., None],
-                #np.asarray(self.sliding_stat['episode_step'])[..., None],
-                #np.asarray(self.sliding_stat['reward'])[..., None],
-                #np.asarray(self.sliding_stat['action'])[..., None],
-                # norm_position_duration[...,None],
-                # max_unrealized_pnl[..., None],
-                # min_unrealized_pnl[..., None],
-            ],
-            axis=-1
-        )
-        #x_broker = np.average(x_broker, axis=0)[None, ...]
-        #x_broker = discounted_average(x_broker, gamma=0.95)[None, ...]
-        #x_broker = x_broker[-1, ...][None, ...]
-
-        self.state['external'] = x_market[:, None, :]
-        #self.state['internal'] = x_broker[:, None, :]
-        self.state['internal'] = x_broker[-1, None, None, :]
-        self.state['raw_state'] = self.raw_state
-        #self.state['action'] = np.asarray(self.sliding_stat['action'])[:, None, None]
-        #self.state['reward'] = np.asarray(self.sliding_stat['reward'])[:, None, None]
+        self.state['external'] = self.get_market_state()
+        self.state['internal'] = self.get_broker_state()
 
         return self.state
 
@@ -386,7 +364,7 @@ class DevStrat_4_7(DevStrat_4_6):
         debug['f_real_pnl'] = 10 * realized_pnl
 
         # Weights are subject to tune:
-        self.reward = 1.0 * f1 + 2.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl
+        self.reward = 1.0 * f1 + 1.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl
 
         debug['r'] = self.reward
         debug['b_v'] = self.sliding_stat['broker_value'][-1]
@@ -404,3 +382,205 @@ class DevStrat_4_7(DevStrat_4_6):
         self.reward = np.clip(self.reward, -1, 1)
 
         return self.reward
+
+
+class DevStrat_4_8(DevStrat_4_7):
+    """
+    4_7 +:
+    Uses full average_period of inner stats for use with inner_conv_encoder.
+    """
+    # Time embedding period:
+    time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
+
+    # Number of environment steps to skip before returning next response,
+    # e.g. if set to 10 -- agent will interact with environment every 10th step;
+    # every other step agent action is assumed to be 'hold':
+    skip_frame = 10
+
+    # Number of timesteps reward estimation statistics are averaged over, should be:
+    # skip_frame_period <= avg_period <= time_embedding_period:
+    # !..-> here it is also `broker state` time-embedding period
+    avg_period = 20
+
+    # Possible agent actions:
+    portfolio_actions = ('hold', 'buy', 'sell', 'close')
+
+    gamma = 1.0  # fi_gamma, should be MDP gamma decay, but somehow undiscounted works better <- wtf?!
+
+    params = dict(
+        # Note: fake `Width` dimension to use 2d conv etc.:
+        state_shape=
+        {
+            'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3)),
+            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5)),
+            'metadata': DictSpace(
+                {
+                    'type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1
+                    ),
+                    'trial_num': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10
+                    ),
+                    'sample_num': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10
+                    ),
+                    'first_row': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10
+                    )
+                }
+            )
+        },
+        drawdown_call=5,
+        target_call=19,
+        portfolio_actions=portfolio_actions,
+        skip_frame=skip_frame,
+        gamma=gamma,
+        metadata={},
+    )
+
+    def get_broker_state(self):
+        x_broker = np.concatenate(
+            [
+                np.asarray(self.sliding_stat['broker_value'])[..., None],
+                np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
+                np.asarray(self.sliding_stat['realized_pnl'])[..., None],
+                np.asarray(self.sliding_stat['broker_cash'])[..., None],
+                np.asarray(self.sliding_stat['exposure'])[..., None],
+                # np.asarray(self.sliding_stat['episode_step'])[..., None],
+                # np.asarray(self.sliding_stat['reward'])[..., None],
+                # np.asarray(self.sliding_stat['action'])[..., None],
+                # norm_position_duration[...,None],
+                # max_unrealized_pnl[..., None],
+                # min_unrealized_pnl[..., None],
+            ],
+            axis=-1
+        )
+        return x_broker[:, None, :]
+
+    def get_state(self):
+        # Update inner state statistic and compose state:
+        self.update_sliding_stat()
+
+        self.state['external'] = self.get_market_state()
+        self.state['internal'] = self.get_broker_state()
+
+        return self.state
+
+
+class DevStrat_4_9(DevStrat_4_7):
+    """
+    Uses hard-coded market state features.
+    """
+    # Time embedding period:
+    time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
+
+    # Number of environment steps to skip before returning next response,
+    # e.g. if set to 10 -- agent will interact with environment every 10th step;
+    # every other step agent action is assumed to be 'hold':
+    skip_frame = 10
+
+    # Number of timesteps reward estimation statistics are averaged over, should be:
+    # skip_frame_period <= avg_period <= time_embedding_period:
+    avg_period = 20
+
+    # Possible agent actions:
+    portfolio_actions = ('hold', 'buy', 'sell', 'close')
+
+    gamma = 1.0  # fi_gamma, should be MDP gamma decay, but somehow undiscounted works better <- wtf?!
+
+    params = dict(
+        # Note: fake `Width` dimension to use 2d conv etc.:
+        state_shape=
+        {
+            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 8)),
+            'internal': spaces.Box(low=-2, high=2, shape=(1, 1, 5)),
+            'metadata': DictSpace(
+                {
+                    'type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1
+                    ),
+                    'trial_num': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10
+                    ),
+                    'sample_num': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10
+                    ),
+                    'first_row': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10
+                    )
+                }
+            )
+        },
+        drawdown_call=5,
+        target_call=19,
+        portfolio_actions=portfolio_actions,
+        skip_frame=skip_frame,
+        gamma=gamma,
+        metadata={},
+    )
+
+    def set_datalines(self):
+        self.data.sma_4 = btind.SimpleMovingAverage(self.datas[0], period=4)
+        self.data.sma_8 = btind.SimpleMovingAverage(self.datas[0], period=8)
+        self.data.sma_16 = btind.SimpleMovingAverage(self.datas[0], period=16)
+        self.data.sma_32 = btind.SimpleMovingAverage(self.datas[0], period=32)
+        self.data.sma_64 = btind.SimpleMovingAverage(self.datas[0], period=64)
+        self.data.sma_128 = btind.SimpleMovingAverage(self.datas[0], period=128)
+        self.data.sma_256 = btind.SimpleMovingAverage(self.datas[0], period=256)
+
+        self.data.dim_sma = btind.SimpleMovingAverage(
+            self.datas[0],
+            period=(256 + self.time_dim)
+        )
+        self.data.dim_sma.plotinfo.plot = False
+
+    def get_market_state(self):
+        T = 1e4  # EURUSD
+        # T = 1 # BTCUSD
+
+        x = np.stack(
+            [
+                np.frombuffer(self.data.open.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_4.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_8.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_16.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_32.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_64.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_128.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_256.get(size=self.time_dim)),
+            ],
+            axis=-1
+        )
+        # Gradient along features axis:
+        x = np.gradient(x, axis=1) * T
+
+        # Log-scale:
+        x = log_transform(x)
+        return x[:, None, :]
+
+    def get_state(self):
+        # Update inner state statistic and compose state:
+        self.update_sliding_stat()
+
+        self.state['external'] = self.get_market_state()
+        self.state['internal'] = self.get_broker_state()
+
+        return self.state
+
+

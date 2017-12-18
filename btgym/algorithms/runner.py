@@ -286,12 +286,9 @@ def env_runner(sess,
                 if task == 0 and local_episode % env_render_freq == 0 :
                     if not atari_test:
                         # Render environment (chief worker only, and not in atari atari_test mode):
-
-                        render_stat = dict(
-                            render_human=env.render('human')[None,:],
-                            render_model_input_ext=env.render('external')[None, :],
-                            render_episode=env.render('episode')[None,:],
-                        )
+                        render_stat = {
+                            mode: env.render(mode)[None,:] for mode in env.render_modes
+                        }
                     else:
                         # Atari:
                         render_stat = dict(render_atari=state['external'][None,:] * 255)
