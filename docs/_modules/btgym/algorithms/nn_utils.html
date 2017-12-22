@@ -305,15 +305,37 @@
         <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">conv1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">stride_shape</span><span class="p">,</span> <span class="n">pad</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span></div>
 
 
+<div class="viewcode-block" id="conv2d_dw"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.nn_utils.conv2d_dw">[docs]</a><span class="k">def</span> <span class="nf">conv2d_dw</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">num_filters</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;conv2d_dw&#39;</span><span class="p">,</span> <span class="n">filter_size</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">stride</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">pad</span><span class="o">=</span><span class="s2">&quot;SAME&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+              <span class="n">collections</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Depthwise 2D convolution layer.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+        <span class="n">stride_shape</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">stride</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">stride</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">filter_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">filter_size</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">filter_size</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="n">num_filters</span><span class="p">]</span>
+        <span class="n">fan_in</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">filter_shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
+        <span class="n">fan_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">filter_shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span> <span class="o">*</span> <span class="n">num_filters</span>
+        <span class="c1"># initialize weights with random weights</span>
+        <span class="n">w_bound</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">6.</span> <span class="o">/</span> <span class="p">(</span><span class="n">fan_in</span> <span class="o">+</span> <span class="n">fan_out</span><span class="p">))</span>
+
+        <span class="n">w</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;W&quot;</span><span class="p">,</span> <span class="n">filter_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span>
+                            <span class="n">tf</span><span class="o">.</span><span class="n">random_uniform_initializer</span><span class="p">(</span><span class="o">-</span><span class="n">w_bound</span><span class="p">,</span> <span class="n">w_bound</span><span class="p">),</span> <span class="n">collections</span><span class="o">=</span><span class="n">collections</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_filters</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">])],</span>
+                            <span class="n">initializer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant_initializer</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span> <span class="n">collections</span><span class="o">=</span><span class="n">collections</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">depthwise_conv2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">stride_shape</span><span class="p">,</span> <span class="n">pad</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">b</span></div>
+
+
 <div class="viewcode-block" id="conv_2d_network"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.nn_utils.conv_2d_network">[docs]</a><span class="k">def</span> <span class="nf">conv_2d_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span>
                     <span class="n">ob_space</span><span class="p">,</span>
                     <span class="n">ac_space</span><span class="p">,</span>
+                    <span class="n">conv_2d_layer_ref</span><span class="o">=</span><span class="n">conv2d</span><span class="p">,</span>
                     <span class="n">conv_2d_num_layers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
                     <span class="n">conv_2d_num_filters</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
                     <span class="n">conv_2d_filter_size</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
                     <span class="n">conv_2d_stride</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
                     <span class="n">pad</span><span class="o">=</span><span class="s2">&quot;SAME&quot;</span><span class="p">,</span>
                     <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;conv2d&#39;</span><span class="p">,</span>
                     <span class="n">collections</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                     <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                     <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -324,27 +346,28 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        tensor holding state features;</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">conv_2d_num_layers</span><span class="p">):</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
-            <span class="n">conv2d</span><span class="p">(</span>
-                <span class="n">x</span><span class="p">,</span>
-                <span class="n">conv_2d_num_filters</span><span class="p">,</span>
-                <span class="s2">&quot;conv2d_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
-                <span class="n">conv_2d_filter_size</span><span class="p">,</span>
-                <span class="n">conv_2d_stride</span><span class="p">,</span>
-                <span class="n">pad</span><span class="p">,</span>
-                <span class="n">dtype</span><span class="p">,</span>
-                <span class="n">collections</span><span class="p">,</span>
-                <span class="n">reuse</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>  <span class="c1">#, reuse=reuse):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">conv_2d_num_layers</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
+                <span class="n">conv_2d_layer_ref</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">,</span>
+                    <span class="n">conv_2d_num_filters</span><span class="p">,</span>
+                    <span class="s2">&quot;layer_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                    <span class="n">conv_2d_filter_size</span><span class="p">,</span>
+                    <span class="n">conv_2d_stride</span><span class="p">,</span>
+                    <span class="n">pad</span><span class="p">,</span>
+                    <span class="n">dtype</span><span class="p">,</span>
+                    <span class="n">collections</span><span class="p">,</span>
+                    <span class="n">reuse</span>
+                <span class="p">)</span>
             <span class="p">)</span>
-        <span class="p">)</span>
-    <span class="c1"># A3c/BaseAAC original paper design:</span>
-    <span class="c1"># x = tf.nn.elu(conv2d(x, 16, &#39;conv2d_1&#39;, [8, 8], [4, 4], pad, dtype, collections, reuse))</span>
-    <span class="c1"># x = tf.nn.elu(conv2d(x, 32, &#39;conv2d_2&#39;, [4, 4], [2, 2], pad, dtype, collections, reuse))</span>
-    <span class="c1"># x = tf.nn.elu(</span>
-    <span class="c1">#    linear(batch_flatten(x), 256, &#39;conv_2d_dense&#39;, self.normalized_columns_initializer(0.01), reuse=reuse)</span>
-    <span class="c1"># )</span>
-    <span class="k">return</span> <span class="n">x</span></div>
+        <span class="c1"># A3c/BaseAAC original paper design:</span>
+        <span class="c1">#x = tf.nn.elu(conv2d(x, 16, &#39;conv2d_1&#39;, [8, 8], [4, 4], pad, dtype, collections, reuse))</span>
+        <span class="c1">#x = tf.nn.elu(conv2d(x, 32, &#39;conv2d_2&#39;, [4, 4], [2, 2], pad, dtype, collections, reuse))</span>
+        <span class="c1">#x = tf.nn.elu(</span>
+        <span class="c1">#   linear(batch_flatten(x), 256, &#39;conv_2d_dense&#39;, normalized_columns_initializer(0.01), reuse=reuse)</span>
+        <span class="c1">#)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
 
 
 <div class="viewcode-block" id="conv_1d_network"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.nn_utils.conv_1d_network">[docs]</a><span class="k">def</span> <span class="nf">conv_1d_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span>
@@ -433,7 +456,7 @@
     <span class="k">return</span> <span class="n">x_out</span><span class="p">,</span> <span class="n">lstm_init_state</span><span class="p">,</span> <span class="n">lstm_state_out</span><span class="p">,</span> <span class="n">lstm_state_pl_flatten</span></div>
 
 
-<div class="viewcode-block" id="dense_aac_network"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.nn_utils.dense_aac_network">[docs]</a><span class="k">def</span> <span class="nf">dense_aac_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="dense_aac_network"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.nn_utils.dense_aac_network">[docs]</a><span class="k">def</span> <span class="nf">dense_aac_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;dense_aac&#39;</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Stage3 network: from LSTM flattened output to advantage actor-critic.</span>
 
@@ -442,9 +465,10 @@
 <span class="sd">        value function tensor</span>
 <span class="sd">        action sampling function.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">logits</span> <span class="o">=</span> <span class="n">linear</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="s2">&quot;action&quot;</span><span class="p">,</span> <span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">),</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">)</span>
-    <span class="n">vf</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">linear</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">),</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-    <span class="n">sample</span> <span class="o">=</span> <span class="n">categorical_sample</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+        <span class="n">logits</span> <span class="o">=</span> <span class="n">linear</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="s2">&quot;action&quot;</span><span class="p">,</span> <span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">),</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">)</span>
+        <span class="n">vf</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">linear</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">),</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="n">categorical_sample</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
 
     <span class="k">return</span> <span class="n">logits</span><span class="p">,</span> <span class="n">vf</span><span class="p">,</span> <span class="n">sample</span></div>
 

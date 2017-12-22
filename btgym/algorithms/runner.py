@@ -320,7 +320,21 @@ def env_runner(sess,
             last_experience['r'] = np.asarray([0.0])
 
         rollout.add(last_experience)
-        memory.add(last_experience)
+
+        # Only training rollouts are added to replay memory:
+        try:
+            # Was it test (`type` in metadata is not zero)?
+            if not atari_test and last_experience['state']['metadata']['type']:
+                is_test = True
+
+            else:
+                is_test = False
+
+        except KeyError:
+            is_test = False
+
+        if not is_test:
+            memory.add(last_experience)
 
         #print('last_experience {}'.format(last_experience['position']))
         #for k, v in last_experience.items():

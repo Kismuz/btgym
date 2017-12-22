@@ -95,6 +95,7 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework">A3C framework</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
@@ -202,42 +203,48 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>**kwargs</strong> – <p>filename=None,  # Str or list of str, should be given either here  or when calling read_csv()</p>
-<p>Default parameters for source-specific CSV datafeed class,
-correctly parses 1 minute Forex generic ASCII
-data files from www.HistData.com:</p>
-<p>CSV to Pandas params:</p>
-<blockquote>
-<div>sep=’;’,
-header=0,
-index_col=0,
-parse_dates=True,
-names=[‘open’, ‘high’, ‘low’, ‘close’, ‘volume’],</div></blockquote>
-<p>Pandas to BT.feeds params:</p>
-<blockquote>
-<div>timeframe=1,  # 1 minute.
-datetime=0,
-open=1,
-high=2,
-low=3,
-close=4,
-volume=-1,
-openinterest=-1,</div></blockquote>
-<p>Random-sampling params:</p>
-<blockquote>
-<div>start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
-start_00=True,  # Episode start time will be set to first record of the day (usually 00:00).
-episode_len_days=1,  # Maximum episode time duration in days, hours, minutes:
-episode_len_hours=23,
-episode_len_minutes=55,
-time_gap_days=0,  #  Data omittance threshold: maximum data time gap allowed within sample
-time_gap_hours=5, # in days, hours. Thereby, if set to be &lt; 1 day,<blockquote>
-<div># samples containing weekends and holidays gaps will be rejected.</div></blockquote>
-</div></blockquote>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>kwargs</strong> – </li>
+<li><strong>filename=None</strong> – Str or list of str, should be given either here or when calling read_csv(), see <cite>Notes</cite>.</li>
+<li><strong>to Pandas parsing params</strong> (<em>CSV</em>) – (pandas specific)</li>
+<li><strong>sep=';'</strong> – </li>
+<li><strong>header=0</strong><strong>,</strong> – </li>
+<li><strong>index_col=0</strong> – </li>
+<li><strong>parse_dates=True</strong> – </li>
+<li><strong>'high'</strong><strong>, </strong><strong>'low'</strong><strong>, </strong><strong>'close'</strong><strong>, </strong><strong>'volume'</strong><strong>]</strong> (<em>names=</em><em>[</em><em>'open'</em><em>,</em>) – </li>
+<li><strong>to BT.feeds params</strong> (<em>Pandas</em>) – </li>
+<li><strong>timeframe=1</strong> – 1 minute.</li>
+<li><strong>datetime=0</strong> – </li>
+<li><strong>open=1</strong> – </li>
+<li><strong>high=2</strong> – </li>
+<li><strong>low=3</strong> – </li>
+<li><strong>close=4</strong> – </li>
+<li><strong>volume=-1</strong> – </li>
+<li><strong>openinterest=-1</strong> – </li>
+<li><strong>params</strong> (<em>Sampling</em>) – </li>
+<li><strong>1</strong><strong>, </strong><strong>2</strong><strong>, </strong><strong>3</strong><strong>, </strong><strong>]</strong> (<em>start_weekdays=</em><em>[</em><em>0</em><em>,</em>) – Only weekdays from the list will be used for episode start.</li>
+<li><strong>start_00=True</strong> – Episode start time will be set to first record of the day (usually 00:00).</li>
+<li><strong>episode_duration={'days'</strong> – 1, ‘hours’: 23, ‘minutes’: 55}:   Maximum episode time duration
+in days, hours, minutes</li>
+<li><strong>time_gap={'hours'</strong> – 5}:          Data omittance threshold: maximum data time gap allowed within sample
+in days, hours. Thereby, if set to be &lt; 1 day,
+samples containing weekends and holidays gaps will be rejected.</li>
+</ul>
 </td>
 </tr>
 </tbody>
 </table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last simple">
+<li>CSV file can contain duplicate records, cheks will be performed and all duplicates will be removed;</li>
+<li>CSV file should be properly sorted by date_time in ascending order, no sorting checks performed.</li>
+<li>When supplying list of file_names, all files should be also sorted by their time period,
+no correct sampling will be possible otherwise.</li>
+<li>Default parameters are source-specific and made to correctly parse 1 minute Forex generic ASCII
+data files from www.HistData.com. Tune according to your data source.</li>
+</ul>
+</div>
 <dl class="method">
 <dt id="btgym.datafeed.BTgymDataset.update_params">
 <code class="descname">update_params</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.update_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.update_params" title="Permalink to this definition">¶</a></dt>
@@ -341,7 +348,7 @@ where <cite>~</cite> tolerance is set by <cite>time_gap</cite> param.</td>
 <dt id="btgym.datafeed.BTgymSequentialTrial">
 <em class="property">class </em><code class="descclassname">btgym.datafeed.</code><code class="descname">BTgymSequentialTrial</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sequential Data Trials iterator.
-Enables sliding time-window training and testing for the dataset consisiting of time-ordered records.</p>
+Enables sliding or expanding time-window training and testing for the dataset of time-ordered records.</p>
 <p>Single Trial is defined by:</p>
 <ul>
 <li><p class="first">support train and test intervals:</p>
@@ -357,7 +364,7 @@ where `1` stands for next closest time.
 <li><p class="first">number of test episodes to draw from test support interval;</p>
 </li>
 </ul>
-<p>Data iterating:</p>
+<p>Sliding time-window data iterating:</p>
 <p>If training is started from the beginningg of the dataset, <cite>train_start_time</cite> is set to that of first record,
 for example, for the start of the year:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Trial</span> <span class="n">train</span> <span class="n">interval</span><span class="p">:</span> <span class="mi">19</span> <span class="n">days</span><span class="p">,</span> <span class="mi">23</span><span class="p">:</span><span class="mi">59</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span> <span class="n">test</span> <span class="n">interval</span><span class="p">:</span> <span class="mi">2</span> <span class="n">days</span><span class="p">,</span> <span class="mi">23</span><span class="p">:</span><span class="mi">59</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span>
@@ -369,9 +376,9 @@ for example, for the start of the year:</p>
 <span class="n">Testing</span>  <span class="n">interval</span><span class="p">:</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">31</span> <span class="mi">17</span><span class="p">:</span><span class="mi">15</span><span class="p">:</span><span class="mi">00</span> <span class="o">&lt;--&gt;</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">03</span> <span class="mi">17</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span>
 </pre></div>
 </div>
-<p>Since <cite>reset_data()</cite> method call, every call to <cite>BTgymSequentialTrial.sample()</cite> method will return uniformly drawn
+<p>Since <cite>reset_data()</cite> method call, every call to <cite>BTgymSequentialTrial.sample()</cite> method will return randomly drawn
 train episode from train interval, until max. number of samples is reached ( here - 1000).
-Than each next call to <cite>sample()</cite> will return uniformly drawn episode from test interval,
+Than each next call to <cite>sample()</cite> will return randomly drawn episode from test interval,
 until again max. number is reached (here - 10).</p>
 <p>Next call to <cite>sample()</cite> will result in following: next <cite>Trial</cite> will be formed such as:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span>train_start_time_next_trial = `test_end_time_previous_trial + 1
@@ -386,6 +393,16 @@ than first train episode of the new <cite>Trial</cite> will be sampled and retur
 <span class="n">Testing</span>  <span class="o">@</span><span class="p">:</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">03</span> <span class="mi">00</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="mi">00</span> <span class="o">&lt;--&gt;</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">08</span> <span class="mi">00</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span><span class="mi">00</span>
 </pre></div>
 </div>
+<p>Expanding time-window data iterating:</p>
+<p>Differs from above in a way that trial interval start position is fixed at the beginning of dataset. Thus,
+trial support interval is expanding to the right and every subsequent trial is bigger than previous one
+by amount of test interval.</p>
+<p>Episodes sampling:</p>
+<p>Episodes sampling is performed in such a way that entire episode duration lies within <cite>Trial</cite> interval.
+Episode start position within interval is drawn from beta-distribution with default parameters <cite>b_alpha`=1,
+`b_beta`=1, i.e. uniform one.
+`Beta-distribution</cite> is here with expanding data iteration in mind when it is can be beneficial
+to give <cite>recent</cite> episodes higher probability of being sampled, e.g.:  <a href="#id1"><span class="problematic" id="id2">`</span></a>b_alpha`=2, <a href="#id3"><span class="problematic" id="id4">`</span></a>b_beta`=1.</p>
 <p>See description at <cite>BTgymTrialRandomIterator()</cite> for motivation.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -397,6 +414,9 @@ than first train episode of the new <cite>Trial</cite> will be sampled and retur
 <li><strong>test_range</strong> – dict. containing <cite>Trial</cite> test interval in: <cite>days`[, `hours</cite>][, <cite>minutes</cite>];</li>
 <li><strong>train_samples</strong> – number of episodes to draw from single <cite>Trial train interval</cite>;</li>
 <li><strong>test_samples</strong> – number of episodes to draw from <cite>Trial test interval</cite>;</li>
+<li><strong>expanding</strong> – bool, if True - use expanding-type Trials, sliding otherwise; def=False;</li>
+<li><strong>b_alpha</strong> – sampling B-distribution alpha param; def=1;</li>
+<li><strong>b_beta</strong> – sampling B-distribution beta param; def=1;</li>
 <li><strong>trial_start_00</strong> – <cite>Trial</cite> start time will be set to that of first record of the day (usually 00:00);</li>
 </ul>
 </td>
@@ -534,6 +554,46 @@ uniformly sampled from <cite>sequence of Trials</cite>.</p>
 </table>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.datafeed.random_beta">
+<code class="descclassname">btgym.datafeed.</code><code class="descname">random_beta</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#btgym.datafeed.random_beta" title="Permalink to this definition">¶</a></dt>
+<dd><p>beta(a, b, size=None)</p>
+<p>Draw samples from a Beta distribution.</p>
+<p>The Beta distribution is a special case of the Dirichlet distribution,
+and is related to the Gamma distribution.  It has the probability
+distribution function</p>
+<div class="math">
+\[f(x; a,b) = \frac{1}{B(\alpha, \beta)} x^{\alpha - 1}
+(1 - x)^{\beta - 1},\]</div>
+<p>where the normalisation, B, is the beta function,</p>
+<div class="math">
+\[B(\alpha, \beta) = \int_0^1 t^{\alpha - 1}
+(1 - t)^{\beta - 1} dt.\]</div>
+<p>It is often seen in Bayesian inference and order statistics.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>a</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a><em> or </em><em>array_like of floats</em>) – Alpha, non-negative.</li>
+<li><strong>b</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a><em> or </em><em>array_like of floats</em>) – Beta, non-negative.</li>
+<li><strong>size</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a><em> or </em><em>tuple of ints</em><em>, </em><em>optional</em>) – Output shape.  If the given shape is, e.g., <code class="docutils literal"><span class="pre">(m,</span> <span class="pre">n,</span> <span class="pre">k)</span></code>, then
+<code class="docutils literal"><span class="pre">m</span> <span class="pre">*</span> <span class="pre">n</span> <span class="pre">*</span> <span class="pre">k</span></code> samples are drawn.  If size is <code class="docutils literal"><span class="pre">None</span></code> (default),
+a single value is returned if <code class="docutils literal"><span class="pre">a</span></code> and <code class="docutils literal"><span class="pre">b</span></code> are both scalars.
+Otherwise, <code class="docutils literal"><span class="pre">np.broadcast(a,</span> <span class="pre">b).size</span></code> samples are drawn.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> – Drawn samples from the parameterized beta distribution.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">ndarray or scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </div>

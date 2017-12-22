@@ -94,6 +94,7 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework">A3C framework</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
@@ -199,7 +200,9 @@ between current Open price and current High or Low prices respectively</li>
 </dl>
 </dd>
 <dt>internal state data feature search:</dt>
-<dd>time_embedded concatenated vector of broker and portfolio statistics</dd>
+<dd>time_embedded concatenated vector of broker and portfolio statistics
+time_embedded vector of last actions recieved (one-hot)
+time_embedded vector of rewards</dd>
 <dt>reward shaping search:</dt>
 <dd>potential-based shaping functions</dd>
 </dl>
@@ -236,6 +239,49 @@ F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
 </dl>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.research.strategy_4.DevStrat_4_7">
+<em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_7</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_7"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_7" title="Permalink to this definition">¶</a></dt>
+<dd><p>_4_6 +:
+Sliding statistics avg_period disentangled from time embedding dim;
+Only one last step sliding stats are used for internal state;</p>
+<dl class="method">
+<dt id="btgym.research.strategy_4.DevStrat_4_7.get_reward">
+<code class="descname">get_reward</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_7.get_reward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_7.get_reward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shapes reward function as normalized single trade realized profit/loss,
+augmented with potential-based reward shaping functions in form of:
+F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
+<ul class="simple">
+<li>potential FI_1 is current normalized unrealized profit/loss;</li>
+<li>potential FI_2 is current normalized broker value.</li>
+<li>FI_3: penalizing exposure toward the end of episode</li>
+</ul>
+<dl class="docutils">
+<dt>Paper:</dt>
+<dd><dl class="first last docutils">
+<dt>“Policy invariance under reward transformations:</dt>
+<dd>Theory and application to reward shaping” by A. Ng et al., 1999;
+<a class="reference external" href="http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf">http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</a></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.research.strategy_4.DevStrat_4_8">
+<em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_8</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_8"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_8" title="Permalink to this definition">¶</a></dt>
+<dd><p>4_7 +:
+Uses full average_period of inner stats for use with inner_conv_encoder.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.research.strategy_4.DevStrat_4_9">
+<em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_9</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_9"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_9" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses hard-coded market state features.</p>
 </dd></dl>
 
 </div>

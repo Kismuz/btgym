@@ -914,8 +914,14 @@ list of related tensorboard summaries.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="btgym.algorithms.nn_utils.conv2d_dw">
+<code class="descclassname">btgym.algorithms.nn_utils.</code><code class="descname">conv2d_dw</code><span class="sig-paren">(</span><em>x</em>, <em>num_filters</em>, <em>name='conv2d_dw'</em>, <em>filter_size=(3</em>, <em>3)</em>, <em>stride=(1</em>, <em>1)</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>collections=None</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn_utils.html#conv2d_dw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn_utils.conv2d_dw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Depthwise 2D convolution layer.</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="btgym.algorithms.nn_utils.conv_2d_network">
-<code class="descclassname">btgym.algorithms.nn_utils.</code><code class="descname">conv_2d_network</code><span class="sig-paren">(</span><em>x</em>, <em>ob_space</em>, <em>ac_space</em>, <em>conv_2d_num_layers=4</em>, <em>conv_2d_num_filters=32</em>, <em>conv_2d_filter_size=(3</em>, <em>3)</em>, <em>conv_2d_stride=(2</em>, <em>2)</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>collections=None</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn_utils.html#conv_2d_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn_utils.conv_2d_network" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.nn_utils.</code><code class="descname">conv_2d_network</code><span class="sig-paren">(</span><em>x</em>, <em>ob_space</em>, <em>ac_space</em>, <em>conv_2d_layer_ref=&lt;function conv2d&gt;</em>, <em>conv_2d_num_layers=4</em>, <em>conv_2d_num_filters=32</em>, <em>conv_2d_filter_size=(3</em>, <em>3)</em>, <em>conv_2d_stride=(2</em>, <em>2)</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>name='conv2d'</em>, <em>collections=None</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn_utils.html#conv_2d_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn_utils.conv_2d_network" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stage1 network: from preprocessed 2D input to estimated features.
 Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -963,7 +969,7 @@ lstm flattened feed placeholders as tuple.</td>
 
 <dl class="function">
 <dt id="btgym.algorithms.nn_utils.dense_aac_network">
-<code class="descclassname">btgym.algorithms.nn_utils.</code><code class="descname">dense_aac_network</code><span class="sig-paren">(</span><em>x</em>, <em>ac_space</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn_utils.html#dense_aac_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn_utils.dense_aac_network" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.nn_utils.</code><code class="descname">dense_aac_network</code><span class="sig-paren">(</span><em>x</em>, <em>ac_space</em>, <em>name='dense_aac'</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn_utils.html#dense_aac_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn_utils.dense_aac_network" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stage3 network: from LSTM flattened output to advantage actor-critic.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />

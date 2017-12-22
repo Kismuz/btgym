@@ -202,7 +202,7 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span>
 
-<span class="kn">from</span> <span class="nn">btgym.strategy.utils</span> <span class="k">import</span> <span class="n">norm_value</span><span class="p">,</span> <span class="n">decayed_result</span>
+<span class="kn">from</span> <span class="nn">btgym.strategy.utils</span> <span class="k">import</span> <span class="n">norm_value</span><span class="p">,</span> <span class="n">decayed_result</span><span class="p">,</span> <span class="n">exp_scale</span>
 
 
 <span class="c1">############################## Base BTgymStrategy Class ###################</span>
@@ -223,6 +223,22 @@
 <span class="sd">        - bt.observers.DrawDown observer will be automatically added to BTgymStrategy instance at runtime.</span>
 <span class="sd">        - Since it is bt.Strategy subclass, see: https://www.backtrader.com/docu/strategy.html for more information.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Time embedding period:</span>
+    <span class="n">time_dim</span> <span class="o">=</span> <span class="mi">4</span>  <span class="c1"># NOTE: changed this --&gt; change Policy  UNREAL for aux. pix control task upsampling params</span>
+
+    <span class="c1"># Number of environment steps to skip before returning next response,</span>
+    <span class="c1"># e.g. if set to 10 -- agent will interact with environment every 10th step;</span>
+    <span class="c1"># every other step agent action is assumed to be &#39;hold&#39;:</span>
+    <span class="n">skip_frame</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="c1"># Number of timesteps reward estimation statistics are averaged over, should be:</span>
+    <span class="c1"># skip_frame_period &lt;= avg_period &lt;= time_embedding_period:</span>
+    <span class="n">avg_period</span> <span class="o">=</span> <span class="n">time_dim</span>
+
+    <span class="c1"># Possible agent actions;  Note: place &#39;hold&#39; first! :</span>
+    <span class="n">portfolio_actions</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;buy&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">)</span>
+
     <span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
         <span class="c1"># Observation state shape is dictionary of Gym spaces,</span>
         <span class="c1"># at least should contain `raw_state` field.</span>
@@ -232,7 +248,7 @@
         <span class="c1"># For `raw_state&#39; (default) - absolute min/max values from BTgymDataset will be used.</span>
         <span class="n">state_shape</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
             <span class="n">raw_state</span><span class="o">=</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
-                <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+                <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">time_dim</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
                 <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># will get overridden.</span>
                 <span class="n">high</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
             <span class="p">)</span>
@@ -241,15 +257,9 @@
         <span class="n">target_call</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># finish episode when reaching profit target, in percent.</span>
         <span class="n">dataset_stat</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Summary descriptive statistics for entire dataset and</span>
         <span class="n">episode_stat</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># current episode. Got updated by server.</span>
-        <span class="n">portfolio_actions</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;buy&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">),</span>  <span class="c1"># possible agent actions.</span>
-        <span class="n">skip_frame</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># Number of environment steps to skip before returning next response,</span>
-                       <span class="c1"># e.g. if set to 10 -- agent will interact with environment every 10th episode step;</span>
-                       <span class="c1"># Every other step agent action is assumed to be &#39;hold&#39;.</span>
+        <span class="n">portfolio_actions</span><span class="o">=</span><span class="n">portfolio_actions</span><span class="p">,</span>
+        <span class="n">skip_frame</span><span class="o">=</span><span class="n">skip_frame</span><span class="p">,</span>
     <span class="p">)</span>
-
-    <span class="c1">#@classmethod</span>
-    <span class="c1">#def _set_params(cls, params):</span>
-    <span class="c1">#    cls.params = params</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -275,6 +285,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_done</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">=</span> <span class="s1">&#39;hold&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_action</span> <span class="o">=</span> <span class="s1">&#39;hold&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">order_failed</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;-&#39;</span>
@@ -283,13 +295,6 @@
 
         <span class="c1"># Inherit logger from cerebro:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">_log</span>
-
-        <span class="c1"># Time embedding period (just take first key in obs. shapes dicts as ref.):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dim_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_shape</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_shape</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-        <span class="c1"># Number of timesteps reward estimation statistics are averaged over, should be:</span>
-        <span class="c1"># skip_frame_period &lt; avg_period &lt;= time_embedding_period</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">avg_period</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_time</span>
 
         <span class="c1"># Normalisation constant for statistics derived from account value:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">broker_value_normalizer</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> \
@@ -311,12 +316,11 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">realized_broker_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">episode_result</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># not used</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="c1"># Service sma to get correct first features values:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">dim_sma</span> <span class="o">=</span> <span class="n">btind</span><span class="o">.</span><span class="n">SimpleMovingAverage</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">datas</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-            <span class="n">period</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim_time</span><span class="p">)</span>
+            <span class="n">period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">dim_sma</span><span class="o">.</span><span class="n">plotinfo</span><span class="o">.</span><span class="n">plot</span> <span class="o">=</span> <span class="kc">False</span>
 
@@ -328,10 +332,13 @@
             <span class="s1">&#39;exposure&#39;</span><span class="p">,</span>
             <span class="s1">&#39;leverage&#39;</span><span class="p">,</span>
             <span class="s1">&#39;pos_duration&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;episode_step&#39;</span><span class="p">,</span>
             <span class="s1">&#39;realized_pnl&#39;</span><span class="p">,</span>
             <span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">,</span>
             <span class="s1">&#39;max_unrealized_pnl&#39;</span><span class="p">,</span>
             <span class="s1">&#39;min_unrealized_pnl&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;action&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;reward&#39;</span><span class="p">,</span>
         <span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">avg_period</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">sliding_datalines</span><span class="p">}</span>
 
@@ -363,12 +370,15 @@
 <span class="sd">            - normalized broker value</span>
 <span class="sd">            - normalized broker cash</span>
 <span class="sd">            - normalized exposure (position size)</span>
-<span class="sd">            - position duration normalized wrt. max possible episode duration</span>
+<span class="sd">            - position duration in steps, normalized wrt. max possible episode steps</span>
+<span class="sd">            - exp. scaled episode duration in steps, normalized wrt. max possible episode steps</span>
 <span class="sd">            - normalized decayed realized profit/loss for last closed trade</span>
 <span class="sd">                (or zero if no trades been closed within last step);</span>
 <span class="sd">            - normalized profit/loss for current opened trade (unrealized p/l);</span>
 <span class="sd">            - normalized best possible up to present point unrealized result for current opened trade;</span>
 <span class="sd">            - normalized worst possible up to present point unrealized result for current opened trade;</span>
+<span class="sd">            - one hot encoding for actions received;</span>
+<span class="sd">            - rewards received (based on self.reward variable values);</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">stat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span>
         <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
@@ -429,6 +439,12 @@
         <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;pos_duration&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_duration</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numrecords</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span><span class="p">)</span>
         <span class="p">)</span>
+        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;episode_step&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">exp_scale</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numrecords</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span><span class="p">),</span>
+                <span class="n">gamma</span><span class="o">=</span><span class="mi">3</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
         <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;max_unrealized_pnl&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_pos_max_value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_broker_value</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_value_normalizer</span>
         <span class="p">)</span>
@@ -437,9 +453,33 @@
         <span class="p">)</span>
         <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="p">(</span><span class="n">current_value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_broker_value</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_value_normalizer</span>
-        <span class="p">)</span></div>
+        <span class="p">)</span>
+        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action_norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_action</span><span class="p">))</span>
+        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward</span><span class="p">)</span></div>
 
-        <span class="c1"># TODO: norm. episode duration?</span>
+        <span class="c1">#print(stat[&#39;episode_step&#39;])</span>
+
+<div class="viewcode-block" id="BTgymBaseStrategy.action_one_hot"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.action_one_hot">[docs]</a>    <span class="k">def</span> <span class="nf">action_one_hot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns one-hot encoding for action.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">one_hot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">portfolio_actions</span><span class="p">))</span>
+            <span class="n">one_hot</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">portfolio_actions</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">action</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">return</span> <span class="n">one_hot</span>
+
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Got action: &lt;</span><span class="si">{}</span><span class="s1">&gt;, expected: &lt;</span><span class="si">{}</span><span class="s1">&gt; &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">portfolio_actions</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="BTgymBaseStrategy.action_norm"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.action_norm">[docs]</a>    <span class="k">def</span> <span class="nf">action_norm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns normalized in [0,1] real-valued encoding for action.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">portfolio_actions</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">action</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">portfolio_actions</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Got action: &lt;</span><span class="si">{}</span><span class="s1">&gt;, expected: &lt;</span><span class="si">{}</span><span class="s1">&gt; &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">portfolio_actions</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="BTgymBaseStrategy.set_datalines"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.set_datalines">[docs]</a>    <span class="k">def</span> <span class="nf">set_datalines</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -464,10 +504,10 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">raw_state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">row_stack</span><span class="p">(</span>
             <span class="p">(</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">open</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dim_time</span><span class="p">)),</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">high</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dim_time</span><span class="p">)),</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">low</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dim_time</span><span class="p">)),</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">close</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dim_time</span><span class="p">)),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">open</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">high</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">low</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">close</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
             <span class="p">)</span>
         <span class="p">)</span><span class="o">.</span><span class="n">T</span>
 
@@ -486,8 +526,10 @@
 
 <span class="sd">            - while iterating, ._get_raw_state() method is called just before this one,</span>
 <span class="sd">                so attr. `self.raw_state` is fresh and ready to use.</span>
+
+<span class="sd">            - should update self.state variable</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_sliding_stat</span><span class="p">()</span>
+        <span class="c1">#self.update_sliding_stat()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_state</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span></div>
 
@@ -499,9 +541,13 @@
 <span class="sd">        Same principles as for state composer apply.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">             reward scalar, float</span>
+<span class="sd">             self.reward value: scalar, float</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            should update self.reward variable.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span><span class="p">))</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span></div>
 
 <div class="viewcode-block" id="BTgymBaseStrategy.get_info"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>

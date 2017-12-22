@@ -463,12 +463,9 @@
                 <span class="k">if</span> <span class="n">task</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">local_episode</span> <span class="o">%</span> <span class="n">env_render_freq</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">:</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="n">atari_test</span><span class="p">:</span>
                         <span class="c1"># Render environment (chief worker only, and not in atari atari_test mode):</span>
-
-                        <span class="n">render_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-                            <span class="n">render_human</span><span class="o">=</span><span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;human&#39;</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:],</span>
-                            <span class="n">render_model_input_ext</span><span class="o">=</span><span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;external&#39;</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:],</span>
-                            <span class="n">render_episode</span><span class="o">=</span><span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;episode&#39;</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:],</span>
-                        <span class="p">)</span>
+                        <span class="n">render_stat</span> <span class="o">=</span> <span class="p">{</span>
+                            <span class="n">mode</span><span class="p">:</span> <span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">mode</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:]</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="n">env</span><span class="o">.</span><span class="n">render_modes</span>
+                        <span class="p">}</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="c1"># Atari:</span>
                         <span class="n">render_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">render_atari</span><span class="o">=</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">][</span><span class="kc">None</span><span class="p">,:]</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span>

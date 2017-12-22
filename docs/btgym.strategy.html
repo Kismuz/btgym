@@ -95,6 +95,7 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework">A3C framework</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
@@ -235,7 +236,8 @@ every other step agent action is assumed to be ‘hold’.</div></blockquote>
 <li>normalized broker value</li>
 <li>normalized broker cash</li>
 <li>normalized exposure (position size)</li>
-<li>position duration normalized wrt. max possible episode duration</li>
+<li>position duration in steps, normalized wrt. max possible episode steps</li>
+<li>exp. scaled episode duration in steps, normalized wrt. max possible episode steps</li>
 <li><dl class="first docutils">
 <dt>normalized decayed realized profit/loss for last closed trade</dt>
 <dd>(or zero if no trades been closed within last step);</dd>
@@ -244,9 +246,23 @@ every other step agent action is assumed to be ‘hold’.</div></blockquote>
 <li>normalized profit/loss for current opened trade (unrealized p/l);</li>
 <li>normalized best possible up to present point unrealized result for current opened trade;</li>
 <li>normalized worst possible up to present point unrealized result for current opened trade;</li>
+<li>one hot encoding for actions received;</li>
+<li>rewards received (based on self.reward variable values);</li>
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.action_one_hot">
+<code class="descname">action_one_hot</code><span class="sig-paren">(</span><em>action</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.action_one_hot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.action_one_hot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns one-hot encoding for action.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.action_norm">
+<code class="descname">action_norm</code><span class="sig-paren">(</span><em>action</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.action_norm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.action_norm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns normalized in [0,1] real-valued encoding for action.</p>
 </dd></dl>
 
 <dl class="method">
@@ -280,6 +296,7 @@ to RL algorithm featurizer module.</p>
 <dd>so attr. <cite>self.raw_state</cite> is fresh and ready to use.</dd>
 </dl>
 </li>
+<li>should update self.state variable</li>
 </ul>
 </div>
 </dd></dl>
@@ -294,10 +311,16 @@ Same principles as for state composer apply.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">reward scalar, float</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">scalar, float</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">self.reward value</td>
 </tr>
 </tbody>
 </table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">should update self.reward variable.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
