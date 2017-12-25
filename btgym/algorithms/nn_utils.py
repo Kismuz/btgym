@@ -8,6 +8,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
 from tensorflow.contrib.layers import flatten as batch_flatten
+from tensorflow.contrib.layers import layer_norm as norm_layer
 from tensorflow.python.util.nest import flatten as flatten_nested
 from btgym.algorithms.utils import rnn_placeholders
 
@@ -164,24 +165,28 @@ def conv_2d_network(x,
                     **kwargs):
     """
     Stage1 network: from preprocessed 2D input to estimated features.
-    Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.
+    Encapsulates convolutions + layer normalisation + nonlinearity. Can be shared.
 
     Returns:
         tensor holding state features;
     """
-    with tf.variable_scope(name):  #, reuse=reuse):
+    with tf.variable_scope(name, reuse=reuse):
         for i in range(conv_2d_num_layers):
+
             x = tf.nn.elu(
-                conv_2d_layer_ref(
-                    x,
-                    conv_2d_num_filters,
-                    "layer_{}".format(i + 1),
-                    conv_2d_filter_size,
-                    conv_2d_stride,
-                    pad,
-                    dtype,
-                    collections,
-                    reuse
+                norm_layer(
+                    conv_2d_layer_ref(
+                        x,
+                        conv_2d_num_filters,
+                        "_layer_{}".format(i + 1),
+                        conv_2d_filter_size,
+                        conv_2d_stride,
+                        pad,
+                        dtype,
+                        collections,
+                        reuse
+                    ),
+                    scope=name + "_layer_{}".format(i + 1)
                 )
             )
         # A3c/BaseAAC original paper design:
@@ -256,7 +261,7 @@ def lstm_network(
         # Define LSTM layers:
         lstm = []
         for size in lstm_layers:
-            lstm += [lstm_class(size, state_is_tuple=True)]
+            lstm += [lstm_class(size)] #, state_is_tuple=True)]
 
         lstm = rnn.MultiRNNCell(lstm, state_is_tuple=True)
         # Get time_dimension as [1]-shaped tensor:

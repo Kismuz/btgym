@@ -112,37 +112,39 @@ class BTgymDataset:
         """
 
         Args:
-            kwargs:
-            filename=None:      Str or list of str, should be given either here or when calling read_csv(), see `Notes`.
 
-            CSV to Pandas parsing params:(pandas specific)
+            filename:                       Str or list of str, should be given either here or when calling read_csv(),
+                                            see `Notes`.
 
-            sep=';'
-            header=0,
-            index_col=0
-            parse_dates=True
-            names=['open', 'high', 'low', 'close', 'volume']
+            specific_params CSV to Pandas parsing
 
-            Pandas to BT.feeds params (backtrader specific)
+            sep:                            ';'
+            header:                         0
+            index_col:                      0
+            parse_dates:                    True
+            names:                          ['open', 'high', 'low', 'close', 'volume']
+
+            specific_params Pandas to BT.feeds conversion
 
             timeframe=1:                    1 minute.
-            datetime=0
-            open=1
-            high=2
-            low=3
-            close=4
-            volume=-1
-            openinterest=-1
+            datetime:                       0
+            open:                           1
+            high:                           2
+            low:                            3
+            close:                          4
+            volume:                         -1
+            openinterest:                   -1
 
-            Sampling params
+            specific_params Sampling
 
-            start_weekdays=[0, 1, 2, 3, ]:  Only weekdays from the list will be used for episode start.
-            start_00=True:                  Episode start time will be set to first record of the day (usually 00:00).
-            episode_duration={'days': 1, 'hours': 23, 'minutes': 55}:   Maximum episode time duration
-                                                                        in days, hours, minutes
+            start_weekdays:                 [0, 1, 2, 3, ] - Only weekdays from the list will be used for episode start.
+            start_00:                       True - Episode start time will be set to first record of the day
+                                            (usually 00:00).
+            episode_duration:               {'days': 1, 'hours': 23, 'minutes': 55} - Maximum episode time duration
+                                            in days, hours, minutes
 
-            time_gap={'hours': 5}:          Data omittance threshold: maximum data time gap allowed within sample
-                                            in days, hours. Thereby, if set to be < 1 day,
+            time_gap:                       {'hours': 5} - Data omittance threshold: maximum data time gap allowed
+                                            within sample in days, hours. Thereby, if set to be < 1 day,
                                             samples containing weekends and holidays gaps will be rejected.
 
         Note:
@@ -150,7 +152,7 @@ class BTgymDataset:
 
             - CSV file should be properly sorted by date_time in ascending order, no sorting checks performed.
 
-            - When supplying list of file_names, all files should be also sorted by their time period,
+            - When supplying list of file_names, all files should be also listed ascending by their time period,
               no correct sampling will be possible otherwise.
 
             - Default parameters are source-specific and made to correctly parse 1 minute Forex generic ASCII
@@ -573,8 +575,8 @@ class BTgymSequentialTrial(BTgymDataset):
         Testing  interval: 2016-01-31 17:15:00 <--> 2016-02-03 17:14:00;
 
     Since `reset_data()` method call, every call to `BTgymSequentialTrial.sample()` method will return randomly drawn
-    train episode from train interval, until reached `test_period` number of samples(here -50). Than iterator `pauses
-    training' and each next call to `sample()` will return randomly drawn episode from test interval,
+    train episode from train interval, until reached `test_period` number of samples (here -50). Than iterator `pauses
+    training` and each next call to `sample()` will return randomly drawn episode from test interval,
     until again max. number is reached (here - 10).
     Train-test loop is repeated until max. number of `Trial` train samples is reached ( here - 1000).
 

@@ -497,7 +497,21 @@
             <span class="n">last_experience</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mf">0.0</span><span class="p">])</span>
 
         <span class="n">rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">last_experience</span><span class="p">)</span>
-        <span class="n">memory</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">last_experience</span><span class="p">)</span>
+
+        <span class="c1"># Only training rollouts are added to replay memory:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Was it test (`type` in metadata is not zero)?</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">atari_test</span> <span class="ow">and</span> <span class="n">last_experience</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]:</span>
+                <span class="n">is_test</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">is_test</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">is_test</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_test</span><span class="p">:</span>
+            <span class="n">memory</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">last_experience</span><span class="p">)</span>
 
         <span class="c1">#print(&#39;last_experience {}&#39;.format(last_experience[&#39;position&#39;]))</span>
         <span class="c1">#for k, v in last_experience.items():</span>

@@ -246,7 +246,8 @@ F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
 <em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_7</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_7"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_7" title="Permalink to this definition">¶</a></dt>
 <dd><p>_4_6 +:
 Sliding statistics avg_period disentangled from time embedding dim;
-Only one last step sliding stats are used for internal state;</p>
+Only one last step sliding stats are used for internal state;
+Reward weights: 1, 2, 10</p>
 <dl class="method">
 <dt id="btgym.research.strategy_4.DevStrat_4_7.get_reward">
 <code class="descname">get_reward</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_7.get_reward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_7.get_reward" title="Permalink to this definition">¶</a></dt>
@@ -281,7 +282,35 @@ Uses full average_period of inner stats for use with inner_conv_encoder.</p>
 <dl class="class">
 <dt id="btgym.research.strategy_4.DevStrat_4_9">
 <em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_9</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_9"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_9" title="Permalink to this definition">¶</a></dt>
-<dd><p>Uses hard-coded market state features.</p>
+<dd><p>Uses hard-coded market state features as reference to encoded ones.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.research.strategy_4.DevStrat_4_10">
+<em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_10</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_10"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_10" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reward search: log-normalised f2</p>
+<dl class="method">
+<dt id="btgym.research.strategy_4.DevStrat_4_10.get_reward">
+<code class="descname">get_reward</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_10.get_reward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_10.get_reward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shapes reward function as normalized single trade realized profit/loss,
+augmented with potential-based reward shaping functions in form of:
+F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
+<ul class="simple">
+<li>potential FI_1 is current normalized unrealized profit/loss;</li>
+<li>potential FI_2 is current normalized broker value.</li>
+<li>FI_3: penalizing exposure toward the end of episode</li>
+</ul>
+<dl class="docutils">
+<dt>Paper:</dt>
+<dd><dl class="first last docutils">
+<dt>“Policy invariance under reward transformations:</dt>
+<dd>Theory and application to reward shaping” by A. Ng et al., 1999;
+<a class="reference external" href="http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf">http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</a></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </div>
