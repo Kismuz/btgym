@@ -31,6 +31,9 @@ class DevStrat_4_6(BTgymBaseStrategy):
         reward shaping search:
            potential-based shaping functions
 
+        add:
+            force position close at the end of the episode (basic, at data end)
+
 
     Data:
         synthetic/real
@@ -216,13 +219,39 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
         return self.reward
 
+    def next(self):
+        """
+        Default + force position close at the end of the episode.
+        """
+        # TODO: force pos. close is a primitive. To be refined if exiting early
+        if self.iteration >= self.data.numrecords - self.inner_embedding - self.p.skip_frame - 1:
+            self.order = self.close()
+            self.broker_message = 'Final CLOSE created; ' + self.broker_message
+        else:
+            # Simple action-to-order logic:
+            if self.action == 'hold' or self.order:
+                pass
+
+            elif self.action == 'buy':
+                self.order = self.buy()
+                self.broker_message = 'New BUY created; ' + self.broker_message
+
+            elif self.action == 'sell':
+                self.order = self.sell()
+                self.broker_message = 'New SELL created; ' + self.broker_message
+
+            elif self.action == 'close':
+                self.order = self.close()
+                self.broker_message = 'New CLOSE created; ' + self.broker_message
+
+
 
 class DevStrat_4_7(DevStrat_4_6):
     """
     _4_6 +:
     Sliding statistics avg_period disentangled from time embedding dim;
     Only one last step sliding stats are used for internal state;
-    Reward weights: 1, 2, 10
+    Reward weights: 1, 2, 10 , reward scale factor aded;
     """
 
     # Time embedding period:
@@ -241,6 +270,8 @@ class DevStrat_4_7(DevStrat_4_6):
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
 
     gamma = 1.0  # fi_gamma, should be MDP gamma decay
+
+    reward_scale = 1  # reward multiplicator
 
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
@@ -281,6 +312,7 @@ class DevStrat_4_7(DevStrat_4_6):
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
         gamma=gamma,
+        reward_scale=reward_scale,
         metadata={}
     )
 
@@ -365,7 +397,7 @@ class DevStrat_4_7(DevStrat_4_6):
         debug['f_real_pnl'] = 10 * realized_pnl
 
         # Weights are subject to tune:
-        self.reward = 1.0 * f1 + 2.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl
+        self.reward = (1.0 * f1 + 2.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl) * self.p.reward_scale
 
         debug['r'] = self.reward
         debug['b_v'] = self.sliding_stat['broker_value'][-1]
@@ -380,7 +412,7 @@ class DevStrat_4_7(DevStrat_4_6):
         # 'Do-not-expose-for-too-long' shaping term:
         # - 1.0 * self.exp_scale(avg_norm_position_duration, gamma=3)
 
-        self.reward = np.clip(self.reward, -1, 1)
+        self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
 
         return self.reward
 
@@ -406,7 +438,9 @@ class DevStrat_4_8(DevStrat_4_7):
     # Possible agent actions:
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
 
-    gamma = 1.0  # fi_gamma, should be MDP gamma decay, but somehow undiscounted works better <- wtf?!
+    gamma = 1.0  # fi_gamma, should be MDP gamma decay, but somehow undiscounted works better <- wtf?
+
+    reward_scale = 1  # reward multiplicator
 
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
@@ -444,6 +478,7 @@ class DevStrat_4_8(DevStrat_4_7):
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
         gamma=gamma,
+        reward_scale=reward_scale,
         metadata={},
     )
 
@@ -478,7 +513,7 @@ class DevStrat_4_8(DevStrat_4_7):
 
 class DevStrat_4_9(DevStrat_4_7):
     """
-    Uses hard-coded market state features as reference to encoded ones.
+    Uses simple SMA market state features.
     """
     # Time embedding period:
     time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
@@ -495,7 +530,9 @@ class DevStrat_4_9(DevStrat_4_7):
     # Possible agent actions:
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
 
-    gamma = 1.0  # fi_gamma, should be MDP gamma decay, but somehow undiscounted works better <- wtf?!
+    gamma = 1.0  # fi_gamma, should be MDP gamma decay
+
+    reward_scale = 1  # reward multiplicator, touchy!
 
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
@@ -533,6 +570,7 @@ class DevStrat_4_9(DevStrat_4_7):
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
         gamma=gamma,
+        reward_scale=reward_scale,
         metadata={},
     )
 
@@ -587,7 +625,7 @@ class DevStrat_4_9(DevStrat_4_7):
 
 class DevStrat_4_10(DevStrat_4_7):
     """
-    Reward search: log-normalised f2
+    Reward search: log-normalised potential functions
     """
 
     def get_reward(self):
@@ -608,10 +646,11 @@ class DevStrat_4_10(DevStrat_4_7):
 
         # All sliding statistics for this step are already updated by get_state().
         debug = {}
-
+        scale = 10.0
         # Potential-based shaping function 1:
         # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
         unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl']) / 2 + 1 # shift [-1,1] -> [0,1]
+        # TODO: make normalizing util func to return in [0,1] by default
         f1 = self.p.gamma * np.log(np.average(unrealised_pnl[1:])) - np.log(np.average(unrealised_pnl[:-1]))
 
         debug['f1'] = f1
@@ -623,7 +662,7 @@ class DevStrat_4_10(DevStrat_4_7):
 
         debug['f2'] = f2
 
-        # Potential-based shaping function 3:
+        # Potential-based shaping function 3: NOT USED
         # negative potential of abs. size of position, exponentially weighted wrt. episode steps
         abs_exposure = np.abs(np.asarray(self.sliding_stat['exposure']))
         time = np.asarray(self.sliding_stat['episode_step'])
@@ -635,11 +674,11 @@ class DevStrat_4_10(DevStrat_4_7):
         debug['f3'] = f3
 
         # `Spike` reward function: normalized realized profit/loss:
-        realized_pnl = np.asarray(self.sliding_stat['realized_pnl'])[-1]
+        realized_pnl = self.sliding_stat['realized_pnl'][-1]
         debug['f_real_pnl'] = 10 * realized_pnl
 
         # Weights are subject to tune:
-        self.reward = 1.0 * f1 + 2.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl
+        self.reward = (1.0 * f1 + 2.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl) * self.p.reward_scale
 
         debug['r'] = self.reward
         debug['b_v'] = self.sliding_stat['broker_value'][-1]
@@ -650,18 +689,18 @@ class DevStrat_4_10(DevStrat_4_7):
         #    print('{}: {}'.format(k, v))
         #print('\n')
 
-        # TODO: ------ignore-----:
+        # ------ignore-----:
         # 'Do-not-expose-for-too-long' shaping term:
         # - 1.0 * self.exp_scale(avg_norm_position_duration, gamma=3)
-        self.reward *= 10
-        self.reward = np.clip(self.reward, -10, 10)
+
+        self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
 
         return self.reward
 
 
 class DevStrat_4_11(DevStrat_4_10):
     """
-    Another features
+    Another set of features, grads for broker state
     """
     # Time embedding period:
     time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
@@ -680,12 +719,14 @@ class DevStrat_4_11(DevStrat_4_10):
 
     gamma = 1.0  # fi_gamma, should be MDP gamma decay, but somehow undiscounted works better <- wtf?!
 
+    reward_scale = 1  # reward multiplicator
+
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
         {
             'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 4)),
-            'internal': spaces.Box(low=-2, high=2, shape=(1, 1, 5)),
+            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5)),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -716,6 +757,7 @@ class DevStrat_4_11(DevStrat_4_10):
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
         gamma=gamma,
+        reward_scale=reward_scale,
         metadata={},
     )
 
@@ -740,16 +782,20 @@ class DevStrat_4_11(DevStrat_4_10):
         T = 2e3  # EURUSD
         T2 = 2e3
 
-        if False:
-            x_p = np.stack(
-                [
-                    np.frombuffer(self.channel_dO.get(size=self.time_dim)),
-                    np.frombuffer(self.channel_dH.get(size=self.time_dim)),
-                    np.frombuffer(self.channel_dL.get(size=self.time_dim)),
-                ],
-                axis=-1
-            )
-            x_p = tanh(x_p * T)
+        x_p = np.stack(
+            [
+                #np.frombuffer(self.channel_dO.get(size=self.time_dim)),
+                #np.frombuffer(self.channel_dH.get(size=self.time_dim)),
+                #np.frombuffer(self.channel_dL.get(size=self.time_dim)),
+
+                np.frombuffer(self.data.open.get(size=self.time_dim)),
+                np.frombuffer(self.data.high.get(size=self.time_dim)),
+                np.frombuffer(self.data.low.get(size=self.time_dim)),
+            ],
+            axis=-1
+        )
+        x_p = np.gradient(x_p, axis=0)
+        x_p = tanh(x_p * T)
 
         x_sma = np.stack(
             [
@@ -761,7 +807,7 @@ class DevStrat_4_11(DevStrat_4_10):
             axis=-1
         )
         # Gradient along features axis:
-        x_sma = np.gradient(x_sma, axis=1) * T2
+        x_sma = np.gradient(x_sma, axis=-1) * T2
 
         # Log-scale:
         #x_sma = log_transform(x_sma)
@@ -769,5 +815,21 @@ class DevStrat_4_11(DevStrat_4_10):
 
         #x = np.concatenate([x_p, x_sma], axis=-1)
         x = x_sma
+        #x = x_p
 
         return x[:, None, :]
+
+    def get_broker_state(self):
+        T_b = 1
+        x_broker = np.concatenate(
+            [
+                np.asarray(self.sliding_stat['broker_value'])[..., None],
+                np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
+                np.asarray(self.sliding_stat['realized_pnl'])[..., None],
+                np.asarray(self.sliding_stat['broker_cash'])[..., None],
+                np.asarray(self.sliding_stat['exposure'])[..., None],
+            ],
+            axis=-1
+        )
+        x_broker = tanh(np.gradient(x_broker, axis=-1) * T_b)
+        return x_broker[:, None, :]

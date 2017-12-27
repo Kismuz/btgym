@@ -185,6 +185,7 @@
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 <span class="kn">import</span> <span class="nn">tensorflow.contrib.rnn</span> <span class="k">as</span> <span class="nn">rnn</span>
 <span class="kn">from</span> <span class="nn">tensorflow.contrib.layers</span> <span class="k">import</span> <span class="n">flatten</span> <span class="k">as</span> <span class="n">batch_flatten</span>
+<span class="kn">from</span> <span class="nn">tensorflow.contrib.layers</span> <span class="k">import</span> <span class="n">layer_norm</span> <span class="k">as</span> <span class="n">norm_layer</span>
 <span class="kn">from</span> <span class="nn">tensorflow.python.util.nest</span> <span class="k">import</span> <span class="n">flatten</span> <span class="k">as</span> <span class="n">flatten_nested</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms.utils</span> <span class="k">import</span> <span class="n">rnn_placeholders</span>
 
@@ -341,24 +342,28 @@
                     <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Stage1 network: from preprocessed 2D input to estimated features.</span>
-<span class="sd">    Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.</span>
+<span class="sd">    Encapsulates convolutions + layer normalisation + nonlinearity. Can be shared.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        tensor holding state features;</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>  <span class="c1">#, reuse=reuse):</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">conv_2d_num_layers</span><span class="p">):</span>
+
             <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
-                <span class="n">conv_2d_layer_ref</span><span class="p">(</span>
-                    <span class="n">x</span><span class="p">,</span>
-                    <span class="n">conv_2d_num_filters</span><span class="p">,</span>
-                    <span class="s2">&quot;layer_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
-                    <span class="n">conv_2d_filter_size</span><span class="p">,</span>
-                    <span class="n">conv_2d_stride</span><span class="p">,</span>
-                    <span class="n">pad</span><span class="p">,</span>
-                    <span class="n">dtype</span><span class="p">,</span>
-                    <span class="n">collections</span><span class="p">,</span>
-                    <span class="n">reuse</span>
+                <span class="n">norm_layer</span><span class="p">(</span>
+                    <span class="n">conv_2d_layer_ref</span><span class="p">(</span>
+                        <span class="n">x</span><span class="p">,</span>
+                        <span class="n">conv_2d_num_filters</span><span class="p">,</span>
+                        <span class="s2">&quot;_layer_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                        <span class="n">conv_2d_filter_size</span><span class="p">,</span>
+                        <span class="n">conv_2d_stride</span><span class="p">,</span>
+                        <span class="n">pad</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="p">,</span>
+                        <span class="n">collections</span><span class="p">,</span>
+                        <span class="n">reuse</span>
+                    <span class="p">),</span>
+                    <span class="n">scope</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;_layer_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
                 <span class="p">)</span>
             <span class="p">)</span>
         <span class="c1"># A3c/BaseAAC original paper design:</span>
@@ -433,7 +438,7 @@
         <span class="c1"># Define LSTM layers:</span>
         <span class="n">lstm</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">lstm_layers</span><span class="p">:</span>
-            <span class="n">lstm</span> <span class="o">+=</span> <span class="p">[</span><span class="n">lstm_class</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">state_is_tuple</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+            <span class="n">lstm</span> <span class="o">+=</span> <span class="p">[</span><span class="n">lstm_class</span><span class="p">(</span><span class="n">size</span><span class="p">)]</span> <span class="c1">#, state_is_tuple=True)]</span>
 
         <span class="n">lstm</span> <span class="o">=</span> <span class="n">rnn</span><span class="o">.</span><span class="n">MultiRNNCell</span><span class="p">(</span><span class="n">lstm</span><span class="p">,</span> <span class="n">state_is_tuple</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="c1"># Get time_dimension as [1]-shaped tensor:</span>
