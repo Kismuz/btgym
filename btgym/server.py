@@ -276,6 +276,66 @@ class BTgymServer(multiprocessing.Process):
 
         return response
 
+    def get_data(self, reset_kwargs):
+        """
+
+        Args:
+            reset_kwargs:   dictionary of args to pass to parent data iterator
+
+        Returns:
+            trial_sample, trial_stat, dataset_stat
+        """
+        wait = 0
+        while True:
+            # Get new data subset:
+            data_server_response = self._comm_with_timeout(
+                socket=self.data_socket,
+                message={'ctrl': '_get_data', 'kwargs': reset_kwargs}
+            )
+            if data_server_response['status'] in 'ok':
+                self.log.debug('Data_server responded with data in about {} seconds.'.
+                               format(data_server_response['time']))
+
+            else:
+                msg = 'BtgymServer_sampling_attempt: data_server unreachable with status: <{}>.'. \
+                    format(data_server_response['status'])
+                self.log.error(msg)
+                raise ConnectionError(msg)
+
+            # Ready or not?
+            try:
+                assert 'Dataset not ready' in data_server_response['message']['ctrl']
+                if wait <= self.wait_for_data_reset:
+                    pause = random.random() * 2
+                    time.sleep(pause)
+                    wait += pause
+                    self.log.info(
+                        'Domain dataset not ready, wait time left: {:4.2f}s.'.format(self.wait_for_data_reset - wait)
+                    )
+                else:
+                    data_server_response = self._comm_with_timeout(
+                        socket=self.data_socket,
+                        message={'ctrl': '_stop'}
+                    )
+                    self.socket.close()
+                    self.context.destroy()
+                    raise RuntimeError('Failed to assert Domain dataset is ready. Exiting.')
+
+            except (AssertionError, KeyError) as e:
+                break
+        # Re-assemble trial instance:
+        trial_sample = data_server_response['message']['dataset_class_ref'](
+            **data_server_response['message']['sample_params']
+        )
+        trial_sample.filename = data_server_response['message']['sample_filename']
+        trial_sample.data = data_server_response['message']['sample_data']
+        trial_sample.log = self.log
+        trial_stat = trial_sample.describe()
+        trial_sample.reset()
+        dataset_stat = data_server_response['message']['dataset_stat']
+
+        return trial_sample, trial_stat, dataset_stat
+
     def run(self):
         """
         Server process runtime body. This method is invoked by env._start_server().
@@ -288,32 +348,33 @@ class BTgymServer(multiprocessing.Process):
         episode_result = dict()
         trial_sample = None
         trial_stat = None
+        dataset_stat = None
 
         # How long to wait for data_master to reset data:
-        wait_for_data_reset = 300  # seconds
+        self.wait_for_data_reset = 300  # seconds
 
         connect_timeout = 60  # in seconds
 
         # Set up a comm. channel for server as ZMQ socket
         # to carry both service and data signal
         # !! Reminder: Since we use REQ/REP - messages do go in pairs !!
-        context = zmq.Context()
-        socket = context.socket(zmq.REP)
-        socket.setsockopt(zmq.RCVTIMEO, -1)
-        socket.setsockopt(zmq.SNDTIMEO, connect_timeout * 1000)
-        socket.bind(self.network_address)
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.REP)
+        self.socket.setsockopt(zmq.RCVTIMEO, -1)
+        self.socket.setsockopt(zmq.SNDTIMEO, connect_timeout * 1000)
+        self.socket.bind(self.network_address)
 
-        data_context = zmq.Context()
-        data_socket = data_context.socket(zmq.REQ)
-        data_socket.setsockopt(zmq.RCVTIMEO, connect_timeout * 1000)
-        data_socket.setsockopt(zmq.SNDTIMEO, connect_timeout * 1000)
-        data_socket.connect(self.data_network_address)
+        self.data_context = zmq.Context()
+        self.data_socket = self.data_context.socket(zmq.REQ)
+        self.data_socket.setsockopt(zmq.RCVTIMEO, connect_timeout * 1000)
+        self.data_socket.setsockopt(zmq.SNDTIMEO, connect_timeout * 1000)
+        self.data_socket.connect(self.data_network_address)
 
         # Check connection:
         self.log.debug('BtgymServer: pinging data_server at: {} ...'.format(self.data_network_address))
 
         data_server_response = self._comm_with_timeout(
-            socket=data_socket,
+            socket=self.data_socket,
             message={'ctrl': 'ping!'}
         )
         if data_server_response['status'] in 'ok':
@@ -334,7 +395,7 @@ class BTgymServer(multiprocessing.Process):
         for episode_number in itertools.count(0):
             while True:
                 # Stuck here until '_reset' or '_stop':
-                service_input = socket.recv_pyobj()
+                service_input = self.socket.recv_pyobj()
                 msg = 'Server Control mode: received <{}>'.format(service_input)
                 self.log.debug(msg)
 
@@ -345,27 +406,27 @@ class BTgymServer(multiprocessing.Process):
                         # send last run statistic, release comm channel and exit:
                         message = 'Server is exiting.'
                         self.log.info(message)
-                        socket.send_pyobj(message)
-                        socket.close()
-                        context.destroy()
+                        self.socket.send_pyobj(message)
+                        self.socket.close()
+                        self.context.destroy()
                         return None
 
                     # Start episode:
                     elif service_input['ctrl'] == '_reset':
                         message = 'Starting episode with kwargs: {}'.format(service_input['kwargs'])
                         self.log.debug(message)
-                        socket.send_pyobj(message)  # pairs '_reset'
+                        self.socket.send_pyobj(message)  # pairs '_reset'
                         break
 
                     # Retrieve statistic:
                     elif service_input['ctrl'] == '_getstat':
-                        socket.send_pyobj(episode_result)
+                        self.socket.send_pyobj(episode_result)
                         self.log.debug('Episode statistic sent.')
 
                     # Send episode rendering:
                     elif service_input['ctrl'] == '_render' and 'mode' in service_input.keys():
                         # Just send what we got:
-                        socket.send_pyobj(self.render.render(service_input['mode'],))
+                        self.socket.send_pyobj(self.render.render(service_input['mode'],))
                         self.log.debug('Episode rendering for [{}] sent.'.format(service_input['mode']))
 
                     else:  # ignore any other input
@@ -373,17 +434,17 @@ class BTgymServer(multiprocessing.Process):
                         # for env.reset(), env.get_stat(), env.close() correct operation.
                         message = {'ctrl': 'send control keys: <_reset>, <_getstat>, <_render>, <_stop>.'}
                         self.log.debug('Server sent: ' + str(message))
-                        socket.send_pyobj(message)  # pairs any other input
+                        self.socket.send_pyobj(message)  # pairs any other input
 
                 else:
                     message = 'No <ctrl> key received:{}\nHint: forgot to call reset()?'.format(msg)
                     self.log.debug(message)
-                    socket.send_pyobj(message)
+                    self.socket.send_pyobj(message)
 
             # Got '_reset' signal -> prepare Cerebro subclass and run episode:
             start_time = time.time()
             cerebro = copy.deepcopy(self.cerebro)
-            cerebro._socket = socket
+            cerebro._socket = self.socket
             cerebro._log = self.log
             cerebro._render = self.render
             # Add DrawDown observer if not already:
@@ -398,14 +459,13 @@ class BTgymServer(multiprocessing.Process):
 
             # Add communication utility:
             cerebro.addanalyzer(_BTgymAnalyzer, _name='_env_analyzer',)
-            wait = 0
+
 
             # Parse resetting kwargs: if need to request new data range from dataserver or sample from existing one:
             reset_kwargs = dict(
                 new_trial=True,
                 episode_type=None,
             )
-
             if service_input['kwargs'] is not None:
                 reset_kwargs.update(service_input['kwargs'])
 
@@ -414,65 +474,23 @@ class BTgymServer(multiprocessing.Process):
 
             if reset_kwargs['new_trial'] or trial_sample is None:
                 self.log.debug('Requesting new data from data server...')
-                while True:
-                    # Get new data subset:
-                    data_server_response = self._comm_with_timeout(
-                        socket=data_socket,
-                        message={'ctrl': '_get_data', 'kwargs': reset_kwargs}
-                    )
-                    if data_server_response['status'] in 'ok':
-                        self.log.debug('Data_server responded with data in about {} seconds.'.
-                                       format(data_server_response['time']))
 
-                    else:
-                        msg = 'BtgymServer_sampling_attempt: data_server unreachable with status: <{}>.'. \
-                            format(data_server_response['status'])
-                        self.log.error(msg)
-                        raise ConnectionError(msg)
+                trial_sample, trial_stat, dataset_stat = self.get_data(reset_kwargs)
 
-                    # Ready or not?
-                    try:
-                        assert 'Dataset not ready' in data_server_response['message']['ctrl']
-                        if wait <= wait_for_data_reset:
-                            pause = random.random() * 2
-                            time.sleep(pause)
-                            wait += pause
-                            self.log.info(
-                                'Domain dataset not ready, wait time left: {:4.2f}s.'.format(wait_for_data_reset - wait)
-                            )
-                        else:
-                            data_server_response = self._comm_with_timeout(
-                                socket=data_socket,
-                                message={'ctrl': '_stop'}
-                            )
-                            socket.close()
-                            context.destroy()
-                            raise RuntimeError('Failed to assert Domain dataset is ready. Exiting.')
-
-                    except (AssertionError, KeyError) as e:
-                        break
-                # Re-assemble trial instance:
-                trial_sample = data_server_response['message']['dataset_class_ref'](
-                    **data_server_response['message']['sample_params']
-                )
-                trial_sample.filename = data_server_response['message']['sample_filename']
-                trial_sample.data = data_server_response['message']['sample_data']
-                trial_sample.log=self.log
-                trial_stat = trial_sample.describe()
-                trial_sample.reset()
                 self.log.debug('Got new Trial <{}>'.format(trial_sample.filename))
 
             else:
                 self.log.debug('Sampling from existing Trial <{}>'.format(trial_sample.filename))
 
             # Sample requested type of episode:
+            # TODO: if using sample-bounded data iterator: request new one if exhausted
             episode_sample = trial_sample.sample(type=reset_kwargs['episode_type'])
             self.log.debug('Got new episode <{}> '.format(episode_sample.filename))
 
             # Get episode data statistic and pass it to strategy params:
             cerebro.strats[0][0][2]['trial_stat'] = trial_stat
-            cerebro.strats[0][0][2]['episode_metadata'] = trial_sample.metadata
-            cerebro.strats[0][0][2]['dataset_stat'] = data_server_response['message']['dataset_stat']
+            cerebro.strats[0][0][2]['trial_metadata'] = trial_sample.metadata
+            cerebro.strats[0][0][2]['dataset_stat'] = dataset_stat
             cerebro.strats[0][0][2]['episode_stat'] = episode_sample.describe()
             cerebro.strats[0][0][2]['metadata'] = episode_sample.metadata
 
