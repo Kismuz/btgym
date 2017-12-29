@@ -923,7 +923,7 @@ list of related tensorboard summaries.</p>
 <dt id="btgym.algorithms.nn_utils.conv_2d_network">
 <code class="descclassname">btgym.algorithms.nn_utils.</code><code class="descname">conv_2d_network</code><span class="sig-paren">(</span><em>x</em>, <em>ob_space</em>, <em>ac_space</em>, <em>conv_2d_layer_ref=&lt;function conv2d&gt;</em>, <em>conv_2d_num_layers=4</em>, <em>conv_2d_num_filters=32</em>, <em>conv_2d_filter_size=(3</em>, <em>3)</em>, <em>conv_2d_stride=(2</em>, <em>2)</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>name='conv2d'</em>, <em>collections=None</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn_utils.html#conv_2d_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn_utils.conv_2d_network" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stage1 network: from preprocessed 2D input to estimated features.
-Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.</p>
+Encapsulates convolutions + layer normalisation + nonlinearity. Can be shared.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
