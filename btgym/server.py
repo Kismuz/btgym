@@ -286,6 +286,8 @@ class BTgymServer(multiprocessing.Process):
         # Runtime Housekeeping:
         cerebro = None
         episode_result = dict()
+        trial_sample = None
+        trial_stat = None
 
         # How long to wait for data_master to reset data:
         wait_for_data_reset = 300  # seconds
@@ -297,7 +299,7 @@ class BTgymServer(multiprocessing.Process):
         # !! Reminder: Since we use REQ/REP - messages do go in pairs !!
         context = zmq.Context()
         socket = context.socket(zmq.REP)
-        socket.setsockopt(zmq.RCVTIMEO, connect_timeout * 1000)
+        socket.setsockopt(zmq.RCVTIMEO, -1)
         socket.setsockopt(zmq.SNDTIMEO, connect_timeout * 1000)
         socket.bind(self.network_address)
 
@@ -350,7 +352,7 @@ class BTgymServer(multiprocessing.Process):
 
                     # Start episode:
                     elif service_input['ctrl'] == '_reset':
-                        message = 'Starting episode.'
+                        message = 'Starting episode with kwargs: {}'.format(service_input['kwargs'])
                         self.log.debug(message)
                         socket.send_pyobj(message)  # pairs '_reset'
                         break
@@ -395,59 +397,90 @@ class BTgymServer(multiprocessing.Process):
                 cerebro.addobserver(bt.observers.DrawDown)
 
             # Add communication utility:
-            cerebro.addanalyzer(_BTgymAnalyzer,
-                                _name='_env_analyzer',)
+            cerebro.addanalyzer(_BTgymAnalyzer, _name='_env_analyzer',)
             wait = 0
-            while True:
-                # Get random episode dataset:
-                data_server_response = self._comm_with_timeout(
-                    socket=data_socket,
-                    message={'ctrl': '_get_data'}
-                )
-                if data_server_response['status'] in 'ok':
-                    self.log.debug('Data_server responded with datafeed in about {} seconds.'.
-                                   format(data_server_response['time']))
 
-                else:
-                    msg = 'BtgymServer_sampling_attempt: data_server unreachable with status: <{}>.'. \
-                        format(data_server_response['status'])
-                    self.log.error(msg)
-                    raise ConnectionError(msg)
+            # Parse resetting kwargs: if need to request new data range from dataserver or sample from existing one:
+            reset_kwargs = dict(
+                new_trial=True,
+                episode_type=None,
+            )
 
-                # Ready or not?
-                try:
-                    assert 'Dataset not ready' in data_server_response['message']['ctrl']
-                    if wait <= wait_for_data_reset:
-                        pause = random.random() * 2
-                        time.sleep(pause)
-                        wait += pause
-                        self.log.info(
-                            'Dataset not ready, waiting time left: {:4.2f} sec.'.format(wait_for_data_reset - wait)
-                        )
+            if service_input['kwargs'] is not None:
+                reset_kwargs.update(service_input['kwargs'])
+
+            assert reset_kwargs['episode_type'] in ['train', 'test', None], \
+                'Server: expected sample type be `train`, `test` or None, got: {}'.format(reset_kwargs['episode_type'])
+
+            if reset_kwargs['new_trial'] or trial_sample is None:
+                self.log.debug('Requesting new data from data server...')
+                while True:
+                    # Get new data subset:
+                    data_server_response = self._comm_with_timeout(
+                        socket=data_socket,
+                        message={'ctrl': '_get_data', 'kwargs': reset_kwargs}
+                    )
+                    if data_server_response['status'] in 'ok':
+                        self.log.debug('Data_server responded with data in about {} seconds.'.
+                                       format(data_server_response['time']))
+
                     else:
-                        data_server_response = self._comm_with_timeout(
-                            socket=data_socket,
-                            message={'ctrl': '_stop'}
-                        )
-                        socket.close()
-                        context.destroy()
-                        raise RuntimeError('Failed to assert Dataset is ready. Exiting.')
+                        msg = 'BtgymServer_sampling_attempt: data_server unreachable with status: <{}>.'. \
+                            format(data_server_response['status'])
+                        self.log.error(msg)
+                        raise ConnectionError(msg)
 
-                except (AssertionError, KeyError) as e:
-                    break
+                    # Ready or not?
+                    try:
+                        assert 'Dataset not ready' in data_server_response['message']['ctrl']
+                        if wait <= wait_for_data_reset:
+                            pause = random.random() * 2
+                            time.sleep(pause)
+                            wait += pause
+                            self.log.info(
+                                'Domain dataset not ready, wait time left: {:4.2f}s.'.format(wait_for_data_reset - wait)
+                            )
+                        else:
+                            data_server_response = self._comm_with_timeout(
+                                socket=data_socket,
+                                message={'ctrl': '_stop'}
+                            )
+                            socket.close()
+                            context.destroy()
+                            raise RuntimeError('Failed to assert Domain dataset is ready. Exiting.')
 
-            episode_datafeed = data_server_response['message']['datafeed']
+                    except (AssertionError, KeyError) as e:
+                        break
+                # Re-assemble trial instance:
+                trial_sample = data_server_response['message']['dataset_class_ref'](
+                    **data_server_response['message']['sample_params']
+                )
+                trial_sample.filename = data_server_response['message']['sample_filename']
+                trial_sample.data = data_server_response['message']['sample_data']
+                trial_sample.log=self.log
+                trial_stat = trial_sample.describe()
+                trial_sample.reset()
+                self.log.debug('Got new Trial <{}>'.format(trial_sample.filename))
+
+            else:
+                self.log.debug('Sampling from existing Trial <{}>'.format(trial_sample.filename))
+
+            # Sample requested type of episode:
+            episode_sample = trial_sample.sample(type=reset_kwargs['episode_type'])
+            self.log.debug('Got new episode <{}> '.format(episode_sample.filename))
 
             # Get episode data statistic and pass it to strategy params:
+            cerebro.strats[0][0][2]['trial_stat'] = trial_stat
+            cerebro.strats[0][0][2]['episode_metadata'] = trial_sample.metadata
             cerebro.strats[0][0][2]['dataset_stat'] = data_server_response['message']['dataset_stat']
-            cerebro.strats[0][0][2]['episode_stat'] = data_server_response['message']['episode_stat']
-            cerebro.strats[0][0][2]['metadata'] = data_server_response['message']['metadata']
+            cerebro.strats[0][0][2]['episode_stat'] = episode_sample.describe()
+            cerebro.strats[0][0][2]['metadata'] = episode_sample.metadata
 
             # Set nice broker cash plotting:
             cerebro.broker.set_shortcash(False)
 
-            # Add data to engine:
-            cerebro.adddata(episode_datafeed)
+            # Convert and add data to engine:
+            cerebro.adddata(episode_sample.to_btfeed())
 
             # Finally:
             episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True)[0]

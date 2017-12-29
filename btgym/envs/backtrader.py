@@ -364,7 +364,8 @@ class BTgymEnv(gym.Env):
         """
         np.random.seed(seed)
 
-    def _comm_with_timeout(self, socket, message,):
+    @staticmethod
+    def _comm_with_timeout( socket, message,):
         """
         Exchanges messages via socket, timeout sensitive.
 
@@ -566,9 +567,25 @@ class BTgymEnv(gym.Env):
 
         return response
 
-    def _reset(self, state_only=True):  # By default, returns only initial state observation (Gym convention).
+    def reset(self, new_trial=True, episode_type=None, **kwargs):
         """
-        Implementation of OpenAI Gym env.reset method. Starts new episode.
+        Implementation of OpenAI Gym env.reset method. Starts new episode. Episode data are sampled from current Trial
+        according to data provider class logic. If called with default parameters, it is assumed that
+        Trial contains single episode. Refer `datafeed` classes for data iteration details.
+
+        Args:
+            new_trial:      bool, if True - start new trial, continue sampling from current trial otherwise, def=True;
+            episode_type:   str, eihter 'train', 'test', or None.
+                            If not None, forces sampling from specified data subset,
+                            else follows data provider class logic.  Def=None;
+            kwargs:         any kwargs passed directly to BTgym server, not used.
+
+        Returns:
+            observation space state
+
+        Note:
+            This method is extension of OpenAI Gym as it accepts arguments (base nethod does not).
+
         """
         # Data Server check:
         if self.data_master:
@@ -576,14 +593,14 @@ class BTgymEnv(gym.Env):
                 self.log.info('No running data_server found, starting...')
                 self._start_data_server()
 
-            # Dataset status check:
+            # Domain dataset status check:
             self.data_server_response = self._comm_with_timeout(
                 socket=self.data_socket,
                 message={'ctrl': '_get_info'}
             )
             if not self.data_server_response['message']['dataset_is_ready']:
-                self.log.warning(
-                    'Data_master `reset()` called prior to `reset_data()` with [possibly inconsistent] defaults.'
+                self.log.info(
+                    'Data domain `reset()` called prior to `reset_data()` with [possibly inconsistent] defaults.'
                 )
                 self.reset_data()
 
@@ -593,8 +610,16 @@ class BTgymEnv(gym.Env):
             self._start_server()
 
         if self._force_control_mode():
-            self.socket.send_pyobj({'ctrl': '_reset'})
-            self.server_response = self.socket.recv_pyobj()
+            args ={
+                'new_trial': new_trial,
+                'episode_type': episode_type
+            }
+            args.update(kwargs)
+
+            self.server_response = self._comm_with_timeout(
+                socket=self.socket,
+                message={'ctrl': '_reset', 'kwargs': args}
+            )
 
             # Get initial environment response:
             self.env_response = self._step(0)
@@ -633,10 +658,8 @@ class BTgymEnv(gym.Env):
                 self._stop_server()
                 raise AssertionError(msg)
 
-            if state_only:
-                return self.env_response[0]
-            else:
-                return self.env_response
+            return self.env_response[0]
+
 
         else:
             msg = 'Something went wrong. env.reset() can not get response from server.'
@@ -645,8 +668,16 @@ class BTgymEnv(gym.Env):
 
     def _step(self, action):
         """
-        Implementation of OpenAI Gym env.step method.
+        Implementation of OpenAI Gym env.step() method.
+        Makes a step in the environment
         Relies on remote backtrader server for actual environment dynamics computing.
+
+        Args:
+            action:     int, number representing action from env.action_space
+
+        Returns:
+            tuple (Observation, Reward, Info, Done)
+
         """
         # Are you in the list, ready to go and all that?
         if self.action_space.contains(action)\

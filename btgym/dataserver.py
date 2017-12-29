@@ -85,28 +85,28 @@ class BTgymDataFeedServer(multiprocessing.Process):
 
         # Main loop:
         while True:
-            self.log.debug('If_sample: data_ready: {}, fresh_sample: {}'.format(self.dataset.is_ready, fresh_sample))
+            self.log.debug('Domain_dataset_ready: {}, fresh_sample: {}'.format(self.dataset.is_ready, fresh_sample))
             if not fresh_sample:
                 if self.dataset.is_ready:
                     # Get random episode dataset:
-                    episode = self.dataset.sample()
-                    # Compose response:
+                    sample = self.dataset.sample()
+                    # Disassemble sample to ensure pickling and compose response:
                     data_dict = dict(
-                        metadata=episode.metadata,
-                        datafeed=episode.to_btfeed(),
-                        episode_stat=episode.describe(),
+                        dataset_class_ref=type(self.dataset),
+                        sample_data=sample.data,
+                        sample_params=sample.params,
+                        sample_filename=sample.filename,
                         dataset_stat=self.dataset_stat,
                         local_step=local_step,
                     )
                     fresh_sample = True
-                    self.log.debug('Got fresh: episode #{} metadata:\n{}'.format(local_step, episode.metadata))
+                    self.log.debug('Got fresh: subset_#{} metadata:\n{}'.format(local_step, sample.metadata))
 
                 else:
                     # Dataset not ready, make dummy:
                     data_dict = dict(
-                        metadata=None,
-                        datafeed=None,
-                        episode_stat=None,
+                        sample_data=None,
+                        sample_params=None,
                         dataset_stat=self.dataset_stat,
                         local_step=local_step,
                     )
@@ -139,14 +139,14 @@ class BTgymDataFeedServer(multiprocessing.Process):
                     self.dataset.reset(**kwargs)
                     message = {'ctrl': 'Dataset has been reset with kwargs: {}'.format(kwargs)}
                     self.log.debug('DataServer sent: ' + str(message))
-                    self.log.debug('[_reset_data]: data_is_ready: {}'.format(self.dataset.is_ready))
+                    self.log.debug('DataServer: data_is_ready: {}'.format(self.dataset.is_ready))
                     socket.send_pyobj(message)
                     fresh_sample = False
 
                 # Send episode datafeed:
                 elif service_input['ctrl'] == '_get_data':
                     if self.dataset.is_ready:
-                        message = 'Sending episode #{} data {}.'.format(local_step, data_dict)
+                        message = 'Sending subset_#{} data {}.'.format(local_step, data_dict)
                         self.log.debug(message)
                         socket.send_pyobj(data_dict)
                         local_step += 1
