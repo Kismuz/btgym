@@ -725,7 +725,7 @@ class DevStrat_4_11(DevStrat_4_10):
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
         {
-            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 4)),
+            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 5)),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5)),
             'metadata': DictSpace(
                 {
@@ -766,10 +766,11 @@ class DevStrat_4_11(DevStrat_4_10):
         self.data.sma_32 = btind.SimpleMovingAverage(self.datas[0], period=32)
         self.data.sma_64 = btind.SimpleMovingAverage(self.datas[0], period=64)
         self.data.sma_128 = btind.SimpleMovingAverage(self.datas[0], period=128)
+        self.data.sma_256 = btind.SimpleMovingAverage(self.datas[0], period=256)
 
         self.data.dim_sma = btind.SimpleMovingAverage(
             self.datas[0],
-            period=(128 + self.time_dim)
+            period=(256 + self.time_dim)
         )
         self.data.dim_sma.plotinfo.plot = False
 
@@ -782,20 +783,21 @@ class DevStrat_4_11(DevStrat_4_10):
         T = 2e3  # EURUSD
         T2 = 2e3
 
-        x_p = np.stack(
-            [
-                #np.frombuffer(self.channel_dO.get(size=self.time_dim)),
-                #np.frombuffer(self.channel_dH.get(size=self.time_dim)),
-                #np.frombuffer(self.channel_dL.get(size=self.time_dim)),
+        if False:
+            x_p = np.stack(
+                [
+                    #np.frombuffer(self.channel_dO.get(size=self.time_dim)),
+                    #np.frombuffer(self.channel_dH.get(size=self.time_dim)),
+                    #np.frombuffer(self.channel_dL.get(size=self.time_dim)),
 
-                np.frombuffer(self.data.open.get(size=self.time_dim)),
-                np.frombuffer(self.data.high.get(size=self.time_dim)),
-                np.frombuffer(self.data.low.get(size=self.time_dim)),
-            ],
-            axis=-1
-        )
-        x_p = np.gradient(x_p, axis=0)
-        x_p = tanh(x_p * T)
+                    np.frombuffer(self.data.open.get(size=self.time_dim)),
+                    np.frombuffer(self.data.high.get(size=self.time_dim)),
+                    np.frombuffer(self.data.low.get(size=self.time_dim)),
+                ],
+                axis=-1
+            )
+            x_p = np.gradient(x_p, axis=0)
+            x_p = tanh(x_p * T)
 
         x_sma = np.stack(
             [
@@ -803,6 +805,7 @@ class DevStrat_4_11(DevStrat_4_10):
                 np.frombuffer(self.data.sma_32.get(size=self.time_dim)),
                 np.frombuffer(self.data.sma_64.get(size=self.time_dim)),
                 np.frombuffer(self.data.sma_128.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_256.get(size=self.time_dim)),
             ],
             axis=-1
         )

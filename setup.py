@@ -21,7 +21,7 @@ from setuptools import setup
 
 
 setup(name='btgym',
-      description='OpenAI Gym Environment wrapper for Backtrader portfolio backtesting engine',
+      description='OpenAI Gym Environment API for Backtrader portfolio backtesting engine',
       keywords='openai gym reinforcement learning backtrader portfolio trading',
       author='Andrew Muzikin',
       author_email='muzikinae@gmail.com',
@@ -41,7 +41,8 @@ setup(name='btgym',
             'scipy',
             'pandas',
             'ipython',
-            'psutil'
+            'psutil',
+            'logbook'
       ],
       include_package_data=True,
 )

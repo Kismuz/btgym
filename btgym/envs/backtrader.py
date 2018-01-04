@@ -17,8 +17,8 @@
 #
 ###############################################################################
 
-import logging
-# logging.basicConfig(format='%(name)s: %(message)s')
+#import logging
+import sys
 import time
 import zmq
 import os
@@ -86,9 +86,11 @@ class BTgymEnv(gym.Env):
     renderer = None  # Rendering support.
     rendered_rgb = dict()  # Keep last rendered images for each mode.
 
-    # Logging:
+    # Logging and id:
     log = None
+    log_level = None
     verbose = 0  # verbosity mode: 0 - silent, 1 - info, 2 - debugging level (lot of traffic!).
+    task = 0
 
     closed = True
 
@@ -180,13 +182,16 @@ class BTgymEnv(gym.Env):
 
         self.metadata = {'render.modes': self.render_modes}
 
-        # Verbosity control:
-        if True: #self.log is None:
-            self.log = logging.getLogger('Env')
-            log_levels = [(0, 'WARNING'), (1, 'INFO'), (2, 'DEBUG'),]
-            for key, level in log_levels:
+        # Logging and verbosity control:
+        if self.log is None:
+            from logbook import Logger, StreamHandler, WARNING, INFO, DEBUG
+            StreamHandler(sys.stdout).push_application()
+            log_levels = [(0, WARNING), (1, INFO), (2, DEBUG)]
+            self.log_level = WARNING
+            for key, value in log_levels:
                 if key == self.verbose:
-                    self.log.setLevel(level)
+                    self.log_level = value
+            self.log = Logger('BTgym_API_shell_{}'.format(self.task), level=self.log_level)
 
         # Network parameters:
         self.network_address += str(self.port)
@@ -227,11 +232,18 @@ class BTgymEnv(gym.Env):
                     raise FileNotFoundError('Dataset source data file not specified/not found')
 
                 # Use kwargs to instantiate dataset:
-                self.dataset = BTgymDataset(**kwargs)
+                self.dataset = BTgymDataset(log_level=self.log_level, task=self.task, **kwargs)
                 msg = 'Base Dataset class used.'
 
+            # Serialize-like dataset:
+            self.dataset_params=dict(
+                class_ref=type(self.dataset),
+                kwargs=self.dataset.params,
+                metadata=self.dataset.metadata
+            )
+
             # Append logging:
-            self.dataset.log = self.log
+            #self.dataset.log = self.log
 
             # Update params -2: pull from dataset, remove used kwargs:
             self.params['dataset'].update(self.dataset.params)
@@ -435,12 +447,15 @@ class BTgymEnv(gym.Env):
         self.socket.connect(self.network_address)
 
         # Configure and start server:
-        self.server = BTgymServer(cerebro=self.engine,
-                                  render=self.renderer,
-                                  network_address=self.network_address,
-                                  data_network_address=self.data_network_address,
-                                  connect_timeout=self.connect_timeout,
-                                  log=self.log)
+        self.server = BTgymServer(
+            cerebro=self.engine,
+            render=self.renderer,
+            network_address=self.network_address,
+            data_network_address=self.data_network_address,
+            connect_timeout=self.connect_timeout,
+            log_level=self.log_level,
+            task=self.task,
+        )
         self.server.daemon = False
         self.server.start()
         # Wait for server to startup:
@@ -526,7 +541,7 @@ class BTgymEnv(gym.Env):
             msg = 'Unexpected environment response: {}\nHint: Forgot to call reset() or reset_data()?'.format(response)
             raise AssertionError(msg)
 
-        self.log.debug('Env response checker received:\n{}\nas type: {}'.
+        self.log.debug('Response checker received:\n{}\nas type: {}'.
                        format(response, type(response)))
 
     def _print_space(self, space, _tab=''):
@@ -707,7 +722,7 @@ class BTgymEnv(gym.Env):
             message={'action': self.server_actions[action]}
         )
         if not env_response['status'] in 'ok':
-            msg = 'Env.step: server unreachable with status: <{}>.'.format(env_response['status'])
+            msg = '.step(): server unreachable with status: <{}>.'.format(env_response['status'])
             self.log.error(msg)
             raise ConnectionError(msg)
 
@@ -818,9 +833,10 @@ class BTgymEnv(gym.Env):
 
             # Configure and start server:
             self.data_server = BTgymDataFeedServer(
-                dataset=self.dataset,
+                dataset_params=self.dataset_params,
                 network_address=self.data_network_address,
-                log=self.log,
+                log_level=self.log_level,
+                task=self.task
             )
             self.data_server.daemon = False
             self.data_server.start()

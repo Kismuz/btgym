@@ -36,39 +36,69 @@ class BTgymDataFeedServer(multiprocessing.Process):
     process = None
     dataset_stat = None
 
-    def __init__(self, dataset=None, network_address=None, log=None):
+    def __init__(self, dataset_params=None, network_address=None, log_level=None, task=0):
         """
         Configures data server instance.
 
         Args:
-            dataset:            BTgymDataset or othe rdata provider class instance;
+            dataset_params:     dictionary of data to instantiate data provider instance;
             network_address:    ...to bind to.
-            log:                parent logger.
+            log_level:          logbook log level
+            task:               id
         """
         super(BTgymDataFeedServer, self).__init__()
 
-        # To log or not to log:
-        if log is None:
-            self.log = logging.getLogger('dummy')
-            self.log.addHandler(logging.NullHandler())
-
-        else:
-            self.log = log
-
-        self.dataset = dataset
+        self.log_level = log_level
+        self.task = task
+        self.log = None
+        self.dataset_params = dataset_params
+        self.dataset = None
         self.network_address = network_address
 
     def run(self):
         """
         Server process runtime body.
         """
+        # Logging:
+        from logbook import Logger, StreamHandler, WARNING
+        import sys
+        StreamHandler(sys.stdout).push_application()
+        if self.log_level is None:
+            self.log_level = WARNING
+        self.log = Logger('BTgym_DataServer_{}'.format(self.task), level=self.log_level)
+
         self.process = multiprocessing.current_process()
-        self.log.info('DataServer PID: {}'.format(self.process.pid))
+        self.log.info('PID: {}'.format(self.process.pid))
 
         # Set up a comm. channel for server as ZMQ socket:
         context = zmq.Context()
         socket = context.socket(zmq.REP)
         socket.bind(self.network_address)
+
+        # Re-assemble dataset:
+        self.dataset_params['kwargs'].update(
+            {
+                'log_level': self.log_level,
+                'task': self.task
+            }
+        )
+
+        self.log.debug(
+            'Re-assembling instance of {}...'.format(self.dataset_params['class_ref'])
+        )
+        self.log.debug(
+            '...with params: {}'.format(self.dataset_params['kwargs'])
+        )
+        self.log.debug(
+            '...with metadata: {}'.format(self.dataset_params['metadata'])
+        )
+
+        self.dataset = self.dataset_params['class_ref'](**self.dataset_params['kwargs'])
+        self.dataset.reset()
+
+        self.log.debug('Got data_domain as instance of {}'.format(type(self.dataset)))
+        self.log.debug('...with params: {}'.format(self.dataset.params))
+        self.log.debug('...with sample_params: {}'.format(self.dataset.sample_params))
 
         # Actually load data to BTgymDataset instance:
         try:
@@ -80,6 +110,9 @@ class BTgymDataFeedServer(multiprocessing.Process):
         # Describe dataset:
         self.dataset_stat = self.dataset.describe()
 
+        # TODO: TEMPORAL:
+        #self.dataset.sample_params['log'] = None
+
         local_step = 0
         fresh_sample = False
 
@@ -88,20 +121,31 @@ class BTgymDataFeedServer(multiprocessing.Process):
             self.log.debug('Domain_dataset_ready: {}, fresh_sample: {}'.format(self.dataset.is_ready, fresh_sample))
             if not fresh_sample:
                 if self.dataset.is_ready:
-                    # Get random episode dataset:
+                    # Get sample:
                     sample = self.dataset.sample()
                     # Disassemble sample to ensure pickling and compose response:
                     data_dict = dict(
-                        dataset_class_ref=type(self.dataset),
+                        sample_class_ref=self.dataset.sample_class_ref,
                         sample_data=sample.data,
-                        sample_params=sample.params,
+                        sample_params=self.dataset.sample_params,
                         sample_filename=sample.filename,
+                        sample_metadata=sample.metadata,
                         dataset_stat=self.dataset_stat,
                         local_step=local_step,
                     )
                     fresh_sample = True
-                    self.log.debug('Got fresh: subset_#{} metadata:\n{}'.format(local_step, sample.metadata))
-
+                    self.log.debug(
+                        'Sampled instance of {}...'.format(data_dict['sample_class_ref'])
+                    )
+                    self.log.debug(
+                        '...with params: {}'.format(data_dict['sample_params'])
+                    )
+                    self.log.debug(
+                        '...named: {}'.format(data_dict['sample_filename'])
+                    )
+                    self.log.debug(
+                        '...with metadata: {}'.format(data_dict['sample_metadata'])
+                    )
                 else:
                     # Dataset not ready, make dummy:
                     data_dict = dict(
@@ -113,7 +157,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
 
             # Stick here with episode data in hand until get request:
             service_input = socket.recv_pyobj()
-            msg = 'DataServer received <{}>'.format(service_input)
+            msg = 'Received <{}>'.format(service_input)
             self.log.debug(msg)
 
             if 'ctrl' in service_input:
@@ -121,7 +165,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
                 if service_input['ctrl'] == '_stop':
                     # Server shutdown logic:
                     # send last run statistic, release comm channel and exit:
-                    message = {'ctrl': 'DataServer is exiting.'}
+                    message = {'ctrl': 'Exiting.'}
                     self.log.info(str(message))
                     socket.send_pyobj(message)
                     socket.close()
@@ -137,9 +181,9 @@ class BTgymDataFeedServer(multiprocessing.Process):
                         kwargs = {}
 
                     self.dataset.reset(**kwargs)
-                    message = {'ctrl': 'Dataset has been reset with kwargs: {}'.format(kwargs)}
-                    self.log.debug('DataServer sent: ' + str(message))
-                    self.log.debug('DataServer: data_is_ready: {}'.format(self.dataset.is_ready))
+                    message = {'ctrl': 'Reset with kwargs: {}'.format(kwargs)}
+                    self.log.debug('Sent: ' + str(message))
+                    self.log.debug('Data_is_ready: {}'.format(self.dataset.is_ready))
                     socket.send_pyobj(message)
                     fresh_sample = False
 
@@ -153,7 +197,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
 
                     else:
                         message = {'ctrl': 'Dataset not ready, waiting for control key <_reset_data>'}
-                        self.log.debug('DataServer sent: ' + str(message))
+                        self.log.debug('Sent: ' + str(message))
                         socket.send_pyobj(message)  # pairs any other input
                     # Mark current sample as used anyway:
                     fresh_sample = False
@@ -174,7 +218,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
                 else:  # ignore any other input
                     # NOTE: response dictionary must include 'ctrl' key
                     message = {'ctrl': 'waiting for control keys:  <_reset_data>, <_get_data>, <_get_info>, <_stop>.'}
-                    self.log.debug('DataServer sent: ' + str(message))
+                    self.log.debug('Sent: ' + str(message))
                     socket.send_pyobj(message)  # pairs any other input
 
             else:

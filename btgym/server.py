@@ -17,8 +17,8 @@
 #
 ###############################################################################
 
-import logging
-#logging.basicConfig(format='%(name)s: %(message)s')
+#import logging
+
 import multiprocessing
 import gc
 import psutil
@@ -199,13 +199,16 @@ class BTgymServer(multiprocessing.Process):
     """
     data_server_response = None
 
-    def __init__(self,
-                 cerebro=None,
-                 render=None,
-                 network_address=None,
-                 data_network_address=None,
-                 connect_timeout=60,
-                 log=None):
+    def __init__(
+        self,
+        cerebro=None,
+        render=None,
+        network_address=None,
+        data_network_address=None,
+        connect_timeout=60,
+        log_level=None,
+        task=0,
+    ):
         """
 
         Args:
@@ -214,19 +217,14 @@ class BTgymServer(multiprocessing.Process):
             network_address:        environmnet communication, str
             data_network_address:   data communication, str
             connect_timeout:        seconds, int
-            log:                    none
+            log_level:              logbook log level
         """
 
         super(BTgymServer, self).__init__()
-
-        # To log or not to log:
-        if not log:
-            self.log = logging.getLogger('dummy')
-            self.log.addHandler(logging.NullHandler())
-
-        else:
-            self.log = log
-
+        self.task = task
+        self.log_level = log_level
+        self.log = None
+        self.process = None
         self.cerebro = cerebro
         self.network_address = network_address
         self.render = render
@@ -234,7 +232,8 @@ class BTgymServer(multiprocessing.Process):
         self.connect_timeout = connect_timeout # server connection timeout in seconds.
         self.connect_timeout_step = 0.01
 
-    def _comm_with_timeout(self, socket, message):
+    @staticmethod
+    def _comm_with_timeout(socket, message):
         """
         Exchanges messages via socket with timeout.
 
@@ -323,8 +322,14 @@ class BTgymServer(multiprocessing.Process):
 
             except (AssertionError, KeyError) as e:
                 break
-        # Re-assemble trial instance:
-        trial_sample = data_server_response['message']['dataset_class_ref'](
+        # `Deserialize` trial instance:
+        self.log.debug(
+            'Re-assembling trial as instance of {}...'.format(data_server_response['message']['sample_class_ref'])
+        )
+        self.log.debug(
+            '...with parameters: {}'.format(data_server_response['message']['sample_params'])
+        )
+        trial_sample = data_server_response['message']['sample_class_ref'](
             **data_server_response['message']['sample_params']
         )
         trial_sample.filename = data_server_response['message']['sample_filename']
@@ -340,8 +345,16 @@ class BTgymServer(multiprocessing.Process):
         """
         Server process runtime body. This method is invoked by env._start_server().
         """
+        # Logging:
+        from logbook import Logger, StreamHandler, WARNING
+        import sys
+        StreamHandler(sys.stdout).push_application()
+        if self.log_level is None:
+            self.log_level = WARNING
+        self.log = Logger('BTgym_Server_{}'.format(self.task), level=self.log_level)
+
         self.process = multiprocessing.current_process()
-        self.log.info('BTgymServer PID: {}'.format(self.process.pid))
+        self.log.info('PID: {}'.format(self.process.pid))
 
         # Runtime Housekeeping:
         cerebro = None
@@ -371,18 +384,18 @@ class BTgymServer(multiprocessing.Process):
         self.data_socket.connect(self.data_network_address)
 
         # Check connection:
-        self.log.debug('BtgymServer: pinging data_server at: {} ...'.format(self.data_network_address))
+        self.log.debug('Pinging data_server at: {} ...'.format(self.data_network_address))
 
         data_server_response = self._comm_with_timeout(
             socket=self.data_socket,
             message={'ctrl': 'ping!'}
         )
         if data_server_response['status'] in 'ok':
-            self.log.debug('BTgymServer: Data_server seems ready with response: <{}>'.
+            self.log.debug('Data_server seems ready with response: <{}>'.
                           format(data_server_response['message']))
 
         else:
-            msg = 'BtgymServer: data_server unreachable with status: <{}>.'.\
+            msg = 'Data_server unreachable with status: <{}>.'.\
                 format(data_server_response['status'])
             self.log.error(msg)
             raise ConnectionError(msg)
@@ -396,7 +409,7 @@ class BTgymServer(multiprocessing.Process):
             while True:
                 # Stuck here until '_reset' or '_stop':
                 service_input = self.socket.recv_pyobj()
-                msg = 'Server Control mode: received <{}>'.format(service_input)
+                msg = 'Control mode: received <{}>'.format(service_input)
                 self.log.debug(msg)
 
                 if 'ctrl' in service_input:
@@ -404,7 +417,7 @@ class BTgymServer(multiprocessing.Process):
                     if service_input['ctrl'] == '_stop':
                         # Server shutdown logic:
                         # send last run statistic, release comm channel and exit:
-                        message = 'Server is exiting.'
+                        message = 'Exiting.'
                         self.log.info(message)
                         self.socket.send_pyobj(message)
                         self.socket.close()
@@ -433,7 +446,7 @@ class BTgymServer(multiprocessing.Process):
                         # NOTE: response string must include 'ctrl' key
                         # for env.reset(), env.get_stat(), env.close() correct operation.
                         message = {'ctrl': 'send control keys: <_reset>, <_getstat>, <_render>, <_stop>.'}
-                        self.log.debug('Server sent: ' + str(message))
+                        self.log.debug('Control mode: sent: ' + str(message))
                         self.socket.send_pyobj(message)  # pairs any other input
 
                 else:
@@ -469,8 +482,8 @@ class BTgymServer(multiprocessing.Process):
             if service_input['kwargs'] is not None:
                 reset_kwargs.update(service_input['kwargs'])
 
-            assert reset_kwargs['episode_type'] in ['train', 'test', None], \
-                'Server: expected sample type be `train`, `test` or None, got: {}'.format(reset_kwargs['episode_type'])
+            assert reset_kwargs['episode_type'] in [0, 1, None], \
+                'Expected `episode_type` be 0 (train), 1 (test) or None, got: {}'.format(reset_kwargs['episode_type'])
 
             if reset_kwargs['new_trial'] or trial_sample is None:
                 self.log.debug('Requesting new data from data server...')
