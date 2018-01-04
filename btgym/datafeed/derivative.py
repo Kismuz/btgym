@@ -52,7 +52,7 @@ class BTgymEpisode(BTgymBaseData):
     )
 
     def __init__(self, **kwargs):
-        #self.base_params.update(kwargs)
+        self.base_params.update(kwargs)
         super(BTgymEpisode, self).__init__(**self.base_params)
         assert datetime.timedelta(**self.test_period).total_seconds() == 0,\
             'Episode object doesnt support subset split, got: test_period={}'.format(self.test_period)

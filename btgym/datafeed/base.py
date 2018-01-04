@@ -17,8 +17,7 @@
 #
 ###############################################################################
 
-import logging
-#logging.basicConfig(format='%(name)s: %(message)s')
+from logbook import Logger, StreamHandler, WARNING
 
 import datetime
 import random
@@ -67,7 +66,7 @@ class BTgymDataset:
         openinterest=-1,
 
         # Sampling params:
-        sample_class_ref=None,
+
         start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
         start_00=False,  # Sample start time will be set to first record of the day (usually 00:00).
         sample_duration=dict(  # Maximum sample time duration in days, hours, minutes:
@@ -90,13 +89,15 @@ class BTgymDataset:
             sample_num=0,
             type=0,
         ),
-        log_level=None,
+        log_level=WARNING,
         task=0,
 
         # Child class params:
-        child_class_params=dict(
-            class_ref=None,  # sample() method will return instance of this class.
-            params=dict()
+        sample_class_ref=None,
+        sample_params=dict(
+            #class_ref=None,  # sample() method will return instance of this class.
+            #params=dict(),
+            #metadata=dict(),
         )
     )
     params_deprecated=dict(
@@ -188,7 +189,7 @@ class BTgymDataset:
         self.test_interval = [0, 0]
         self.sample_num = 0
         self.sample_name = 'should_not_see_this_'
-        self.log_level = None
+        self.log_level = WARNING
         self.task = 0
 
         # Logging:
@@ -196,18 +197,17 @@ class BTgymDataset:
             self.log_level = kwargs.pop('log_level')
 
         except KeyError:
-            from logbook import WARNING
-            self.log_level = WARNING
+            pass
 
-        from logbook import Logger, StreamHandler
         StreamHandler(sys.stdout).push_application()
-        self.log = Logger('Dataset_{}'.format(self.task), level=self.log_level)
+        self.log = Logger('Base_data_{}'.format(self.task), level=self.log_level)
 
         self.params['log_level'] = self.log_level
 
         # Update parameters with relevant kwargs:
         self.update_params(**kwargs)
         self.sample_params.update(self.params)
+        self.sample_params.update(self.params['sample_params'])
 
     def reset(self, data_filename=None, **kwargs):
         """
@@ -254,13 +254,16 @@ class BTgymDataset:
         self.sample_num = 0
         self.is_ready = True
 
-    def to_dict(self):
+    def set_logger(self, name='Base_data_', level=None):
         """
-        Converts instance to dictionary
-        Returns:
+        Sets logbook logger.
 
+        Args:
+            name:   channel name, str
+            level:  logbook.level, int
         """
-        pass
+        self.log = Logger(name + str(self.task), level=level)
+
 
     def update_params(self, **kwargs):
         """
@@ -300,6 +303,7 @@ class BTgymDataset:
 
         # Update sample params:
         self.sample_params.update(self.params)
+        self.sample_params.update(self.params['sample_params'])
 
     def read_csv(self, data_filename=None, force_reload=False):
         """

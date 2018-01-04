@@ -6,6 +6,7 @@
 # https://arxiv.org/abs/1602.01783
 # https://arxiv.org/abs/1611.05397
 
+from logbook import Logger, StreamHandler
 import sys
 sys.path.insert(0,'..')
 
@@ -52,7 +53,6 @@ class Worker(multiprocessing.Process):
                  job_name,
                  task,
                  log_dir,
-                 log,
                  log_level,
                  max_env_steps,
                  random_seed=None,
@@ -67,8 +67,7 @@ class Worker(multiprocessing.Process):
             job_name:       worker or parameter server.
             task:           integer number, 0 is chief worker.
             log_dir:        for tb summaries and checkpoints.
-            log:            parent logger
-            log_level:      0 - silent, 1 - info, 3 - debug level
+            log_level:      int, logbook.level
             max_env_steps:  number of environment steps to run training on
             test_mode:      if True - use Atari mode, BTGym otherwise.
 
@@ -94,17 +93,18 @@ class Worker(multiprocessing.Process):
         self.task = task
         self.log_dir = log_dir
         self.max_env_steps = max_env_steps
-        self.log = log
         self.log_level = log_level
-        logging.basicConfig()
-        self.log = logging.getLogger('{}_{}'.format(self.job_name, self.task))
-        self.log.setLevel(log_level)
+        self.log = None
         self.test_mode = test_mode
         self.random_seed = random_seed
 
     def run(self):
         """Worker runtime body.
         """
+        # Logging:
+        StreamHandler(sys.stdout).push_application()
+        self.log = Logger('Worker_{}'.format(self.task), level=self.log_level)
+
         tf.reset_default_graph()
 
         if self.test_mode:
@@ -135,15 +135,15 @@ class Worker(multiprocessing.Process):
                     inter_op_parallelism_threads=2  # original was: 2
                 )
             )
-            self.log.debug('worker_{} tf.server started.'.format(self.task))
+            self.log.debug('tf.server started.')
 
-            self.log.debug('worker_{}: making environments:'.format(self.task))
+            self.log.debug('making environments:')
             # Making as many environments as many entries in env_config `port` list:
             # TODO: Hacky-II: only one example of parallel [all] environments can be data-master and renderer
             # TODO: measure data_server lags, maybe launch several instances
             self.env_list = []
             env_kwargs = self.env_kwargs.copy()
-            env_kwargs['log'] = self.log
+            env_kwargs['log_level'] = self.log_level
             port_list = env_kwargs.pop('port')
             data_master = env_kwargs.pop('data_master')
             render_enabled = env_kwargs.pop('render_enabled')
@@ -151,7 +151,7 @@ class Worker(multiprocessing.Process):
             for port in port_list:
                 if not self.test_mode:
                     # Assume BTgym env. class:
-                    self.log.debug('worker_{}, env @port_{} is data_master: {}'.format(self.task, port, data_master))
+                    self.log.debug('env @port_{} is data_master: {}'.format(port, data_master))
                     try:
                         self.env_list.append(
                             self.env_class(
@@ -163,19 +163,19 @@ class Worker(multiprocessing.Process):
                         )
                         data_master = False
                         render_enabled = False
-                        self.log.debug('worker_{}: Set BTGym environment @port_{}.'.format(self.task, port))
+                        self.log.debug('set BTGym environment @port_{}.'.format(port))
 
                     except:
-                        raise RuntimeError(' worker_{}: failed to make BTGym environment'.format(self.task))
+                        raise RuntimeError('Worker_{}: failed to make BTGym environment'.format(self.task))
 
                 else:
                     # Assume atari testing:
                     try:
                         self.env_list.append(self.env_class(env_kwargs['gym_id']))
-                        self.log.debug('worker_{}: Set Gyn/Atari environment.'.format(self.task))
+                        self.log.debug('set Gyn/Atari environment.')
 
                     except:
-                        raise SystemExit(' worker_{} failed to make Gym/Atari environment'.format(self.task))
+                        raise SystemExit('Worker_{} failed to make Gym/Atari environment'.format(self.task))
 
 
 
@@ -184,12 +184,12 @@ class Worker(multiprocessing.Process):
                 env=self.env_list,
                 task=self.task,
                 policy_config=self.policy_config,
-                log=self.log,
+                log_level=self.log_level,
                 random_seed=self.random_seed,
                 **self.trainer_kwargs,
             )
 
-            self.log.debug('worker_{}:trainer ok.'.format(self.task))
+            self.log.debug('trainer ok.')
 
             # Saver-related:
             variables_to_save = [v for v in tf.global_variables() if not v.name.startswith("local")]
@@ -198,12 +198,12 @@ class Worker(multiprocessing.Process):
 
             saver = _FastSaver(variables_to_save)
 
-            self.log.debug('worker_{}: vars_to_save:'.format(self.task))
+            self.log.debug('vars_to_save:')
             for v in variables_to_save:
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
             def init_fn(ses):
-                self.log.debug("Initializing all parameters.")
+                self.log.debug("initializing all parameters.")
                 ses.run(init_all_op)
 
             config = tf.ConfigProto(device_filters=["/job:ps", "/job:worker/task:{}/cpu:0".format(self.task)])
@@ -223,7 +223,7 @@ class Worker(multiprocessing.Process):
                 global_step=trainer.global_step,
                 save_model_secs=300,
             )
-            self.log.debug("worker_{}: connecting to the parameter server... ".format(self.task))
+            self.log.debug("connecting to the parameter server... ")
 
             with sv.managed_session(server.target, config=config) as sess, sess.as_default():
                 sess.run(trainer.sync)
@@ -236,7 +236,7 @@ class Worker(multiprocessing.Process):
                     if not trainer.memory.is_full():
                         trainer.memory.fill()
 
-                self.log.warning("worker_{}: started training at step: {}".format(self.task, global_step))
+                self.log.warning("started training at step: {}".format(global_step))
                 while not sv.should_stop() and global_step < self.max_env_steps:
                     trainer.process(sess)
                     global_step = sess.run(trainer.global_step)
@@ -246,7 +246,7 @@ class Worker(multiprocessing.Process):
                     env.close()
 
                 sv.stop()
-            self.log.warning('worker_{}: reached {} steps, exiting.'.format(self.task, global_step))
+            self.log.warning('reached {} steps, exiting.'.format(global_step))
 
 
 

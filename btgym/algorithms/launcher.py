@@ -27,7 +27,9 @@ import sys
 sys.path.insert(0,'..')
 
 import os
-import logging
+from logbook import Logger, StreamHandler, WARNING, INFO, DEBUG
+import sys
+#import logging
 import time
 import psutil
 import glob
@@ -136,12 +138,13 @@ class Launcher():
         self.trainer_config['kwargs']['test_mode'] = self.test_mode
 
         # Logging config:
-        logging.basicConfig()
-        self.log = logging.getLogger('Launcher')
-        log_levels = [(0, 'WARNING'), (1, 'INFO'), (2, 'DEBUG'),]
-        for key, level in log_levels:
+        StreamHandler(sys.stdout).push_application()
+        log_levels = [(0, WARNING), (1, INFO), (2, DEBUG)]
+        self.log_level = WARNING
+        for key, value in log_levels:
             if key == self.verbose:
-                self.log.setLevel(level)
+                self.log_level = value
+        self.log = Logger('Launcher_shell', level=self.log_level)
 
         # Seeding:
         if self.root_random_seed is not None:
@@ -228,8 +231,8 @@ class Launcher():
                         'test_mode': self.test_mode,
                         'log_dir': self.cluster_config['log_dir'],
                         'max_env_steps': self.max_env_steps,
-                        'log': self.log,
-                        'log_level': self.log.getEffectiveLevel(),
+                        #'log': self.log,
+                        'log_level': self.log_level,
                         'random_seed': workers_rnd_seeds.pop()
                     }
                 )

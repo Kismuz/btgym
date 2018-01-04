@@ -232,11 +232,11 @@ class BTgymEnv(gym.Env):
                     raise FileNotFoundError('Dataset source data file not specified/not found')
 
                 # Use kwargs to instantiate dataset:
-                self.dataset = BTgymDataset(log_level=self.log_level, task=self.task, **kwargs)
+                self.dataset = BTgymDataset(**kwargs)
                 msg = 'Base Dataset class used.'
 
             # Append logging:
-            #self.dataset.log = self.log
+            self.dataset.set_logger('Data_domain_', self.log_level)
 
             # Update params -2: pull from dataset, remove used kwargs:
             self.params['dataset'].update(self.dataset.params)

@@ -1,6 +1,27 @@
-
+###############################################################################
+#
+# Copyright (C) 2017 Andrew Muzikin
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+###############################################################################
 
 from __future__ import print_function
+
+from logbook import Logger, StreamHandler
+import sys
+
 import numpy as np
 import tensorflow as tf
 
@@ -32,7 +53,7 @@ class BaseAAC(object):
                  env,
                  task,
                  policy_config,
-                 log,
+                 log_level,
                  on_policy_loss=aac_loss_def,
                  off_policy_loss=aac_loss_def,
                  vr_loss=value_fn_loss_def,
@@ -79,7 +100,7 @@ class BaseAAC(object):
             env:                    environment instance or list of instances
             task:                   int, parent worker id
             policy_config:          policy estimator class and configuration dictionary
-            log:                    parent log
+            log_level:              int, logbook.level
             on_policy_loss:         callable returning tensor holding on_policy training loss graph and summaries
             off_policy_loss:        callable returning tensor holding off_policy training loss graph and summaries
             vr_loss:                callable returning tensor holding value replay loss graph and summaries
@@ -150,13 +171,18 @@ class BaseAAC(object):
                     because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
                     ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).
         """
-        self.log = log
+        # Logging:
+        self.log_level = log_level
+        self.task = task
+        StreamHandler(sys.stdout).push_application()
+        self.log = Logger('AAC_{}'.format(self.task), level=self.log_level)
+
         self.random_seed = random_seed
         if self.random_seed is not None:
             np.random.seed(self.random_seed)
             tf.set_random_seed(self.random_seed)
-        self.log.debug('AAC_{}_rnd_seed:{}, log_u_sample_(0,1]x5: {}'.
-                       format(task, random_seed, log_uniform([1e-10,1], 5)))
+        self.log.debug('rnd_seed:{}, log_u_sample_(0,1]x5: {}'.
+                       format(random_seed, log_uniform([1e-10,1], 5)))
 
         self.env_list = env
         try:
@@ -167,10 +193,10 @@ class BaseAAC(object):
 
         ref_env = self.env_list[0]  # reference instance to get obs shapes etc.
         assert isinstance(ref_env.observation_space, ObSpace),\
-            'AAC_{}: expected environment observation space of type {}, got: {}'.\
-            format(self.task, ObSpace, type(ref_env.observation_space))
+            'expected environment observation space of type {}, got: {}'.\
+            format(ObSpace, type(ref_env.observation_space))
 
-        self.task = task
+
         self.policy_class = policy_config['class_ref']
         self.policy_kwargs = policy_config['kwargs']
 
@@ -257,15 +283,14 @@ class BaseAAC(object):
 
         self.use_target_policy = _use_target_policy
 
-        self.log.warning('AAC_{}: learn_rate: {:1.6f}, entropy_beta: {:1.6f}'.
-                      format(self.task, self.opt_learn_rate, self.model_beta))
+        self.log.warning('learn_rate: {:1.6f}, entropy_beta: {:1.6f}'.format(self.opt_learn_rate, self.model_beta))
 
         if self.use_off_policy_aac:
-            self.log.warning('AAC_{}: off_aac_lambda: {:1.6f}'.format(self.task, self.off_aac_lambda,))
+            self.log.warning('off_aac_lambda: {:1.6f}'.format(self.off_aac_lambda,))
 
         if self.use_any_aux_tasks:
-            self.log.warning('AAC_{}: vr_lambda: {:1.6f}, pc_lambda: {:1.6f}, rp_lambda: {:1.6f}'.
-                          format(self.task, self.vr_lambda, self.pc_lambda, self.rp_lambda))
+            self.log.warning('vr_lambda: {:1.6f}, pc_lambda: {:1.6f}, rp_lambda: {:1.6f}'.
+                          format(self.vr_lambda, self.pc_lambda, self.rp_lambda))
 
 
         #self.log.info(
@@ -284,7 +309,7 @@ class BaseAAC(object):
             }
         )
         # Start building graphs:
-        self.log.debug('AAC_{}: started building graphs'.format(self.task))
+        self.log.debug('started building graphs')
         # PS:
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             self.network = self.make_policy('global')
@@ -302,8 +327,8 @@ class BaseAAC(object):
             # Meant for Batch-norm layers:
             pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
 
-            self.log.debug('AAC_{}: local_network_upd_ops_collection:\n{}'.format(self.task, pi.update_ops))
-            self.log.debug('\nAAC_{}: local_network_var_list_to_save:'.format(self.task))
+            self.log.debug('local_network_upd_ops_collection:\n{}'.format(pi.update_ops))
+            self.log.debug('\nlocal_network_var_list_to_save:')
             for v in pi.var_list:
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
@@ -320,7 +345,7 @@ class BaseAAC(object):
 
             # Freeze training if train_phase is False:
             train_learn_rate = learn_rate_decayed * tf.cast(pi.train_phase, tf.float64)
-            self.log.debug('\nAAC_{}: learn rate ok'.format(self.task))
+            self.log.debug('learn rate ok')
 
             # On-policy AAC loss definition:
             self.on_pi_act_target = tf.placeholder(tf.float32, [None, ref_env.action_space.n], name="on_policy_action_pl")
@@ -459,7 +484,7 @@ class BaseAAC(object):
             self.summary_writer = None
             self.local_steps = 0
 
-            self.log.debug('AAC_{}: train op defined'.format(self.task))
+            self.log.debug('train op defined')
 
             # Model stat. summary:
             self.model_summary_op = tf.summary.merge(model_summaries, name='model_summary')
@@ -488,19 +513,6 @@ class BaseAAC(object):
                 self.ep_summary['render_op'] = tf.summary.merge(
                     [tf.summary.image(mode, self.ep_summary[mode]) for mode in self.env_list[0].render_modes]
                 )
-
-            # Environmnet rendering:
-            #if False:
-            #    self.ep_summary['btgym_render_op'] = tf.summary.merge(
-            #        [
-            #            tf.summary.image('human', self.ep_summary['render_human']),
-            #            tf.summary.image('model_input_external', self.ep_summary['render_model_input_ext']),
-            #            tf.summary.image('episode', self.ep_summary['render_episode']),
-            #        ],
-            #        name='render_btgym'
-            #    )
-            #    # For Atari:
-            #    self.ep_summary['atari_render_op'] = tf.summary.image("model/state", self.ep_summary['render_atari'])
 
             # Episode stat. summary:
             self.ep_summary['btgym_stat_op'] = tf.summary.merge(
@@ -569,7 +581,7 @@ class BaseAAC(object):
             # Make rollouts provider:
             self.data_getter = [make_data_getter(runner.queue) for runner in self.runners]
 
-            self.log.debug('AAC_{}: init() done'.format(self.task))
+            self.log.debug('.init() done')
 
     def get_data(self):
         """
@@ -912,13 +924,6 @@ class BaseAAC(object):
                     self.ep_summary[key]: pic for key, pic in data['render_summary'][0].items()
                 }
                 renderings = sess.run(self.ep_summary['render_op'], render_feed_dict)
-                #if False:
-                #    if self.test_mode:
-                #        renderings = sess.run(self.ep_summary['atari_render_op'], render_feed_dict)
-                #
-                #    else:
-                #        renderings = sess.run(self.ep_summary['btgym_render_op'], render_feed_dict)
-
                 self.summary_writer.add_summary(renderings, sess.run(self.global_episode))
                 self.summary_writer.flush()
 
@@ -1028,7 +1033,7 @@ class PPO(BaseAAC):
             env:
             task:
             policy_config:
-            log:
+            log_level:
             vr_loss:
             rp_loss:
             pc_loss:
