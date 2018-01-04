@@ -235,13 +235,6 @@ class BTgymEnv(gym.Env):
                 self.dataset = BTgymDataset(log_level=self.log_level, task=self.task, **kwargs)
                 msg = 'Base Dataset class used.'
 
-            # Serialize-like dataset:
-            self.dataset_params=dict(
-                class_ref=type(self.dataset),
-                kwargs=self.dataset.params,
-                metadata=self.dataset.metadata
-            )
-
             # Append logging:
             #self.dataset.log = self.log
 
@@ -833,7 +826,7 @@ class BTgymEnv(gym.Env):
 
             # Configure and start server:
             self.data_server = BTgymDataFeedServer(
-                dataset_params=self.dataset_params,
+                dataset=self.dataset,
                 network_address=self.data_network_address,
                 log_level=self.log_level,
                 task=self.task

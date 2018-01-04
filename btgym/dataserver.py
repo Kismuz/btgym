@@ -36,12 +36,12 @@ class BTgymDataFeedServer(multiprocessing.Process):
     process = None
     dataset_stat = None
 
-    def __init__(self, dataset_params=None, network_address=None, log_level=None, task=0):
+    def __init__(self, dataset=None, network_address=None, log_level=None, task=0):
         """
         Configures data server instance.
 
         Args:
-            dataset_params:     dictionary of data to instantiate data provider instance;
+            dataset:            data domain instance;
             network_address:    ...to bind to.
             log_level:          logbook log level
             task:               id
@@ -51,8 +51,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
         self.log_level = log_level
         self.task = task
         self.log = None
-        self.dataset_params = dataset_params
-        self.dataset = None
+        self.dataset = dataset
         self.network_address = network_address
 
     def run(self):
@@ -75,32 +74,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
         socket = context.socket(zmq.REP)
         socket.bind(self.network_address)
 
-        # Re-assemble dataset:
-        self.dataset_params['kwargs'].update(
-            {
-                'log_level': self.log_level,
-                'task': self.task
-            }
-        )
-
-        self.log.debug(
-            'Re-assembling instance of {}...'.format(self.dataset_params['class_ref'])
-        )
-        self.log.debug(
-            '...with params: {}'.format(self.dataset_params['kwargs'])
-        )
-        self.log.debug(
-            '...with metadata: {}'.format(self.dataset_params['metadata'])
-        )
-
-        self.dataset = self.dataset_params['class_ref'](**self.dataset_params['kwargs'])
-        self.dataset.reset()
-
-        self.log.debug('Got data_domain as instance of {}'.format(type(self.dataset)))
-        self.log.debug('...with params: {}'.format(self.dataset.params))
-        self.log.debug('...with sample_params: {}'.format(self.dataset.sample_params))
-
-        # Actually load data to BTgymDataset instance:
+        # Actually load data to BTgymDataset instance, will reset it later on:
         try:
             assert not self.dataset.data.empty
 
@@ -109,9 +83,6 @@ class BTgymDataFeedServer(multiprocessing.Process):
 
         # Describe dataset:
         self.dataset_stat = self.dataset.describe()
-
-        # TODO: TEMPORAL:
-        #self.dataset.sample_params['log'] = None
 
         local_step = 0
         fresh_sample = False
@@ -123,34 +94,17 @@ class BTgymDataFeedServer(multiprocessing.Process):
                 if self.dataset.is_ready:
                     # Get sample:
                     sample = self.dataset.sample()
-                    # Disassemble sample to ensure pickling and compose response:
                     data_dict = dict(
-                        sample_class_ref=self.dataset.sample_class_ref,
-                        sample_data=sample.data,
-                        sample_params=self.dataset.sample_params,
-                        sample_filename=sample.filename,
-                        sample_metadata=sample.metadata,
+                        sample=sample,
                         dataset_stat=self.dataset_stat,
                         local_step=local_step,
                     )
                     fresh_sample = True
-                    self.log.debug(
-                        'Sampled instance of {}...'.format(data_dict['sample_class_ref'])
-                    )
-                    self.log.debug(
-                        '...with params: {}'.format(data_dict['sample_params'])
-                    )
-                    self.log.debug(
-                        '...named: {}'.format(data_dict['sample_filename'])
-                    )
-                    self.log.debug(
-                        '...with metadata: {}'.format(data_dict['sample_metadata'])
-                    )
+
                 else:
                     # Dataset not ready, make dummy:
                     data_dict = dict(
-                        sample_data=None,
-                        sample_params=None,
+                        sample=None,
                         dataset_stat=self.dataset_stat,
                         local_step=local_step,
                     )

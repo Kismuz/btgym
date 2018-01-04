@@ -322,19 +322,8 @@ class BTgymServer(multiprocessing.Process):
 
             except (AssertionError, KeyError) as e:
                 break
-        # `Deserialize` trial instance:
-        self.log.debug(
-            'Re-assembling trial as instance of {}...'.format(data_server_response['message']['sample_class_ref'])
-        )
-        self.log.debug(
-            '...with parameters: {}'.format(data_server_response['message']['sample_params'])
-        )
-        trial_sample = data_server_response['message']['sample_class_ref'](
-            **data_server_response['message']['sample_params']
-        )
-        trial_sample.filename = data_server_response['message']['sample_filename']
-        trial_sample.data = data_server_response['message']['sample_data']
-        trial_sample.log = self.log
+        # Get trial instance:
+        trial_sample = data_server_response['message']['sample']
         trial_stat = trial_sample.describe()
         trial_sample.reset()
         dataset_stat = data_server_response['message']['dataset_stat']
@@ -472,7 +461,6 @@ class BTgymServer(multiprocessing.Process):
 
             # Add communication utility:
             cerebro.addanalyzer(_BTgymAnalyzer, _name='_env_analyzer',)
-
 
             # Parse resetting kwargs: if need to request new data range from dataserver or sample from existing one:
             reset_kwargs = dict(

@@ -67,7 +67,7 @@ class BTgymDataset:
         openinterest=-1,
 
         # Sampling params:
-        sample_class_ref=None,  # sample() method will return instance of this class.
+        sample_class_ref=None,
         start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
         start_00=False,  # Sample start time will be set to first record of the day (usually 00:00).
         sample_duration=dict(  # Maximum sample time duration in days, hours, minutes:
@@ -92,6 +92,12 @@ class BTgymDataset:
         ),
         log_level=None,
         task=0,
+
+        # Child class params:
+        child_class_params=dict(
+            class_ref=None,  # sample() method will return instance of this class.
+            params=dict()
+        )
     )
     params_deprecated=dict(
         # Deprecated:
@@ -182,7 +188,7 @@ class BTgymDataset:
         self.test_interval = [0, 0]
         self.sample_num = 0
         self.sample_name = 'should_not_see_this_'
-        self.log_level =None
+        self.log_level = None
         self.task = 0
 
         # Logging:
@@ -247,6 +253,14 @@ class BTgymDataset:
 
         self.sample_num = 0
         self.is_ready = True
+
+    def to_dict(self):
+        """
+        Converts instance to dictionary
+        Returns:
+
+        """
+        pass
 
     def update_params(self, **kwargs):
         """
