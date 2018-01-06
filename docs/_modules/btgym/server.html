@@ -98,13 +98,15 @@
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.envs.html">btgym.envs package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../btgym.html">btgym.datafeed module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../btgym.html">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../btgym.datafeed.html">btgym.datafeed package</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../btgym.algorithms.html">btgym.algorithms package</a></li>
@@ -194,8 +196,6 @@
 <span class="c1">#</span>
 <span class="c1">###############################################################################</span>
 
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="c1">#logging.basicConfig(format=&#39;%(name)s: %(message)s&#39;)</span>
 <span class="kn">import</span> <span class="nn">multiprocessing</span>
 <span class="kn">import</span> <span class="nn">gc</span>
 <span class="kn">import</span> <span class="nn">psutil</span>
@@ -376,13 +376,16 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">data_server_response</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">cerebro</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">render</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">network_address</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">data_network_address</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">connect_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
-                 <span class="n">log</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cerebro</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">network_address</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">data_network_address</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">connect_timeout</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span>
+        <span class="n">log_level</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">task</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
@@ -391,19 +394,14 @@
 <span class="sd">            network_address:        environmnet communication, str</span>
 <span class="sd">            data_network_address:   data communication, str</span>
 <span class="sd">            connect_timeout:        seconds, int</span>
-<span class="sd">            log:                    none</span>
+<span class="sd">            log_level:              int, logbook.level</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="nb">super</span><span class="p">(</span><span class="n">BTgymServer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-
-        <span class="c1"># To log or not to log:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">log</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;dummy&#39;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">NullHandler</span><span class="p">())</span>
-
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cerebro</span> <span class="o">=</span> <span class="n">cerebro</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">network_address</span> <span class="o">=</span> <span class="n">network_address</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">render</span> <span class="o">=</span> <span class="n">render</span>
@@ -411,7 +409,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span> <span class="o">=</span> <span class="n">connect_timeout</span> <span class="c1"># server connection timeout in seconds.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout_step</span> <span class="o">=</span> <span class="mf">0.01</span>
 
-    <span class="k">def</span> <span class="nf">_comm_with_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">socket</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_comm_with_timeout</span><span class="p">(</span><span class="n">socket</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Exchanges messages via socket with timeout.</span>
 
@@ -453,50 +452,116 @@
 
         <span class="k">return</span> <span class="n">response</span>
 
+<div class="viewcode-block" id="BTgymServer.get_data"><a class="viewcode-back" href="../../btgym.html#btgym.server.BTgymServer.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reset_kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reset_kwargs:   dictionary of args to pass to parent data iterator</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            trial_sample, trial_stat, dataset_stat</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">wait</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># Get new data subset:</span>
+            <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+                <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="p">,</span>
+                <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_get_data&#39;</span><span class="p">,</span> <span class="s1">&#39;kwargs&#39;</span><span class="p">:</span> <span class="n">reset_kwargs</span><span class="p">}</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Data_server responded with data in about </span><span class="si">{}</span><span class="s1"> seconds.&#39;</span><span class="o">.</span>
+                               <span class="nb">format</span><span class="p">(</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]))</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;BtgymServer_sampling_attempt: data_server unreachable with status: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span> \
+                    <span class="nb">format</span><span class="p">(</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+            <span class="c1"># Ready or not?</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="s1">&#39;Dataset not ready&#39;</span> <span class="ow">in</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">wait</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait_for_data_reset</span><span class="p">:</span>
+                    <span class="n">pause</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">2</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">pause</span><span class="p">)</span>
+                    <span class="n">wait</span> <span class="o">+=</span> <span class="n">pause</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="s1">&#39;Domain dataset not ready, wait time left: </span><span class="si">{:4.2f}</span><span class="s1">s.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wait_for_data_reset</span> <span class="o">-</span> <span class="n">wait</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+                        <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="p">,</span>
+                        <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_stop&#39;</span><span class="p">}</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Failed to assert Domain dataset is ready. Exiting.&#39;</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="c1"># Get trial instance:</span>
+        <span class="n">trial_sample</span> <span class="o">=</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;sample&#39;</span><span class="p">]</span>
+        <span class="n">trial_stat</span> <span class="o">=</span> <span class="n">trial_sample</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
+        <span class="n">trial_sample</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="n">dataset_stat</span> <span class="o">=</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;dataset_stat&#39;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">trial_sample</span><span class="p">,</span> <span class="n">trial_stat</span><span class="p">,</span> <span class="n">dataset_stat</span></div>
+
 <div class="viewcode-block" id="BTgymServer.run"><a class="viewcode-back" href="../../btgym.html#btgym.server.BTgymServer.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Server process runtime body. This method is invoked by env._start_server().</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Logging:</span>
+        <span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span><span class="p">,</span> <span class="n">WARNING</span>
+        <span class="kn">import</span> <span class="nn">sys</span>
+        <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">WARNING</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTgym_Server_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">current_process</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;BTgymServer PID: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">pid</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;PID: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">pid</span><span class="p">))</span>
 
         <span class="c1"># Runtime Housekeeping:</span>
         <span class="n">cerebro</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">episode_result</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">trial_sample</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">trial_stat</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">dataset_stat</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># How long to wait for data_master to reset data:</span>
-        <span class="n">wait_for_data_reset</span> <span class="o">=</span> <span class="mi">300</span>  <span class="c1"># seconds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wait_for_data_reset</span> <span class="o">=</span> <span class="mi">300</span>  <span class="c1"># seconds</span>
 
         <span class="n">connect_timeout</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># in seconds</span>
 
         <span class="c1"># Set up a comm. channel for server as ZMQ socket</span>
         <span class="c1"># to carry both service and data signal</span>
         <span class="c1"># !! Reminder: Since we use REQ/REP - messages do go in pairs !!</span>
-        <span class="n">context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
-        <span class="n">socket</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">REP</span><span class="p">)</span>
-        <span class="n">socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">RCVTIMEO</span><span class="p">,</span> <span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
-        <span class="n">socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">SNDTIMEO</span><span class="p">,</span> <span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
-        <span class="n">socket</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">network_address</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">REP</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">RCVTIMEO</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">SNDTIMEO</span><span class="p">,</span> <span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">network_address</span><span class="p">)</span>
 
-        <span class="n">data_context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
-        <span class="n">data_socket</span> <span class="o">=</span> <span class="n">data_context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">REQ</span><span class="p">)</span>
-        <span class="n">data_socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">RCVTIMEO</span><span class="p">,</span> <span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
-        <span class="n">data_socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">SNDTIMEO</span><span class="p">,</span> <span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
-        <span class="n">data_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">REQ</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">RCVTIMEO</span><span class="p">,</span> <span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">SNDTIMEO</span><span class="p">,</span> <span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span><span class="p">)</span>
 
         <span class="c1"># Check connection:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;BtgymServer: pinging data_server at: </span><span class="si">{}</span><span class="s1"> ...&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Pinging data_server at: </span><span class="si">{}</span><span class="s1"> ...&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span><span class="p">))</span>
 
         <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
-            <span class="n">socket</span><span class="o">=</span><span class="n">data_socket</span><span class="p">,</span>
+            <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="p">,</span>
             <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;ping!&#39;</span><span class="p">}</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;BTgymServer: Data_server seems ready with response: &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Data_server seems ready with response: &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span>
                           <span class="nb">format</span><span class="p">(</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]))</span>
 
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;BtgymServer: data_server unreachable with status: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span>\
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Data_server unreachable with status: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span>\
                 <span class="nb">format</span><span class="p">(</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
@@ -509,8 +574,8 @@
         <span class="k">for</span> <span class="n">episode_number</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mi">0</span><span class="p">):</span>
             <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
                 <span class="c1"># Stuck here until &#39;_reset&#39; or &#39;_stop&#39;:</span>
-                <span class="n">service_input</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
-                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Server Control mode: received &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">service_input</span><span class="p">)</span>
+                <span class="n">service_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Control mode: received &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">service_input</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
                 <span class="k">if</span> <span class="s1">&#39;ctrl&#39;</span> <span class="ow">in</span> <span class="n">service_input</span><span class="p">:</span>
@@ -518,47 +583,47 @@
                     <span class="k">if</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_stop&#39;</span><span class="p">:</span>
                         <span class="c1"># Server shutdown logic:</span>
                         <span class="c1"># send last run statistic, release comm channel and exit:</span>
-                        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Server is exiting.&#39;</span>
+                        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Exiting.&#39;</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-                        <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-                        <span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                        <span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
                         <span class="k">return</span> <span class="kc">None</span>
 
                     <span class="c1"># Start episode:</span>
                     <span class="k">elif</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_reset&#39;</span><span class="p">:</span>
-                        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Starting episode.&#39;</span>
+                        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Starting episode with kwargs: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">])</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-                        <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>  <span class="c1"># pairs &#39;_reset&#39;</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>  <span class="c1"># pairs &#39;_reset&#39;</span>
                         <span class="k">break</span>
 
                     <span class="c1"># Retrieve statistic:</span>
                     <span class="k">elif</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_getstat&#39;</span><span class="p">:</span>
-                        <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">episode_result</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">episode_result</span><span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Episode statistic sent.&#39;</span><span class="p">)</span>
 
                     <span class="c1"># Send episode rendering:</span>
                     <span class="k">elif</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_render&#39;</span> <span class="ow">and</span> <span class="s1">&#39;mode&#39;</span> <span class="ow">in</span> <span class="n">service_input</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
                         <span class="c1"># Just send what we got:</span>
-                        <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;mode&#39;</span><span class="p">],))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;mode&#39;</span><span class="p">],))</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Episode rendering for [</span><span class="si">{}</span><span class="s1">] sent.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;mode&#39;</span><span class="p">]))</span>
 
                     <span class="k">else</span><span class="p">:</span>  <span class="c1"># ignore any other input</span>
                         <span class="c1"># NOTE: response string must include &#39;ctrl&#39; key</span>
                         <span class="c1"># for env.reset(), env.get_stat(), env.close() correct operation.</span>
                         <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;send control keys: &lt;_reset&gt;, &lt;_getstat&gt;, &lt;_render&gt;, &lt;_stop&gt;.&#39;</span><span class="p">}</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Server sent: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
-                        <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>  <span class="c1"># pairs any other input</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Control mode: sent: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>  <span class="c1"># pairs any other input</span>
 
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;No &lt;ctrl&gt; key received:</span><span class="si">{}</span><span class="se">\n</span><span class="s1">Hint: forgot to call reset()?&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-                    <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
 
             <span class="c1"># Got &#39;_reset&#39; signal -&gt; prepare Cerebro subclass and run episode:</span>
             <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
             <span class="n">cerebro</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cerebro</span><span class="p">)</span>
-            <span class="n">cerebro</span><span class="o">.</span><span class="n">_socket</span> <span class="o">=</span> <span class="n">socket</span>
+            <span class="n">cerebro</span><span class="o">.</span><span class="n">_socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">_render</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render</span>
             <span class="c1"># Add DrawDown observer if not already:</span>
@@ -572,59 +637,46 @@
                 <span class="n">cerebro</span><span class="o">.</span><span class="n">addobserver</span><span class="p">(</span><span class="n">bt</span><span class="o">.</span><span class="n">observers</span><span class="o">.</span><span class="n">DrawDown</span><span class="p">)</span>
 
             <span class="c1"># Add communication utility:</span>
-            <span class="n">cerebro</span><span class="o">.</span><span class="n">addanalyzer</span><span class="p">(</span><span class="n">_BTgymAnalyzer</span><span class="p">,</span>
-                                <span class="n">_name</span><span class="o">=</span><span class="s1">&#39;_env_analyzer&#39;</span><span class="p">,)</span>
-            <span class="n">wait</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-                <span class="c1"># Get random episode dataset:</span>
-                <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
-                    <span class="n">socket</span><span class="o">=</span><span class="n">data_socket</span><span class="p">,</span>
-                    <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_get_data&#39;</span><span class="p">}</span>
-                <span class="p">)</span>
-                <span class="k">if</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Data_server responded with datafeed in about </span><span class="si">{}</span><span class="s1"> seconds.&#39;</span><span class="o">.</span>
-                                   <span class="nb">format</span><span class="p">(</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]))</span>
+            <span class="n">cerebro</span><span class="o">.</span><span class="n">addanalyzer</span><span class="p">(</span><span class="n">_BTgymAnalyzer</span><span class="p">,</span> <span class="n">_name</span><span class="o">=</span><span class="s1">&#39;_env_analyzer&#39;</span><span class="p">,)</span>
 
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;BtgymServer_sampling_attempt: data_server unreachable with status: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span> \
-                        <span class="nb">format</span><span class="p">(</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-                    <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="c1"># Parse resetting kwargs: if need to request new data range from dataserver or sample from existing one:</span>
+            <span class="n">reset_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">new_trial</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">episode_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">reset_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">])</span>
 
-                <span class="c1"># Ready or not?</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="k">assert</span> <span class="s1">&#39;Dataset not ready&#39;</span> <span class="ow">in</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span>
-                    <span class="k">if</span> <span class="n">wait</span> <span class="o">&lt;=</span> <span class="n">wait_for_data_reset</span><span class="p">:</span>
-                        <span class="n">pause</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">2</span>
-                        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">pause</span><span class="p">)</span>
-                        <span class="n">wait</span> <span class="o">+=</span> <span class="n">pause</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                            <span class="s1">&#39;Dataset not ready, waiting time left: </span><span class="si">{:4.2f}</span><span class="s1"> sec.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">wait_for_data_reset</span> <span class="o">-</span> <span class="n">wait</span><span class="p">)</span>
-                        <span class="p">)</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
-                            <span class="n">socket</span><span class="o">=</span><span class="n">data_socket</span><span class="p">,</span>
-                            <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_stop&#39;</span><span class="p">}</span>
-                        <span class="p">)</span>
-                        <span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                        <span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
-                        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Failed to assert Dataset is ready. Exiting.&#39;</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">reset_kwargs</span><span class="p">[</span><span class="s1">&#39;episode_type&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> \
+                <span class="s1">&#39;Expected `episode_type` be 0 (train), 1 (test) or None, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">reset_kwargs</span><span class="p">[</span><span class="s1">&#39;episode_type&#39;</span><span class="p">])</span>
 
-                <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                    <span class="k">break</span>
+            <span class="k">if</span> <span class="n">reset_kwargs</span><span class="p">[</span><span class="s1">&#39;new_trial&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">trial_sample</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Requesting new data from data server...&#39;</span><span class="p">)</span>
 
-            <span class="n">episode_datafeed</span> <span class="o">=</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;datafeed&#39;</span><span class="p">]</span>
+                <span class="n">trial_sample</span><span class="p">,</span> <span class="n">trial_stat</span><span class="p">,</span> <span class="n">dataset_stat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">reset_kwargs</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Got new Trial &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">trial_sample</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sampling from existing Trial &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">trial_sample</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
+
+            <span class="c1"># Sample requested type of episode:</span>
+            <span class="c1"># TODO: if using sample-bounded data iterator: request new one if exhausted</span>
+            <span class="n">episode_sample</span> <span class="o">=</span> <span class="n">trial_sample</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">reset_kwargs</span><span class="p">[</span><span class="s1">&#39;episode_type&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Got new episode &lt;</span><span class="si">{}</span><span class="s1">&gt; &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">episode_sample</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
 
             <span class="c1"># Get episode data statistic and pass it to strategy params:</span>
-            <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;dataset_stat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;dataset_stat&#39;</span><span class="p">]</span>
-            <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;episode_stat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;episode_stat&#39;</span><span class="p">]</span>
-            <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">]</span>
+            <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;trial_stat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trial_stat</span>
+            <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;trial_metadata&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trial_sample</span><span class="o">.</span><span class="n">metadata</span>
+            <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;dataset_stat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataset_stat</span>
+            <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;episode_stat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">episode_sample</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
+            <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">episode_sample</span><span class="o">.</span><span class="n">metadata</span>
 
             <span class="c1"># Set nice broker cash plotting:</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">set_shortcash</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
 
-            <span class="c1"># Add data to engine:</span>
-            <span class="n">cerebro</span><span class="o">.</span><span class="n">adddata</span><span class="p">(</span><span class="n">episode_datafeed</span><span class="p">)</span>
+            <span class="c1"># Convert and add data to engine:</span>
+            <span class="n">cerebro</span><span class="o">.</span><span class="n">adddata</span><span class="p">(</span><span class="n">episode_sample</span><span class="o">.</span><span class="n">to_btfeed</span><span class="p">())</span>
 
             <span class="c1"># Finally:</span>
             <span class="n">episode</span> <span class="o">=</span> <span class="n">cerebro</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">stdstats</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">preload</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">oldbuysell</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>

@@ -43,7 +43,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
         Args:
             dataset:            data domain instance;
             network_address:    ...to bind to.
-            log_level:          logbook log level
+            log_level:          int, logbook.level
             task:               id
         """
         super(BTgymDataFeedServer, self).__init__()

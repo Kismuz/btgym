@@ -24,6 +24,18 @@ Environment API reference
     btgym.monitor
     btgym.rendering
 
+Data pipe API reference
+=======================
+
+Refer to `Section 1.Data of this draft <https://github.com/Kismuz/btgym/docs/papers/btgym_formalism_draft.pdf>`_
+for formal definitions.
+
+.. toctree::
+    :maxdepth: 2
+
+    btgym.datafeed
+
+
 Algorithms API reference
 ========================
 
@@ -35,8 +47,6 @@ Deep RL algorithms integrated with BTgym : A3C, UNREAL, PPO.
     btgym.algorithms
 
 
-.. toctree::
-    :maxdepth: 2
 
 Experimental code API reference
 ===============================

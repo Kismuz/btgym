@@ -18,6 +18,6 @@
 ###############################################################################
 
 
-from .base import BTgymBaseData, BTgymDataset, BTgymBaseDataDomain, BTgymBaseDataTrial
-from .derivative import BTgymEpisode, BTgymDataTrial, BTgymDataDomain
-from .stateful import BTgymSequentialDataDomain, BTgymRandomTrial
+from .base import BTgymBaseData
+from .derivative import BTgymEpisode, BTgymDataTrial, BTgymRandomDataDomain, BTgymDataset
+from .stateful import BTgymSequentialDataDomain

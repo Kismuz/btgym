@@ -37,7 +37,7 @@
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="BTGym 0.0.6 documentation" href="index.html"/>
         <link rel="next" title="btgym.research package" href="btgym.research.html"/>
-        <link rel="prev" title="btgym.rendering package" href="btgym.rendering.html"/> 
+        <link rel="prev" title="btgym.datafeed package" href="btgym.datafeed.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -106,6 +106,9 @@
 <li class="toctree-l1"><a class="reference internal" href="btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.datafeed.html">btgym.datafeed package</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">btgym.algorithms package</a><ul>
@@ -265,7 +268,7 @@ parameter_server.</div></blockquote>
 <span id="btgym-algorithms-worker-module"></span><h2>btgym.algorithms.worker module<a class="headerlink" href="#module-btgym.algorithms.worker" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.worker.Worker">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.worker.</code><code class="descname">Worker</code><span class="sig-paren">(</span><em>env_config</em>, <em>policy_config</em>, <em>trainer_config</em>, <em>cluster_spec</em>, <em>job_name</em>, <em>task</em>, <em>log_dir</em>, <em>log</em>, <em>log_level</em>, <em>max_env_steps</em>, <em>random_seed=None</em>, <em>test_mode=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/worker.html#Worker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.worker.Worker" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.worker.</code><code class="descname">Worker</code><span class="sig-paren">(</span><em>env_config</em>, <em>policy_config</em>, <em>trainer_config</em>, <em>cluster_spec</em>, <em>job_name</em>, <em>task</em>, <em>log_dir</em>, <em>log_level</em>, <em>max_env_steps</em>, <em>random_seed=None</em>, <em>test_mode=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/worker.html#Worker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.worker.Worker" title="Permalink to this definition">¶</a></dt>
 <dd><p>Distributed tf worker class.</p>
 <p>Sets up environment, trainer and starts training process in supervised session.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -280,8 +283,7 @@ parameter_server.</div></blockquote>
 <li><strong>job_name</strong> – worker or parameter server.</li>
 <li><strong>task</strong> – integer number, 0 is chief worker.</li>
 <li><strong>log_dir</strong> – for tb summaries and checkpoints.</li>
-<li><strong>log</strong> – parent logger</li>
-<li><strong>log_level</strong> – 0 - silent, 1 - info, 3 - debug level</li>
+<li><strong>log_level</strong> – int, logbook.level</li>
 <li><strong>max_env_steps</strong> – number of environment steps to run training on</li>
 <li><strong>test_mode</strong> – if True - use Atari mode, BTGym otherwise.</li>
 <li><strong>Note</strong> – <ul>
@@ -321,7 +323,7 @@ it’s own ThreadRunner process.</dd>
 <span id="btgym-algorithms-aac-module"></span><h2>btgym.algorithms.aac module<a class="headerlink" href="#module-btgym.algorithms.aac" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.aac.BaseAAC">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1.0</em>, <em>pc_lambda=1.0</em>, <em>vr_lambda=1.0</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>_use_target_policy=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log_level</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1.0</em>, <em>pc_lambda=1.0</em>, <em>vr_lambda=1.0</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>_use_target_policy=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base Asynchronous Advantage Actor Critic algorithm framework class with auxiliary control tasks and
 option to run several instances of environment for every worker in vectorized fashion, PAAC-like.
 Can be configured to run with different losses and policies.</p>
@@ -341,7 +343,7 @@ Can be configured to run with different losses and policies.</p>
 <li><strong>env</strong> – environment instance or list of instances</li>
 <li><strong>task</strong> – int, parent worker id</li>
 <li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
-<li><strong>log</strong> – parent log</li>
+<li><strong>log_level</strong> – int, logbook.level</li>
 <li><strong>on_policy_loss</strong> – callable returning tensor holding on_policy training loss graph and summaries</li>
 <li><strong>off_policy_loss</strong> – callable returning tensor holding off_policy training loss graph and summaries</li>
 <li><strong>vr_loss</strong> – callable returning tensor holding value replay loss graph and summaries</li>
@@ -559,7 +561,7 @@ optionally augmented with auxiliary control tasks.</p>
 <li><strong>env</strong> – </li>
 <li><strong>task</strong> – </li>
 <li><strong>policy_config</strong> – </li>
-<li><strong>log</strong> – </li>
+<li><strong>log_level</strong> – </li>
 <li><strong>vr_loss</strong> – </li>
 <li><strong>rp_loss</strong> – </li>
 <li><strong>pc_loss</strong> – </li>
@@ -1359,7 +1361,7 @@ runner appends all the collected data to the queue.</p>
         <a href="btgym.research.html" class="btn btn-neutral float-right" title="btgym.research package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="btgym.rendering.html" class="btn btn-neutral" title="btgym.rendering package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="btgym.datafeed.html" class="btn btn-neutral" title="btgym.datafeed package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

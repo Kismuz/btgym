@@ -1,0 +1,913 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.datafeed.base &mdash; BTGym 0.0.6 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="BTGym 0.0.6 documentation" href="../../../index.html"/>
+        <link rel="up" title="btgym.datafeed" href="../datafeed.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework">A3C framework</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../datafeed.html">btgym.datafeed</a> &raquo;</li>
+        
+      <li>btgym.datafeed.base</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for btgym.datafeed.base</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2017 Andrew Muzikin</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">###############################################################################</span>
+
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span><span class="p">,</span> <span class="n">WARNING</span>
+
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">from</span> <span class="nn">numpy.random</span> <span class="k">import</span> <span class="n">beta</span> <span class="k">as</span> <span class="n">random_beta</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">backtrader.feeds</span> <span class="k">as</span> <span class="nn">btfeeds</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+
+<div class="viewcode-block" id="BTgymBaseData"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData">[docs]</a><span class="k">class</span> <span class="nc">BTgymBaseData</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base BTgym data class.</span>
+<span class="sd">    Provides core data loading, sampling, splitting  and converting functionality.</span>
+<span class="sd">    Do not use directly.</span>
+
+<span class="sd">    Enables Pipe::</span>
+
+<span class="sd">        CSV[source data]--&gt;pandas[for efficient sampling]--&gt;bt.feeds</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">sampling_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;base_data&#39;</span><span class="p">,</span>
+            <span class="n">task</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
+            <span class="n">_config_stack</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+
+<span class="sd">            filename:                       Str or list of str, should be given either here or when calling read_csv(),</span>
+<span class="sd">                                            see `Notes`.</span>
+
+<span class="sd">            specific_params CSV to Pandas parsing</span>
+
+<span class="sd">            sep:                            &#39;;&#39;</span>
+<span class="sd">            header:                         0</span>
+<span class="sd">            index_col:                      0</span>
+<span class="sd">            parse_dates:                    True</span>
+<span class="sd">            names:                          [&#39;open&#39;, &#39;high&#39;, &#39;low&#39;, &#39;close&#39;, &#39;volume&#39;]</span>
+
+<span class="sd">            specific_params Pandas to BT.feeds conversion</span>
+
+<span class="sd">            timeframe=1:                    1 minute.</span>
+<span class="sd">            datetime:                       0</span>
+<span class="sd">            open:                           1</span>
+<span class="sd">            high:                           2</span>
+<span class="sd">            low:                            3</span>
+<span class="sd">            close:                          4</span>
+<span class="sd">            volume:                         -1</span>
+<span class="sd">            openinterest:                   -1</span>
+
+<span class="sd">            specific_params Sampling</span>
+
+<span class="sd">            sample_class_ref:               None - if not None, than sample() method will return instance of specified</span>
+<span class="sd">                                            class, which itself must be subclass of BaseBTgymDataset,</span>
+<span class="sd">                                            else returns instance of the base data class.</span>
+
+<span class="sd">            start_weekdays:                 [0, 1, 2, 3, ] - Only weekdays from the list will be used for sample start.</span>
+<span class="sd">            start_00:                       True - sample start time will be set to first record of the day</span>
+<span class="sd">                                            (usually 00:00).</span>
+<span class="sd">            sample_duration:                {&#39;days&#39;: 1, &#39;hours&#39;: 23, &#39;minutes&#39;: 55} - Maximum sample time duration</span>
+<span class="sd">                                            in days, hours, minutes</span>
+<span class="sd">            time_gap:                       {&#39;&#39;days&#39;: 0, hours&#39;: 5, &#39;minutes&#39;: 0} - Data omittance threshold:</span>
+<span class="sd">                                            maximum no-data time gap allowed within sample in days, hours.</span>
+<span class="sd">                                            Thereby, if set to be &lt; 1 day, samples containing weekends and holidays gaps</span>
+<span class="sd">                                            will be rejected.</span>
+<span class="sd">            test_period:                    {&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0} - setting this param to non-zero</span>
+<span class="sd">                                            duration forces instance.data split to train / test subsets with test</span>
+<span class="sd">                                            subset duration equal to `test_period` with `time_gap` tolerance. Train data</span>
+<span class="sd">                                            always precedes test one:</span>
+<span class="sd">                                            [0_record&lt;-train_data-&gt;split_point_record&lt;-test_data-&gt;last_record].</span>
+<span class="sd">            sample_expanding:               None, reserved for child classes.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            - CSV file can contain duplicate records, checks will be performed and all duplicates will be removed;</span>
+
+<span class="sd">            - CSV file should be properly sorted by date_time in ascending order, no sorting checks performed.</span>
+
+<span class="sd">            - When supplying list of file_names, all files should be also listed ascending by their time period,</span>
+<span class="sd">              no correct sampling will be possible otherwise.</span>
+
+<span class="sd">            - Default parameters are source-specific and made to correctly parse 1 minute Forex generic ASCII</span>
+<span class="sd">              data files from www.HistData.com. Tune according to your data source.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+
+        <span class="k">if</span> <span class="n">parsing_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parsing_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="c1"># Default parameters for source-specific CSV datafeed class,</span>
+                <span class="c1"># correctly parses 1 minute Forex generic ASCII</span>
+                <span class="c1"># data files from www.HistData.com:</span>
+
+                <span class="c1"># CSV to Pandas params.</span>
+                <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;;&#39;</span><span class="p">,</span>
+                <span class="n">header</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">parse_dates</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;open&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">],</span>
+
+                <span class="c1"># Pandas to BT.feeds params:</span>
+                <span class="n">timeframe</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># 1 minute.</span>
+                <span class="n">datetime</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="nb">open</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="n">low</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                <span class="n">close</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                <span class="n">volume</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">openinterest</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parsing_params</span> <span class="o">=</span> <span class="n">parsing_params</span>
+
+        <span class="k">if</span> <span class="n">sampling_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sampling_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="c1"># Sampling params:</span>
+                <span class="n">start_weekdays</span><span class="o">=</span><span class="p">[],</span>  <span class="c1"># Only weekdays from the list will be used for episode start.</span>
+                <span class="n">start_00</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># Sample start time will be set to first record of the day (usually 00:00).</span>
+                <span class="n">sample_duration</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>  <span class="c1"># Maximum sample time duration in days, hours, minutes:</span>
+                    <span class="n">days</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">hours</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">minutes</span><span class="o">=</span><span class="mi">0</span>
+                <span class="p">),</span>
+                <span class="n">time_gap</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>  <span class="c1"># Maximum data time gap allowed within sample in days, hours. Thereby,</span>
+                    <span class="n">days</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>  <span class="c1"># if set to be &lt; 1 day, samples containing weekends and holidays gaps will be rejected.</span>
+                    <span class="n">hours</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="p">),</span>
+                <span class="n">test_period</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>  <span class="c1"># Time period to take test samples from, in days, hours, minutes:</span>
+                    <span class="n">days</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">hours</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">minutes</span><span class="o">=</span><span class="mi">0</span>
+                <span class="p">),</span>
+                <span class="n">expanding</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sampling_params</span> <span class="o">=</span> <span class="n">sampling_params</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Will hold actual data as pandas dataframe</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_ready</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_stat</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Dataset descriptive statistic as pandas dataframe</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_range_delta</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Dataset total duration timedelta</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_time_gap</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time_gap</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_duration</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_weekdays</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_00</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expanding</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_range_delta</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_range_delta</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_num_records</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_interval</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_interval</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_period</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;days&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_period</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;days&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;sample_num&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parsing_params</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sampling_params</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_config_stack</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">_config_stack</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">nested_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config_stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># IF stack is empty, sample of this instance itself is not supposed to be sampled.</span>
+            <span class="n">nested_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">class_ref</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">parsing_params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parsing_params</span><span class="p">,</span>
+                    <span class="n">sample_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;data_stream&#39;</span><span class="p">,</span>
+                    <span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
+                    <span class="n">log_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span>
+                    <span class="n">_config_stack</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="c1"># Configure sample instance parameters:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nested_class_ref</span> <span class="o">=</span> <span class="n">nested_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nested_params</span> <span class="o">=</span> <span class="n">nested_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_w_</span><span class="si">{}</span><span class="s1">_&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nested_params</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nested_params</span><span class="p">[</span><span class="s1">&#39;_config_stack&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config_stack</span>
+
+        <span class="c1"># Logging:</span>
+        <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+
+        <span class="c1"># Legacy parameter dictionary, left here for BTgym API_shell:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parsing_params</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sampling_params</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BTgymBaseData.set_params"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.set_params">[docs]</a>    <span class="k">def</span> <span class="nf">set_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params_dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Batch attribute setter.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            params_dict: dictionary of parameters to be set as instance attributes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymBaseData.set_logger"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.set_logger">[docs]</a>    <span class="k">def</span> <span class="nf">set_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets logbook logger.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name:   channel name, str</span>
+<span class="sd">            level:  logbook.level, int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymBaseData.reset"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Gets instance ready.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data_filename:  [opt] string or list of strings.</span>
+<span class="sd">            kwargs:         not used.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset</span><span class="p">(</span><span class="n">data_filename</span><span class="o">=</span><span class="n">data_filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">data_filename</span><span class="p">)</span>
+
+        <span class="c1"># Maximum data time gap allowed within sample as pydatetimedelta obj:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_time_gap</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">time_gap</span><span class="p">)</span>
+
+        <span class="c1"># ... maximum episode time duration:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_duration</span><span class="p">)</span>
+
+        <span class="c1"># Maximum possible number of data records (rows) within episode:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="mi">60</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeframe</span><span class="p">))</span>
+
+        <span class="c1"># Train/test timedeltas:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_range_delta</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">test_period</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_range_delta</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_duration</span><span class="p">)</span> <span class="o">-</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">test_period</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_range_delta</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="mi">60</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeframe</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_num_records</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span>
+
+        <span class="n">break_point</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_num_records</span>
+
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_num_records</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">,</span>\
+            <span class="s1">&#39;Train subset should contain at least one sample, got: train_set size: </span><span class="si">{}</span><span class="s1"> rows, sample_size: </span><span class="si">{}</span><span class="s1"> rows&#39;</span><span class="o">.</span>\
+            <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_num_records</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">,</span>\
+                <span class="s1">&#39;Test subset should contain at least one sample, got: test_set size: </span><span class="si">{}</span><span class="s1"> rows, sample_size: </span><span class="si">{}</span><span class="s1"> rows&#39;</span><span class="o">.</span>\
+            <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_interval</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">break_point</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_interval</span> <span class="o">=</span> <span class="p">[</span><span class="n">break_point</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_ready</span> <span class="o">=</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="BTgymBaseData.read_csv"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.read_csv">[docs]</a>    <span class="k">def</span> <span class="nf">read_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_reload</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Populates instance by loading data: CSV file --&gt; pandas dataframe.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data_filename: [opt] csv data filename as string or list of such strings.</span>
+<span class="sd">            force_reload:  ignore loaded data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_reload</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;data has been already loaded. Use `force_reload=True` to reload&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">data_filename</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">data_filename</span>  <span class="c1"># override data source if one is given</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">]</span>
+
+        <span class="n">dataframes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">filename</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+                <span class="n">current_dataframe</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
+                    <span class="n">filename</span><span class="p">,</span>
+                    <span class="n">sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sep</span><span class="p">,</span>
+                    <span class="n">header</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">header</span><span class="p">,</span>
+                    <span class="n">index_col</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">index_col</span><span class="p">,</span>
+                    <span class="n">parse_dates</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parse_dates</span><span class="p">,</span>
+                    <span class="n">names</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">names</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Check and remove duplicate datetime indexes:</span>
+                <span class="n">duplicates</span> <span class="o">=</span> <span class="n">current_dataframe</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">duplicated</span><span class="p">(</span><span class="n">keep</span><span class="o">=</span><span class="s1">&#39;first&#39;</span><span class="p">)</span>
+                <span class="n">how_bad</span> <span class="o">=</span> <span class="n">duplicates</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">how_bad</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">current_dataframe</span> <span class="o">=</span> <span class="n">current_dataframe</span><span class="p">[</span><span class="o">~</span><span class="n">duplicates</span><span class="p">]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Found </span><span class="si">{}</span><span class="s1"> duplicated date_time records in &lt;</span><span class="si">{}</span><span class="s1">&gt;.</span><span class="se">\</span>
+<span class="s1">                     Removed all but first occurrences.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">how_bad</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span>
+
+                <span class="n">dataframes</span> <span class="o">+=</span> <span class="p">[</span><span class="n">current_dataframe</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Loaded </span><span class="si">{}</span><span class="s1"> records from &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dataframes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">filename</span><span class="p">))</span>
+
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Data file &lt;</span><span class="si">{}</span><span class="s1">&gt; not specified / not found.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">dataframes</span><span class="p">)</span>
+        <span class="nb">range</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_range_delta</span> <span class="o">=</span> <span class="p">(</span><span class="nb">range</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="nb">range</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">to_pytimedelta</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="BTgymBaseData.describe"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.describe">[docs]</a>    <span class="k">def</span> <span class="nf">describe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns summary dataset statistic as pandas dataframe:</span>
+
+<span class="sd">            - records count,</span>
+<span class="sd">            - data mean,</span>
+<span class="sd">            - data std dev,</span>
+<span class="sd">            - min value,</span>
+<span class="sd">            - 25% percentile,</span>
+<span class="sd">            - 50% percentile,</span>
+<span class="sd">            - 75% percentile,</span>
+<span class="sd">            - max value</span>
+
+<span class="sd">        for every data column.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Pretty straightforward, using standard pandas utility.</span>
+        <span class="c1"># The only caveat here is that if actual data has not been loaded yet, need to load, describe and unload again,</span>
+        <span class="c1"># thus avoiding passing big files to BT server:</span>
+        <span class="n">flush_data</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">empty</span>
+            <span class="k">pass</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_csv</span><span class="p">()</span>
+            <span class="n">flush_data</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_stat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Data summary:</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_stat</span><span class="o">.</span><span class="n">to_string</span><span class="p">()))</span>
+
+        <span class="k">if</span> <span class="n">flush_data</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Flushed data.&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_stat</span></div>
+
+<div class="viewcode-block" id="BTgymBaseData.to_btfeed"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.to_btfeed">[docs]</a>    <span class="k">def</span> <span class="nf">to_btfeed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Performs BTgymData--&gt;bt.feed conversion.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">             bt.datafeed instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">empty</span>
+            <span class="n">btfeed</span> <span class="o">=</span> <span class="n">btfeeds</span><span class="o">.</span><span class="n">PandasDirectData</span><span class="p">(</span>
+                <span class="n">dataname</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+                <span class="n">timeframe</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">timeframe</span><span class="p">,</span>
+                <span class="n">datetime</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">datetime</span><span class="p">,</span>
+                <span class="nb">open</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">open</span><span class="p">,</span>
+                <span class="n">high</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">high</span><span class="p">,</span>
+                <span class="n">low</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">low</span><span class="p">,</span>
+                <span class="n">close</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">,</span>
+                <span class="n">volume</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">volume</span><span class="p">,</span>
+                <span class="n">openinterest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">openinterest</span>
+            <span class="p">)</span>
+            <span class="n">btfeed</span><span class="o">.</span><span class="n">numrecords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">btfeed</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Instance holds no data. Hint: forgot to call .read_csv()?&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymBaseData.sample"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Samples continuous subset of data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sample_type:    int, def=0 (train) or 1 (test) - to sample from train or test data subsets respectively.</span>
+<span class="sd">            b_alpha:        beta-distribution sampling alpha, valid for train episodes, def=1.</span>
+<span class="sd">            b_beta:         beta-distribution sampling beta, valid for train episodes, def=1.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        if no sample_class_ref param been set:</span>
+<span class="sd">            BTgymDataset instance with number of records ~ max_episode_len,</span>
+<span class="sd">            where `~` tolerance is set by `time_gap` param;</span>
+<span class="sd">        else:</span>
+<span class="sd">            `sample_class_ref` instance with same as above number of records.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">                Train sample start position within interval is drawn from beta-distribution</span>
+<span class="sd">                with default parameters b_alpha=1, b_beta=1, i.e. uniform one.</span>
+<span class="sd">                Beta-distribution makes skewed sampling possible , e.g.</span>
+<span class="sd">                to give recent episodes higher probability of being sampled, e.g.:  b_alpha=10, b_beta=0.8.</span>
+<span class="sd">                Test samples are always uniform one.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_ready</span><span class="p">,</span> <span class="s1">&#39;Sampling attempt: data not ready. Hint: forgot to call data.reset()?&#39;</span>
+        <span class="k">assert</span> <span class="n">sample_type</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;Sampling attempt: expected sample type be in </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
+            <span class="nb">format</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">sample_type</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">sample_type</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Get beta_distributed sample in train interval:</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_interval</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_interval</span><span class="p">,</span>
+                <span class="n">b_alpha</span><span class="o">=</span><span class="n">b_alpha</span><span class="p">,</span>
+                <span class="n">b_beta</span><span class="o">=</span><span class="n">b_beta</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;train_&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span>
+            <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Get uniform sample in test interval:</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_interval</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_interval</span><span class="p">,</span>
+                <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;test_&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span>
+            <span class="p">)</span>
+
+        <span class="n">sample</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sample_type</span>
+        <span class="n">sample</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span>
+        <span class="n">sample</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;parent_sample_num&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">sample</span></div>
+
+<div class="viewcode-block" id="BTgymBaseData._sample_random"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData._sample_random">[docs]</a>    <span class="k">def</span> <span class="nf">_sample_random</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;random_sample_&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Randomly samples continuous subset of data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name:        str, sample filename id</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">             BTgymDataset instance with number of records ~ max_episode_len,</span>
+<span class="sd">             where `~` tolerance is set by `time_gap` param.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">empty</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span>  <span class="ne">AssertionError</span><span class="p">(</span><span class="s1">&#39;Instance holds no data. Hint: forgot to call .read_csv()?&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Maximum sample time duration set to: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Respective number of steps: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Maximum allowed data time gap set to: </span><span class="si">{}</span><span class="s1">.</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_time_gap</span><span class="p">))</span>
+
+        <span class="c1"># Sanity check param:</span>
+        <span class="n">max_attempts</span> <span class="o">=</span> <span class="mi">100</span>
+        <span class="n">attempts</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># # Keep sampling random enter points until all conditions are met:</span>
+        <span class="k">while</span> <span class="n">attempts</span> <span class="o">&lt;=</span> <span class="n">max_attempts</span><span class="p">:</span>
+
+            <span class="c1"># Randomly sample record (row) from entire datafeed:</span>
+            <span class="n">first_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">())</span>
+            <span class="n">sample_first_day</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">first_row</span><span class="p">:</span><span class="n">first_row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sample start: </span><span class="si">{}</span><span class="s1">, weekday: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_first_day</span><span class="p">,</span> <span class="n">sample_first_day</span><span class="o">.</span><span class="n">weekday</span><span class="p">()))</span>
+
+            <span class="c1"># Keep sampling until good day:</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="n">sample_first_day</span><span class="o">.</span><span class="n">weekday</span><span class="p">()</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_weekdays</span> <span class="ow">and</span> <span class="n">attempts</span> <span class="o">&lt;=</span> <span class="n">max_attempts</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Not a good day to start, resampling...&#39;</span><span class="p">)</span>
+                <span class="n">first_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">())</span>
+                <span class="n">sample_first_day</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">first_row</span><span class="p">:</span><span class="n">first_row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sample start: </span><span class="si">{}</span><span class="s1">, weekday: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_first_day</span><span class="p">,</span> <span class="n">sample_first_day</span><span class="o">.</span><span class="n">weekday</span><span class="p">()))</span>
+                <span class="n">attempts</span> <span class="o">+=</span><span class="mi">1</span>
+
+            <span class="c1"># Check if managed to get proper weekday:</span>
+            <span class="k">assert</span> <span class="n">attempts</span> <span class="o">&lt;=</span> <span class="n">max_attempts</span><span class="p">,</span> \
+                <span class="s1">&#39;Quitting after </span><span class="si">{}</span><span class="s1"> sampling attempts. Hint: check sampling params / dataset consistency.&#39;</span><span class="o">.</span> \
+                <span class="nb">format</span><span class="p">(</span><span class="n">attempts</span><span class="p">)</span>
+
+            <span class="c1"># If 00 option set, get index of first record of that day:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_00</span><span class="p">:</span>
+                <span class="n">adj_timedate</span> <span class="o">=</span> <span class="n">sample_first_day</span><span class="o">.</span><span class="n">date</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Start time adjusted to &lt;00:00&gt;&#39;</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">adj_timedate</span> <span class="o">=</span> <span class="n">sample_first_day</span>
+
+            <span class="n">first_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">adj_timedate</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Easy part:</span>
+            <span class="n">last_row</span> <span class="o">=</span> <span class="n">first_row</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span>  <span class="c1"># + 1</span>
+            <span class="n">sampled_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">first_row</span><span class="p">:</span> <span class="n">last_row</span><span class="p">]</span>
+            <span class="n">sample_len</span> <span class="o">=</span> <span class="p">(</span><span class="n">sampled_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">sampled_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">to_pytimedelta</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Actual sample duration: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_len</span><span class="p">,</span> <span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Total episode time gap: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_len</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span><span class="p">))</span>
+
+            <span class="c1"># Perform data gap check:</span>
+            <span class="k">if</span> <span class="n">sample_len</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_time_gap</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sample accepted.&#39;</span><span class="p">)</span>
+                <span class="c1"># If sample OK - compose and return sample:</span>
+                <span class="n">new_instance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nested_class_ref</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">nested_params</span><span class="p">)</span>
+                <span class="n">new_instance</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;n</span><span class="si">{}</span><span class="s1">_at_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span><span class="p">,</span> <span class="n">adj_timedate</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Sample id: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">new_instance</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
+                <span class="n">new_instance</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">sampled_data</span>
+                <span class="n">new_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;random_sample&#39;</span>
+                <span class="n">new_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;first_row&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">first_row</span>
+
+                <span class="k">return</span> <span class="n">new_instance</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Duration too big, resampling...</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="n">attempts</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Got here -&gt; sanity check failed:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;Quitting after </span><span class="si">{}</span><span class="s1"> sampling attempts.&#39;</span> <span class="o">+</span>
+               <span class="s1">&#39;Hint: check sampling params / dataset consistency.&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">attempts</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymBaseData._sample_interval"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData._sample_interval">[docs]</a>    <span class="k">def</span> <span class="nf">_sample_interval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;interval_sample_&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Samples continuous subset of data,</span>
+<span class="sd">        such as entire episode records lie within positions specified by interval.</span>
+<span class="sd">        Episode start position within interval is drawn from beta-distribution parametrised by `b_alpha, b_beta`.</span>
+<span class="sd">        By default distribution is uniform one.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            interval:       tuple, list or 1d-array of integers of length 2: [lower_row_number, upper_row_number];</span>
+<span class="sd">            b_alpha:        float &gt; 0, sampling B-distribution alpha param, def=1;</span>
+<span class="sd">            b_beta:         float &gt; 0, sampling B-distribution beta param, def=1;</span>
+<span class="sd">            name:           str, sample filename id</span>
+
+
+<span class="sd">        Returns:</span>
+<span class="sd">             - BTgymDataset instance such as:</span>
+<span class="sd">                1. number of records ~ max_episode_len, subj. to `time_gap` param;</span>
+<span class="sd">                2. actual episode start position is sampled from `interval`;</span>
+<span class="sd">             - `False` if it is not possible to sample instance with set args.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">empty</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span>  <span class="ne">AssertionError</span><span class="p">(</span><span class="s1">&#39;Instance holds no data. Hint: forgot to call .read_csv()?&#39;</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;Invalid interval arg: expected list or tuple of size 2, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">b_alpha</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">b_beta</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Expected positive B-distribution [alpha, beta] params, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span> \
+            <span class="nb">format</span><span class="p">([</span><span class="n">b_alpha</span><span class="p">,</span> <span class="n">b_beta</span><span class="p">])</span>
+
+        <span class="n">sample_num_records</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span>
+
+        <span class="k">assert</span> <span class="n">interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">interval</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> \
+            <span class="s1">&#39;Cannot sample with size </span><span class="si">{}</span><span class="s1">, inside </span><span class="si">{}</span><span class="s1"> from dataset of </span><span class="si">{}</span><span class="s1"> records&#39;</span><span class="o">.</span>\
+             <span class="nb">format</span><span class="p">(</span><span class="n">sample_num_records</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Maximum sample time duration set to: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Respective number of steps: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_num_records</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Maximum allowed data time gap set to: </span><span class="si">{}</span><span class="s1">.</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_time_gap</span><span class="p">))</span>
+
+        <span class="c1"># Sanity check param:</span>
+        <span class="n">max_attempts</span> <span class="o">=</span> <span class="mi">100</span>
+        <span class="n">attempts</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># # Keep sampling random enter points until all conditions are met:</span>
+        <span class="k">while</span> <span class="n">attempts</span> <span class="o">&lt;=</span> <span class="n">max_attempts</span><span class="p">:</span>
+
+            <span class="n">first_row</span> <span class="o">=</span> <span class="n">interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">interval</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">sample_num_records</span><span class="p">)</span> <span class="o">*</span> <span class="n">random_beta</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">b_alpha</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">b_beta</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="c1">#print(&#39;_sample_interval_sample_num_records: &#39;, sample_num_records)</span>
+            <span class="c1">#print(&#39;_sample_interval_first_row: &#39;, first_row)</span>
+
+            <span class="n">sample_first_day</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">first_row</span><span class="p">:</span><span class="n">first_row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sample start: </span><span class="si">{}</span><span class="s1">, weekday: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_first_day</span><span class="p">,</span> <span class="n">sample_first_day</span><span class="o">.</span><span class="n">weekday</span><span class="p">()))</span>
+
+            <span class="c1"># Keep sampling until good day:</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="n">sample_first_day</span><span class="o">.</span><span class="n">weekday</span><span class="p">()</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_weekdays</span> <span class="ow">and</span> <span class="n">attempts</span> <span class="o">&lt;=</span> <span class="n">max_attempts</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Not a good day to start, resampling...&#39;</span><span class="p">)</span>
+                <span class="n">first_row</span> <span class="o">=</span> <span class="n">interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="nb">round</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">interval</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">sample_num_records</span><span class="p">)</span> <span class="o">*</span> <span class="n">random_beta</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">b_alpha</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">b_beta</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="c1">#print(&#39;r_sample_interval_sample_num_records: &#39;, sample_num_records)</span>
+                <span class="c1">#print(&#39;r_sample_interval_first_row: &#39;, first_row)</span>
+                <span class="n">sample_first_day</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">first_row</span><span class="p">:</span><span class="n">first_row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sample start: </span><span class="si">{}</span><span class="s1">, weekday: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_first_day</span><span class="p">,</span> <span class="n">sample_first_day</span><span class="o">.</span><span class="n">weekday</span><span class="p">()))</span>
+                <span class="n">attempts</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Check if managed to get proper weekday:</span>
+            <span class="k">assert</span> <span class="n">attempts</span> <span class="o">&lt;=</span> <span class="n">max_attempts</span><span class="p">,</span> \
+                <span class="s1">&#39;Quitting after </span><span class="si">{}</span><span class="s1"> sampling attempts. Hint: check sampling params / dataset consistency.&#39;</span><span class="o">.</span>\
+                <span class="nb">format</span><span class="p">(</span><span class="n">attempts</span><span class="p">)</span>
+
+            <span class="c1"># If 00 option set, get index of first record of that day:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_00</span><span class="p">:</span>
+                <span class="n">adj_timedate</span> <span class="o">=</span> <span class="n">sample_first_day</span><span class="o">.</span><span class="n">date</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Start time adjusted to &lt;00:00&gt;&#39;</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">adj_timedate</span> <span class="o">=</span> <span class="n">sample_first_day</span>
+
+            <span class="n">first_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">adj_timedate</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Easy part:</span>
+            <span class="n">last_row</span> <span class="o">=</span> <span class="n">first_row</span> <span class="o">+</span> <span class="n">sample_num_records</span>  <span class="c1"># + 1</span>
+            <span class="n">sampled_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">first_row</span><span class="p">:</span> <span class="n">last_row</span><span class="p">]</span>
+            <span class="n">sample_len</span> <span class="o">=</span> <span class="p">(</span><span class="n">sampled_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">sampled_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">to_pytimedelta</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Actual sample duration: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_len</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Total sample time gap: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_len</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span><span class="p">))</span>
+
+            <span class="c1"># Perform data gap check:</span>
+            <span class="k">if</span> <span class="n">sample_len</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_time_gap</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sample accepted.&#39;</span><span class="p">)</span>
+                <span class="c1"># If sample OK - return new dataset:</span>
+                <span class="n">new_instance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nested_class_ref</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">nested_params</span><span class="p">)</span>
+                <span class="n">new_instance</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;num_</span><span class="si">{}</span><span class="s1">_at_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span><span class="p">,</span> <span class="n">adj_timedate</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Sample id: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">new_instance</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
+                <span class="n">new_instance</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">sampled_data</span>
+                <span class="n">new_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;interval_sample&#39;</span>
+                <span class="n">new_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;first_row&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">first_row</span>
+
+                <span class="k">return</span> <span class="n">new_instance</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Attempt </span><span class="si">{}</span><span class="s1">: duration too big, resampling, ...</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">attempts</span><span class="p">))</span>
+                <span class="n">attempts</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Got here -&gt; sanity check failed:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;Quitting after </span><span class="si">{}</span><span class="s1"> sampling attempts.&#39;</span> <span class="o">+</span>
+               <span class="s1">&#39;Hint: check sampling params / dataset consistency.&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">attempts</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div></div>
+
+
+
+
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.6',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

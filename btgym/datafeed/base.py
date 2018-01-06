@@ -22,7 +22,7 @@ from logbook import Logger, StreamHandler, WARNING
 import datetime
 import random
 from numpy.random import beta as random_beta
-import math
+import copy
 import os
 import sys
 
@@ -30,9 +30,10 @@ import backtrader.feeds as btfeeds
 import pandas as pd
 
 
-class BTgymDataset:
+class BTgymBaseData:
     """
-    Base Backtrader.feeds data class. Provides core data loading, sampling and converting functionality.
+    Base BTgym data class.
+    Provides core data loading, sampling, splitting  and converting functionality.
     Do not use directly.
 
     Enables Pipe::
@@ -40,78 +41,19 @@ class BTgymDataset:
         CSV[source data]-->pandas[for efficient sampling]-->bt.feeds
 
     """
-    #  Parameters and their default values:
-    params = dict(
-        filename=None,  # Str or list of str, should be given either here  or when calling read_csv()
 
-        # Default parameters for source-specific CSV datafeed class,
-        # correctly parses 1 minute Forex generic ASCII
-        # data files from www.HistData.com:
-
-        # CSV to Pandas params.
-        sep=';',
-        header=0,
-        index_col=0,
-        parse_dates=True,
-        names=['open', 'high', 'low', 'close', 'volume'],
-
-        # Pandas to BT.feeds params:
-        timeframe=1,  # 1 minute.
-        datetime=0,
-        open=1,
-        high=2,
-        low=3,
-        close=4,
-        volume=-1,
-        openinterest=-1,
-
-        # Sampling params:
-
-        start_weekdays=[0, 1, 2, 3, ],  # Only weekdays from the list will be used for episode start.
-        start_00=False,  # Sample start time will be set to first record of the day (usually 00:00).
-        sample_duration=dict(  # Maximum sample time duration in days, hours, minutes:
-            days=1,
-            hours=23,
-            minutes=55
-        ),
-        time_gap=dict(  # Maximum data time gap allowed within sample in days, hours. Thereby,
-            days=0,     # if set to be < 1 day, samples containing weekends and holidays gaps will be rejected.
-            hours=5,
-        ),
-        test_period=dict(  # Maximum sample time duration in days, hours, minutes:
-            days=0,
-            hours=0,
-            minutes=0
-        ),
-        sample_expanding=None,
-        sample_name='base_',
-        metadata=dict(
-            sample_num=0,
-            type=0,
-        ),
-        log_level=WARNING,
-        task=0,
-
-        # Child class params:
-        sample_class_ref=None,
-        sample_params=dict(
-            #class_ref=None,  # sample() method will return instance of this class.
-            #params=dict(),
-            #metadata=dict(),
-        )
-    )
-    params_deprecated=dict(
-        # Deprecated:
-        episode_len_days=('episode_duration', 'days'),
-        episode_len_hours=('episode_duration','hours'),
-        episode_len_minutes=('episode_duration', 'minutes'),
-        time_gap_days=('time_gap', 'days'),
-        time_gap_hours=('time_gap', 'hours')
-    )
-
-    def __init__(self, **kwargs):
+    def __init__(
+            self,
+            filename=None,
+            parsing_params=None,
+            sampling_params=None,
+            name='base_data',
+            task=0,
+            log_level=WARNING,
+            _config_stack=None,
+            **kwargs
+    ):
         """
-
         Args:
 
             filename:                       Str or list of str, should be given either here or when calling read_csv(),
@@ -140,14 +82,13 @@ class BTgymDataset:
 
             sample_class_ref:               None - if not None, than sample() method will return instance of specified
                                             class, which itself must be subclass of BaseBTgymDataset,
-                                            else returns instance of the generic BaseBTgymDataset.
+                                            else returns instance of the base data class.
 
-            start_weekdays:                 [0, 1, 2, 3, ] - Only weekdays from the list will be used for episode start.
-            start_00:                       True - Episode start time will be set to first record of the day
+            start_weekdays:                 [0, 1, 2, 3, ] - Only weekdays from the list will be used for sample start.
+            start_00:                       True - sample start time will be set to first record of the day
                                             (usually 00:00).
             sample_duration:                {'days': 1, 'hours': 23, 'minutes': 55} - Maximum sample time duration
                                             in days, hours, minutes
-            episode_duration:               alias for sample_duration
             time_gap:                       {''days': 0, hours': 5, 'minutes': 0} - Data omittance threshold:
                                             maximum no-data time gap allowed within sample in days, hours.
                                             Thereby, if set to be < 1 day, samples containing weekends and holidays gaps
@@ -170,44 +111,141 @@ class BTgymDataset:
             - Default parameters are source-specific and made to correctly parse 1 minute Forex generic ASCII
               data files from www.HistData.com. Tune according to your data source.
         """
-        #self.log = None
+        self.filename = filename
+
+        if parsing_params is None:
+            self.parsing_params = dict(
+                # Default parameters for source-specific CSV datafeed class,
+                # correctly parses 1 minute Forex generic ASCII
+                # data files from www.HistData.com:
+
+                # CSV to Pandas params.
+                sep=';',
+                header=0,
+                index_col=0,
+                parse_dates=True,
+                names=['open', 'high', 'low', 'close', 'volume'],
+
+                # Pandas to BT.feeds params:
+                timeframe=1,  # 1 minute.
+                datetime=0,
+                open=1,
+                high=2,
+                low=3,
+                close=4,
+                volume=-1,
+                openinterest=-1,
+            )
+        else:
+            self.parsing_params = parsing_params
+
+        if sampling_params is None:
+            self.sampling_params = dict(
+                # Sampling params:
+                start_weekdays=[],  # Only weekdays from the list will be used for episode start.
+                start_00=False,  # Sample start time will be set to first record of the day (usually 00:00).
+                sample_duration=dict(  # Maximum sample time duration in days, hours, minutes:
+                    days=0,
+                    hours=0,
+                    minutes=0
+                ),
+                time_gap=dict(  # Maximum data time gap allowed within sample in days, hours. Thereby,
+                    days=0,  # if set to be < 1 day, samples containing weekends and holidays gaps will be rejected.
+                    hours=0,
+                ),
+                test_period=dict(  # Time period to take test samples from, in days, hours, minutes:
+                    days=0,
+                    hours=0,
+                    minutes=0
+                ),
+                expanding=False,
+            )
+        else:
+            self.sampling_params = sampling_params
+
+        self.name = name
+        self.task = task
+        self.log_level = log_level
+
         self.data = None  # Will hold actual data as pandas dataframe
         self.is_ready = False
         self.data_stat = None  # Dataset descriptive statistic as pandas dataframe
         self.data_range_delta = None  # Dataset total duration timedelta
         self.max_time_gap = None
+        self.time_gap = None
         self.max_sample_len_delta = None
-        self.sample_num_records = -1
-        self.sample_class_ref = None
-        self.sample_params={}
-        self.metadata = {}
+        self.sample_duration = None
+        self.sample_num_records = 0
+        self.start_weekdays = None
+        self.start_00 = None
+        self.expanding = None
+
         self.test_range_delta = None
         self.train_range_delta = None
         self.test_num_records = 0
         self.train_num_records = 0
         self.train_interval = [0, 0]
         self.test_interval = [0, 0]
+        self.test_period = {'days': 0, 'hours': 0, 'minutes': 0}
+        self.train_period = {'days': 0, 'hours': 0, 'minutes': 0}
         self.sample_num = 0
-        self.sample_name = 'should_not_see_this_'
-        self.log_level = WARNING
         self.task = 0
+        self.metadata = {'sample_num': 0, 'type': None}
+
+        self.set_params(self.parsing_params)
+        self.set_params(self.sampling_params)
+
+        self._config_stack = copy.deepcopy(_config_stack)
+        try:
+            nested_config = self._config_stack.pop()
+
+        except (IndexError, AttributeError) as e:
+            # IF stack is empty, sample of this instance itself is not supposed to be sampled.
+            nested_config = dict(
+                class_ref=None,
+                kwargs=dict(
+                    parsing_params=self.parsing_params,
+                    sample_params=None,
+                    name='data_stream',
+                    task=self.task,
+                    log_level=self.log_level,
+                    _config_stack=None,
+                )
+            )
+        # Configure sample instance parameters:
+        self.nested_class_ref = nested_config['class_ref']
+        self.nested_params = nested_config['kwargs']
+        self.sample_name = '{}_w_{}_'.format(self.nested_params['name'], self.task)
+        self.nested_params['_config_stack'] = self._config_stack
 
         # Logging:
-        try:
-            self.log_level = kwargs.pop('log_level')
-
-        except KeyError:
-            pass
-
         StreamHandler(sys.stdout).push_application()
-        self.log = Logger('Base_data_{}'.format(self.task), level=self.log_level)
+        self.log = Logger('{}_{}'.format(self.name, self.task), level=self.log_level)
 
-        self.params['log_level'] = self.log_level
+        # Legacy parameter dictionary, left here for BTgym API_shell:
+        self.params = {}
+        self.params.update(self.parsing_params)
+        self.params.update(self.sampling_params)
 
-        # Update parameters with relevant kwargs:
-        self.update_params(**kwargs)
-        self.sample_params.update(self.params)
-        self.sample_params.update(self.params['sample_params'])
+    def set_params(self, params_dict):
+        """
+        Batch attribute setter.
+
+        Args:
+            params_dict: dictionary of parameters to be set as instance attributes.
+        """
+        for key, value in params_dict.items():
+            setattr(self, key, value)
+
+    def set_logger(self, level=None):
+        """
+        Sets logbook logger.
+
+        Args:
+            name:   channel name, str
+            level:  logbook.level, int
+        """
+        self.log = Logger('{}_{}'.format(self.name, self.task), level=level)
 
     def reset(self, data_filename=None, **kwargs):
         """
@@ -217,9 +255,11 @@ class BTgymDataset:
             data_filename:  [opt] string or list of strings.
             kwargs:         not used.
 
-        Returns:
-
         """
+        self._reset(data_filename=data_filename, **kwargs)
+
+    def _reset(self, data_filename=None, **kwargs):
+
         self.read_csv(data_filename)
 
         # Maximum data time gap allowed within sample as pydatetimedelta obj:
@@ -233,7 +273,7 @@ class BTgymDataset:
 
         # Train/test timedeltas:
         self.test_range_delta = datetime.timedelta(**self.test_period)
-        #self.train_range_delta = datetime.timedelta(**self.sample_duration) - datetime.timedelta(**self.test_period)
+        self.train_range_delta = datetime.timedelta(**self.sample_duration) - datetime.timedelta(**self.test_period)
 
         self.test_num_records = round(self.test_range_delta.total_seconds() / (60 * self.timeframe))
         self.train_num_records = self.data.shape[0] - self.test_num_records
@@ -254,57 +294,6 @@ class BTgymDataset:
         self.sample_num = 0
         self.is_ready = True
 
-    def set_logger(self, name='Base_data_', level=None):
-        """
-        Sets logbook logger.
-
-        Args:
-            name:   channel name, str
-            level:  logbook.level, int
-        """
-        self.log = Logger(name + str(self.task), level=level)
-
-
-    def update_params(self, **kwargs):
-        """
-        Updates instance parameters.
-
-        Args:
-            **kwargs:   any self.params entries
-        """
-        self.is_ready = False
-
-        for key, value in kwargs.items():
-            if key in self.params.keys():
-                self.params[key] = value
-
-            elif key in self.params_deprecated.keys():
-                self.log.warning(
-                    'Key: <{}> is deprecated, use: <{}> instead'.
-                        format(key, self.params_deprecated[key])
-                )
-                key1, key2 = self.params_deprecated[key]
-                self.params[key1][key2] = value
-
-            elif key in ['episode_duration']:
-                self.params[key]= value
-                self.params['sample_duration'] = value
-
-        # Unpack it as attributes:
-        for key, value in self.params.items():
-            setattr(self, key, value)
-
-        # If no sampling class specified - make it base class:
-        if self.params['sample_class_ref'] is None:
-            self.params['sample_class_ref'] = self.sample_class_ref = BTgymDataset   # TODO: base class here
-
-        else:
-            self.sample_class_ref = self.params['sample_class_ref']
-
-        # Update sample params:
-        self.sample_params.update(self.params)
-        self.sample_params.update(self.params['sample_params'])
-
     def read_csv(self, data_filename=None, force_reload=False):
         """
         Populates instance by loading data: CSV file --> pandas dataframe.
@@ -314,7 +303,7 @@ class BTgymDataset:
             force_reload:  ignore loaded data.
         """
         if self.data is not None and not force_reload:
-            self.log.debug('Dataset: data has been already loaded. Use `force_reload=True` to reload')
+            self.log.debug('data has been already loaded. Use `force_reload=True` to reload')
             return
         if data_filename:
             self.filename = data_filename  # override data source if one is given
@@ -392,7 +381,7 @@ class BTgymDataset:
 
     def to_btfeed(self):
         """
-        Performs BTgymDataset-->bt.feed conversion.
+        Performs BTgymData-->bt.feed conversion.
 
         Returns:
              bt.datafeed instance.
@@ -434,6 +423,13 @@ class BTgymDataset:
         else:
             `sample_class_ref` instance with same as above number of records.
 
+        Note:
+                Train sample start position within interval is drawn from beta-distribution
+                with default parameters b_alpha=1, b_beta=1, i.e. uniform one.
+                Beta-distribution makes skewed sampling possible , e.g.
+                to give recent episodes higher probability of being sampled, e.g.:  b_alpha=10, b_beta=0.8.
+                Test samples are always uniform one.
+
         """
         assert self.is_ready, 'Sampling attempt: data not ready. Hint: forgot to call data.reset()?'
         assert sample_type in [0, 1], 'Sampling attempt: expected sample type be in {}, got: {}'.\
@@ -458,8 +454,8 @@ class BTgymDataset:
             )
 
         sample.metadata['type'] = sample_type
-        # TODO: renamed from 'episode_num', change in aac.py:
         sample.metadata['sample_num'] = self.sample_num
+        sample.metadata['parent_sample_num']=copy.deepcopy(self.metadata['sample_num'])
         self.sample_num += 1
 
         return sample
@@ -530,13 +526,14 @@ class BTgymDataset:
             # Perform data gap check:
             if sample_len - self.max_sample_len_delta < self.max_time_gap:
                 self.log.debug('Sample accepted.')
-                # If sample OK - return sample:
-                new_instance = self.sample_class_ref(**self.sample_params)
-                new_instance.filename = name + str(adj_timedate)
+                # If sample OK - compose and return sample:
+                new_instance = self.nested_class_ref(**self.nested_params)
+                new_instance.filename = name + 'n{}_at_{}'.format(self.sample_num, adj_timedate)
                 self.log.info('Sample id: <{}>.'.format(new_instance.filename))
                 new_instance.data = sampled_data
                 new_instance.metadata['type'] = 'random_sample'
                 new_instance.metadata['first_row'] = first_row
+
                 return new_instance
 
             else:
@@ -644,13 +641,14 @@ class BTgymDataset:
             # Perform data gap check:
             if sample_len - self.max_sample_len_delta < self.max_time_gap:
                 self.log.debug('Sample accepted.')
-                # If sample OK - return episodic-dataset:
-                new_instance = self.sample_class_ref(**self.sample_params)
-                new_instance.filename = name + str(adj_timedate)
+                # If sample OK - return new dataset:
+                new_instance = self.nested_class_ref(**self.nested_params)
+                new_instance.filename = name + 'num_{}_at_{}'.format(self.sample_num, adj_timedate)
                 self.log.info('Sample id: <{}>.'.format(new_instance.filename))
                 new_instance.data = sampled_data
                 new_instance.metadata['type'] = 'interval_sample'
                 new_instance.metadata['first_row'] = first_row
+
                 return new_instance
 
             else:
@@ -664,193 +662,5 @@ class BTgymDataset:
         raise AssertionError(msg)
 
 
-class BTgymBaseDataTrial(BTgymDataset):
-    """
-    Base Data trial class. Do not use directly. Appears as result of sampling from one of DataDomain classes.
-    Holds train and test saubsets.
-    """
-    episode_params=dict(
-        # Episode sampling params:
-        sample_duration=dict(  # Maximum episode time duration in days, hours, minutes:
-            days=1,
-            hours=23,
-            minutes=55
-        ),
-        time_gap=dict(  # Maximum data time gap allowed within sample in days, hours. Thereby,
-            days=0,  # if set to be < 1 day, samples containing weekends and holidays gaps will be rejected.
-            hours=5,
-        ),
-        start_00=False,
-        start_weekdays=[0, 1, 2, 3, 4],
-        sample_class_ref=BTgymDataset
-    )
-
-    def __init__(self, episode_params=None, **kwargs):
-        if episode_params is not None:
-            self.episode_params.update(episode_params)
-
-        super(BTgymBaseDataTrial, self).__init__(**kwargs)
-
-        self.update_params(self.episode_params)
-        self.sample_params = self.params
-
-        # Timedeltas:
-        self.train_range_delta = datetime.timedelta(**self.train_period)
-        self.test_range_delta = datetime.timedelta(**self.test_period)
-        self.train_num_records = round(self.train_range_delta.total_seconds() / (60 * self.timeframe))
-        self.test_num_records = round(self.test_range_delta.total_seconds() / (60 * self.timeframe))
-
-        self.train_interval = -1
-        self.test_interval = -1
-        self.sample_num = -1
-        self.metadata = {}
-
-    def reset(self, data_filename=None, **kwargs):
-        """
-        Gets data ready.
-
-        Args:
-            data_filename:  [opt] string or list of strings.
-            kwargs:         not used.
-
-        Returns:
-
-        """
-        self.read_csv(data_filename)
-
-        # Get train/test bound scaled to actual data size:
-        break_point = round(
-            self.train_num_records * self.data.shape[0] /(self.train_num_records + self.test_num_records)
-        )
-        self.train_interval = [0, break_point]
-        self.test_interval = [break_point + 1, self.data.shape[0]]
-        self.sample_num = 0
-        self.is_ready = True
-
-    def sample(self, sample_type='train', b_alpha=1, b_beta=1):
-        """
-        Samples episode from Trial.
-
-        Args:
-            sample_type:    str, either def='train' or 'test'
-            b_alpha:        beta-distribution sampling alpha, valid for train episodes, def=1
-            b_beta:         beta-distribution sampling beta, valid for train episodes, def=1
-
-        Returns:
-            episode as BTgymDataSet instance
-
-        """
-        assert self.is_ready, 'Sampling attempt: Trial data not ready. Hint: forgot to call reset()?'
-        assert sample_type in ['train', 'test'], 'Sampling attempt: expected episode type be in {}, got: {}'.\
-            format(['train', 'test'], sample_type)
-
-        if sample_type in 'train':
-            # Get beta_distributed sample in train interval:
-            episode = self._sample_interval(self.train_interval, b_alpha=b_alpha, b_beta=b_beta, name='train_episode_')
-
-        else:
-            # Get uniform sample in test interval:
-            episode = self._sample_interval(self.test_interval, b_alpha=1, b_beta=1, name='test_episode_')
-
-        episode.metadata['type'] = sample_type
-        # TODO: rename to 'episode_num', change in aac.py:
-        episode.metadata['sample_num'] = self.sample_num
-        self.sample_num +=1
-
-        return episode
-
-
-class BTgymBaseDataDomain(BTgymDataset):
-    """
-    Base Data domain class. Do not use directly.
-    """
-    trial_params = dict(
-        # Trial sampling params:
-        train_period=dict(  # Trial time range in days, hours, minutes:
-            days=30,
-            hours=0,
-        ),
-        test_period=dict(  # Test time period in days, hours, minutes:
-            days=2,
-            hours=0,
-        ),
-        time_gap=dict(  # Maximum data gap in days, hours, minutes:
-            days=15,
-            hours=0,
-        ),
-        start_00=True,
-        start_weekdays=[0, 1, 2, 3, 4, 5, 6],
-        sample_expanding=False,
-        sample_class_ref=BTgymBaseDataTrial,
-    )
-    episode_params = {}
-
-    def __init__(self, trial_params=None, **kwargs):
-        if trial_params is not None:
-            self.trial_params.update(trial_params)
-
-        super(BTgymBaseDataDomain, self).__init__(**kwargs)
-
-        self.update_params(self.trial_params)
-
-        self.sample_params = {}
-        self.sample_params.update(trial_params)
-        self.sample_params.update(kwargs)
-
-        self.metadata = {}
-
-        # Sample of this class is Trial, so:
-        #self.start_weekdays = self.params['trial_start_weekdays']
-        #self.start_00=self.params['trial_start_00']
-        #self.time_gap = self.params['trial_time_gap']
-
-    def update_params(self, kwargs):
-        """
-        Updates instance parameters.
-
-        Args:
-            **kwargs:   any self.params entries
-        """
-        self.is_ready = False
-
-        for key, value in kwargs.items():
-            if key in self.params.keys():
-                print('key_{} was_{} became_{}'.format(key, self.params[key], value))
-                self.params[key] = value
-
-            elif key in self.params_deprecated.keys():
-                self.log.warning(
-                    'Key: <{}> is deprecated, use: <{}> instead'.
-                        format(key, self.params_deprecated[key])
-                )
-                key1, key2 = self.params_deprecated[key]
-                self.params[key1][key2] = value
-
-        # Unpack it as attributes:
-        for key, value in self.params.items():
-            setattr(self, key, value)
-
-        # If no sampling class specified - make it own class:
-        if self.params['sample_class_ref'] is None:
-            self.params['sample_class_ref'] = self.sample_class_ref = BTgymBaseDataTrial
-
-        else:
-            self.sample_class_ref = self.trial_params['sample_class_ref']
-
-        # Timedeltas:
-        self.train_range_delta = datetime.timedelta(**self.train_period)
-        self.test_range_delta = datetime.timedelta(**self.test_period)
-
-        # ...maximum Trial time duration:
-        self.max_sample_len_delta = self.train_range_delta + self.test_range_delta
-
-        # Maximum data time gap allowed within Trial sample as pydatetimedelta obj:
-        self.max_time_gap = datetime.timedelta(**self.time_gap)
-
-        # Maximum possible number of data records (rows) within trial:
-        self.sample_num_records = int(self.max_sample_len_delta.total_seconds() / (60 * self.timeframe))
-
-
-BTgymBaseData = BTgymDataset
 
 

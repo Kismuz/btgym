@@ -98,8 +98,7 @@
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="btgym.html">btgym.datafeed module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.strategy.html">btgym.strategy package</a></li>
@@ -107,12 +106,15 @@
 <li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
 </ul>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.html">btgym.algorithms package</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">btgym.research package</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#btgym-research-strategy-4-module">btgym.research.strategy_4 module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#btgym-research-policy-rl2-module">btgym.research.policy_rl2 module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.research.strategy_4">btgym.research.strategy_4 module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.research.policy_stacked_lstm">btgym.research.policy_stacked_lstm</a></li>
 </ul>
 </li>
 </ul>
@@ -180,9 +182,9 @@
             
   <div class="section" id="btgym-research-package">
 <h1>btgym.research package<a class="headerlink" href="#btgym-research-package" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="btgym-research-strategy-4-module">
-<h2>btgym.research.strategy_4 module<a class="headerlink" href="#btgym-research-strategy-4-module" title="Permalink to this headline">¶</a></h2>
-<span class="target" id="module-btgym.research.strategy_4"></span><dl class="class">
+<div class="section" id="module-btgym.research.strategy_4">
+<span id="btgym-research-strategy-4-module"></span><h2>btgym.research.strategy_4 module<a class="headerlink" href="#module-btgym.research.strategy_4" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
 <dt id="btgym.research.strategy_4.DevStrat_4_6">
 <em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_6</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_6"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_6" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="docutils">
@@ -252,8 +254,7 @@ F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
 <dl class="class">
 <dt id="btgym.research.strategy_4.DevStrat_4_7">
 <em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_7</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_7"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_7" title="Permalink to this definition">¶</a></dt>
-<dd><p>_4_6 +:
-Sliding statistics avg_period disentangled from time embedding dim;
+<dd><p>4_6 + Sliding statistics avg_period disentangled from time embedding dim;
 Only one last step sliding stats are used for internal state;
 Reward weights: 1, 2, 10 , reward scale factor aded;</p>
 <dl class="method">
@@ -283,20 +284,19 @@ F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
 <dl class="class">
 <dt id="btgym.research.strategy_4.DevStrat_4_8">
 <em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_8</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_8"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_8" title="Permalink to this definition">¶</a></dt>
-<dd><p>4_7 +:
-Uses full average_period of inner stats for use with inner_conv_encoder.</p>
+<dd><p>4_7 + Uses full average_period of inner stats for use with inner_conv_encoder.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="btgym.research.strategy_4.DevStrat_4_9">
 <em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_9</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_9"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_9" title="Permalink to this definition">¶</a></dt>
-<dd><p>Uses simple SMA market state features.</p>
+<dd><p>4_7 + Uses simple SMA market state features.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="btgym.research.strategy_4.DevStrat_4_10">
 <em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_10</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_10"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_10" title="Permalink to this definition">¶</a></dt>
-<dd><p>Reward search: log-normalised potential functions</p>
+<dd><p>4_7 + Reward search: log-normalised potential functions</p>
 <dl class="method">
 <dt id="btgym.research.strategy_4.DevStrat_4_10.get_reward">
 <code class="descname">get_reward</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_10.get_reward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_10.get_reward" title="Permalink to this definition">¶</a></dt>
@@ -324,36 +324,71 @@ F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
 <dl class="class">
 <dt id="btgym.research.strategy_4.DevStrat_4_11">
 <em class="property">class </em><code class="descclassname">btgym.research.strategy_4.</code><code class="descname">DevStrat_4_11</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_11"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_11" title="Permalink to this definition">¶</a></dt>
-<dd><p>Another set of features, grads for broker state</p>
+<dd><p>4_10 + Another set of sma-features, grads for broker state</p>
 </dd></dl>
 
 </div>
-<div class="section" id="btgym-research-policy-rl2-module">
-<h2>btgym.research.policy_rl2 module<a class="headerlink" href="#btgym-research-policy-rl2-module" title="Permalink to this headline">¶</a></h2>
-<span class="target" id="module-btgym.research.policy_rl2"></span><dl class="class">
-<dt id="btgym.research.policy_rl2.AacRL2Policy">
-<em class="property">class </em><code class="descclassname">btgym.research.policy_rl2.</code><code class="descname">AacRL2Policy</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/policy_rl2.html#AacRL2Policy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.policy_rl2.AacRL2Policy" title="Permalink to this definition">¶</a></dt>
-<dd><p>This policy class in conjunction with DataTrialIterator classes from btgym.datafeed
+<div class="section" id="module-btgym.research.policy_stacked_lstm">
+<span id="btgym-research-policy-stacked-lstm"></span><h2>btgym.research.policy_stacked_lstm<a class="headerlink" href="#module-btgym.research.policy_stacked_lstm" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.research.policy_stacked_lstm.StackedLstmPolicy">
+<em class="property">class </em><code class="descclassname">btgym.research.policy_stacked_lstm.</code><code class="descname">StackedLstmPolicy</code><span class="sig-paren">(</span><em>ob_space</em>, <em>ac_space</em>, <em>rp_sequence_size</em>, <em>lstm_class=&lt;class 'tensorflow.contrib.rnn.python.ops.rnn_cell.LayerNormBasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>256)</em>, <em>aux_estimate=False</em>, <em>encode_internal_state=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/policy_stacked_lstm.html#StackedLstmPolicy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.policy_stacked_lstm.StackedLstmPolicy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Conv.-Stacked_LSTM policy, based on <cite>NAV A3C agent</cite> architecture from</p>
+<p><cite>LEARNING TO NAVIGATE IN COMPLEX ENVIRONMENTS</cite> by Mirowski et all. and</p>
+<p><cite>LEARNING TO REINFORCEMENT LEARN</cite> by JX Wang et all.</p>
+<p>Papers:</p>
+<p><a class="reference external" href="https://arxiv.org/pdf/1611.03673.pdf">https://arxiv.org/pdf/1611.03673.pdf</a></p>
+<p><a class="reference external" href="https://arxiv.org/pdf/1611.05763.pdf">https://arxiv.org/pdf/1611.05763.pdf</a></p>
+<p>Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,
+reward and state ‘pixel_change’ predictions.
+Expects multi-modal observation as array of shape <cite>ob_space</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ob_space</strong> – dictionary of observation state shapes</li>
+<li><strong>ac_space</strong> – discrete action space shape (length)</li>
+<li><strong>rp_sequence_size</strong> – reward prediction sample length</li>
+<li><strong>lstm_class</strong> – tf.nn.lstm class</li>
+<li><strong>lstm_layers</strong> – tuple of LSTM layers sizes</li>
+<li><strong>aux_estimate</strong> – (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary.</li>
+<li><strong>not used</strong> (<em>**kwargs</em>) – </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.research.policy_stacked_lstm.AacStackedRL2Policy">
+<em class="property">class </em><code class="descclassname">btgym.research.policy_stacked_lstm.</code><code class="descname">AacStackedRL2Policy</code><span class="sig-paren">(</span><em>lstm_2_init_period=50</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/policy_stacked_lstm.html#AacStackedRL2Policy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.policy_stacked_lstm.AacStackedRL2Policy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attempt to implement two-level RL^2
+This policy class in conjunction with DataDomain classes from btgym.datafeed
 is aimed to implement RL^2 algorithm by Duan et al.</p>
 <p>Paper:
 <cite>FAST REINFORCEMENT LEARNING VIA SLOW REINFORCEMENT LEARNING</cite>,
 <a class="reference external" href="https://arxiv.org/pdf/1611.02779.pdf">https://arxiv.org/pdf/1611.02779.pdf</a></p>
 <p>The only difference from Base policy is <cite>get_initial_features()</cite> method, which has been changed
 either to reset RNN context to zero-state or return context from the end of previous episode,
-depending on episode metadata received.</p>
+depending on episode metadata received or <a href="#id1"><span class="problematic" id="id2">`</span></a>lstm_2_init_period’ parameter.</p>
 <dl class="method">
-<dt id="btgym.research.policy_rl2.AacRL2Policy.get_initial_features">
-<code class="descname">get_initial_features</code><span class="sig-paren">(</span><em>state</em>, <em>context=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/policy_rl2.html#AacRL2Policy.get_initial_features"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.policy_rl2.AacRL2Policy.get_initial_features" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.research.policy_stacked_lstm.AacStackedRL2Policy.get_initial_features">
+<code class="descname">get_initial_features</code><span class="sig-paren">(</span><em>state</em>, <em>context=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/policy_stacked_lstm.html#AacStackedRL2Policy.get_initial_features"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.policy_stacked_lstm.AacStackedRL2Policy.get_initial_features" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns RNN initial context.
-Basically, RNN context is reset if:</p>
-<blockquote>
-<div><ul class="simple">
+RNN_1 (lower) context is reset at every call.</p>
+<dl class="docutils">
+<dt>RNN_2 (upper) context is reset:</dt>
+<dd><ul class="first last simple">
+<li>every <a href="#id3"><span class="problematic" id="id4">`</span></a>lstm_2_init_period’ episodes;</li>
 <li>episode  initial <cite>state</cite> <cite>trial_num</cite> metadata has been changed form last call (new train trial started);</li>
 <li>episode metatdata <cite>type</cite> is non-zero (test episode);</li>
 <li>no context arg is provided (initial episode of training);</li>
+<li>… else carries context on to new episode;</li>
 </ul>
-</div></blockquote>
-<p>Else, it assumes this is new episode of same train trial has started and carries context on to new episode;</p>
+</dd>
+</dl>
 <p>Episode metadata are provided by DataTrialIterator, which is shaping Trial data distribution in this case,
 and delivered through env.strategy as separate key in observation dictionary.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -366,7 +401,10 @@ and delivered through env.strategy as separate key in observation dictionary.</p
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">RNN zero-state tuple if new trial is detected or same <cite>context</cite>.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">2_RNN zero-state tuple.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><em>KeyError if [`metadata`]</em> – [<cite>trial_num</cite>,`type`] keys not found</p>
 </td>
 </tr>
 </tbody>

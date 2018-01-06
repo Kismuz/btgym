@@ -1,12 +1,4 @@
 
-btgym\.datafeed module
-----------------------
-
-.. automodule:: btgym.datafeed
-    :members:
-
-
-
 btgym\.dataserver module
 ------------------------
 

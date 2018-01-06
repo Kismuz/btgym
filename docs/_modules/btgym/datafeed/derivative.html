@@ -1,0 +1,542 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.datafeed.derivative &mdash; BTGym 0.0.6 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="BTGym 0.0.6 documentation" href="../../../index.html"/>
+        <link rel="up" title="btgym.datafeed" href="../datafeed.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework">A3C framework</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../datafeed.html">btgym.datafeed</a> &raquo;</li>
+        
+      <li>btgym.datafeed.derivative</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for btgym.datafeed.derivative</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2017-2018 Andrew Muzikin</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">###############################################################################</span>
+
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">WARNING</span>
+<span class="kn">from</span> <span class="nn">.base</span> <span class="k">import</span> <span class="n">BTgymBaseData</span>
+
+
+<div class="viewcode-block" id="BTgymEpisode"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.derivative.BTgymEpisode">[docs]</a><span class="k">class</span> <span class="nc">BTgymEpisode</span><span class="p">(</span><span class="n">BTgymBaseData</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Low-level data class.</span>
+<span class="sd">    Implements `Episode` object containing single episode data sequence.</span>
+<span class="sd">    Doesnt allows further sampling and data loading.</span>
+<span class="sd">    Supposed to be converted to bt.datafeed object via .to_btfeed() method.</span>
+<span class="sd">    Do not use directly.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">sampling_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">task</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
+            <span class="n">_config_stack</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">BTgymEpisode</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
+            <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
+            <span class="n">sampling_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode&#39;</span><span class="p">,</span>
+            <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
+            <span class="n">_config_stack</span><span class="o">=</span><span class="n">_config_stack</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Episode object doesnt support .reset() method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Episode object doesnt support .sample() method.&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BTgymDataTrial"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.derivative.BTgymDataTrial">[docs]</a><span class="k">class</span> <span class="nc">BTgymDataTrial</span><span class="p">(</span><span class="n">BTgymBaseData</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Intermediate-level data class.</span>
+<span class="sd">    Implements conception of `Trial` object.</span>
+<span class="sd">    Supports data train/test split.</span>
+<span class="sd">    Do not use directly.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">trial_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">nested_class_ref</span><span class="o">=</span><span class="n">BTgymEpisode</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">sampling_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">task</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
+            <span class="n">_config_stack</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+
+
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            filename:           not used;</span>
+<span class="sd">            sampling_params:    dict, sample retrieving options, see base class description for details;</span>
+<span class="sd">            task:               int, optional;</span>
+<span class="sd">            parsing_params:     csv parsing options, see base class description for details;</span>
+<span class="sd">            log_level:          int, optional, logbook.level;</span>
+<span class="sd">            _config_stack:      dict, holding configuration for nested child samples;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">BTgymDataTrial</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
+            <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
+            <span class="n">sampling_params</span><span class="o">=</span><span class="n">sampling_params</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Trial&#39;</span><span class="p">,</span>
+            <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
+            <span class="n">_config_stack</span><span class="o">=</span><span class="n">_config_stack</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BTgymRandomDataDomain"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.derivative.BTgymRandomDataDomain">[docs]</a><span class="k">class</span> <span class="nc">BTgymRandomDataDomain</span><span class="p">(</span><span class="n">BTgymBaseData</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Top-level data class. Implements pipe::</span>
+
+<span class="sd">        Domain.sample() --&gt; Trial.sample() --&gt; Episode.to_btfeed() --&gt; bt.Startegy</span>
+
+<span class="sd">    This particular class randomly samples Trials from provided dataset.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        source/target domain split is not implemented yet.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">trial_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">episode_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;RndDataDomain&#39;</span><span class="p">,</span>
+            <span class="n">task</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            filename:           Str or list of str, file_names containing CSV historic data;</span>
+<span class="sd">            parsing_params:     csv parsing options, see base class description for details;</span>
+<span class="sd">            trial_params:       dict, describes trial parameters, should contain keys:</span>
+<span class="sd">                                {sample_duration, time_gap, start_00, start_weekdays, test_period, expanding};</span>
+<span class="sd">            episode_params:     dict, describes episode parameters, should contain keys:</span>
+<span class="sd">                                {sample_duration, time_gap, start_00, start_weekdays};</span>
+<span class="sd">            name:               str, optional</span>
+<span class="sd">            task:               int, optional</span>
+<span class="sd">            log_level:          int, logbook.level</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">parsing_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">parsing_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="c1"># Default parameters for source-specific CSV datafeed class,</span>
+                <span class="c1"># correctly parses 1 minute Forex generic ASCII</span>
+                <span class="c1"># data files from www.HistData.com:</span>
+
+                <span class="c1"># CSV to Pandas params.</span>
+                <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;;&#39;</span><span class="p">,</span>
+                <span class="n">header</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">parse_dates</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;open&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">],</span>
+
+                <span class="c1"># Pandas to BT.feeds params:</span>
+                <span class="n">timeframe</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># 1 minute.</span>
+                <span class="n">datetime</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="nb">open</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="n">low</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                <span class="n">close</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                <span class="n">volume</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">openinterest</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Hacky cause we want test period to be attr of Trial instance:</span>
+            <span class="n">trial_test_period</span> <span class="o">=</span> <span class="n">trial_params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;test_period&#39;</span><span class="p">)</span>
+
+        <span class="k">except</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+            <span class="n">trial_test_period</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;days&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+
+        <span class="n">episode_params</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;test_period&#39;</span><span class="p">:</span> <span class="n">trial_test_period</span><span class="p">})</span>
+
+        <span class="n">episode_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">class_ref</span><span class="o">=</span><span class="n">BTgymEpisode</span><span class="p">,</span>
+            <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
+                <span class="n">sampling_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Episode&#39;</span><span class="p">,</span>
+                <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+                <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
+                <span class="n">_config_stack</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">trial_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">class_ref</span><span class="o">=</span><span class="n">BTgymDataTrial</span><span class="p">,</span>
+            <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
+                <span class="n">sampling_params</span><span class="o">=</span><span class="n">episode_params</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;trial&#39;</span><span class="p">,</span>
+                <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+                <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
+                <span class="n">_config_stack</span><span class="o">=</span><span class="p">[</span><span class="n">episode_config</span><span class="p">],</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">BTgymRandomDataDomain</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
+            <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
+            <span class="n">sampling_params</span><span class="o">=</span><span class="n">trial_params</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
+            <span class="n">_config_stack</span><span class="o">=</span><span class="p">[</span><span class="n">episode_config</span><span class="p">,</span> <span class="n">trial_config</span><span class="p">]</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BTgymDataset"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.derivative.BTgymDataset">[docs]</a><span class="k">class</span> <span class="nc">BTgymDataset</span><span class="p">(</span><span class="n">BTgymRandomDataDomain</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simple top-level data class, implements direct random episode sampling from data set induced by csv file,</span>
+<span class="sd">    i.e it is a special case for `Trial=def=DataDomain`.</span>
+<span class="sd">    Doesnt support train/test split. Mainly for demo and debug purposes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">params_deprecated</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+        <span class="n">episode_len_days</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;episode_duration&#39;</span><span class="p">,</span> <span class="s1">&#39;days&#39;</span><span class="p">),</span>
+        <span class="n">episode_len_hours</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;episode_duration&#39;</span><span class="p">,</span><span class="s1">&#39;hours&#39;</span><span class="p">),</span>
+        <span class="n">episode_len_minutes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;episode_duration&#39;</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">),</span>
+        <span class="n">time_gap_days</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;time_gap&#39;</span><span class="p">,</span> <span class="s1">&#39;days&#39;</span><span class="p">),</span>
+        <span class="n">time_gap_hours</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;time_gap&#39;</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">episode_duration</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">time_gap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">start_00</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">start_weekdays</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;SimpleDataSet&#39;</span><span class="p">,</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            filename:           Str or list of str, file_names containing CSV historic data;</span>
+<span class="sd">            episode_duration:   dict, maximum episode duration in d:h:m, def={&#39;days&#39;: 0, &#39;hours&#39;: 23, &#39;minutes&#39;: 55},</span>
+<span class="sd">                                alias for `sample_duration`;</span>
+<span class="sd">            time_gap:           dict, data time gap allowed within sample in d:h:m, def={&#39;days&#39;: 0, &#39;hours&#39;: 6};</span>
+<span class="sd">            start_00:           bool, episode start point will be shifted back to first record;</span>
+<span class="sd">                                of the day (usually 00:00), def=False;</span>
+<span class="sd">            start_weekdays:     list, only weekdays from the list will be used for sample start,</span>
+<span class="sd">                                def=[0, 1, 2, 3, 4, 5, 6];</span>
+<span class="sd">            parsing_params:     csv parsing options, see base class description for details;</span>
+<span class="sd">            name:               str, instance name;</span>
+<span class="sd">            log_level:          int, logbook.level;</span>
+<span class="sd">            **kwargs:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Default sample time duration:</span>
+        <span class="k">if</span> <span class="n">episode_duration</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_episode_duration</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">days</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">hours</span><span class="o">=</span><span class="mi">23</span><span class="p">,</span>
+                    <span class="n">minutes</span><span class="o">=</span><span class="mi">55</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_episode_duration</span> <span class="o">=</span> <span class="n">episode_duration</span>
+
+        <span class="c1"># Default data time gap allowed within sample:</span>
+        <span class="k">if</span> <span class="n">time_gap</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_time_gap</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">days</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">hours</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_time_gap</span> <span class="o">=</span> <span class="n">time_gap</span>
+
+        <span class="c1"># Default weekdays:</span>
+        <span class="k">if</span> <span class="n">start_weekdays</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">start_weekdays</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]</span>
+
+        <span class="c1"># Insert deprecated params, if any:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params_deprecated</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s1">&#39;Key: &lt;</span><span class="si">{}</span><span class="s1">&gt; is deprecated, use: &lt;</span><span class="si">{}</span><span class="s1">&gt; instead&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params_deprecated</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+                <span class="p">)</span>
+                <span class="n">key1</span><span class="p">,</span> <span class="n">key2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params_deprecated</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="n">attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key1</span><span class="p">)</span>
+                <span class="n">attr</span><span class="p">[</span><span class="n">key2</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="n">sampling_params</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+            <span class="n">sample_duration</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_episode_duration</span><span class="p">,</span>
+            <span class="n">start_weekdays</span><span class="o">=</span><span class="n">start_weekdays</span><span class="p">,</span>
+            <span class="n">start_00</span><span class="o">=</span><span class="n">start_00</span><span class="p">,</span>
+            <span class="n">time_gap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_time_gap</span><span class="p">,</span>
+            <span class="n">test_period</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;days&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">},</span>
+            <span class="n">expanding</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">BTgymDataset</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
+            <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
+            <span class="n">trial_params</span><span class="o">=</span><span class="n">sampling_params</span><span class="p">,</span>
+            <span class="n">episode_params</span><span class="o">=</span><span class="n">sampling_params</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.6',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

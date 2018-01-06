@@ -16,46 +16,39 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ###############################################################################
-import datetime
 
+from logbook import WARNING
 from .base import BTgymBaseData
 
 
 class BTgymEpisode(BTgymBaseData):
     """
-    End-user data class.
-    `Episode` object contains single episode data sequence.
+    Low-level data class.
+    Implements `Episode` object containing single episode data sequence.
     Doesnt allows further sampling and data loading.
-    Supposed to be converted to bt.datafeed object.
+    Supposed to be converted to bt.datafeed object via .to_btfeed() method.
+    Do not use directly.
     """
-    base_params = dict(
-        filename=None,
-        sample_class_ref=None,
-        start_weekdays=[],
-        start_00=False,
-        sample_duration=dict(
-            days=0,
-            hours=0,
-            minutes=0
-        ),
-        time_gap=dict(
-            days=0,
-            hours=0,
-        ),
-        test_period=dict(
-            days=0,
-            hours=0,
-            minutes=0
-        ),
-        sample_expanding=None,
-        sample_id=''
-    )
+    def __init__(
+            self,
+            filename=None,
+            parsing_params=None,
+            sampling_params=None,
+            name=None,
+            task=0,
+            log_level=WARNING,
+            _config_stack=None,
+    ):
 
-    def __init__(self, **kwargs):
-        self.base_params.update(kwargs)
-        super(BTgymEpisode, self).__init__(**self.base_params)
-        assert datetime.timedelta(**self.test_period).total_seconds() == 0,\
-            'Episode object doesnt support subset split, got: test_period={}'.format(self.test_period)
+        super(BTgymEpisode, self).__init__(
+            filename=filename,
+            parsing_params=parsing_params,
+            sampling_params=None,
+            name='episode',
+            task=task,
+            log_level=log_level,
+            _config_stack=_config_stack
+        )
 
     def reset(self, **kwargs):
         raise RuntimeError('Episode object doesnt support .reset() method.')
@@ -65,123 +58,238 @@ class BTgymEpisode(BTgymBaseData):
 
 
 class BTgymDataTrial(BTgymBaseData):
-    episode_params = dict(
-        sample_class_ref=BTgymEpisode,
-        start_weekdays=[0, 1, 2, 3, 4],
-        start_00=False,
-        sample_duration=dict(
-            days=1,
-            hours=23,
-            minutes=55
-        ),
-        time_gap=dict(
-            days=0,
-            hours=5,
-            minutes=0
-        ),
-        test_period=dict(
-            days=0,
-            hours=0,
-            minutes=0
-        ),
-        sample_expanding=None,
-        sample_name='episode_',
-        metadata=dict(
-            sample_num=0,
-            type=0,
-            trial_num=0,
-        )
-    )
-
-    def __init__(self, episode_params=None, **kwargs):
-        if episode_params is not None:
-            self.episode_params.update(episode_params)
-        self.episode_params.update(kwargs)
-        super(BTgymDataTrial, self).__init__(**self.episode_params)
-
-
-class BTgymDataDomain(BTgymBaseData):
-    domain_params = dict(
-        test_period=dict(
-            days=0,
-            hours=0,
-            minutes=0
-        )
-    )
+    """
+    Intermediate-level data class.
+    Implements conception of `Trial` object.
+    Supports data train/test split.
+    Do not use directly.
+    """
     trial_params = dict(
-        sample_class_ref=BTgymDataTrial,
-        start_weekdays=[0, 1, 2, 3, 4, 5, 6],
-        start_00=False,
-        sample_duration=dict(
-            days=29,
-            hours=23,
-            minutes=55
-        ),
-        time_gap=dict(
-            days=15,
-            hours=0,
-            minutes=0
-        ),
-        test_period=dict(
-            days=0,
-            hours=0,
-            minutes=0
-        ),
-        sample_expanding=None,
-        sample_name='trial_',
+        nested_class_ref=BTgymEpisode,
     )
-    episode_params = dict(
-        sample_class_ref=BTgymEpisode,
-        start_weekdays=[0, 1, 2, 3],
-        start_00=False,
-        sample_duration=dict(
-            days=1,
-            hours=23,
-            minutes=55
-        ),
-        time_gap=dict(
-            days=5,
-            hours=0,
-            minutes=0
-        ),
-        test_period=dict(
-            days=0,
-            hours=0,
-            minutes=0
-        ),
-        sample_expanding=None,
-        sample_name='episode_',
-        metadata=dict(
-            sample_num=0,
-            type=0,
-            trial_num=0,
+
+    def __init__(
+            self,
+            filename=None,
+            parsing_params=None,
+            sampling_params=None,
+            name=None,
+            task=0,
+            log_level=WARNING,
+            _config_stack=None,
+
+
+    ):
+        """
+        Args:
+            filename:           not used;
+            sampling_params:    dict, sample retrieving options, see base class description for details;
+            task:               int, optional;
+            parsing_params:     csv parsing options, see base class description for details;
+            log_level:          int, optional, logbook.level;
+            _config_stack:      dict, holding configuration for nested child samples;
+        """
+
+        super(BTgymDataTrial, self).__init__(
+            filename=filename,
+            parsing_params=parsing_params,
+            sampling_params=sampling_params,
+            name='Trial',
+            task=task,
+            log_level=log_level,
+            _config_stack=_config_stack
         )
+
+
+class BTgymRandomDataDomain(BTgymBaseData):
+    """
+    Top-level data class. Implements pipe::
+
+        Domain.sample() --> Trial.sample() --> Episode.to_btfeed() --> bt.Startegy
+
+    This particular class randomly samples Trials from provided dataset.
+
+    Note:
+        source/target domain split is not implemented yet.
+    """
+    def __init__(
+            self,
+            filename=None,
+            parsing_params=None,
+            trial_params=None,
+            episode_params=None,
+            name='RndDataDomain',
+            task=0,
+            log_level=WARNING,
+    ):
+        """
+        Args:
+            filename:           Str or list of str, file_names containing CSV historic data;
+            parsing_params:     csv parsing options, see base class description for details;
+            trial_params:       dict, describes trial parameters, should contain keys:
+                                {sample_duration, time_gap, start_00, start_weekdays, test_period, expanding};
+            episode_params:     dict, describes episode parameters, should contain keys:
+                                {sample_duration, time_gap, start_00, start_weekdays};
+            name:               str, optional
+            task:               int, optional
+            log_level:          int, logbook.level
+        """
+        if parsing_params is None:
+            parsing_params = dict(
+                # Default parameters for source-specific CSV datafeed class,
+                # correctly parses 1 minute Forex generic ASCII
+                # data files from www.HistData.com:
+
+                # CSV to Pandas params.
+                sep=';',
+                header=0,
+                index_col=0,
+                parse_dates=True,
+                names=['open', 'high', 'low', 'close', 'volume'],
+
+                # Pandas to BT.feeds params:
+                timeframe=1,  # 1 minute.
+                datetime=0,
+                open=1,
+                high=2,
+                low=3,
+                close=4,
+                volume=-1,
+                openinterest=-1,
+            )
+
+        try:
+            # Hacky cause we want test period to be attr of Trial instance:
+            trial_test_period = trial_params.pop('test_period')
+
+        except(AttributeError, KeyError):
+            trial_test_period = {'days': 0, 'hours': 0, 'minutes': 0}
+
+        episode_params.update({'test_period': trial_test_period})
+
+        episode_config = dict(
+            class_ref=BTgymEpisode,
+            kwargs=dict(
+                parsing_params=parsing_params,
+                sampling_params=None,
+                name='Episode',
+                task=task,
+                log_level=log_level,
+                _config_stack=None,
+            ),
+        )
+        trial_config = dict(
+            class_ref=BTgymDataTrial,
+            kwargs=dict(
+                parsing_params=parsing_params,
+                sampling_params=episode_params,
+                name='trial',
+                task=task,
+                log_level=log_level,
+                _config_stack=[episode_config],
+            ),
+        )
+
+        super(BTgymRandomDataDomain, self).__init__(
+            filename=filename,
+            parsing_params=parsing_params,
+            sampling_params=trial_params,
+            name=name,
+            task=task,
+            log_level=log_level,
+            _config_stack=[episode_config, trial_config]
+        )
+
+
+class BTgymDataset(BTgymRandomDataDomain):
+    """
+    Simple top-level data class, implements direct random episode sampling from data set induced by csv file,
+    i.e it is a special case for `Trial=def=DataDomain`.
+    Doesnt support train/test split. Mainly for demo and debug purposes.
+    """
+    params_deprecated=dict(
+        episode_len_days=('episode_duration', 'days'),
+        episode_len_hours=('episode_duration','hours'),
+        episode_len_minutes=('episode_duration', 'minutes'),
+        time_gap_days=('time_gap', 'days'),
+        time_gap_hours=('time_gap', 'hours')
     )
 
-    def __init__(self, trial_params=None, episode_params=None, **kwargs):
-        if trial_params is not None:
-            self.trial_params.update(trial_params)
+    def __init__(
+            self,
+            filename=None,
+            episode_duration=None,
+            time_gap=None,
+            start_00=False,
+            start_weekdays=None,
+            parsing_params=None,
+            name='SimpleDataSet',
+            log_level=WARNING,
+            **kwargs
+    ):
+        """
+        Args:
+            filename:           Str or list of str, file_names containing CSV historic data;
+            episode_duration:   dict, maximum episode duration in d:h:m, def={'days': 0, 'hours': 23, 'minutes': 55},
+                                alias for `sample_duration`;
+            time_gap:           dict, data time gap allowed within sample in d:h:m, def={'days': 0, 'hours': 6};
+            start_00:           bool, episode start point will be shifted back to first record;
+                                of the day (usually 00:00), def=False;
+            start_weekdays:     list, only weekdays from the list will be used for sample start,
+                                def=[0, 1, 2, 3, 4, 5, 6];
+            parsing_params:     csv parsing options, see base class description for details;
+            name:               str, instance name;
+            log_level:          int, logbook.level;
+            **kwargs:
+        """
+        # Default sample time duration:
+        if episode_duration is None:
+            self._episode_duration = dict(
+                    days=0,
+                    hours=23,
+                    minutes=55,
+                )
+        else:
+            self._episode_duration = episode_duration
 
-        self.trial_params.update(kwargs)
-        # hacky:
-        sample_test_period = self.trial_params['test_period']
-        self.trial_params.update(self.domain_params)
+        # Default data time gap allowed within sample:
+        if time_gap is None:
+            self._time_gap = dict(
+                days=0,
+                hours=6,
+            )
+        else:
+            self._time_gap = time_gap
 
-        if episode_params is not None:
-            self.episode_params.update(episode_params)
+        # Default weekdays:
+        if start_weekdays is None:
+            start_weekdays = [0, 1, 2, 3, 4, 5, 6]
 
-        super(BTgymDataDomain, self).__init__(**self.trial_params)
-        self.sample_params.update(self.episode_params)
-        self.sample_params.update({'test_period': sample_test_period})
+        # Insert deprecated params, if any:
+        for key, value in kwargs.items():
+            if key in self.params_deprecated.keys():
+                self.log.warning(
+                    'Key: <{}> is deprecated, use: <{}> instead'.format(key, self.params_deprecated[key])
+                )
+                key1, key2 = self.params_deprecated[key]
+                attr = getattr(self, key1)
+                attr[key2] = value
 
-
-class BTgymSimpleData(BTgymDataDomain):
-
-    def __init__(self, **kwargs):
-        # Depricated:
-        if 'episode_duration' in kwargs.keys():
-            kwargs['sample_duration'] = kwargs['episode_duration']
-
-        super(BTgymSimpleData, self).__init__(trial_params=kwargs, episode_params=kwargs, **kwargs)
+        sampling_params=dict(
+            sample_duration=self._episode_duration,
+            start_weekdays=start_weekdays,
+            start_00=start_00,
+            time_gap=self._time_gap,
+            test_period={'days': 0, 'hours': 0, 'minutes': 0},
+            expanding=False
+        )
+        super(BTgymDataset, self).__init__(
+            filename=filename,
+            parsing_params=parsing_params,
+            trial_params=sampling_params,
+            episode_params=sampling_params,
+            name=name,
+            log_level=log_level,
+        )
 
 

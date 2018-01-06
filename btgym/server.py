@@ -17,8 +17,6 @@
 #
 ###############################################################################
 
-#import logging
-
 import multiprocessing
 import gc
 import psutil
@@ -205,7 +203,7 @@ class BTgymServer(multiprocessing.Process):
         render=None,
         network_address=None,
         data_network_address=None,
-        connect_timeout=60,
+        connect_timeout=90,
         log_level=None,
         task=0,
     ):
@@ -217,7 +215,7 @@ class BTgymServer(multiprocessing.Process):
             network_address:        environmnet communication, str
             data_network_address:   data communication, str
             connect_timeout:        seconds, int
-            log_level:              logbook log level
+            log_level:              int, logbook.level
         """
 
         super(BTgymServer, self).__init__()

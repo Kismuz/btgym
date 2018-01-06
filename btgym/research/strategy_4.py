@@ -118,7 +118,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
         # Episodic metadata:
         self.state['metadata'] = {
             'type': np.asarray(self.p.metadata['type']),
-            'trial_num': np.asarray(self.p.metadata['trial_num']),
+            'trial_num': np.asarray(0), # plug, should be key: 'parent_sample_num'
             'sample_num': np.asarray(self.p.metadata['sample_num']),
             'first_row': np.asarray(self.p.metadata['first_row'])
         }
@@ -248,8 +248,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
 class DevStrat_4_7(DevStrat_4_6):
     """
-    _4_6 +:
-    Sliding statistics avg_period disentangled from time embedding dim;
+    4_6 + Sliding statistics avg_period disentangled from time embedding dim;
     Only one last step sliding stats are used for internal state;
     Reward weights: 1, 2, 10 , reward scale factor aded;
     """
@@ -419,8 +418,7 @@ class DevStrat_4_7(DevStrat_4_6):
 
 class DevStrat_4_8(DevStrat_4_7):
     """
-    4_7 +:
-    Uses full average_period of inner stats for use with inner_conv_encoder.
+    4_7 + Uses full average_period of inner stats for use with inner_conv_encoder.
     """
     # Time embedding period:
     time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
@@ -513,7 +511,7 @@ class DevStrat_4_8(DevStrat_4_7):
 
 class DevStrat_4_9(DevStrat_4_7):
     """
-    Uses simple SMA market state features.
+    4_7 + Uses simple SMA market state features.
     """
     # Time embedding period:
     time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
@@ -625,7 +623,7 @@ class DevStrat_4_9(DevStrat_4_7):
 
 class DevStrat_4_10(DevStrat_4_7):
     """
-    Reward search: log-normalised potential functions
+    4_7 + Reward search: log-normalised potential functions
     """
 
     def get_reward(self):
@@ -700,7 +698,7 @@ class DevStrat_4_10(DevStrat_4_7):
 
 class DevStrat_4_11(DevStrat_4_10):
     """
-    Another set of features, grads for broker state
+    4_10 + Another set of sma-features, grads for broker state
     """
     # Time embedding period:
     time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params

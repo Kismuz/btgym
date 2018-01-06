@@ -41,7 +41,8 @@ from btgym.rendering import BTgymNullRendering
 
 
 class BTgymEnv(gym.Env):
-    """OpenAI Gym environment wrapper for Backtrader backtesting/trading library.
+    """
+    OpenAI Gym API shell for Backtrader backtesting/trading library.
     """
     # Datafeed Server management:
     data_master = True
@@ -236,7 +237,7 @@ class BTgymEnv(gym.Env):
                 msg = 'Base Dataset class used.'
 
             # Append logging:
-            self.dataset.set_logger('Data_domain_', self.log_level)
+            self.dataset.set_logger(self.log_level)
 
             # Update params -2: pull from dataset, remove used kwargs:
             self.params['dataset'].update(self.dataset.params)

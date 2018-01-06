@@ -9,12 +9,16 @@ from btgym.algorithms import BaseAacPolicy
 class StackedLstmPolicy(BaseAacPolicy):
     """
     Conv.-Stacked_LSTM policy, based on `NAV A3C agent` architecture from
+
     `LEARNING TO NAVIGATE IN COMPLEX ENVIRONMENTS` by Mirowski et all. and
+
     `LEARNING TO REINFORCEMENT LEARN` by JX Wang et all.
 
     Papers:
-        https://arxiv.org/pdf/1611.03673.pdf
-        https://arxiv.org/pdf/1611.05763.pdf
+
+    https://arxiv.org/pdf/1611.03673.pdf
+
+    https://arxiv.org/pdf/1611.05763.pdf
     """
 
     def __init__(self,
@@ -400,9 +404,8 @@ class StackedLstmPolicy(BaseAacPolicy):
 
 class AacStackedRL2Policy(StackedLstmPolicy):
     """
-    ATTEMPT:
-    implement two-level RL^2
-    This policy class in conjunction with DataTrialIterator classes from btgym.datafeed
+    Attempt to implement two-level RL^2
+    This policy class in conjunction with DataDomain classes from btgym.datafeed
     is aimed to implement RL^2 algorithm by Duan et al.
 
     Paper:
@@ -411,7 +414,7 @@ class AacStackedRL2Policy(StackedLstmPolicy):
 
     The only difference from Base policy is `get_initial_features()` method, which has been changed
     either to reset RNN context to zero-state or return context from the end of previous episode,
-    depending on episode metadata received.
+    depending on episode metadata received or `lstm_2_init_period' parameter.
     """
     def __init__(self, lstm_2_init_period=50, **kwargs):
         super(AacStackedRL2Policy, self).__init__(**kwargs)
@@ -443,9 +446,6 @@ class AacStackedRL2Policy(StackedLstmPolicy):
 
         Raises:
             KeyError if [`metadata`]:[`trial_num`,`type`] keys not found
-
-        Note:
-            to work correctly, `trial_num' should increase at least sometimes or level_2 RNN never gets reset.
         """
         try:
             sess = tf.get_default_session()

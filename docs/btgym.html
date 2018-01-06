@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>btgym.datafeed module &mdash; BTGym 0.0.6 documentation</title>
+  <title>btgym.dataserver module &mdash; BTGym 0.0.6 documentation</title>
   
 
   
@@ -99,13 +99,15 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">btgym.datafeed module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="#module-btgym.dataserver">btgym.dataserver module</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#module-btgym.spaces">btgym.spaces module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.datafeed.html">btgym.datafeed package</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.html">btgym.algorithms package</a></li>
@@ -156,7 +158,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>btgym.datafeed module</li>
+      <li>btgym.dataserver module</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -175,456 +177,11 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="module-btgym.datafeed">
-<span id="btgym-datafeed-module"></span><h1>btgym.datafeed module<a class="headerlink" href="#module-btgym.datafeed" title="Permalink to this headline">¶</a></h1>
-<dl class="class">
-<dt id="btgym.datafeed.BTgymDataset">
-<em class="property">class </em><code class="descclassname">btgym.datafeed.</code><code class="descname">BTgymDataset</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Base Backtrader.feeds data provider class.</p>
-<p>Enables Pipe:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CSV</span><span class="p">[</span><span class="n">source</span><span class="p">]</span><span class="o">--&gt;</span><span class="n">pandas</span><span class="p">[</span><span class="k">for</span> <span class="n">efficient</span> <span class="n">sampling</span><span class="p">]</span><span class="o">--&gt;</span><span class="n">bt</span><span class="o">.</span><span class="n">feeds</span> <span class="n">routine</span><span class="o">.</span>
-</pre></div>
-</div>
-<p>Implements random and positional episode data sampling.</p>
-<p>Suggested usage:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">---</span><span class="n">user</span> <span class="n">defined</span> <span class="o">---</span>
-<span class="n">Dataset</span> <span class="o">=</span> <span class="n">BTgymDataset</span><span class="p">(</span><span class="o">&lt;</span><span class="n">filename</span><span class="o">&gt;</span><span class="p">,</span><span class="o">&lt;</span><span class="n">params</span><span class="o">&gt;</span><span class="p">)</span>
-<span class="o">---</span><span class="n">inner</span> <span class="n">BTgymServer</span> <span class="n">routine</span><span class="o">---</span>
-<span class="n">Dataset</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="o">&lt;</span><span class="n">filename</span><span class="o">&gt;</span><span class="p">)</span>
-<span class="n">Repeat</span> <span class="n">until</span> <span class="n">bored</span><span class="p">:</span>
-    <span class="n">EpisodeDataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">get_sample</span><span class="p">()</span>
-    <span class="n">DataFeed</span> <span class="o">=</span> <span class="n">EpisodeDataset</span><span class="o">.</span><span class="n">to_btfeed</span><span class="p">()</span>
-    <span class="n">Engine</span> <span class="o">=</span> <span class="n">bt</span><span class="o">.</span><span class="n">Cerebro</span><span class="p">()</span>
-    <span class="n">Engine</span><span class="o">.</span><span class="n">adddata</span><span class="p">(</span><span class="n">DataFeed</span><span class="p">)</span>
-    <span class="n">Engine</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
-</pre></div>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>filename</strong> – Str or list of str, should be given either here or when calling read_csv(),
-see <cite>Notes</cite>.</li>
-<li><strong>CSV to Pandas parsing</strong> (<em>specific_params</em>) – </li>
-<li><strong>sep</strong> – ‘;’</li>
-<li><strong>header</strong> – 0</li>
-<li><strong>index_col</strong> – 0</li>
-<li><strong>parse_dates</strong> – True</li>
-<li><strong>names</strong> – [‘open’, ‘high’, ‘low’, ‘close’, ‘volume’]</li>
-<li><strong>Pandas to BT.feeds conversion</strong> (<em>specific_params</em>) – </li>
-<li><strong>timeframe=1</strong> – 1 minute.</li>
-<li><strong>datetime</strong> – 0</li>
-<li><strong>open</strong> – 1</li>
-<li><strong>high</strong> – 2</li>
-<li><strong>low</strong> – 3</li>
-<li><strong>close</strong> – 4</li>
-<li><strong>volume</strong> – -1</li>
-<li><strong>openinterest</strong> – -1</li>
-<li><strong>Sampling</strong> (<em>specific_params</em>) – </li>
-<li><strong>start_weekdays</strong> – [0, 1, 2, 3, ] - Only weekdays from the list will be used for episode start.</li>
-<li><strong>start_00</strong> – True - Episode start time will be set to first record of the day
-(usually 00:00).</li>
-<li><strong>episode_duration</strong> – {‘days’: 1, ‘hours’: 23, ‘minutes’: 55} - Maximum episode time duration
-in days, hours, minutes</li>
-<li><strong>time_gap</strong> – {‘hours’: 5} - Data omittance threshold: maximum data time gap allowed
-within sample in days, hours. Thereby, if set to be &lt; 1 day,
-samples containing weekends and holidays gaps will be rejected.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<ul class="last simple">
-<li>CSV file can contain duplicate records, cheks will be performed and all duplicates will be removed;</li>
-<li>CSV file should be properly sorted by date_time in ascending order, no sorting checks performed.</li>
-<li>When supplying list of file_names, all files should be also listed ascending by their time period,
-no correct sampling will be possible otherwise.</li>
-<li>Default parameters are source-specific and made to correctly parse 1 minute Forex generic ASCII
-data files from www.HistData.com. Tune according to your data source.</li>
-</ul>
-</div>
-<dl class="method">
-<dt id="btgym.datafeed.BTgymDataset.update_params">
-<code class="descname">update_params</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.update_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.update_params" title="Permalink to this definition">¶</a></dt>
-<dd><p>Updates instance parameters.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>**kwargs</strong> – any self.params entries</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.datafeed.BTgymDataset.reset">
-<code class="descname">reset</code><span class="sig-paren">(</span><em>data_filename=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.reset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets instance ready.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>data_filename</strong> – [opt] string or list of strings.</li>
-<li><strong>kwargs</strong> – not used.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<p>Returns:</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.datafeed.BTgymDataset.read_csv">
-<code class="descname">read_csv</code><span class="sig-paren">(</span><em>data_filename=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.read_csv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.read_csv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Populates instance by loading data: CSV file –&gt; pandas dataframe.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data_filename</strong> – [opt] csv data filename as string or list of such strings.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.datafeed.BTgymDataset.describe">
-<code class="descname">describe</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.describe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.describe" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns summary dataset statistic as pandas dataframe:</p>
-<blockquote>
-<div><ul class="simple">
-<li>records count,</li>
-<li>data mean,</li>
-<li>data std dev,</li>
-<li>min value,</li>
-<li>25% percentile,</li>
-<li>50% percentile,</li>
-<li>75% percentile,</li>
-<li>max value</li>
-</ul>
-</div></blockquote>
-<p>for every data column.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.datafeed.BTgymDataset.to_btfeed">
-<code class="descname">to_btfeed</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.to_btfeed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.to_btfeed" title="Permalink to this definition">¶</a></dt>
-<dd><p>Performs BTgymDataset–&gt;bt.feed conversion.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">bt.datafeed instance.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.datafeed.BTgymDataset.sample">
-<code class="descname">sample</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymDataset.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymDataset.sample" title="Permalink to this definition">¶</a></dt>
-<dd><p>Randomly samples continuous subset of data.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>**kwargs</strong> – not used.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">BTgymDataset instance with number of records ~ max_episode_len,
-where <cite>~</cite> tolerance is set by <cite>time_gap</cite> param.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="btgym.datafeed.BTgymSequentialTrial">
-<em class="property">class </em><code class="descclassname">btgym.datafeed.</code><code class="descname">BTgymSequentialTrial</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sequential Data Trials iterator.
-Enables sliding or expanding time-window training and testing for the dataset of time-ordered records.</p>
-<p>Single Trial is defined by:</p>
-<ul>
-<li><p class="first">support train and test intervals:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>[train_start_time &lt;-&gt; train_end_time], [test_start_time &lt;-&gt; test_end_time],
-such as:
-train_start_time &lt; train_end_time + 1 = test_start_time &lt; test_end_time,
-where `1` stands for next closest time.
-</pre></div>
-</div>
-</li>
-<li><p class="first">number of train episodes to draw from train support interval;</p>
-</li>
-<li><p class="first">number of test episodes to draw from test support interval;</p>
-</li>
-</ul>
-<p>Sliding time-window data iterating:</p>
-<p>If training is started from the beginningg of the dataset, <cite>train_start_time</cite> is set to that of first record,
-for example, for the start of the year:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Trial</span> <span class="n">train</span> <span class="n">interval</span><span class="p">:</span> <span class="mi">19</span> <span class="n">days</span><span class="p">,</span> <span class="mi">23</span><span class="p">:</span><span class="mi">59</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span> <span class="n">test</span> <span class="n">interval</span><span class="p">:</span> <span class="mi">2</span> <span class="n">days</span><span class="p">,</span> <span class="mi">23</span><span class="p">:</span><span class="mi">59</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span>
-<span class="n">Train</span> <span class="n">episodes</span> <span class="n">per</span> <span class="n">trial</span><span class="p">:</span> <span class="mi">1000</span><span class="p">;</span> <span class="n">test</span> <span class="n">episodes</span> <span class="n">per</span> <span class="n">trial</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="n">test_period</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="n">iterating</span> <span class="kn">from</span> <span class="mi">0</span><span class="o">-</span><span class="n">th</span>
-</pre></div>
-</div>
-<p>Then first trial intervals will be (note that omitted data periods like holidays are excluded):</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Training</span> <span class="n">interval</span><span class="p">:</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">03</span> <span class="mi">17</span><span class="p">:</span><span class="mi">01</span><span class="p">:</span><span class="mi">00</span> <span class="o">&lt;--&gt;</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">31</span> <span class="mi">17</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span>
-<span class="n">Testing</span>  <span class="n">interval</span><span class="p">:</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">31</span> <span class="mi">17</span><span class="p">:</span><span class="mi">15</span><span class="p">:</span><span class="mi">00</span> <span class="o">&lt;--&gt;</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">03</span> <span class="mi">17</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span>
-</pre></div>
-</div>
-<p>Since <cite>reset_data()</cite> method call, every call to <cite>BTgymSequentialTrial.sample()</cite> method will return randomly drawn
-train episode from train interval, until reached <cite>test_period</cite> number of samples (here -50). Than iterator <cite>pauses
-training</cite> and each next call to <cite>sample()</cite> will return randomly drawn episode from test interval,
-until again max. number is reached (here - 10).
-Train-test loop is repeated until max. number of <cite>Trial</cite> train samples is reached ( here - 1000).</p>
-<p>Next call to <cite>sample()</cite> will result in following: next <cite>Trial</cite> will be formed such as:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>train_start_time_next_trial = `test_end_time_previous_trial + 1
-</pre></div>
-</div>
-<p>i.e. <cite>Trial</cite> will be shifted by the duration of test period,
-than first train episode of the new <cite>Trial</cite> will be sampled and returned.</p>
-<p>Repeats until entire dataset is exhausted.</p>
-<p>Note that while train periods are overlapping, test periods form a partition.</p>
-<p>Here, next trial will be:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Training</span> <span class="o">@</span><span class="p">:</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">06</span> <span class="mi">00</span><span class="p">:</span><span class="mi">00</span><span class="p">:</span><span class="mi">00</span> <span class="o">&lt;--&gt;</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">03</span> <span class="mi">00</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mi">00</span><span class="p">;</span>
-<span class="n">Testing</span>  <span class="o">@</span><span class="p">:</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">03</span> <span class="mi">00</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="mi">00</span> <span class="o">&lt;--&gt;</span> <span class="mi">2016</span><span class="o">-</span><span class="mi">02</span><span class="o">-</span><span class="mi">08</span> <span class="mi">00</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span><span class="mi">00</span>
-</pre></div>
-</div>
-<p>Expanding time-window data iterating:</p>
-<p>Differs from above in a way that trial interval start position is fixed at the beginning of dataset. Thus,
-trial support interval is expanding to the right and every subsequent trial is <cite>longer</cite> than previous one
-by amount of test interval.</p>
-<p>Episodes sampling:</p>
-<p>Episodes sampling is performed in such a way that entire episode duration lies within <cite>Trial</cite> interval.</p>
-<p>Experimental:
-Train episode start position within interval is drawn from beta-distribution with default parameters b_alpha=1,
-b_beta=1, i.e. uniform one.</p>
-<p>Beta-distribution makes skewed sampling possible , e.g.
-to give recent episodes higher probability of being sampled, e.g.:  b_alpha=10, b_beta=0.8.</p>
-<p>It can be set to anneal to uniform one in specified number of train episodes. Annealing is done by exponentially
-decaying alpha and beta parameters to 1.</p>
-<p>Test episodes are always sampled uniformly.</p>
-<p>See description at <cite>BTgymTrialRandomIterator()</cite> for motivation.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>kwargs</strong> – BTgymDataset specific kwargs.</li>
-<li><strong>train_range</strong> – dict. containing <cite>Trial</cite> train interval in: <cite>days`[, `hours</cite>][, <cite>minutes</cite>];</li>
-<li><strong>test_range</strong> – dict. containing <cite>Trial</cite> test interval in: <cite>days`[, `hours</cite>][, <cite>minutes</cite>];</li>
-<li><strong>train_samples</strong> – number of episodes to draw from single <cite>Trial train interval</cite>;</li>
-<li><strong>test_samples</strong> – number of episodes to draw from <cite>Trial test interval</cite> every <cite>test period</cite>;</li>
-<li><strong>test_period</strong> – draw test episodes after every <cite>test_period</cite> train samples;</li>
-<li><strong>expanding</strong> – bool, if True - use expanding-type Trials, sliding otherwise; def=False;</li>
-<li><strong>b_alpha</strong> – sampling beta-distribution alpha param; def=1;</li>
-<li><strong>b_beta</strong> – sampling beta-distribution beta param; def=1;</li>
-<li><strong>b_anneal_steps</strong> – if set, anneals beta-distribution to uniform one in ‘b_anneal_steps’ number
-of train samples, numbering continuously for all <cite>Trials</cite>; def=-1 (disabled);</li>
-<li><strong>trial_start_00</strong> – <cite>Trial</cite> start time will be set to that of first record of the day (usually 00:00);</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<ul class="last simple">
-<li>Total number of <cite>Trials</cite> (cardinality) is inferred upon args given and overall dataset size.</li>
-</ul>
-</div>
-<dl class="staticmethod">
-<dt id="btgym.datafeed.BTgymSequentialTrial.lin_decay">
-<em class="property">static </em><code class="descname">lin_decay</code><span class="sig-paren">(</span><em>step</em>, <em>param_0</em>, <em>max_steps</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial.lin_decay"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial.lin_decay" title="Permalink to this definition">¶</a></dt>
-<dd><p>Linear decay from param_0 to 1 in <cite>max_steps</cite>.</p>
-</dd></dl>
-
-<dl class="staticmethod">
-<dt id="btgym.datafeed.BTgymSequentialTrial.exp_decay">
-<em class="property">static </em><code class="descname">exp_decay</code><span class="sig-paren">(</span><em>step</em>, <em>param_0</em>, <em>max_steps</em>, <em>gamma=3.5</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial.exp_decay"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial.exp_decay" title="Permalink to this definition">¶</a></dt>
-<dd><p>For given step &lt;= max_steps returns exp-decayed value in [param_0, 1]; returns 1 if step &gt; max_steps;
-gamma - steepness control.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.datafeed.BTgymSequentialTrial.sample">
-<code class="descname">sample</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial.sample" title="Permalink to this definition">¶</a></dt>
-<dd><p>Randomly samples from iterating sequence of <cite>Trial</cite> train/test distributions.</p>
-<p>Sampling loop:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">until</span> <span class="n">Trial_sequence</span> <span class="ow">is</span> <span class="n">exhausted</span> <span class="ow">or</span> <span class="o">.</span><span class="n">reset</span><span class="p">():</span>
-    <span class="o">-</span> <span class="n">sample</span> <span class="nb">next</span> <span class="n">Trial</span> <span class="ow">in</span> <span class="n">Trial_sequence</span><span class="p">;</span>
-        <span class="o">-</span> <span class="n">until</span> <span class="n">predefined</span> <span class="n">number</span> <span class="n">of</span> <span class="n">episodes</span> <span class="n">has</span> <span class="n">been</span> <span class="n">drawn</span><span class="p">:</span>
-            <span class="o">-</span> <span class="n">randomly</span> <span class="n">draw</span> <span class="n">single</span> <span class="n">episode</span> <span class="kn">from</span> <span class="nn">current</span> <span class="n">Trial</span> <span class="n">TRAIN</span> <span class="n">distribution</span><span class="p">;</span>
-            <span class="o">-</span> <span class="k">if</span> <span class="n">reached</span> <span class="n">test_period</span> <span class="n">train</span> <span class="n">episodes</span><span class="p">:</span>
-                <span class="o">-</span> <span class="n">until</span> <span class="n">predefined</span> <span class="n">number</span> <span class="n">of</span> <span class="n">episodes</span> <span class="n">has</span> <span class="n">been</span> <span class="n">drawn</span><span class="p">:</span>
-                    <span class="o">-</span> <span class="n">draw</span> <span class="n">single</span> <span class="n">episode</span> <span class="kn">from</span> <span class="nn">current</span> <span class="n">Trial</span> <span class="n">TEST</span> <span class="n">distribution</span><span class="p">;</span>
-</pre></div>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – not used.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><cite>BTgymDataset</cite> instance containing episode data [and metadata].</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.datafeed.BTgymSequentialTrial.reset">
-<code class="descname">reset</code><span class="sig-paren">(</span><em>global_step=0</em>, <em>total_steps=None</em>, <em>skip_frame=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymSequentialTrial.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymSequentialTrial.reset" title="Permalink to this definition">¶</a></dt>
-<dd><p>[Re]starts sampling iterator from specified position.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>global_step</strong> – position in [0, total_steps] interval to start sampling from.</li>
-<li><strong>total_steps</strong> – max gym environmnet steps allowed for full sweep over <cite>Trials</cite>.</li>
-<li><strong>skip_frame</strong> – BTGym specific, such as: <cite>total_btgym_dataset_steps = total_steps * skip_frame</cite>.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="btgym.datafeed.BTgymRandomTrial">
-<em class="property">class </em><code class="descclassname">btgym.datafeed.</code><code class="descname">BTgymRandomTrial</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymRandomTrial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymRandomTrial" title="Permalink to this definition">¶</a></dt>
-<dd><p>Random Data Trials iterator.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p>While these iterators can simply be seen as sliding/random sampling time-windows, the realisation is inspired by
-<cite>FAST REINFORCEMENT LEARNING VIA SLOW REINFORCEMENT LEARNING</cite> paper by Duan et al.,
-<a class="reference external" href="https://arxiv.org/pdf/1611.02779.pdf">https://arxiv.org/pdf/1611.02779.pdf</a></p>
-<p>Problem: Real-world BTGym POMDP violates condition of having stationary transitional distribution.</p>
-<p>Want: re-present BTGym on-line task as set [actually a well-ordered] of discrete-time finite-horizon discounted
-partially-observed Markov decision processes (POMDP’s) to define optimization objective of learning
-RL algorithm itself, which can [hopefully] be one approach to learning in changing environment.</p>
-<p>Note that BTgym dataset is set of date_time ordered, mainly continuous records.
-Let each <cite>Trial</cite> be discrete uniform distribution among all episodes, such as for each episode:
-a) start time lies within particular <cite>Trail support time interval</cite> of <cite>trial_range</cite> time length and
-b) episode duration is less or equal to <cite>max_episode_duration</cite> constant;
-let <cite>Trail mean</cite> be particular row or date_time position within dataset timeline.</p>
-<p>Under original BTGym conditions, for each <cite>Trial</cite> there exists <cite>single POMDP</cite>.</p>
-<p>Let <cite>Trial_sequence</cite> be a set of <cite>Trials</cite> resulted by incrementing <cite>trial_mean</cite> parameter
-with <cite>trial_stride</cite> from end to end of dataset timeline.</p>
-<p>Such <cite>Trial_sequence</cite> casts a <cite>set of POMDP’s</cite>, every element of wich can be considered well-defined in terms
-of own transition distribution; now it’s possible to design optimization objective <cite>…to maximize the expected
-total discounted reward accumulated during a single trial rather than a single episode.</cite> [above paper, 2.2]</p>
-<p class="last">This particular iterator casts unordered <cite>set of Trials</cite>, while <cite>BTgymSequentialTrial()</cite> class sweeps through
-later in time-ordered fashion.</p>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>**kwargs</strong> – BTgymDataset() specific kwargs.</li>
-<li><strong>trial_range</strong> – dict. containing <cite>Trial support interval</cite> (time range) as: <cite>days`[, `hours</cite>][, <cite>minutes</cite>].</li>
-<li><strong>trial_stride</strong> – dict. containing <cite>stride interval</cite> between <cite>Trials</cite> as: <cite>days`[, `hours</cite>][, <cite>minutes</cite>].</li>
-<li><strong>samples_per_trial</strong> – self-explaining; unlike sequential case, has to be set explicitly.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="btgym.datafeed.BTgymRandomTrial.reset">
-<code class="descname">reset</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymRandomTrial.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymRandomTrial.reset" title="Permalink to this definition">¶</a></dt>
-<dd><p>[Re]starts sampling iterator.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – not used.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.datafeed.BTgymRandomTrial.sample">
-<code class="descname">sample</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed.html#BTgymRandomTrial.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.BTgymRandomTrial.sample" title="Permalink to this definition">¶</a></dt>
-<dd><p>Randomly uniformly samples episode from <cite>Trial</cite> which in turn has been
-uniformly sampled from <cite>sequence of Trials</cite>.</p>
-<p>Iteratively calling this method results in:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>        <span class="o">-</span> <span class="n">randomly</span> <span class="n">draws</span> <span class="n">single</span> <span class="n">episode</span> <span class="kn">from</span> <span class="nn">Trial</span><span class="p">;</span>
-    <span class="o">-</span> <span class="n">until</span> <span class="n">predefined</span> <span class="n">number</span> <span class="n">of</span> <span class="n">episodes</span> <span class="n">has</span> <span class="n">been</span> <span class="n">drawn</span><span class="p">;</span>
-    <span class="o">-</span> <span class="n">randomly</span> <span class="n">draws</span> <span class="n">Trial</span> <span class="kn">from</span> <span class="nn">Trial</span><span class="s1">&#39;s distribution;</span>
-<span class="o">-</span> <span class="n">until</span> <span class="n">bored</span><span class="o">.</span>
-</pre></div>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – not used.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">BTgymDataset instance containing episode data and metadata.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="function">
-<dt id="btgym.datafeed.random_beta">
-<code class="descclassname">btgym.datafeed.</code><code class="descname">random_beta</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#btgym.datafeed.random_beta" title="Permalink to this definition">¶</a></dt>
-<dd><p>beta(a, b, size=None)</p>
-<p>Draw samples from a Beta distribution.</p>
-<p>The Beta distribution is a special case of the Dirichlet distribution,
-and is related to the Gamma distribution.  It has the probability
-distribution function</p>
-<div class="math">
-\[f(x; a,b) = \frac{1}{B(\alpha, \beta)} x^{\alpha - 1}
-(1 - x)^{\beta - 1},\]</div>
-<p>where the normalisation, B, is the beta function,</p>
-<div class="math">
-\[B(\alpha, \beta) = \int_0^1 t^{\alpha - 1}
-(1 - t)^{\beta - 1} dt.\]</div>
-<p>It is often seen in Bayesian inference and order statistics.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>a</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a><em> or </em><em>array_like of floats</em>) – Alpha, non-negative.</li>
-<li><strong>b</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a><em> or </em><em>array_like of floats</em>) – Beta, non-negative.</li>
-<li><strong>size</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a><em> or </em><em>tuple of ints</em><em>, </em><em>optional</em>) – Output shape.  If the given shape is, e.g., <code class="docutils literal"><span class="pre">(m,</span> <span class="pre">n,</span> <span class="pre">k)</span></code>, then
-<code class="docutils literal"><span class="pre">m</span> <span class="pre">*</span> <span class="pre">n</span> <span class="pre">*</span> <span class="pre">k</span></code> samples are drawn.  If size is <code class="docutils literal"><span class="pre">None</span></code> (default),
-a single value is returned if <code class="docutils literal"><span class="pre">a</span></code> and <code class="docutils literal"><span class="pre">b</span></code> are both scalars.
-Otherwise, <code class="docutils literal"><span class="pre">np.broadcast(a,</span> <span class="pre">b).size</span></code> samples are drawn.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> – Drawn samples from the parameterized beta distribution.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">ndarray or scalar</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</div>
-<div class="section" id="module-btgym.dataserver">
+  <div class="section" id="module-btgym.dataserver">
 <span id="btgym-dataserver-module"></span><h1>btgym.dataserver module<a class="headerlink" href="#module-btgym.dataserver" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="btgym.dataserver.BTgymDataFeedServer">
-<em class="property">class </em><code class="descclassname">btgym.dataserver.</code><code class="descname">BTgymDataFeedServer</code><span class="sig-paren">(</span><em>dataset=None</em>, <em>network_address=None</em>, <em>log=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/dataserver.html#BTgymDataFeedServer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.dataserver.BTgymDataFeedServer" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.dataserver.</code><code class="descname">BTgymDataFeedServer</code><span class="sig-paren">(</span><em>dataset=None</em>, <em>network_address=None</em>, <em>log_level=None</em>, <em>task=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/dataserver.html#BTgymDataFeedServer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.dataserver.BTgymDataFeedServer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Data provider server class.
 Enables efficient data sampling for asynchronous multiply BTgym environments execution.</p>
 <p>Configures data server instance.</p>
@@ -633,9 +190,10 @@ Enables efficient data sampling for asynchronous multiply BTgym environments exe
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>dataset</strong> – BTgymDataset or othe rdata provider class instance;</li>
+<li><strong>dataset</strong> – data domain instance;</li>
 <li><strong>network_address</strong> – …to bind to.</li>
-<li><strong>log</strong> – parent logger.</li>
+<li><strong>log_level</strong> – int, logbook.level</li>
+<li><strong>task</strong> – id</li>
 </ul>
 </td>
 </tr>
@@ -654,7 +212,7 @@ Enables efficient data sampling for asynchronous multiply BTgym environments exe
 <span id="btgym-server-module"></span><h1>btgym.server module<a class="headerlink" href="#module-btgym.server" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="btgym.server.BTgymServer">
-<em class="property">class </em><code class="descclassname">btgym.server.</code><code class="descname">BTgymServer</code><span class="sig-paren">(</span><em>cerebro=None</em>, <em>render=None</em>, <em>network_address=None</em>, <em>data_network_address=None</em>, <em>connect_timeout=60</em>, <em>log=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/server.html#BTgymServer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.server.BTgymServer" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.server.</code><code class="descname">BTgymServer</code><span class="sig-paren">(</span><em>cerebro=None</em>, <em>render=None</em>, <em>network_address=None</em>, <em>data_network_address=None</em>, <em>connect_timeout=90</em>, <em>log_level=None</em>, <em>task=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/server.html#BTgymServer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.server.BTgymServer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Backtrader server class.</p>
 <p>Expects to receive dictionary, containing at least ‘action’ field.</p>
 <p>Control mode IN:</p>
@@ -695,12 +253,27 @@ Enables efficient data sampling for asynchronous multiply BTgym environments exe
 <li><strong>network_address</strong> – environmnet communication, str</li>
 <li><strong>data_network_address</strong> – data communication, str</li>
 <li><strong>connect_timeout</strong> – seconds, int</li>
-<li><strong>log</strong> – none</li>
+<li><strong>log_level</strong> – int, logbook.level</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="btgym.server.BTgymServer.get_data">
+<code class="descname">get_data</code><span class="sig-paren">(</span><em>reset_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/server.html#BTgymServer.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.server.BTgymServer.get_data" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>reset_kwargs</strong> – dictionary of args to pass to parent data iterator</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trial_sample, trial_stat, dataset_stat</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="method">
 <dt id="btgym.server.BTgymServer.run">
 <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/server.html#BTgymServer.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.server.BTgymServer.run" title="Permalink to this definition">¶</a></dt>

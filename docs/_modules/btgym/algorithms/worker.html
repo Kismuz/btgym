@@ -98,13 +98,15 @@
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.envs.html">btgym.envs package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html">btgym.datafeed module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.datafeed.html">btgym.datafeed package</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.algorithms.html">btgym.algorithms package</a></li>
@@ -183,6 +185,7 @@
 <span class="c1"># https://arxiv.org/abs/1602.01783</span>
 <span class="c1"># https://arxiv.org/abs/1611.05397</span>
 
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="s1">&#39;..&#39;</span><span class="p">)</span>
 
@@ -229,7 +232,6 @@
                  <span class="n">job_name</span><span class="p">,</span>
                  <span class="n">task</span><span class="p">,</span>
                  <span class="n">log_dir</span><span class="p">,</span>
-                 <span class="n">log</span><span class="p">,</span>
                  <span class="n">log_level</span><span class="p">,</span>
                  <span class="n">max_env_steps</span><span class="p">,</span>
                  <span class="n">random_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -244,8 +246,7 @@
 <span class="sd">            job_name:       worker or parameter server.</span>
 <span class="sd">            task:           integer number, 0 is chief worker.</span>
 <span class="sd">            log_dir:        for tb summaries and checkpoints.</span>
-<span class="sd">            log:            parent logger</span>
-<span class="sd">            log_level:      0 - silent, 1 - info, 3 - debug level</span>
+<span class="sd">            log_level:      int, logbook.level</span>
 <span class="sd">            max_env_steps:  number of environment steps to run training on</span>
 <span class="sd">            test_mode:      if True - use Atari mode, BTGym otherwise.</span>
 
@@ -271,17 +272,18 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">=</span> <span class="n">log_dir</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_env_steps</span> <span class="o">=</span> <span class="n">max_env_steps</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">job_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span> <span class="o">=</span> <span class="n">test_mode</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="o">=</span> <span class="n">random_seed</span>
 
 <div class="viewcode-block" id="Worker.run"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.worker.Worker.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Worker runtime body.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Logging:</span>
+        <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;Worker_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+
         <span class="n">tf</span><span class="o">.</span><span class="n">reset_default_graph</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
@@ -312,15 +314,15 @@
                     <span class="n">inter_op_parallelism_threads</span><span class="o">=</span><span class="mi">2</span>  <span class="c1"># original was: 2</span>
                 <span class="p">)</span>
             <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1"> tf.server started.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;tf.server started.&#39;</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">: making environments:&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;making environments:&#39;</span><span class="p">)</span>
             <span class="c1"># Making as many environments as many entries in env_config `port` list:</span>
             <span class="c1"># TODO: Hacky-II: only one example of parallel [all] environments can be data-master and renderer</span>
             <span class="c1"># TODO: measure data_server lags, maybe launch several instances</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="n">env_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;log&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span>
+            <span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;log_level&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span>
             <span class="n">port_list</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;port&#39;</span><span class="p">)</span>
             <span class="n">data_master</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;data_master&#39;</span><span class="p">)</span>
             <span class="n">render_enabled</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;render_enabled&#39;</span><span class="p">)</span>
@@ -328,7 +330,7 @@
             <span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">port_list</span><span class="p">:</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
                     <span class="c1"># Assume BTgym env. class:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">, env @port_</span><span class="si">{}</span><span class="s1"> is data_master: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">data_master</span><span class="p">))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;env @port_</span><span class="si">{}</span><span class="s1"> is data_master: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">data_master</span><span class="p">))</span>
                     <span class="k">try</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span>
@@ -340,19 +342,19 @@
                         <span class="p">)</span>
                         <span class="n">data_master</span> <span class="o">=</span> <span class="kc">False</span>
                         <span class="n">render_enabled</span> <span class="o">=</span> <span class="kc">False</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">: Set BTGym environment @port_</span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;set BTGym environment @port_</span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">))</span>
 
                     <span class="k">except</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39; worker_</span><span class="si">{}</span><span class="s1">: failed to make BTGym environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+                        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Worker_</span><span class="si">{}</span><span class="s1">: failed to make BTGym environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
 
                 <span class="k">else</span><span class="p">:</span>
                     <span class="c1"># Assume atari testing:</span>
                     <span class="k">try</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span><span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;gym_id&#39;</span><span class="p">]))</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">: Set Gyn/Atari environment.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;set Gyn/Atari environment.&#39;</span><span class="p">)</span>
 
                     <span class="k">except</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39; worker_</span><span class="si">{}</span><span class="s1"> failed to make Gym/Atari environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+                        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39;Worker_</span><span class="si">{}</span><span class="s1"> failed to make Gym/Atari environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
 
 
 
@@ -361,12 +363,12 @@
                 <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">,</span>
                 <span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
                 <span class="n">policy_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span><span class="p">,</span>
-                <span class="n">log</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
+                <span class="n">log_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span>
                 <span class="n">random_seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">,</span>
                 <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer_kwargs</span><span class="p">,</span>
             <span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">:trainer ok.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;trainer ok.&#39;</span><span class="p">)</span>
 
             <span class="c1"># Saver-related:</span>
             <span class="n">variables_to_save</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;local&quot;</span><span class="p">)]</span>
@@ -375,12 +377,12 @@
 
             <span class="n">saver</span> <span class="o">=</span> <span class="n">_FastSaver</span><span class="p">(</span><span class="n">variables_to_save</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">: vars_to_save:&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;vars_to_save:&#39;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">variables_to_save</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()))</span>
 
             <span class="k">def</span> <span class="nf">init_fn</span><span class="p">(</span><span class="n">ses</span><span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Initializing all parameters.&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;initializing all parameters.&quot;</span><span class="p">)</span>
                 <span class="n">ses</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">init_all_op</span><span class="p">)</span>
 
             <span class="n">config</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span><span class="n">device_filters</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;/job:ps&quot;</span><span class="p">,</span> <span class="s2">&quot;/job:worker/task:</span><span class="si">{}</span><span class="s2">/cpu:0&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)])</span>
@@ -400,7 +402,7 @@
                 <span class="n">global_step</span><span class="o">=</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">,</span>
                 <span class="n">save_model_secs</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;worker_</span><span class="si">{}</span><span class="s2">: connecting to the parameter server... &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;connecting to the parameter server... &quot;</span><span class="p">)</span>
 
             <span class="k">with</span> <span class="n">sv</span><span class="o">.</span><span class="n">managed_session</span><span class="p">(</span><span class="n">server</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span> <span class="k">as</span> <span class="n">sess</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
                 <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">sync</span><span class="p">)</span>
@@ -413,7 +415,7 @@
                     <span class="k">if</span> <span class="ow">not</span> <span class="n">trainer</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">is_full</span><span class="p">():</span>
                         <span class="n">trainer</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">fill</span><span class="p">()</span>
 
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;worker_</span><span class="si">{}</span><span class="s2">: started training at step: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">global_step</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;started training at step: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_step</span><span class="p">))</span>
                 <span class="k">while</span> <span class="ow">not</span> <span class="n">sv</span><span class="o">.</span><span class="n">should_stop</span><span class="p">()</span> <span class="ow">and</span> <span class="n">global_step</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_env_steps</span><span class="p">:</span>
                     <span class="n">trainer</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">sess</span><span class="p">)</span>
                     <span class="n">global_step</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span>
@@ -423,7 +425,7 @@
                     <span class="n">env</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
                 <span class="n">sv</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;worker_</span><span class="si">{}</span><span class="s1">: reached </span><span class="si">{}</span><span class="s1"> steps, exiting.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">global_step</span><span class="p">))</span></div></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;reached </span><span class="si">{}</span><span class="s1"> steps, exiting.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_step</span><span class="p">))</span></div></div>
 
 
 

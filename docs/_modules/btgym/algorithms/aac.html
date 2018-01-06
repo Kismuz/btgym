@@ -98,13 +98,15 @@
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.envs.html">btgym.envs package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html">btgym.datafeed module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.datafeed.html">btgym.datafeed package</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.algorithms.html">btgym.algorithms package</a></li>
@@ -175,9 +177,30 @@
            <div itemprop="articleBody">
             
   <h1>Source code for btgym.algorithms.aac</h1><div class="highlight"><pre>
-<span></span>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2017 Andrew Muzikin</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">###############################################################################</span>
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">print_function</span>
+
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 
@@ -209,7 +232,7 @@
                  <span class="n">env</span><span class="p">,</span>
                  <span class="n">task</span><span class="p">,</span>
                  <span class="n">policy_config</span><span class="p">,</span>
-                 <span class="n">log</span><span class="p">,</span>
+                 <span class="n">log_level</span><span class="p">,</span>
                  <span class="n">on_policy_loss</span><span class="o">=</span><span class="n">aac_loss_def</span><span class="p">,</span>
                  <span class="n">off_policy_loss</span><span class="o">=</span><span class="n">aac_loss_def</span><span class="p">,</span>
                  <span class="n">vr_loss</span><span class="o">=</span><span class="n">value_fn_loss_def</span><span class="p">,</span>
@@ -256,7 +279,7 @@
 <span class="sd">            env:                    environment instance or list of instances</span>
 <span class="sd">            task:                   int, parent worker id</span>
 <span class="sd">            policy_config:          policy estimator class and configuration dictionary</span>
-<span class="sd">            log:                    parent log</span>
+<span class="sd">            log_level:              int, logbook.level</span>
 <span class="sd">            on_policy_loss:         callable returning tensor holding on_policy training loss graph and summaries</span>
 <span class="sd">            off_policy_loss:        callable returning tensor holding off_policy training loss graph and summaries</span>
 <span class="sd">            vr_loss:                callable returning tensor holding value replay loss graph and summaries</span>
@@ -327,13 +350,18 @@
 <span class="sd">                    because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,</span>
 <span class="sd">                    ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
+        <span class="c1"># Logging:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="o">=</span> <span class="n">random_seed</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">)</span>
             <span class="n">tf</span><span class="o">.</span><span class="n">set_random_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">_rnd_seed:</span><span class="si">{}</span><span class="s1">, log_u_sample_(0,1]x5: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
-                       <span class="nb">format</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">random_seed</span><span class="p">,</span> <span class="n">log_uniform</span><span class="p">([</span><span class="mf">1e-10</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="mi">5</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;rnd_seed:</span><span class="si">{}</span><span class="s1">, log_u_sample_(0,1]x5: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                       <span class="nb">format</span><span class="p">(</span><span class="n">random_seed</span><span class="p">,</span> <span class="n">log_uniform</span><span class="p">([</span><span class="mf">1e-10</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="mi">5</span><span class="p">)))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span> <span class="o">=</span> <span class="n">env</span>
         <span class="k">try</span><span class="p">:</span>
@@ -344,10 +372,10 @@
 
         <span class="n">ref_env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># reference instance to get obs shapes etc.</span>
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">,</span> <span class="n">ObSpace</span><span class="p">),</span>\
-            <span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: expected environment observation space of type </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
-            <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">ObSpace</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">))</span>
+            <span class="s1">&#39;expected environment observation space of type </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
+            <span class="nb">format</span><span class="p">(</span><span class="n">ObSpace</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">))</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">policy_kwargs</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span>
 
@@ -434,15 +462,14 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span> <span class="o">=</span> <span class="n">_use_target_policy</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: learn_rate: </span><span class="si">{:1.6f}</span><span class="s1">, entropy_beta: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
-                      <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;learn_rate: </span><span class="si">{:1.6f}</span><span class="s1">, entropy_beta: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_off_policy_aac</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: off_aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span><span class="p">,))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;off_aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span><span class="p">,))</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: vr_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, pc_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, rp_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
-                          <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;vr_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, pc_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, rp_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
+                          <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span><span class="p">))</span>
 
 
         <span class="c1">#self.log.info(</span>
@@ -461,7 +488,7 @@
             <span class="p">}</span>
         <span class="p">)</span>
         <span class="c1"># Start building graphs:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: started building graphs&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;started building graphs&#39;</span><span class="p">)</span>
         <span class="c1"># PS:</span>
         <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">replica_device_setter</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">worker_device</span><span class="o">=</span><span class="n">worker_device</span><span class="p">)):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_policy</span><span class="p">(</span><span class="s1">&#39;global&#39;</span><span class="p">)</span>
@@ -479,8 +506,8 @@
             <span class="c1"># Meant for Batch-norm layers:</span>
             <span class="n">pi</span><span class="o">.</span><span class="n">update_ops</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">UPDATE_OPS</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s1">&#39;.*local.*&#39;</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: local_network_upd_ops_collection:</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">pi</span><span class="o">.</span><span class="n">update_ops</span><span class="p">))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">AAC_</span><span class="si">{}</span><span class="s1">: local_network_var_list_to_save:&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;local_network_upd_ops_collection:</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">update_ops</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">local_network_var_list_to_save:&#39;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()))</span>
 
@@ -497,7 +524,7 @@
 
             <span class="c1"># Freeze training if train_phase is False:</span>
             <span class="n">train_learn_rate</span> <span class="o">=</span> <span class="n">learn_rate_decayed</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">train_phase</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">AAC_</span><span class="si">{}</span><span class="s1">: learn rate ok&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;learn rate ok&#39;</span><span class="p">)</span>
 
             <span class="c1"># On-policy AAC loss definition:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_act_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_action_pl&quot;</span><span class="p">)</span>
@@ -636,7 +663,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">=</span> <span class="mi">0</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: train op defined&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;train op defined&#39;</span><span class="p">)</span>
 
             <span class="c1"># Model stat. summary:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">model_summary_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">model_summaries</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;model_summary&#39;</span><span class="p">)</span>
@@ -665,19 +692,6 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
                     <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="n">mode</span><span class="p">])</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">render_modes</span><span class="p">]</span>
                 <span class="p">)</span>
-
-            <span class="c1"># Environmnet rendering:</span>
-            <span class="c1">#if False:</span>
-            <span class="c1">#    self.ep_summary[&#39;btgym_render_op&#39;] = tf.summary.merge(</span>
-            <span class="c1">#        [</span>
-            <span class="c1">#            tf.summary.image(&#39;human&#39;, self.ep_summary[&#39;render_human&#39;]),</span>
-            <span class="c1">#            tf.summary.image(&#39;model_input_external&#39;, self.ep_summary[&#39;render_model_input_ext&#39;]),</span>
-            <span class="c1">#            tf.summary.image(&#39;episode&#39;, self.ep_summary[&#39;render_episode&#39;]),</span>
-            <span class="c1">#        ],</span>
-            <span class="c1">#        name=&#39;render_btgym&#39;</span>
-            <span class="c1">#    )</span>
-            <span class="c1">#    # For Atari:</span>
-            <span class="c1">#    self.ep_summary[&#39;atari_render_op&#39;] = tf.summary.image(&quot;model/state&quot;, self.ep_summary[&#39;render_atari&#39;])</span>
 
             <span class="c1"># Episode stat. summary:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;btgym_stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
@@ -746,7 +760,7 @@
             <span class="c1"># Make rollouts provider:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">data_getter</span> <span class="o">=</span> <span class="p">[</span><span class="n">make_data_getter</span><span class="p">(</span><span class="n">runner</span><span class="o">.</span><span class="n">queue</span><span class="p">)</span> <span class="k">for</span> <span class="n">runner</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">runners</span><span class="p">]</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: init() done&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;.init() done&#39;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="BaseAAC.get_data"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -1089,13 +1103,6 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span> <span class="n">pic</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">pic</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;render_summary&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
                 <span class="p">}</span>
                 <span class="n">renderings</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_op&#39;</span><span class="p">],</span> <span class="n">render_feed_dict</span><span class="p">)</span>
-                <span class="c1">#if False:</span>
-                <span class="c1">#    if self.test_mode:</span>
-                <span class="c1">#        renderings = sess.run(self.ep_summary[&#39;atari_render_op&#39;], render_feed_dict)</span>
-                <span class="c1">#</span>
-                <span class="c1">#    else:</span>
-                <span class="c1">#        renderings = sess.run(self.ep_summary[&#39;btgym_render_op&#39;], render_feed_dict)</span>
-
                 <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">add_summary</span><span class="p">(</span><span class="n">renderings</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_episode</span><span class="p">))</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
 
@@ -1205,7 +1212,7 @@
 <span class="sd">            env:</span>
 <span class="sd">            task:</span>
 <span class="sd">            policy_config:</span>
-<span class="sd">            log:</span>
+<span class="sd">            log_level:</span>
 <span class="sd">            vr_loss:</span>
 <span class="sd">            rp_loss:</span>
 <span class="sd">            pc_loss:</span>

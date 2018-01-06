@@ -189,10 +189,10 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
   before btgym import. It's recommended to import btacktrader and btgym first to ensure proper backend
   choice;
 - not tested with Python < 3.5;
-- doesn't seem to work correctly under Windows;
+- doesn't seem to work correctly under Windows; partially done
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
 - only random data sampling is implemented;
-- no built-in dataset splitting to training/cv/testing subsets;
+- ~~no built-in dataset splitting to training/cv/testing subsets;~~ done
 - only one equity/currency pair can be traded;
 - ~~no 'skip-frames' implementation within environment;~~ done
 - ~~no plotting features, except if using pycharm integration observer.~~
@@ -205,9 +205,8 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  - [X] API reference;
  - [x] examples;
  - [x] frame-skipping feature;
- - [ ] dataset tr/cv/t approach IN PROGRESS;
+ - [x] dataset tr/cv/t approach;
  - [x] state rendering;
- - [ ] retrieving results for observers;
  - [x] proper rendering for entire episode;
  - [x] tensorboard integration;
  - [x] multiply agents asynchronous operation feature (e.g for A3C):
@@ -219,16 +218,29 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  - [ ] RL^2 / MAML / DARLA adaptations;
  - [ ] learning from demonstrations;
  - [ ] risk-sensitive agents implementation;
- - [ ] sequential and sliding time-window sampling IN PROGRESS;
+ - [x] sequential and sliding time-window sampling;
  - [ ] multiply instruments trading;
  
  
 ### <a name="news"></a>[News and updates:](#title)
+- 7.01.18: Package update:
+    - Major data pipe redesign. `Domain -> Trial -> Episode` sampling routine implemented. For motivation and 
+      and formal definitions refer to [Section 1.Data of this DRAFT](../docs/papers/btgym_formalism_draft.pdf), 
+      [Documentation](https://kismuz.github.io/btgym/btgym.datafeed.html#btgym-datafeed-package) 
+      and [Example](./examples/data_domain_api_intro.ipynb). Changes should be backward compatible.
+      In a word, it is necessary framework for meta-learning algorithms. 
+    - logging changes: now relying in python `logbook` module. Should eliminate errors under Windows.
+    - Stacked_LSTM_Policy agent implemented. Based on NAV_A3C from 
+      [Deepmind paper](https://arxiv.org/pdf/1611.03673.pdf) with some minor mods. Basic usage 
+      [Example here](./examples/unreal_stacked_lstm_strat_4_11.ipynb). 
+      Still in research code area and need further tuning; several times faster than simple LSTM agent, 
+      able to converge on 6-month 1m dataset.
+
 - 5.12.17: Inner btgym comm. fixes >> speedup ~5%.
 
 - 02.12.17: Basic `sliding time-window train/test` framework implemented via 
             [BTgymSequentialTrial()](https://kismuz.github.io/btgym/btgym.html#btgym.datafeed.BTgymSequentialTrial)
-            class.
+            class. UPD: replaced by `BTgymSequentialDataDomain` class.
             
 - 29.11.17: Basic meta-learning RL^2 functionality implemented.
     - See [Trial_Iterator Class](https://kismuz.github.io/btgym/btgym.html#btgym.datafeed.BTgymRandomTrial) and

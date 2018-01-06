@@ -23,7 +23,7 @@ btgym\.algorithms\.aac module
 
 
 btgym\.algorithms\.policy module
--------------------------------------
+--------------------------------
 
 .. automodule:: btgym.algorithms.policy
     :members:

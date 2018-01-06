@@ -98,13 +98,15 @@
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.envs.html">btgym.envs package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html">btgym.datafeed module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.datafeed.html">btgym.datafeed package</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../btgym.algorithms.html">btgym.algorithms package</a></li>
@@ -295,7 +297,7 @@
         <span class="c1"># Episodic metadata:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;metadata&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]),</span>
-            <span class="s1">&#39;trial_num&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;trial_num&#39;</span><span class="p">]),</span>
+            <span class="s1">&#39;trial_num&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="c1"># plug, should be key: &#39;parent_sample_num&#39;</span>
             <span class="s1">&#39;sample_num&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]),</span>
             <span class="s1">&#39;first_row&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;first_row&#39;</span><span class="p">])</span>
         <span class="p">}</span>
@@ -425,8 +427,7 @@
 
 <div class="viewcode-block" id="DevStrat_4_7"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_4.DevStrat_4_7">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_7</span><span class="p">(</span><span class="n">DevStrat_4_6</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    _4_6 +:</span>
-<span class="sd">    Sliding statistics avg_period disentangled from time embedding dim;</span>
+<span class="sd">    4_6 + Sliding statistics avg_period disentangled from time embedding dim;</span>
 <span class="sd">    Only one last step sliding stats are used for internal state;</span>
 <span class="sd">    Reward weights: 1, 2, 10 , reward scale factor aded;</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -596,8 +597,7 @@
 
 <div class="viewcode-block" id="DevStrat_4_8"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_4.DevStrat_4_8">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_8</span><span class="p">(</span><span class="n">DevStrat_4_7</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    4_7 +:</span>
-<span class="sd">    Uses full average_period of inner stats for use with inner_conv_encoder.</span>
+<span class="sd">    4_7 + Uses full average_period of inner stats for use with inner_conv_encoder.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Time embedding period:</span>
     <span class="n">time_dim</span> <span class="o">=</span> <span class="mi">30</span>  <span class="c1"># NOTE: changed this --&gt; change Policy  UNREAL for aux. pix control task upsampling params</span>
@@ -690,7 +690,7 @@
 
 <div class="viewcode-block" id="DevStrat_4_9"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_4.DevStrat_4_9">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_9</span><span class="p">(</span><span class="n">DevStrat_4_7</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Uses simple SMA market state features.</span>
+<span class="sd">    4_7 + Uses simple SMA market state features.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Time embedding period:</span>
     <span class="n">time_dim</span> <span class="o">=</span> <span class="mi">30</span>  <span class="c1"># NOTE: changed this --&gt; change Policy  UNREAL for aux. pix control task upsampling params</span>
@@ -802,7 +802,7 @@
 
 <div class="viewcode-block" id="DevStrat_4_10"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_4.DevStrat_4_10">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_10</span><span class="p">(</span><span class="n">DevStrat_4_7</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Reward search: log-normalised potential functions</span>
+<span class="sd">    4_7 + Reward search: log-normalised potential functions</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="DevStrat_4_10.get_reward"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_4.DevStrat_4_10.get_reward">[docs]</a>    <span class="k">def</span> <span class="nf">get_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -877,7 +877,7 @@
 
 <div class="viewcode-block" id="DevStrat_4_11"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_4.DevStrat_4_11">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_11</span><span class="p">(</span><span class="n">DevStrat_4_10</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Another set of features, grads for broker state</span>
+<span class="sd">    4_10 + Another set of sma-features, grads for broker state</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Time embedding period:</span>
     <span class="n">time_dim</span> <span class="o">=</span> <span class="mi">30</span>  <span class="c1"># NOTE: changed this --&gt; change Policy  UNREAL for aux. pix control task upsampling params</span>
@@ -902,7 +902,7 @@
         <span class="c1"># Note: fake `Width` dimension to use 2d conv etc.:</span>
         <span class="n">state_shape</span><span class="o">=</span>
         <span class="p">{</span>
-            <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">100</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">time_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)),</span>
+            <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">100</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">time_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">)),</span>
             <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">avg_period</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">)),</span>
             <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="n">DictSpace</span><span class="p">(</span>
                 <span class="p">{</span>
@@ -943,10 +943,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_32</span> <span class="o">=</span> <span class="n">btind</span><span class="o">.</span><span class="n">SimpleMovingAverage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datas</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">period</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_64</span> <span class="o">=</span> <span class="n">btind</span><span class="o">.</span><span class="n">SimpleMovingAverage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datas</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">period</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_128</span> <span class="o">=</span> <span class="n">btind</span><span class="o">.</span><span class="n">SimpleMovingAverage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datas</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">period</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_256</span> <span class="o">=</span> <span class="n">btind</span><span class="o">.</span><span class="n">SimpleMovingAverage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datas</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">period</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">dim_sma</span> <span class="o">=</span> <span class="n">btind</span><span class="o">.</span><span class="n">SimpleMovingAverage</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">datas</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-            <span class="n">period</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)</span>
+            <span class="n">period</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">dim_sma</span><span class="o">.</span><span class="n">plotinfo</span><span class="o">.</span><span class="n">plot</span> <span class="o">=</span> <span class="kc">False</span>
 
@@ -959,20 +960,21 @@
         <span class="n">T</span> <span class="o">=</span> <span class="mf">2e3</span>  <span class="c1"># EURUSD</span>
         <span class="n">T2</span> <span class="o">=</span> <span class="mf">2e3</span>
 
-        <span class="n">x_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
-            <span class="p">[</span>
-                <span class="c1">#np.frombuffer(self.channel_dO.get(size=self.time_dim)),</span>
-                <span class="c1">#np.frombuffer(self.channel_dH.get(size=self.time_dim)),</span>
-                <span class="c1">#np.frombuffer(self.channel_dL.get(size=self.time_dim)),</span>
+        <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="n">x_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="c1">#np.frombuffer(self.channel_dO.get(size=self.time_dim)),</span>
+                    <span class="c1">#np.frombuffer(self.channel_dH.get(size=self.time_dim)),</span>
+                    <span class="c1">#np.frombuffer(self.channel_dL.get(size=self.time_dim)),</span>
 
-                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">open</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">high</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">low</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
-            <span class="p">],</span>
-            <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
-        <span class="p">)</span>
-        <span class="n">x_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">x_p</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="n">x_p</span> <span class="o">=</span> <span class="n">tanh</span><span class="p">(</span><span class="n">x_p</span> <span class="o">*</span> <span class="n">T</span><span class="p">)</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">open</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">high</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">low</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+                <span class="p">],</span>
+                <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+            <span class="p">)</span>
+            <span class="n">x_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">x_p</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">x_p</span> <span class="o">=</span> <span class="n">tanh</span><span class="p">(</span><span class="n">x_p</span> <span class="o">*</span> <span class="n">T</span><span class="p">)</span>
 
         <span class="n">x_sma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
             <span class="p">[</span>
@@ -980,6 +982,7 @@
                 <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_32</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
                 <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_64</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
                 <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_128</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_256</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
             <span class="p">],</span>
             <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
         <span class="p">)</span>
