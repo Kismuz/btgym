@@ -27,7 +27,8 @@ Environment API reference
 Data pipe API reference
 =======================
 
-Refer to `Section 1.Data of this draft <https://github.com/Kismuz/btgym/docs/papers/btgym_formalism_draft.pdf>`_
+Refer to
+`Section 1.Data of this draft <https://github.com/Kismuz/btgym/blob/master/docs/papers/btgym_formalism_draft.pdf>`_
 for formal definitions.
 
 .. toctree::

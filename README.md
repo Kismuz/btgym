@@ -223,18 +223,18 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  
  
 ### <a name="news"></a>[News and updates:](#title)
-- 7.01.18: Package update:
+- 7.01.18: Update:
     - Major data pipe redesign. `Domain -> Trial -> Episode` sampling routine implemented. For motivation and 
       and formal definitions refer to 
       [Section 1.Data of this DRAFT](https://github.com/Kismuz/btgym/blob/master/docs/papers/btgym_formalism_draft.pdf), 
-      [Documentation](https://kismuz.github.io/btgym/btgym.datafeed.html#btgym-datafeed-package) 
-      and [Example](./examples/data_domain_api_intro.ipynb). Changes should be backward compatible.
-      In a word, it is necessary framework for meta-learning algorithms. 
+      API [Documentation](https://kismuz.github.io/btgym/btgym.datafeed.html#btgym-datafeed-package) 
+      and [Intro example](./examples/data_domain_api_intro.ipynb). Changes should be backward compatible.
+      In brief, it is necessry framework for upcoming meta-learning algorithms. 
     - logging changes: now relying in python `logbook` module. Should eliminate errors under Windows.
     - Stacked_LSTM_Policy agent implemented. Based on NAV_A3C from 
-      [Deepmind paper](https://arxiv.org/pdf/1611.03673.pdf) with some minor mods. Basic usage 
-      [Example here](./examples/unreal_stacked_lstm_strat_4_11.ipynb). 
-      Still in research code area and need further tuning; several times faster than simple LSTM agent, 
+      [DeepMind paper](https://arxiv.org/pdf/1611.03673.pdf) with some minor mods. Basic usage 
+      [Example is here](./examples/unreal_stacked_lstm_strat_4_11.ipynb). 
+      Still in research code area and need further tuning; yet several times faster than simple LSTM agent, 
       able to converge on 6-month 1m dataset.
 
 - 5.12.17: Inner btgym comm. fixes >> speedup ~5%.
