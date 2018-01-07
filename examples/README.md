@@ -4,7 +4,9 @@
 
 Research_code_4_11, 07.01.18:
 
-- **[A3C_STACKED_LSTM](./unreal_stacked_lstm_strat_4_11.ipynb)**: Stacked_LSTM_Policy agent basic usage example
+- **[A3C_STACKED_LSTM](./unreal_stacked_lstm_strat_4_11.ipynb)**: Stacked_LSTM_Policy agent basic usage example.
+
+[<img src="https://kismuz.github.io/btgym/_images/a3c_stacked_lstm_agent.png" width="300">](https://kismuz.github.io/btgym/_images/a3c_stacked_lstm_agent.png)  
 ****
 
 Research_code_4_6, 24.11.17:
