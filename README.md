@@ -109,6 +109,7 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
   trading calendar etc.
 
 #### <a name="data"></a> Data selection options for backtest agent training:
+**7.01.18: Upd: data shaping approach is under development, expect some changes.**
 - random sampling:
   historic price change dataset is divided to training, cross-validation and testing subsets.
   Since agent actions do not influence market, it is possible to randomly sample continuous subset
@@ -120,7 +121,6 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
 - sliding time-window sampling:
   mixture of above, episde is sampled randomly from comparatively short time period, sliding from
   furthest to most recent training data. Should be less prone to overfitting than random sampling.
-- NOTE: only random sampling is currently implemented.
 
 ****
  
