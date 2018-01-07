@@ -142,11 +142,11 @@ In short:
 - Environment starts separate server process responsible for rendering gym environment
   queries like `env.reset()` and `env.step()` by repeatedly sampling episodes form given dataset and running
   backtesting `Cerebro` engine on it. See OpenAI Gym documentation for details: https://gym.openai.com/docs
+
 ****
 
-
 .. image:: btgym_env_operation.png
-   :scale: 80 %
+   :scale: 60 %
    :alt: btgym environment operation
 
 
@@ -201,6 +201,7 @@ simple Request/Reply pattern (every request should be paired with reply message)
           necessary `next()` computations (e.g. issues orders, computes broker values etc.), composes environment
           response and sends it back to agent ( via `_BTgymAnalyzer`). Actually, since 'no market impact' is assumed,
           all state computations are performed one step ahead:
+
 ****
 
 **Server loop**::
@@ -228,8 +229,8 @@ simple Request/Reply pattern (every request should be paired with reply message)
                 Wait for incoming <action> message
                 Send (state, reward, done, info) response
 
-A3C framework
----------------------------------------
+A3C framework description
+-------------------------
 
 BTGym can be thougt as two-part package:
 one is environment itself and the other one is collection RL algoritms tuned for solving algo-trading tasks.
@@ -241,5 +242,43 @@ exact algorithms implementations and corresponding BTgym startegies, state and r
 data providers etc. are subject to experiments and changes.
 
 .. image:: btgym_a3c_framework.png
-   :scale: 80 %
+   :scale: 60 %
    :alt: A3C framework workwlow image
+
+****
+
+**Stacked LSTM Agent**
+
+Based on NAV_A3C agent from `LEARNING TO NAVIGATE IN COMPLEX ENVIRONMENTS <https://arxiv.org/pdf/1611.03673.pdf>`_
+paper by Mirowski at al.
+
+Modifications to original paper architecture:
+
+- splitted Policy/Value outputs: Policy is taken off first LSTM layer, Value - off the second;
+
+- LSTM state initialisation: first RNN layer context (policy) is initialised on every episode start, while second
+  (Value) is reset either on begining of every Trial (future work) or or every N-constant episodes,
+  motivated by RL^2 approach by Duan et al.,
+  `FAST REINFORCEMENT LEARNING VIA SLOW REINFORCEMENT LEARNING <https://arxiv.org/pdf/1611.02779.pdf>`_;
+
+- inner/external observation state state split: external (market) is encoded via conolution layers and fed to
+  first LSTM layer, inner (broker) state is fed into second LSTM layer, can optionally be encoded via separate
+  convolution block (doesnt seem to improve much though);
+
+- optional Value Replay losss (`Unreal` feature) improves sample efficiency, but is computationally more expensive;
+
+Other details:
+
+- All convolution and LSTM layers are layer-normalized, see
+  `Layer Normalisation <https://arxiv.org/abs/1607.06450>`_ paper by Jimmy Ba at al.;
+
+- A3C option `time_flat` is ON by default, improves training stability, reduces computation costs, see
+  `Base_AAC class Note <https://kismuz.github.io/btgym/btgym.algorithms.html#module-btgym.algorithms.aac>`_ for details;
+
+.. image:: a3c_stacked_lstm_agent.png
+   :scale: 50 %
+   :alt: A3C stacked LSTM agent architecture
+
+
+
+

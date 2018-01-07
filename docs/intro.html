@@ -95,17 +95,19 @@
 <li class="toctree-l1"><a class="reference internal" href="#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#environment-engine-description">Environment engine description</a></li>
-<li class="toctree-l1"><a class="reference internal" href="#a3c-framework">A3C framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="btgym.html">btgym.datafeed module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.strategy.html">btgym.strategy package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.datafeed.html">btgym.datafeed package</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.html">btgym.algorithms package</a></li>
@@ -315,7 +317,7 @@ queries like <cite>env.reset()</cite> and <cite>env.step()</cite> by repeatedly 
 backtesting <cite>Cerebro</cite> engine on it. See OpenAI Gym documentation for details: <a class="reference external" href="https://gym.openai.com/docs">https://gym.openai.com/docs</a></li>
 </ul>
 <hr class="docutils" />
-<a class="reference internal image-reference" href="_images/btgym_env_operation.png"><img alt="btgym environment operation" src="_images/btgym_env_operation.png" style="width: 720.8000000000001px; height: 1019.2px;" /></a>
+<a class="reference internal image-reference" href="_images/btgym_env_operation.png"><img alt="btgym environment operation" src="_images/btgym_env_operation.png" style="width: 540.6px; height: 764.4px;" /></a>
 <p><strong>Workflow sample</strong>:</p>
 <ol class="arabic simple">
 <li><dl class="first docutils">
@@ -423,8 +425,8 @@ all state computations are performed one step ahead:</li>
 </pre></div>
 </div>
 </div>
-<div class="section" id="a3c-framework">
-<h1>A3C framework<a class="headerlink" href="#a3c-framework" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="a3c-framework-description">
+<h1>A3C framework description<a class="headerlink" href="#a3c-framework-description" title="Permalink to this headline">¶</a></h1>
 <p>BTGym can be thougt as two-part package:
 one is environment itself and the other one is collection RL algoritms tuned for solving algo-trading tasks.
 Below is BTgym A3C training framework operation diagram.
@@ -432,7 +434,31 @@ Three advantage actor-critic style algorithms are implemented: A3C itself, it’
 <p>Note that while base training framework is itself is somewhat stable,
 exact algorithms implementations and corresponding BTgym startegies, state and reward shaping methods,
 data providers etc. are subject to experiments and changes.</p>
-<a class="reference internal image-reference" href="_images/btgym_a3c_framework.png"><img alt="A3C framework workwlow image" src="_images/btgym_a3c_framework.png" style="width: 720.8000000000001px; height: 1019.2px;" /></a>
+<a class="reference internal image-reference" href="_images/btgym_a3c_framework.png"><img alt="A3C framework workwlow image" src="_images/btgym_a3c_framework.png" style="width: 540.6px; height: 764.4px;" /></a>
+<hr class="docutils" />
+<p><strong>Stacked LSTM Agent</strong></p>
+<p>Based on NAV_A3C agent from <a class="reference external" href="https://arxiv.org/pdf/1611.03673.pdf">LEARNING TO NAVIGATE IN COMPLEX ENVIRONMENTS</a>
+paper by Mirowski at al.</p>
+<p>Modifications to original paper architecture:</p>
+<ul class="simple">
+<li>splitted Policy/Value outputs: Policy is taken off first LSTM layer, Value - off the second;</li>
+<li>LSTM state initialisation: first RNN layer context (policy) is initialised on every episode start, while second
+(Value) is reset either on begining of every Trial (future work) or or every N-constant episodes,
+motivated by RL^2 approach by Duan et al.,
+<a class="reference external" href="https://arxiv.org/pdf/1611.02779.pdf">FAST REINFORCEMENT LEARNING VIA SLOW REINFORCEMENT LEARNING</a>;</li>
+<li>inner/external observation state state split: external (market) is encoded via conolution layers and fed to
+first LSTM layer, inner (broker) state is fed into second LSTM layer, can optionally be encoded via separate
+convolution block (doesnt seem to improve much though);</li>
+<li>optional Value Replay losss (<cite>Unreal</cite> feature) improves sample efficiency, but is computationally more expensive;</li>
+</ul>
+<p>Other details:</p>
+<ul class="simple">
+<li>All convolution and LSTM layers are layer-normalized, see
+<a class="reference external" href="https://arxiv.org/abs/1607.06450">Layer Normalisation</a> paper by Jimmy Ba at al.;</li>
+<li>A3C option <cite>time_flat</cite> is ON by default, improves training stability, reduces computation costs, see
+<a class="reference external" href="https://kismuz.github.io/btgym/btgym.algorithms.html#module-btgym.algorithms.aac">Base_AAC class Note</a> for details;</li>
+</ul>
+<a class="reference internal image-reference" href="_images/a3c_stacked_lstm_agent.png"><img alt="A3C stacked LSTM agent architecture" src="_images/a3c_stacked_lstm_agent.png" style="width: 450.5px; height: 637.0px;" /></a>
 </div>
 
 

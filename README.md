@@ -1,5 +1,5 @@
 ## <a name="title"></a>Backtrader gym Environment
-**Implementation of OpenAI Gym environment for Backtrader backtesting/trading library.**
+**OpenAI Gym environment API for Backtrader backtesting/trading library.**
 ****
 Backtrader is open-source algorithmic trading library:  
 GitHub: http://github.com/mementum/backtrader  
@@ -234,7 +234,7 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
     - Stacked_LSTM_Policy agent implemented. Based on NAV_A3C from 
       [DeepMind paper](https://arxiv.org/pdf/1611.03673.pdf) with some minor mods. Basic usage 
       [Example is here](./examples/unreal_stacked_lstm_strat_4_11.ipynb). 
-      Still in research code area and need further tuning; yet several times faster than simple LSTM agent, 
+      Still in research code area and need further tuning; yet faster than simple LSTM agent, 
       able to converge on 6-month 1m dataset.
 
 - 5.12.17: Inner btgym comm. fixes >> speedup ~5%.
