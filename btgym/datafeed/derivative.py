@@ -61,7 +61,7 @@ class BTgymDataTrial(BTgymBaseData):
     """
     Intermediate-level data class.
     Implements conception of `Trial` object.
-    Supports data train/test split.
+    Supports data train/test separation.
     Do not use directly.
     """
     trial_params = dict(
@@ -103,14 +103,12 @@ class BTgymDataTrial(BTgymBaseData):
 
 class BTgymRandomDataDomain(BTgymBaseData):
     """
-    Top-level data class. Implements pipe::
+    Top-level data class. Supports source and target data domains separation. Implements pipe::
 
         Domain.sample() --> Trial.sample() --> Episode.to_btfeed() --> bt.Startegy
 
     This particular class randomly samples Trials from provided dataset.
 
-    Note:
-        source/target domain split is not implemented yet.
     """
     def __init__(
             self,
@@ -118,6 +116,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
             parsing_params=None,
             trial_params=None,
             episode_params=None,
+            target_period=None,
             name='RndDataDomain',
             task=0,
             log_level=WARNING,
@@ -130,6 +129,11 @@ class BTgymRandomDataDomain(BTgymBaseData):
                                 {sample_duration, time_gap, start_00, start_weekdays, test_period, expanding};
             episode_params:     dict, describes episode parameters, should contain keys:
                                 {sample_duration, time_gap, start_00, start_weekdays};
+
+            target_period:      dict, domain target period, def={'days': 0, 'hours': 0, 'minutes': 0};
+                                setting this param to non-zero duration forces separation to source/target
+                                domains (which can be thought as creating  top-level train/test subsets) with
+                                target data duration equal to `target_period`. Source data always precedes target one.
             name:               str, optional
             task:               int, optional
             log_level:          int, logbook.level
@@ -158,14 +162,19 @@ class BTgymRandomDataDomain(BTgymBaseData):
                 openinterest=-1,
             )
 
+        # Hacky cause we want trial test period to be attr of Trial instance
+        # and top-level test (target) period to be attribute of Domain instance:
         try:
-            # Hacky cause we want test period to be attr of Trial instance:
             trial_test_period = trial_params.pop('test_period')
 
         except(AttributeError, KeyError):
             trial_test_period = {'days': 0, 'hours': 0, 'minutes': 0}
 
         episode_params.update({'test_period': trial_test_period})
+
+        if target_period is None:
+            target_period = {'days': 0, 'hours': 0, 'minutes': 0}
+        trial_params['test_period'] = target_period
 
         episode_config = dict(
             class_ref=BTgymEpisode,
@@ -204,9 +213,16 @@ class BTgymRandomDataDomain(BTgymBaseData):
 class BTgymDataset(BTgymRandomDataDomain):
     """
     Simple top-level data class, implements direct random episode sampling from data set induced by csv file,
-    i.e it is a special case for `Trial=def=DataDomain`.
-    Doesnt support train/test split. Mainly for demo and debug purposes.
+    i.e it is a special case for `Trial=def=Episode`.
+    Supports source and target data domains separation with some caveat - see Note.
+
+    Note:
+        Due to current implementation sampling test episode actually requires sampling test trial
+        and train episode of same size. To be improved.
+
     """
+    # TODO: mod to sample() to get rid of test-episode mess
+
     params_deprecated=dict(
         episode_len_days=('episode_duration', 'days'),
         episode_len_hours=('episode_duration','hours'),
@@ -223,6 +239,7 @@ class BTgymDataset(BTgymRandomDataDomain):
             start_00=False,
             start_weekdays=None,
             parsing_params=None,
+            test_period=None,
             name='SimpleDataSet',
             log_level=WARNING,
             **kwargs
@@ -237,10 +254,13 @@ class BTgymDataset(BTgymRandomDataDomain):
                                 of the day (usually 00:00), def=False;
             start_weekdays:     list, only weekdays from the list will be used for sample start,
                                 def=[0, 1, 2, 3, 4, 5, 6];
+            test_period:        domain test(target) period. def={'days': 0, 'hours': 0, 'minutes': 0};
+                                setting this param to non-zero duration forces data separation to train/test
+                                subsets. Train data always precedes test one.
             parsing_params:     csv parsing options, see base class description for details;
             name:               str, instance name;
             log_level:          int, logbook.level;
-            **kwargs:
+            **kwargs:           deprecated kwargs;
         """
         # Default sample time duration:
         if episode_duration is None:
@@ -275,7 +295,7 @@ class BTgymDataset(BTgymRandomDataDomain):
                 attr = getattr(self, key1)
                 attr[key2] = value
 
-        sampling_params=dict(
+        trial_params = dict(
             sample_duration=self._episode_duration,
             start_weekdays=start_weekdays,
             start_00=start_00,
@@ -283,11 +303,13 @@ class BTgymDataset(BTgymRandomDataDomain):
             test_period={'days': 0, 'hours': 0, 'minutes': 0},
             expanding=False
         )
+        episode_params = trial_params.copy()
         super(BTgymDataset, self).__init__(
             filename=filename,
             parsing_params=parsing_params,
-            trial_params=sampling_params,
-            episode_params=sampling_params,
+            trial_params=trial_params,
+            episode_params=episode_params,
+            target_period=test_period,
             name=name,
             log_level=log_level,
         )

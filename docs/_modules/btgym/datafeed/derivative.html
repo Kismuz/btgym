@@ -242,7 +242,7 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Intermediate-level data class.</span>
 <span class="sd">    Implements conception of `Trial` object.</span>
-<span class="sd">    Supports data train/test split.</span>
+<span class="sd">    Supports data train/test separation.</span>
 <span class="sd">    Do not use directly.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">trial_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
@@ -284,14 +284,12 @@
 
 <div class="viewcode-block" id="BTgymRandomDataDomain"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.derivative.BTgymRandomDataDomain">[docs]</a><span class="k">class</span> <span class="nc">BTgymRandomDataDomain</span><span class="p">(</span><span class="n">BTgymBaseData</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Top-level data class. Implements pipe::</span>
+<span class="sd">    Top-level data class. Supports source and target data domains separation. Implements pipe::</span>
 
 <span class="sd">        Domain.sample() --&gt; Trial.sample() --&gt; Episode.to_btfeed() --&gt; bt.Startegy</span>
 
 <span class="sd">    This particular class randomly samples Trials from provided dataset.</span>
 
-<span class="sd">    Note:</span>
-<span class="sd">        source/target domain split is not implemented yet.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
@@ -299,6 +297,7 @@
             <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">trial_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">episode_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">target_period</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;RndDataDomain&#39;</span><span class="p">,</span>
             <span class="n">task</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
@@ -311,6 +310,11 @@
 <span class="sd">                                {sample_duration, time_gap, start_00, start_weekdays, test_period, expanding};</span>
 <span class="sd">            episode_params:     dict, describes episode parameters, should contain keys:</span>
 <span class="sd">                                {sample_duration, time_gap, start_00, start_weekdays};</span>
+
+<span class="sd">            target_period:      dict, domain target period, def={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0};</span>
+<span class="sd">                                setting this param to non-zero duration forces separation to source/target</span>
+<span class="sd">                                domains (which can be thought as creating  top-level train/test subsets) with</span>
+<span class="sd">                                target data duration equal to `target_period`. Source data always precedes target one.</span>
 <span class="sd">            name:               str, optional</span>
 <span class="sd">            task:               int, optional</span>
 <span class="sd">            log_level:          int, logbook.level</span>
@@ -339,14 +343,19 @@
                 <span class="n">openinterest</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
             <span class="p">)</span>
 
+        <span class="c1"># Hacky cause we want trial test period to be attr of Trial instance</span>
+        <span class="c1"># and top-level test (target) period to be attribute of Domain instance:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="c1"># Hacky cause we want test period to be attr of Trial instance:</span>
             <span class="n">trial_test_period</span> <span class="o">=</span> <span class="n">trial_params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;test_period&#39;</span><span class="p">)</span>
 
         <span class="k">except</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
             <span class="n">trial_test_period</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;days&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
 
         <span class="n">episode_params</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;test_period&#39;</span><span class="p">:</span> <span class="n">trial_test_period</span><span class="p">})</span>
+
+        <span class="k">if</span> <span class="n">target_period</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">target_period</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;days&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="n">trial_params</span><span class="p">[</span><span class="s1">&#39;test_period&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_period</span>
 
         <span class="n">episode_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
             <span class="n">class_ref</span><span class="o">=</span><span class="n">BTgymEpisode</span><span class="p">,</span>
@@ -385,9 +394,16 @@
 <div class="viewcode-block" id="BTgymDataset"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.derivative.BTgymDataset">[docs]</a><span class="k">class</span> <span class="nc">BTgymDataset</span><span class="p">(</span><span class="n">BTgymRandomDataDomain</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Simple top-level data class, implements direct random episode sampling from data set induced by csv file,</span>
-<span class="sd">    i.e it is a special case for `Trial=def=DataDomain`.</span>
-<span class="sd">    Doesnt support train/test split. Mainly for demo and debug purposes.</span>
+<span class="sd">    i.e it is a special case for `Trial=def=Episode`.</span>
+<span class="sd">    Supports source and target data domains separation with some caveat - see Note.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Due to current implementation sampling test episode actually requires sampling test trial</span>
+<span class="sd">        and train episode of same size. To be improved.</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># TODO: mod to sample() to get rid of test-episode mess</span>
+
     <span class="n">params_deprecated</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
         <span class="n">episode_len_days</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;episode_duration&#39;</span><span class="p">,</span> <span class="s1">&#39;days&#39;</span><span class="p">),</span>
         <span class="n">episode_len_hours</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;episode_duration&#39;</span><span class="p">,</span><span class="s1">&#39;hours&#39;</span><span class="p">),</span>
@@ -404,6 +420,7 @@
             <span class="n">start_00</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">start_weekdays</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">test_period</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;SimpleDataSet&#39;</span><span class="p">,</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span>
@@ -418,10 +435,13 @@
 <span class="sd">                                of the day (usually 00:00), def=False;</span>
 <span class="sd">            start_weekdays:     list, only weekdays from the list will be used for sample start,</span>
 <span class="sd">                                def=[0, 1, 2, 3, 4, 5, 6];</span>
+<span class="sd">            test_period:        domain test(target) period. def={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0};</span>
+<span class="sd">                                setting this param to non-zero duration forces data separation to train/test</span>
+<span class="sd">                                subsets. Train data always precedes test one.</span>
 <span class="sd">            parsing_params:     csv parsing options, see base class description for details;</span>
 <span class="sd">            name:               str, instance name;</span>
 <span class="sd">            log_level:          int, logbook.level;</span>
-<span class="sd">            **kwargs:</span>
+<span class="sd">            **kwargs:           deprecated kwargs;</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Default sample time duration:</span>
         <span class="k">if</span> <span class="n">episode_duration</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -456,7 +476,7 @@
                 <span class="n">attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key1</span><span class="p">)</span>
                 <span class="n">attr</span><span class="p">[</span><span class="n">key2</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 
-        <span class="n">sampling_params</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+        <span class="n">trial_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
             <span class="n">sample_duration</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_episode_duration</span><span class="p">,</span>
             <span class="n">start_weekdays</span><span class="o">=</span><span class="n">start_weekdays</span><span class="p">,</span>
             <span class="n">start_00</span><span class="o">=</span><span class="n">start_00</span><span class="p">,</span>
@@ -464,11 +484,13 @@
             <span class="n">test_period</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;days&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">},</span>
             <span class="n">expanding</span><span class="o">=</span><span class="kc">False</span>
         <span class="p">)</span>
+        <span class="n">episode_params</span> <span class="o">=</span> <span class="n">trial_params</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">BTgymDataset</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
             <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
-            <span class="n">trial_params</span><span class="o">=</span><span class="n">sampling_params</span><span class="p">,</span>
-            <span class="n">episode_params</span><span class="o">=</span><span class="n">sampling_params</span><span class="p">,</span>
+            <span class="n">trial_params</span><span class="o">=</span><span class="n">trial_params</span><span class="p">,</span>
+            <span class="n">episode_params</span><span class="o">=</span><span class="n">episode_params</span><span class="p">,</span>
+            <span class="n">target_period</span><span class="o">=</span><span class="n">test_period</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
         <span class="p">)</span></div>

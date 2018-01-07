@@ -27,52 +27,55 @@ from .derivative import BTgymRandomDataDomain
 class BTgymSequentialDataDomain(BTgymRandomDataDomain):
     """
     Top-level sequential data iterator.
-    Enables sliding or expanding time-window training and testing.
+    Implements sliding or expanding time-window training and testing.
+    Due to sequential nature doesnt support source/target domain separation.
 
-    Single Trial is defined by support interval (overall duration)  and test interval::
+    Note:
 
-        [trial_start_time=train_start_time <-> train_end_time=test_start_time <-> test_end_time=trial_end_time],
+        Single Trial is defined by support interval (overall duration)  and test interval::
 
-    Sliding time-window data iterating:
+            [trial_start_time=train_start_time <-> train_end_time=test_start_time <-> test_end_time=trial_end_time],
 
-    If training is started from the beginningg of the dataset, `train_start_time` is set to that of first record,
-    for example, for the start of the year::
+        Sliding time-window data iterating:
 
-        Trial duration: 10 days; test interval: 2 days, iterating from 0-th, than:
+        If training is started from the beginningg of the dataset, `train_start_time` is set to that of first record,
+        for example, for the start of the year::
 
-        train interval: 8 days, 0:00:00; test interval: 2 days, 0:00:00.
+            Trial duration: 10 days; test interval: 2 days, iterating from 0-th, than:
 
-    Then first trial intervals will be (note that omitted data periods like holidays will not be counted,
-    so overall trial duration is dilated to get proper number of records)::
+            train interval: 8 days, 0:00:00; test interval: 2 days, 0:00:00.
 
-        Trial #0 @: 2016-01-03 17:01:00 <--> 2016-01-17 17:05:00,
-        and last two days will be reserved for test data
+        Then first trial intervals will be (note that omitted data periods like holidays will not be counted,
+        so overall trial duration is dilated to get proper number of records)::
 
-    Since `reset_data()` method call, every next call to `BTgymSequentialDataDomain.sample()` method will return
-    Trial object, such as::
+            Trial #0 @: 2016-01-03 17:01:00 <--> 2016-01-17 17:05:00,
+            and last two days will be reserved for test data
 
-        train_start_time_next_trial = `test_end_time_previous_trial + 1_time_unit
+        Since `reset_data()` method call, every next call to `BTgymSequentialDataDomain.sample()` method will return
+        Trial object, such as::
 
-    i.e. next trial will be shifted by the duration of test period.
+            train_start_time_next_trial = `test_end_time_previous_trial + 1_time_unit
 
-    Repeats until entire dataset is exhausted.
+        i.e. next trial will be shifted by the duration of test period.
 
-    Note that while train periods are overlapping, test periods form a partition.
+        Repeats until entire dataset is exhausted.
 
-    Here, next trial will be shifted by two days::
+        Note that while train periods are overlapping, test periods form a partition.
 
-        Trial #1 @: 2016-01-05 00:00:00 <--> 2016-01-19 00:10:00
+        Here, next trial will be shifted by two days::
+
+            Trial #1 @: 2016-01-05 00:00:00 <--> 2016-01-19 00:10:00
 
 
-    Expanding time-window data iterating:
+        Expanding time-window data iterating:
 
-    Differs from above in a way that trial interval start position is fixed at the earliest time of dataset. Thus,
-    trial support interval is expanding to the right and every subsequent trial is `longer` than previous one
-    by amount of test interval.
+        Differs from above in a way that trial interval start position is fixed at the earliest time of dataset. Thus,
+        trial support interval is expanding to the right and every subsequent trial is `longer` than previous one
+        by amount of test interval.
 
-    Episodes sampling:
+        Episodes sampling:
 
-    Episodes sampling is performed in such a way that entire episode duration lies within `Trial` interval.
+        Episodes sampling is performed in such a way that entire episode duration lies within `Trial` interval.
 
     """
 

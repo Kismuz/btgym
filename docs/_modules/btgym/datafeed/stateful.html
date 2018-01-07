@@ -208,52 +208,55 @@
 <div class="viewcode-block" id="BTgymSequentialDataDomain"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.stateful.BTgymSequentialDataDomain">[docs]</a><span class="k">class</span> <span class="nc">BTgymSequentialDataDomain</span><span class="p">(</span><span class="n">BTgymRandomDataDomain</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Top-level sequential data iterator.</span>
-<span class="sd">    Enables sliding or expanding time-window training and testing.</span>
+<span class="sd">    Implements sliding or expanding time-window training and testing.</span>
+<span class="sd">    Due to sequential nature doesnt support source/target domain separation.</span>
 
-<span class="sd">    Single Trial is defined by support interval (overall duration)  and test interval::</span>
+<span class="sd">    Note:</span>
 
-<span class="sd">        [trial_start_time=train_start_time &lt;-&gt; train_end_time=test_start_time &lt;-&gt; test_end_time=trial_end_time],</span>
+<span class="sd">        Single Trial is defined by support interval (overall duration)  and test interval::</span>
 
-<span class="sd">    Sliding time-window data iterating:</span>
+<span class="sd">            [trial_start_time=train_start_time &lt;-&gt; train_end_time=test_start_time &lt;-&gt; test_end_time=trial_end_time],</span>
 
-<span class="sd">    If training is started from the beginningg of the dataset, `train_start_time` is set to that of first record,</span>
-<span class="sd">    for example, for the start of the year::</span>
+<span class="sd">        Sliding time-window data iterating:</span>
 
-<span class="sd">        Trial duration: 10 days; test interval: 2 days, iterating from 0-th, than:</span>
+<span class="sd">        If training is started from the beginningg of the dataset, `train_start_time` is set to that of first record,</span>
+<span class="sd">        for example, for the start of the year::</span>
 
-<span class="sd">        train interval: 8 days, 0:00:00; test interval: 2 days, 0:00:00.</span>
+<span class="sd">            Trial duration: 10 days; test interval: 2 days, iterating from 0-th, than:</span>
 
-<span class="sd">    Then first trial intervals will be (note that omitted data periods like holidays will not be counted,</span>
-<span class="sd">    so overall trial duration is dilated to get proper number of records)::</span>
+<span class="sd">            train interval: 8 days, 0:00:00; test interval: 2 days, 0:00:00.</span>
 
-<span class="sd">        Trial #0 @: 2016-01-03 17:01:00 &lt;--&gt; 2016-01-17 17:05:00,</span>
-<span class="sd">        and last two days will be reserved for test data</span>
+<span class="sd">        Then first trial intervals will be (note that omitted data periods like holidays will not be counted,</span>
+<span class="sd">        so overall trial duration is dilated to get proper number of records)::</span>
 
-<span class="sd">    Since `reset_data()` method call, every next call to `BTgymSequentialDataDomain.sample()` method will return</span>
-<span class="sd">    Trial object, such as::</span>
+<span class="sd">            Trial #0 @: 2016-01-03 17:01:00 &lt;--&gt; 2016-01-17 17:05:00,</span>
+<span class="sd">            and last two days will be reserved for test data</span>
 
-<span class="sd">        train_start_time_next_trial = `test_end_time_previous_trial + 1_time_unit</span>
+<span class="sd">        Since `reset_data()` method call, every next call to `BTgymSequentialDataDomain.sample()` method will return</span>
+<span class="sd">        Trial object, such as::</span>
 
-<span class="sd">    i.e. next trial will be shifted by the duration of test period.</span>
+<span class="sd">            train_start_time_next_trial = `test_end_time_previous_trial + 1_time_unit</span>
 
-<span class="sd">    Repeats until entire dataset is exhausted.</span>
+<span class="sd">        i.e. next trial will be shifted by the duration of test period.</span>
 
-<span class="sd">    Note that while train periods are overlapping, test periods form a partition.</span>
+<span class="sd">        Repeats until entire dataset is exhausted.</span>
 
-<span class="sd">    Here, next trial will be shifted by two days::</span>
+<span class="sd">        Note that while train periods are overlapping, test periods form a partition.</span>
 
-<span class="sd">        Trial #1 @: 2016-01-05 00:00:00 &lt;--&gt; 2016-01-19 00:10:00</span>
+<span class="sd">        Here, next trial will be shifted by two days::</span>
+
+<span class="sd">            Trial #1 @: 2016-01-05 00:00:00 &lt;--&gt; 2016-01-19 00:10:00</span>
 
 
-<span class="sd">    Expanding time-window data iterating:</span>
+<span class="sd">        Expanding time-window data iterating:</span>
 
-<span class="sd">    Differs from above in a way that trial interval start position is fixed at the earliest time of dataset. Thus,</span>
-<span class="sd">    trial support interval is expanding to the right and every subsequent trial is `longer` than previous one</span>
-<span class="sd">    by amount of test interval.</span>
+<span class="sd">        Differs from above in a way that trial interval start position is fixed at the earliest time of dataset. Thus,</span>
+<span class="sd">        trial support interval is expanding to the right and every subsequent trial is `longer` than previous one</span>
+<span class="sd">        by amount of test interval.</span>
 
-<span class="sd">    Episodes sampling:</span>
+<span class="sd">        Episodes sampling:</span>
 
-<span class="sd">    Episodes sampling is performed in such a way that entire episode duration lies within `Trial` interval.</span>
+<span class="sd">        Episodes sampling is performed in such a way that entire episode duration lies within `Trial` interval.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
