@@ -142,6 +142,7 @@ class Launcher():
         self.trainer_config['kwargs']['test_mode'] = self.test_mode
 
         # Logging config:
+        # TODO: Warnings --> to Notices
         StreamHandler(sys.stdout).push_application()
         if self.log_level is None:
             log_levels = [(0, WARNING), (1, INFO), (2, DEBUG)]
