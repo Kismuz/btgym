@@ -217,13 +217,10 @@
 <span class="sd">    get_state(), get_reward(), get_info(), is_done() and set_datalines() methods.</span>
 <span class="sd">    One can always go deeper and override __init__ () and next() methods for desired</span>
 <span class="sd">    server cerebro engine behaviour, including order execution logic etc.</span>
-<span class="sd">    Since it is bt.Strategy subclass, see:</span>
-<span class="sd">    https://www.backtrader.com/docu/strategy.html</span>
-<span class="sd">    for more information.</span>
 
 <span class="sd">    Note:</span>
 <span class="sd">        - bt.observers.DrawDown observer will be automatically added to BTgymStrategy instance at runtime.</span>
-<span class="sd">        - Since it is bt.Strategy subclass, see: https://www.backtrader.com/docu/strategy.html for more information.</span>
+<span class="sd">        - Since it is bt.Strategy subclass, refer to https://www.backtrader.com/docu/strategy.html for more information.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># Time embedding period:</span>
@@ -265,12 +262,16 @@
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Due to backtrader convention, any strategy args should be defined by `params` class attr. dictionary or passed</span>
-<span class="sd">        as kwargs to bt.Cerebro() class via .addstrategy() method.</span>
+<span class="sd">        Keyword Args:</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            **kwargs:</span>
-<span class="sd">                params:                 dictionary containing following keys:</span>
+<span class="sd">            params (dict):          parameters dictionary, see Note below.</span>
+
+
+<span class="sd">            Note:</span>
+
+<span class="sd">                - Due to backtrader convention, any strategy argsuments should be defined inside `params` dictionary</span>
+<span class="sd">                 or passed as kwargs to bt.Cerebro() class via .addstrategy() method. Parameter dictionary</span>
+<span class="sd">                 should contain ate least these keys::</span>
 
 <span class="sd">                    state_shape:        Observation state shape is dictionary of Gym spaces, by convention</span>
 <span class="sd">                                        first dimension of every Gym Box space is time embedding one;</span>
@@ -282,6 +283,16 @@
 <span class="sd">                    skip_frame:         number of environment steps to skip before returning next response,</span>
 <span class="sd">                                        e.g. if set to 10 -- agent will interact with environment every 10th step;</span>
 <span class="sd">                                        every other step agent action is assumed to be &#39;hold&#39;.</span>
+
+<span class="sd">                - Default values are::</span>
+
+<span class="sd">                    state_shape=dict(raw_state=spaces.Box(shape=(4, 4), low=0, high=0,))</span>
+<span class="sd">                    drawdown_call=10</span>
+<span class="sd">                    target_call=10</span>
+<span class="sd">                    dataset_stat=None</span>
+<span class="sd">                    episode_stat=None</span>
+<span class="sd">                    portfolio_actions=(&#39;hold&#39;, &#39;buy&#39;, &#39;sell&#39;, &#39;close&#39;)</span>
+<span class="sd">                    skip_frame=1</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span> <span class="o">=</span> <span class="mi">1</span>
@@ -374,8 +385,7 @@
 <span class="sd">            - normalized exposure (position size)</span>
 <span class="sd">            - position duration in steps, normalized wrt. max possible episode steps</span>
 <span class="sd">            - exp. scaled episode duration in steps, normalized wrt. max possible episode steps</span>
-<span class="sd">            - normalized decayed realized profit/loss for last closed trade</span>
-<span class="sd">                (or zero if no trades been closed within last step);</span>
+<span class="sd">            - normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)</span>
 <span class="sd">            - normalized profit/loss for current opened trade (unrealized p/l);</span>
 <span class="sd">            - normalized best possible up to present point unrealized result for current opened trade;</span>
 <span class="sd">            - normalized worst possible up to present point unrealized result for current opened trade;</span>

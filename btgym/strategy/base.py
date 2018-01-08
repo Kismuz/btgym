@@ -38,13 +38,10 @@ class BTgymBaseStrategy(bt.Strategy):
     get_state(), get_reward(), get_info(), is_done() and set_datalines() methods.
     One can always go deeper and override __init__ () and next() methods for desired
     server cerebro engine behaviour, including order execution logic etc.
-    Since it is bt.Strategy subclass, see:
-    https://www.backtrader.com/docu/strategy.html
-    for more information.
 
     Note:
         - bt.observers.DrawDown observer will be automatically added to BTgymStrategy instance at runtime.
-        - Since it is bt.Strategy subclass, see: https://www.backtrader.com/docu/strategy.html for more information.
+        - Since it is bt.Strategy subclass, refer to https://www.backtrader.com/docu/strategy.html for more information.
     """
 
     # Time embedding period:
@@ -86,12 +83,16 @@ class BTgymBaseStrategy(bt.Strategy):
 
     def __init__(self, **kwargs):
         """
-        Due to backtrader convention, any strategy args should be defined by `params` class attr. dictionary or passed
-        as kwargs to bt.Cerebro() class via .addstrategy() method.
+        Keyword Args:
 
-        Args:
-            **kwargs:
-                params:                 dictionary containing following keys:
+            params (dict):          parameters dictionary, see Note below.
+
+
+            Note:
+
+                - Due to backtrader convention, any strategy argsuments should be defined inside `params` dictionary
+                 or passed as kwargs to bt.Cerebro() class via .addstrategy() method. Parameter dictionary
+                 should contain ate least these keys::
 
                     state_shape:        Observation state shape is dictionary of Gym spaces, by convention
                                         first dimension of every Gym Box space is time embedding one;
@@ -103,6 +104,16 @@ class BTgymBaseStrategy(bt.Strategy):
                     skip_frame:         number of environment steps to skip before returning next response,
                                         e.g. if set to 10 -- agent will interact with environment every 10th step;
                                         every other step agent action is assumed to be 'hold'.
+
+                - Default values are::
+
+                    state_shape=dict(raw_state=spaces.Box(shape=(4, 4), low=0, high=0,))
+                    drawdown_call=10
+                    target_call=10
+                    dataset_stat=None
+                    episode_stat=None
+                    portfolio_actions=('hold', 'buy', 'sell', 'close')
+                    skip_frame=1
         """
         self.iteration = 1
         self.inner_embedding = 1
@@ -195,8 +206,7 @@ class BTgymBaseStrategy(bt.Strategy):
             - normalized exposure (position size)
             - position duration in steps, normalized wrt. max possible episode steps
             - exp. scaled episode duration in steps, normalized wrt. max possible episode steps
-            - normalized decayed realized profit/loss for last closed trade
-                (or zero if no trades been closed within last step);
+            - normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)
             - normalized profit/loss for current opened trade (unrealized p/l);
             - normalized best possible up to present point unrealized result for current opened trade;
             - normalized worst possible up to present point unrealized result for current opened trade;

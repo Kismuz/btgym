@@ -37,7 +37,7 @@
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="BTGym 0.0.6 documentation" href="index.html"/>
         <link rel="next" title="btgym.monitor package" href="btgym.monitor.html"/>
-        <link rel="prev" title="btgym.datafeed module" href="btgym.html"/> 
+        <link rel="prev" title="btgym.dataserver module" href="btgym.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -95,12 +95,11 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
-<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework">A3C framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="btgym.html">btgym.datafeed module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.dataserver">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html">btgym.dataserver module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.server">btgym.server module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">btgym.strategy package</a><ul>
@@ -110,6 +109,9 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.monitor.html">btgym.monitor package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.datafeed.html">btgym.datafeed package</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.html">btgym.algorithms package</a></li>
@@ -190,39 +192,55 @@
 Any State, Reward and Info computation logic can be implemented by subclassing BTgymStrategy and overriding
 get_state(), get_reward(), get_info(), is_done() and set_datalines() methods.
 One can always go deeper and override __init__ () and next() methods for desired
-server cerebro engine behaviour, including order execution logic etc.
-Since it is bt.Strategy subclass, see:
-<a class="reference external" href="https://www.backtrader.com/docu/strategy.html">https://www.backtrader.com/docu/strategy.html</a>
-for more information.</p>
+server cerebro engine behaviour, including order execution logic etc.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <ul class="last simple">
 <li>bt.observers.DrawDown observer will be automatically added to BTgymStrategy instance at runtime.</li>
-<li>Since it is bt.Strategy subclass, see: <a class="reference external" href="https://www.backtrader.com/docu/strategy.html">https://www.backtrader.com/docu/strategy.html</a> for more information.</li>
+<li>Since it is bt.Strategy subclass, refer to <a class="reference external" href="https://www.backtrader.com/docu/strategy.html">https://www.backtrader.com/docu/strategy.html</a> for more information.</li>
 </ul>
 </div>
-<p>Due to backtrader convention, any strategy args should be defined by <cite>params</cite> class attr. dictionary or passed
-as kwargs to bt.Cerebro() class via .addstrategy() method.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>**kwargs</strong> – <p>params:                 dictionary containing following keys:</p>
-<blockquote>
-<div><dl class="docutils">
-<dt>state_shape:        Observation state shape is dictionary of Gym spaces, by convention</dt>
-<dd>first dimension of every Gym Box space is time embedding one;</dd>
+<tr class="field-odd field"><th class="field-name" colspan="2">Keyword Arguments:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body"><ul class="first last">
+<li><p class="first"><strong>params</strong> (<em>dict</em>) – parameters dictionary, see Note below.</p>
+</li>
+<li><dl class="first docutils">
+<dt><strong>Note</strong> – - Due to backtrader convention, any strategy argsuments should be defined inside <cite>params</cite> dictionary</dt>
+<dd><p class="first">or passed as kwargs to bt.Cerebro() class via .addstrategy() method. Parameter dictionary
+should contain ate least these keys:</p>
+<div class="last highlight-default"><div class="highlight"><pre><span></span><span class="n">state_shape</span><span class="p">:</span>        <span class="n">Observation</span> <span class="n">state</span> <span class="n">shape</span> <span class="ow">is</span> <span class="n">dictionary</span> <span class="n">of</span> <span class="n">Gym</span> <span class="n">spaces</span><span class="p">,</span> <span class="n">by</span> <span class="n">convention</span>
+                    <span class="n">first</span> <span class="n">dimension</span> <span class="n">of</span> <span class="n">every</span> <span class="n">Gym</span> <span class="n">Box</span> <span class="n">space</span> <span class="ow">is</span> <span class="n">time</span> <span class="n">embedding</span> <span class="n">one</span><span class="p">;</span>
+<span class="n">drawdown_call</span><span class="p">:</span>      <span class="n">finish</span> <span class="n">episode</span> <span class="n">when</span> <span class="n">hitting</span> <span class="n">this</span> <span class="n">drawdown</span> <span class="n">treshghold</span> <span class="p">,</span> <span class="ow">in</span> <span class="n">percent</span><span class="o">.</span>
+<span class="n">target_call</span><span class="p">:</span>        <span class="n">finish</span> <span class="n">episode</span> <span class="n">when</span> <span class="n">reaching</span> <span class="n">this</span> <span class="n">profit</span> <span class="n">target</span><span class="p">,</span> <span class="ow">in</span> <span class="n">percent</span><span class="o">.</span>
+<span class="n">dataset_stat</span><span class="p">:</span>       <span class="n">summary</span> <span class="n">descriptive</span> <span class="n">statistics</span> <span class="k">for</span> <span class="n">entire</span> <span class="n">dataset</span><span class="o">.</span> <span class="n">Internal</span><span class="p">,</span> <span class="n">updated</span> <span class="n">by</span> <span class="n">server</span><span class="o">.</span>
+<span class="n">episode_stat</span><span class="p">:</span>       <span class="n">summary</span> <span class="n">descriptive</span> <span class="n">statistics</span> <span class="k">for</span> <span class="n">episode</span><span class="o">.</span> <span class="n">Internal</span><span class="p">,</span> <span class="n">updated</span> <span class="n">by</span> <span class="n">server</span><span class="o">.</span>
+<span class="n">portfolio_actions</span><span class="p">:</span>  <span class="n">possible</span> <span class="n">agent</span> <span class="n">actions</span><span class="o">.</span>
+<span class="n">skip_frame</span><span class="p">:</span>         <span class="n">number</span> <span class="n">of</span> <span class="n">environment</span> <span class="n">steps</span> <span class="n">to</span> <span class="n">skip</span> <span class="n">before</span> <span class="n">returning</span> <span class="nb">next</span> <span class="n">response</span><span class="p">,</span>
+                    <span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span> <span class="k">if</span> <span class="nb">set</span> <span class="n">to</span> <span class="mi">10</span> <span class="o">--</span> <span class="n">agent</span> <span class="n">will</span> <span class="n">interact</span> <span class="k">with</span> <span class="n">environment</span> <span class="n">every</span> <span class="mi">10</span><span class="n">th</span> <span class="n">step</span><span class="p">;</span>
+                    <span class="n">every</span> <span class="n">other</span> <span class="n">step</span> <span class="n">agent</span> <span class="n">action</span> <span class="ow">is</span> <span class="n">assumed</span> <span class="n">to</span> <span class="n">be</span> <span class="s1">&#39;hold&#39;</span><span class="o">.</span>
+</pre></div>
+</div>
+</dd>
 </dl>
-<p>drawdown_call:      finish episode when hitting this drawdown treshghold , in percent.
-target_call:        finish episode when reaching this profit target, in percent.
-dataset_stat:       summary descriptive statistics for entire dataset. Internal, updated by server.
-episode_stat:       summary descriptive statistics for episode. Internal, updated by server.
-portfolio_actions:  possible agent actions.
-skip_frame:         number of environment steps to skip before returning next response,</p>
-<blockquote>
-<div>e.g. if set to 10 – agent will interact with environment every 10th step;
-every other step agent action is assumed to be ‘hold’.</div></blockquote>
-</div></blockquote>
+<ul>
+<li><p class="first">Default values are:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">state_shape</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">raw_state</span><span class="o">=</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">0</span><span class="p">,))</span>
+<span class="n">drawdown_call</span><span class="o">=</span><span class="mi">10</span>
+<span class="n">target_call</span><span class="o">=</span><span class="mi">10</span>
+<span class="n">dataset_stat</span><span class="o">=</span><span class="kc">None</span>
+<span class="n">episode_stat</span><span class="o">=</span><span class="kc">None</span>
+<span class="n">portfolio_actions</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;buy&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">)</span>
+<span class="n">skip_frame</span><span class="o">=</span><span class="mi">1</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+</ul>
 </td>
 </tr>
 </tbody>
@@ -238,11 +256,7 @@ every other step agent action is assumed to be ‘hold’.</div></blockquote>
 <li>normalized exposure (position size)</li>
 <li>position duration in steps, normalized wrt. max possible episode steps</li>
 <li>exp. scaled episode duration in steps, normalized wrt. max possible episode steps</li>
-<li><dl class="first docutils">
-<dt>normalized decayed realized profit/loss for last closed trade</dt>
-<dd>(or zero if no trades been closed within last step);</dd>
-</dl>
-</li>
+<li>normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)</li>
 <li>normalized profit/loss for current opened trade (unrealized p/l);</li>
 <li>normalized best possible up to present point unrealized result for current opened trade;</li>
 <li>normalized worst possible up to present point unrealized result for current opened trade;</li>
@@ -401,7 +415,7 @@ At least, it should handle order execution logic according to action received.</
         <a href="btgym.monitor.html" class="btn btn-neutral float-right" title="btgym.monitor package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="btgym.html" class="btn btn-neutral" title="btgym.datafeed module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="btgym.html" class="btn btn-neutral" title="btgym.dataserver module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
