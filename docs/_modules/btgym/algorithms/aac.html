@@ -738,8 +738,8 @@
                 <span class="n">memory_config</span> <span class="o">=</span> <span class="kc">None</span>
 
             <span class="c1"># Make runners:</span>
-            <span class="c1"># `rollout_length` represents the number of &quot;local steps&quot;:  the number of timesteps</span>
-            <span class="c1"># we run the policy before we update the parameters.</span>
+            <span class="c1"># `rollout_length` represents the number of &quot;local steps&quot;:  the number of time steps</span>
+            <span class="c1"># we run the policy before we get full rollout, run train step and update the parameters.</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">runners</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="n">task</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span>  <span class="c1"># Runners will have [worker_task][env_count] id&#39;s</span>
             <span class="k">for</span> <span class="n">env</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">:</span>
@@ -757,7 +757,7 @@
                      <span class="p">)</span>
                 <span class="p">)</span>
                 <span class="n">task</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="c1"># Make rollouts provider:</span>
+            <span class="c1"># Make rollouts provider[s]:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">data_getter</span> <span class="o">=</span> <span class="p">[</span><span class="n">make_data_getter</span><span class="p">(</span><span class="n">runner</span><span class="o">.</span><span class="n">queue</span><span class="p">)</span> <span class="k">for</span> <span class="n">runner</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">runners</span><span class="p">]</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;.init() done&#39;</span><span class="p">)</span>
@@ -800,7 +800,8 @@
                     <span class="n">network</span><span class="o">.</span><span class="n">global_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span>
                     <span class="n">network</span><span class="o">.</span><span class="n">global_episode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_episode</span>
                     <span class="n">network</span><span class="o">.</span><span class="n">inc_episode</span><span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc_episode</span>
-                <span class="k">except</span><span class="p">:</span>
+
+                <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
                         <span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: `global` name_scope network should be defined before any `local`s.&#39;</span><span class="o">.</span>
                         <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>

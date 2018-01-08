@@ -559,8 +559,8 @@ class BaseAAC(object):
                 memory_config = None
 
             # Make runners:
-            # `rollout_length` represents the number of "local steps":  the number of timesteps
-            # we run the policy before we update the parameters.
+            # `rollout_length` represents the number of "local steps":  the number of time steps
+            # we run the policy before we get full rollout, run train step and update the parameters.
             self.runners = []
             task = 100 * self.task  # Runners will have [worker_task][env_count] id's
             for env in self.env_list:
@@ -578,7 +578,7 @@ class BaseAAC(object):
                      )
                 )
                 task += 1
-            # Make rollouts provider:
+            # Make rollouts provider[s]:
             self.data_getter = [make_data_getter(runner.queue) for runner in self.runners]
 
             self.log.debug('.init() done')
@@ -621,7 +621,8 @@ class BaseAAC(object):
                     network.global_step = self.global_step
                     network.global_episode = self.global_episode
                     network.inc_episode= self.inc_episode
-                except:
+
+                except AssertionError:
                     raise AttributeError(
                         'AAC_{}: `global` name_scope network should be defined before any `local`s.'.
                         format(self.task)

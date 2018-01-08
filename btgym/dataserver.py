@@ -17,15 +17,9 @@
 #
 ###############################################################################
 
-import logging
-#logging.basicConfig(format='%(name)s: %(message)s')
 import multiprocessing
-
-#import itertools
+import copy
 import zmq
-
-#import time
-#from datetime import timedelta
 
 
 class BTgymDataFeedServer(multiprocessing.Process):
@@ -51,8 +45,61 @@ class BTgymDataFeedServer(multiprocessing.Process):
         self.log_level = log_level
         self.task = task
         self.log = None
+        self.local_step = 0
         self.dataset = dataset
         self.network_address = network_address
+        self.pre_sample = None
+        self.pre_sample_params = dict(
+            get_new=True,
+            sample_type=0,
+            b_alpha=1,
+            b_beta=1
+        )
+
+    def get_data(self, sample_params=None):
+        """
+        Get Trial sample according to parameters received.
+        If no parameters being passed - just makes and stores pre-sample.
+
+        Args:
+            sample_params:   dictionary of sampling parameters
+
+        Returns:
+            sample:     if `sample_params` arg has been passed and dataset is ready
+            None:       otherwise
+
+        Notes:
+            Use some heuristic here: to save time we pre-sample data with most probable parameters;
+            first guessed sample gets type =`Train`, b_alpha=1, b_beta=1, and subsequent ones get actual
+            sampling params of previous accepted sample. If newly received parameters doesnt match pre-sampled ones -
+            we discard our guess and sample again with actual params.
+        """
+
+        self.log.debug('is_ready: {}'.format(self.dataset.is_ready))
+        if self.dataset.is_ready:
+            if sample_params is not None:
+                if self.pre_sample is None or not self.pre_sample_params == sample_params:
+                    self.log.debug('Pre-sampling guess failed, resampling.')
+                    self.pre_sample_params = copy.deepcopy(sample_params)
+                    sample = self.dataset.sample(**sample_params)
+
+                else:
+                    self.log.debug('Pre-sampling guess succeeded.')
+                    sample = self.pre_sample
+
+            else:
+                self.log.debug('Guessing sample with params: {}'.format(self.pre_sample_params))
+                self.pre_sample = self.dataset.sample(**self.pre_sample_params)
+                return None
+
+            self.local_step += 1
+
+        else:
+            # Dataset not ready, make dummy:
+            sample = None
+            self.pre_sample = None
+
+        return sample
 
     def run(self):
         """
@@ -64,7 +111,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
         StreamHandler(sys.stdout).push_application()
         if self.log_level is None:
             self.log_level = WARNING
-        self.log = Logger('BTgym_DataServer_{}'.format(self.task), level=self.log_level)
+        self.log = Logger('BTgymDataServer_{}'.format(self.task), level=self.log_level)
 
         self.process = multiprocessing.current_process()
         self.log.info('PID: {}'.format(self.process.pid))
@@ -84,32 +131,12 @@ class BTgymDataFeedServer(multiprocessing.Process):
         # Describe dataset:
         self.dataset_stat = self.dataset.describe()
 
-        local_step = 0
-        fresh_sample = False
-
         # Main loop:
         while True:
-            self.log.debug('Domain_dataset_ready: {}, fresh_sample: {}'.format(self.dataset.is_ready, fresh_sample))
-            if not fresh_sample:
-                if self.dataset.is_ready:
-                    # Get sample:
-                    sample = self.dataset.sample()
-                    data_dict = dict(
-                        sample=sample,
-                        dataset_stat=self.dataset_stat,
-                        local_step=local_step,
-                    )
-                    fresh_sample = True
+            # Guess sample:
+            self.get_data()
 
-                else:
-                    # Dataset not ready, make dummy:
-                    data_dict = dict(
-                        sample=None,
-                        dataset_stat=self.dataset_stat,
-                        local_step=local_step,
-                    )
-
-            # Stick here with episode data in hand until get request:
+            # Stick here with data in hand until receive any request:
             service_input = socket.recv_pyobj()
             msg = 'Received <{}>'.format(service_input)
             self.log.debug(msg)
@@ -139,26 +166,25 @@ class BTgymDataFeedServer(multiprocessing.Process):
                     self.log.debug('Sent: ' + str(message))
                     self.log.debug('Data_is_ready: {}'.format(self.dataset.is_ready))
                     socket.send_pyobj(message)
-                    fresh_sample = False
+                    self.local_step = 0
 
                 # Send episode datafeed:
                 elif service_input['ctrl'] == '_get_data':
                     if self.dataset.is_ready:
-                        message = 'Sending subset_#{} data {}.'.format(local_step, data_dict)
+                        # Call get_data to verify sampling guess or resample:
+                        sample = self.get_data(sample_params=service_input['kwargs'])
+                        message = 'Sending sample_#{}.'.format(self.local_step)
                         self.log.debug(message)
-                        socket.send_pyobj(data_dict)
-                        local_step += 1
+                        socket.send_pyobj({'sample': sample, 'stat': self.dataset_stat})
 
                     else:
                         message = {'ctrl': 'Dataset not ready, waiting for control key <_reset_data>'}
                         self.log.debug('Sent: ' + str(message))
                         socket.send_pyobj(message)  # pairs any other input
-                    # Mark current sample as used anyway:
-                    fresh_sample = False
 
                 # Send dataset statisitc:
                 elif service_input['ctrl'] == '_get_info':
-                    message = 'Sending info for #{}.'.format(local_step)
+                    message = 'Sending info for #{}.'.format(self.local_step)
                     self.log.debug(message)
                     # Compose response:
                     info_dict = dict(

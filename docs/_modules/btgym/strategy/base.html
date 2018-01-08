@@ -267,11 +267,10 @@
 <span class="sd">            params (dict):          parameters dictionary, see Note below.</span>
 
 
-<span class="sd">            Note:</span>
-
-<span class="sd">                - Due to backtrader convention, any strategy argsuments should be defined inside `params` dictionary</span>
-<span class="sd">                 or passed as kwargs to bt.Cerebro() class via .addstrategy() method. Parameter dictionary</span>
-<span class="sd">                 should contain ate least these keys::</span>
+<span class="sd">            Notes:</span>
+<span class="sd">                Due to backtrader convention, any strategy argsuments should be defined inside `params` dictionary</span>
+<span class="sd">                or passed as kwargs to bt.Cerebro() class via .addstrategy() method. Parameter dictionary</span>
+<span class="sd">                should contain at least these keys::</span>
 
 <span class="sd">                    state_shape:        Observation state shape is dictionary of Gym spaces, by convention</span>
 <span class="sd">                                        first dimension of every Gym Box space is time embedding one;</span>
@@ -284,7 +283,7 @@
 <span class="sd">                                        e.g. if set to 10 -- agent will interact with environment every 10th step;</span>
 <span class="sd">                                        every other step agent action is assumed to be &#39;hold&#39;.</span>
 
-<span class="sd">                - Default values are::</span>
+<span class="sd">                Default values are::</span>
 
 <span class="sd">                    state_shape=dict(raw_state=spaces.Box(shape=(4, 4), low=0, high=0,))</span>
 <span class="sd">                    drawdown_call=10</span>

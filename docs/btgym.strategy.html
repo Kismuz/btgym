@@ -208,11 +208,10 @@ server cerebro engine behaviour, including order execution logic etc.</p>
 <tr class="field-odd field"><td>&#160;</td><td class="field-body"><ul class="first last">
 <li><p class="first"><strong>params</strong> (<em>dict</em>) – parameters dictionary, see Note below.</p>
 </li>
-<li><dl class="first docutils">
-<dt><strong>Note</strong> – - Due to backtrader convention, any strategy argsuments should be defined inside <cite>params</cite> dictionary</dt>
-<dd><p class="first">or passed as kwargs to bt.Cerebro() class via .addstrategy() method. Parameter dictionary
-should contain ate least these keys:</p>
-<div class="last highlight-default"><div class="highlight"><pre><span></span><span class="n">state_shape</span><span class="p">:</span>        <span class="n">Observation</span> <span class="n">state</span> <span class="n">shape</span> <span class="ow">is</span> <span class="n">dictionary</span> <span class="n">of</span> <span class="n">Gym</span> <span class="n">spaces</span><span class="p">,</span> <span class="n">by</span> <span class="n">convention</span>
+<li><p class="first"><strong>Notes</strong> – Due to backtrader convention, any strategy argsuments should be defined inside <cite>params</cite> dictionary
+or passed as kwargs to bt.Cerebro() class via .addstrategy() method. Parameter dictionary
+should contain at least these keys:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">state_shape</span><span class="p">:</span>        <span class="n">Observation</span> <span class="n">state</span> <span class="n">shape</span> <span class="ow">is</span> <span class="n">dictionary</span> <span class="n">of</span> <span class="n">Gym</span> <span class="n">spaces</span><span class="p">,</span> <span class="n">by</span> <span class="n">convention</span>
                     <span class="n">first</span> <span class="n">dimension</span> <span class="n">of</span> <span class="n">every</span> <span class="n">Gym</span> <span class="n">Box</span> <span class="n">space</span> <span class="ow">is</span> <span class="n">time</span> <span class="n">embedding</span> <span class="n">one</span><span class="p">;</span>
 <span class="n">drawdown_call</span><span class="p">:</span>      <span class="n">finish</span> <span class="n">episode</span> <span class="n">when</span> <span class="n">hitting</span> <span class="n">this</span> <span class="n">drawdown</span> <span class="n">treshghold</span> <span class="p">,</span> <span class="ow">in</span> <span class="n">percent</span><span class="o">.</span>
 <span class="n">target_call</span><span class="p">:</span>        <span class="n">finish</span> <span class="n">episode</span> <span class="n">when</span> <span class="n">reaching</span> <span class="n">this</span> <span class="n">profit</span> <span class="n">target</span><span class="p">,</span> <span class="ow">in</span> <span class="n">percent</span><span class="o">.</span>
@@ -224,10 +223,7 @@ should contain ate least these keys:</p>
                     <span class="n">every</span> <span class="n">other</span> <span class="n">step</span> <span class="n">agent</span> <span class="n">action</span> <span class="ow">is</span> <span class="n">assumed</span> <span class="n">to</span> <span class="n">be</span> <span class="s1">&#39;hold&#39;</span><span class="o">.</span>
 </pre></div>
 </div>
-</dd>
-</dl>
-<ul>
-<li><p class="first">Default values are:</p>
+<p>Default values are:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">state_shape</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">raw_state</span><span class="o">=</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">0</span><span class="p">,))</span>
 <span class="n">drawdown_call</span><span class="o">=</span><span class="mi">10</span>
 <span class="n">target_call</span><span class="o">=</span><span class="mi">10</span>
@@ -237,8 +233,6 @@ should contain ate least these keys:</p>
 <span class="n">skip_frame</span><span class="o">=</span><span class="mi">1</span>
 </pre></div>
 </div>
-</li>
-</ul>
 </li>
 </ul>
 </td>

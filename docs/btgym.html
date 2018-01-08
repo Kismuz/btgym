@@ -95,7 +95,7 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
-<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework">A3C framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
@@ -200,6 +200,31 @@ Enables efficient data sampling for asynchronous multiply BTgym environments exe
 </tbody>
 </table>
 <dl class="method">
+<dt id="btgym.dataserver.BTgymDataFeedServer.get_data">
+<code class="descname">get_data</code><span class="sig-paren">(</span><em>sample_params=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/dataserver.html#BTgymDataFeedServer.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.dataserver.BTgymDataFeedServer.get_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get Trial sample according to parameters received.
+If no parameters being passed - just makes and stores pre-sample.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sample_params</strong> – dictionary of sampling parameters</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>tuple</strong> – if <cite>sample_params</cite> arg has been passed
+None:       otherwise</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.sample" title="btgym.datafeed.base.BTgymBaseData.sample">sample</a>, dataset_stat</td>
+</tr>
+</tbody>
+</table>
+<p>Notes:
+Use some heuristic here: to save time we pre-sample data with most probable parameters;
+first guessed sample gets type =`Train`, b_alpha=1, b_beta=1, and subsequent ones get actual
+sampling params of previous accepted sample. If newly received parameters doesnt match pre-sampled ones -
+we discard our guess and sample again with actual params.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="btgym.dataserver.BTgymDataFeedServer.run">
 <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/dataserver.html#BTgymDataFeedServer.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.dataserver.BTgymDataFeedServer.run" title="Permalink to this definition">¶</a></dt>
 <dd><p>Server process runtime body.</p>
@@ -261,7 +286,7 @@ Enables efficient data sampling for asynchronous multiply BTgym environments exe
 </table>
 <dl class="method">
 <dt id="btgym.server.BTgymServer.get_data">
-<code class="descname">get_data</code><span class="sig-paren">(</span><em>reset_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/server.html#BTgymServer.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.server.BTgymServer.get_data" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_data</code><span class="sig-paren">(</span><em>**reset_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/server.html#BTgymServer.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.server.BTgymServer.get_data" title="Permalink to this definition">¶</a></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />

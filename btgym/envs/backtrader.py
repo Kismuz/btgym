@@ -220,7 +220,7 @@ class BTgymEnv(gym.Env):
                 for key, value in log_levels:
                     if key == self.verbose:
                         self.log_level = value
-            self.log = Logger('BTGym_API_shell_{}'.format(self.task), level=self.log_level)
+            self.log = Logger('BTgymAPIshell_{}'.format(self.task), level=self.log_level)
 
         # Network parameters:
         self.network_address += str(self.port)
@@ -615,8 +615,23 @@ class BTgymEnv(gym.Env):
         Returns:
             observation space state
 
-        Note:
-            This method is extension of OpenAI Gym as it accepts kwargs (base nethod does not).
+        Notes:
+            Current kwarg accepted is::
+
+                data_control = dict(
+                    episode=dict(
+                        get_new=True,
+                        sample_type=0,
+                        b_alpha=1,
+                        b_beta=1
+                    ),
+                    trial=dict(
+                        get_new=True,
+                        sample_type=0,
+                        b_alpha=1,
+                        b_beta=1
+                    )
+                )
         """
         # Data Server check:
         if self.data_master:
@@ -721,7 +736,7 @@ class BTgymEnv(gym.Env):
                 self._closed,
                 not self.socket or self.socket.closed,
             )
-            self.log.info(msg)
+            self.log.exception(msg)
             raise AssertionError(msg)
 
         # Send action to backtrader engine, receive environment response

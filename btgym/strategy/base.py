@@ -88,11 +88,10 @@ class BTgymBaseStrategy(bt.Strategy):
             params (dict):          parameters dictionary, see Note below.
 
 
-            Note:
-
-                - Due to backtrader convention, any strategy argsuments should be defined inside `params` dictionary
-                 or passed as kwargs to bt.Cerebro() class via .addstrategy() method. Parameter dictionary
-                 should contain ate least these keys::
+            Notes:
+                Due to backtrader convention, any strategy argsuments should be defined inside `params` dictionary
+                or passed as kwargs to bt.Cerebro() class via .addstrategy() method. Parameter dictionary
+                should contain at least these keys::
 
                     state_shape:        Observation state shape is dictionary of Gym spaces, by convention
                                         first dimension of every Gym Box space is time embedding one;
@@ -105,7 +104,7 @@ class BTgymBaseStrategy(bt.Strategy):
                                         e.g. if set to 10 -- agent will interact with environment every 10th step;
                                         every other step agent action is assumed to be 'hold'.
 
-                - Default values are::
+                Default values are::
 
                     state_shape=dict(raw_state=spaces.Box(shape=(4, 4), low=0, high=0,))
                     drawdown_call=10

@@ -273,7 +273,7 @@ class BTgymServer(multiprocessing.Process):
 
         return response
 
-    def get_data(self, reset_kwargs):
+    def get_data(self, **reset_kwargs):
         """
 
         Args:
@@ -324,7 +324,7 @@ class BTgymServer(multiprocessing.Process):
         trial_sample = data_server_response['message']['sample']
         trial_stat = trial_sample.describe()
         trial_sample.reset()
-        dataset_stat = data_server_response['message']['dataset_stat']
+        dataset_stat = data_server_response['message']['stat']
 
         return trial_sample, trial_stat, dataset_stat
 
@@ -338,7 +338,7 @@ class BTgymServer(multiprocessing.Process):
         StreamHandler(sys.stdout).push_application()
         if self.log_level is None:
             self.log_level = WARNING
-        self.log = Logger('BTgym_Server_{}'.format(self.task), level=self.log_level)
+        self.log = Logger('BTgymServer_{}'.format(self.task), level=self.log_level)
 
         self.process = multiprocessing.current_process()
         self.log.info('PID: {}'.format(self.process.pid))
@@ -346,6 +346,7 @@ class BTgymServer(multiprocessing.Process):
         # Runtime Housekeeping:
         cerebro = None
         episode_result = dict()
+        episode_sample = None
         trial_sample = None
         trial_stat = None
         dataset_stat = None
@@ -460,31 +461,49 @@ class BTgymServer(multiprocessing.Process):
             # Add communication utility:
             cerebro.addanalyzer(_BTgymAnalyzer, _name='_env_analyzer',)
 
-            # Parse resetting kwargs: if need to request new data range from dataserver or sample from existing one:
-            reset_kwargs = dict(
-                new_trial=True,
-                episode_type=None,
+            # Data preparation:
+            # Parse args we got with _reset call:
+            data_control = dict(
+                episode=dict(
+                    get_new=True,
+                    sample_type=0,
+                    b_alpha=1,
+                    b_beta=1
+                ),
+                trial=dict(
+                    get_new=True,
+                    sample_type=0,
+                    b_alpha=1,
+                    b_beta=1
+                )
             )
-            if service_input['kwargs'] is not None:
-                reset_kwargs.update(service_input['kwargs'])
+            try:
+                data_control.update(service_input['kwargs']['data_control'])
 
-            assert reset_kwargs['episode_type'] in [0, 1, None], \
-                'Expected `episode_type` be 0 (train), 1 (test) or None, got: {}'.format(reset_kwargs['episode_type'])
+            except KeyError:
+                self.log.warning('<data_control> arg not found, using defaults: {}'.format(data_control))
 
-            if reset_kwargs['new_trial'] or trial_sample is None:
-                self.log.debug('Requesting new data from data server...')
-
-                trial_sample, trial_stat, dataset_stat = self.get_data(reset_kwargs)
-
-                self.log.debug('Got new Trial <{}>'.format(trial_sample.filename))
+            # Get new Trial from data_server if requested:
+            if data_control['trial']['get_new'] or trial_sample is None:
+                self.log.debug(
+                    'Requesting new Trial sample with args: {}'.format(data_control['trial'])
+                )
+                trial_sample, trial_stat, dataset_stat = self.get_data(**data_control['trial'])
+                self.log.debug('...got new Trial: <{}>'.format(trial_sample.filename))
 
             else:
-                self.log.debug('Sampling from existing Trial <{}>'.format(trial_sample.filename))
+                self.log.debug('Reusing Trial <{}>'.format(trial_sample.filename))
 
-            # Sample requested type of episode:
-            # TODO: if using sample-bounded data iterator: request new one if exhausted
-            episode_sample = trial_sample.sample(type=reset_kwargs['episode_type'])
-            self.log.debug('Got new episode <{}> '.format(episode_sample.filename))
+            # Get new episode if requested:
+            if data_control['episode']['get_new'] or episode_sample is None:
+                self.log.debug(
+                    'Sampling new Episode with args: {}'.format(data_control['episode'])
+                )
+                episode_sample = trial_sample.sample(**data_control['episode'])
+                self.log.debug('...got new Episode <{}> '.format(episode_sample.filename))
+
+            else:
+                self.log.debug('Reusing Episode <{}>'.format(episode_sample.filename))
 
             # Get episode data statistic and pass it to strategy params:
             cerebro.strats[0][0][2]['trial_stat'] = trial_stat

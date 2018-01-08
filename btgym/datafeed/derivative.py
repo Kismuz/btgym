@@ -181,7 +181,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
             kwargs=dict(
                 parsing_params=parsing_params,
                 sampling_params=None,
-                name='Episode',
+                name='episode',
                 task=task,
                 log_level=log_level,
                 _config_stack=None,

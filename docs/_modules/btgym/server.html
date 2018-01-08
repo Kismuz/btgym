@@ -452,7 +452,7 @@
 
         <span class="k">return</span> <span class="n">response</span>
 
-<div class="viewcode-block" id="BTgymServer.get_data"><a class="viewcode-back" href="../../btgym.html#btgym.server.BTgymServer.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reset_kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymServer.get_data"><a class="viewcode-back" href="../../btgym.html#btgym.server.BTgymServer.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">reset_kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
@@ -503,7 +503,7 @@
         <span class="n">trial_sample</span> <span class="o">=</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;sample&#39;</span><span class="p">]</span>
         <span class="n">trial_stat</span> <span class="o">=</span> <span class="n">trial_sample</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
         <span class="n">trial_sample</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="n">dataset_stat</span> <span class="o">=</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;dataset_stat&#39;</span><span class="p">]</span>
+        <span class="n">dataset_stat</span> <span class="o">=</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;stat&#39;</span><span class="p">]</span>
 
         <span class="k">return</span> <span class="n">trial_sample</span><span class="p">,</span> <span class="n">trial_stat</span><span class="p">,</span> <span class="n">dataset_stat</span></div>
 
@@ -517,7 +517,7 @@
         <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">WARNING</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTgym_Server_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTGym_Server_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">current_process</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;PID: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">pid</span><span class="p">))</span>
@@ -525,6 +525,7 @@
         <span class="c1"># Runtime Housekeeping:</span>
         <span class="n">cerebro</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">episode_result</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">episode_sample</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">trial_sample</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">trial_stat</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">dataset_stat</span> <span class="o">=</span> <span class="kc">None</span>
@@ -639,31 +640,49 @@
             <span class="c1"># Add communication utility:</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">addanalyzer</span><span class="p">(</span><span class="n">_BTgymAnalyzer</span><span class="p">,</span> <span class="n">_name</span><span class="o">=</span><span class="s1">&#39;_env_analyzer&#39;</span><span class="p">,)</span>
 
-            <span class="c1"># Parse resetting kwargs: if need to request new data range from dataserver or sample from existing one:</span>
-            <span class="n">reset_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-                <span class="n">new_trial</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                <span class="n">episode_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="c1"># Data preparation:</span>
+            <span class="c1"># Parse args we got with _reset call:</span>
+            <span class="n">data_control</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">episode</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span>
+                <span class="p">),</span>
+                <span class="n">trial</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span>
+                <span class="p">)</span>
             <span class="p">)</span>
-            <span class="k">if</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">reset_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">])</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">data_control</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">][</span><span class="s1">&#39;data_control&#39;</span><span class="p">])</span>
 
-            <span class="k">assert</span> <span class="n">reset_kwargs</span><span class="p">[</span><span class="s1">&#39;episode_type&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> \
-                <span class="s1">&#39;Expected `episode_type` be 0 (train), 1 (test) or None, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">reset_kwargs</span><span class="p">[</span><span class="s1">&#39;episode_type&#39;</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;&lt;data_control&gt; arg not found, using defaults: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_control</span><span class="p">))</span>
 
-            <span class="k">if</span> <span class="n">reset_kwargs</span><span class="p">[</span><span class="s1">&#39;new_trial&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">trial_sample</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Requesting new data from data server...&#39;</span><span class="p">)</span>
-
-                <span class="n">trial_sample</span><span class="p">,</span> <span class="n">trial_stat</span><span class="p">,</span> <span class="n">dataset_stat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">reset_kwargs</span><span class="p">)</span>
-
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Got new Trial &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">trial_sample</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
+            <span class="c1"># Get new Trial from data_server if requested:</span>
+            <span class="k">if</span> <span class="n">data_control</span><span class="p">[</span><span class="s1">&#39;trial&#39;</span><span class="p">][</span><span class="s1">&#39;get_new&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">trial_sample</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="s1">&#39;Requesting new Trial sample with args: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_control</span><span class="p">[</span><span class="s1">&#39;trial&#39;</span><span class="p">])</span>
+                <span class="p">)</span>
+                <span class="n">trial_sample</span><span class="p">,</span> <span class="n">trial_stat</span><span class="p">,</span> <span class="n">dataset_stat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="o">**</span><span class="n">data_control</span><span class="p">[</span><span class="s1">&#39;trial&#39;</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;...got new Trial: &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">trial_sample</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
 
             <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sampling from existing Trial &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">trial_sample</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Reusing Trial &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">trial_sample</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
 
-            <span class="c1"># Sample requested type of episode:</span>
-            <span class="c1"># TODO: if using sample-bounded data iterator: request new one if exhausted</span>
-            <span class="n">episode_sample</span> <span class="o">=</span> <span class="n">trial_sample</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">reset_kwargs</span><span class="p">[</span><span class="s1">&#39;episode_type&#39;</span><span class="p">])</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Got new episode &lt;</span><span class="si">{}</span><span class="s1">&gt; &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">episode_sample</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
+            <span class="c1"># Get new episode if requested:</span>
+            <span class="k">if</span> <span class="n">data_control</span><span class="p">[</span><span class="s1">&#39;episode&#39;</span><span class="p">][</span><span class="s1">&#39;get_new&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">episode_sample</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="s1">&#39;Sampling new episode with args: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_control</span><span class="p">[</span><span class="s1">&#39;episode&#39;</span><span class="p">])</span>
+                <span class="p">)</span>
+                <span class="n">episode_sample</span> <span class="o">=</span> <span class="n">trial_sample</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="o">**</span><span class="n">data_control</span><span class="p">[</span><span class="s1">&#39;episode&#39;</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;...got new episode &lt;</span><span class="si">{}</span><span class="s1">&gt; &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">episode_sample</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Reusing episode &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">episode_sample</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
 
             <span class="c1"># Get episode data statistic and pass it to strategy params:</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;trial_stat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trial_stat</span>

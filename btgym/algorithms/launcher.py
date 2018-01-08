@@ -150,7 +150,7 @@ class Launcher():
             for key, value in log_levels:
                 if key == self.verbose:
                     self.log_level = value
-        self.log = Logger('Launcher_shell', level=self.log_level)
+        self.log = Logger('LauncherShell', level=self.log_level)
 
         # Seeding:
         if self.root_random_seed is not None:
