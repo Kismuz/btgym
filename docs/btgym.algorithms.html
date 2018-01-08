@@ -95,7 +95,7 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
-<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework">A3C framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
@@ -195,7 +195,7 @@
 <span id="btgym-algorithms-launcher-module"></span><h2>btgym.algorithms.launcher module<a class="headerlink" href="#module-btgym.algorithms.launcher" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.launcher.Launcher">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.launcher.</code><code class="descname">Launcher</code><span class="sig-paren">(</span><em>env_config=None</em>, <em>cluster_config=None</em>, <em>policy_config=None</em>, <em>trainer_config=None</em>, <em>max_env_steps=None</em>, <em>root_random_seed=None</em>, <em>test_mode=False</em>, <em>purge_previous=0</em>, <em>verbose=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.launcher.</code><code class="descname">Launcher</code><span class="sig-paren">(</span><em>env_config=None</em>, <em>cluster_config=None</em>, <em>policy_config=None</em>, <em>trainer_config=None</em>, <em>max_env_steps=None</em>, <em>root_random_seed=None</em>, <em>test_mode=False</em>, <em>purge_previous=0</em>, <em>log_level=None</em>, <em>verbose=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher" title="Permalink to this definition">¶</a></dt>
 <dd><p>Configures and starts distributed TF training session with workers
 running sets of separate instances of BTgym/Atari environment.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -203,16 +203,18 @@ running sets of separate instances of BTgym/Atari environment.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env_config</strong> – environment class_config_dict, see ‘Note’ below</li>
-<li><strong>cluster_config</strong> – tf cluster configuration, see ‘Note’ below</li>
-<li><strong>policy_config</strong> – policy class_config_dict holding corr. policy class args.</li>
-<li><strong>trainer_config</strong> – trainer class_config_dict holding corr. trainer class args.</li>
-<li><strong>max_env_steps</strong> – total number of environment steps to run training on</li>
-<li><strong>root_random_seed</strong> – int or None</li>
-<li><strong>test_mode</strong> – if True - use Atari gym env., BTGym otherwise.</li>
-<li><strong>purge_previous</strong> – int, keep or remove previous log files and saved checkpoints from log_dir, if found:
-0 - keep, 1 - ask, 2 - remove</li>
-<li><strong>verbose</strong> – 0 - silent, 1 - info, 3 - debug level</li>
+<li><strong>env_config</strong> (<a class="reference external" href="https://docs.python.org/2/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) – environment class_config_dict, see ‘Note’ below.</li>
+<li><strong>cluster_config</strong> (<a class="reference external" href="https://docs.python.org/2/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) – tf cluster configuration, see ‘Note’ below.</li>
+<li><strong>policy_config</strong> (<a class="reference external" href="https://docs.python.org/2/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) – policy class_config_dict holding corr. policy class args.</li>
+<li><strong>trainer_config</strong> (<a class="reference external" href="https://docs.python.org/2/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) – trainer class_config_dict holding corr. trainer class args.</li>
+<li><strong>max_env_steps</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) – total number of environment steps to run training on.</li>
+<li><strong>root_random_seed</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) – int or None</li>
+<li><strong>test_mode</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#bool" title="(in Python v2.7)"><em>bool</em></a>) – if True - use Atari gym env., BTGym otherwise.</li>
+<li><strong>purge_previous</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) – keep or remove previous log files and saved checkpoints from log_dir:
+{0 - keep, 1 - ask, 2 - remove}.</li>
+<li><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) – verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}.</li>
+<li><strong>log_level</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) – logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},
+overrides <cite>verbose</cite> arg.</li>
 </ul>
 </td>
 </tr>

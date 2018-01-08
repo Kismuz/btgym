@@ -60,21 +60,24 @@ class Launcher():
                  root_random_seed=None,
                  test_mode=False,
                  purge_previous=0,
+                 log_level=None,
                  verbose=0):
         """
 
 
         Args:
-            env_config:         environment class_config_dict, see 'Note' below
-            cluster_config:     tf cluster configuration, see 'Note' below
-            policy_config:      policy class_config_dict holding corr. policy class args.
-            trainer_config:     trainer class_config_dict holding corr. trainer class args.
-            max_env_steps:      total number of environment steps to run training on
-            root_random_seed:   int or None
-            test_mode:          if True - use Atari gym env., BTGym otherwise.
-            purge_previous:     int, keep or remove previous log files and saved checkpoints from log_dir, if found:
-                                0 - keep, 1 - ask, 2 - remove
-            verbose:            0 - silent, 1 - info, 3 - debug level
+            env_config (dict):          environment class_config_dict, see 'Note' below.
+            cluster_config (dict):      tf cluster configuration, see 'Note' below.
+            policy_config (dict):       policy class_config_dict holding corr. policy class args.
+            trainer_config (dict):      trainer class_config_dict holding corr. trainer class args.
+            max_env_steps (int):        total number of environment steps to run training on.
+            root_random_seed (int):     int or None
+            test_mode (bool):           if True - use Atari gym env., BTGym otherwise.
+            purge_previous (int):       keep or remove previous log files and saved checkpoints from log_dir:
+                                        {0 - keep, 1 - ask, 2 - remove}.
+            verbose (int):              verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}.
+            log_level (int):            logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},
+                                        overrides `verbose` arg.
 
         Note:
             class_config_dict:  dictionary containing at least two keys:
@@ -122,6 +125,7 @@ class Launcher():
         self.root_random_seed = root_random_seed
         self.purge_previous = purge_previous
         self.test_mode = test_mode
+        self.log_level = log_level
         self.verbose = verbose
 
         if max_env_steps is not None:
@@ -139,11 +143,12 @@ class Launcher():
 
         # Logging config:
         StreamHandler(sys.stdout).push_application()
-        log_levels = [(0, WARNING), (1, INFO), (2, DEBUG)]
-        self.log_level = WARNING
-        for key, value in log_levels:
-            if key == self.verbose:
-                self.log_level = value
+        if self.log_level is None:
+            log_levels = [(0, WARNING), (1, INFO), (2, DEBUG)]
+            self.log_level = WARNING
+            for key, value in log_levels:
+                if key == self.verbose:
+                    self.log_level = value
         self.log = Logger('Launcher_shell', level=self.log_level)
 
         # Seeding:

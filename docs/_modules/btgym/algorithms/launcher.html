@@ -239,21 +239,24 @@
                  <span class="n">root_random_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">test_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="n">purge_previous</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">log_level</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 
 <span class="sd">        Args:</span>
-<span class="sd">            env_config:         environment class_config_dict, see &#39;Note&#39; below</span>
-<span class="sd">            cluster_config:     tf cluster configuration, see &#39;Note&#39; below</span>
-<span class="sd">            policy_config:      policy class_config_dict holding corr. policy class args.</span>
-<span class="sd">            trainer_config:     trainer class_config_dict holding corr. trainer class args.</span>
-<span class="sd">            max_env_steps:      total number of environment steps to run training on</span>
-<span class="sd">            root_random_seed:   int or None</span>
-<span class="sd">            test_mode:          if True - use Atari gym env., BTGym otherwise.</span>
-<span class="sd">            purge_previous:     int, keep or remove previous log files and saved checkpoints from log_dir, if found:</span>
-<span class="sd">                                0 - keep, 1 - ask, 2 - remove</span>
-<span class="sd">            verbose:            0 - silent, 1 - info, 3 - debug level</span>
+<span class="sd">            env_config (dict):          environment class_config_dict, see &#39;Note&#39; below.</span>
+<span class="sd">            cluster_config (dict):      tf cluster configuration, see &#39;Note&#39; below.</span>
+<span class="sd">            policy_config (dict):       policy class_config_dict holding corr. policy class args.</span>
+<span class="sd">            trainer_config (dict):      trainer class_config_dict holding corr. trainer class args.</span>
+<span class="sd">            max_env_steps (int):        total number of environment steps to run training on.</span>
+<span class="sd">            root_random_seed (int):     int or None</span>
+<span class="sd">            test_mode (bool):           if True - use Atari gym env., BTGym otherwise.</span>
+<span class="sd">            purge_previous (int):       keep or remove previous log files and saved checkpoints from log_dir:</span>
+<span class="sd">                                        {0 - keep, 1 - ask, 2 - remove}.</span>
+<span class="sd">            verbose (int):              verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}.</span>
+<span class="sd">            log_level (int):            logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},</span>
+<span class="sd">                                        overrides `verbose` arg.</span>
 
 <span class="sd">        Note:</span>
 <span class="sd">            class_config_dict:  dictionary containing at least two keys:</span>
@@ -301,6 +304,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">root_random_seed</span> <span class="o">=</span> <span class="n">root_random_seed</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">purge_previous</span> <span class="o">=</span> <span class="n">purge_previous</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span> <span class="o">=</span> <span class="n">test_mode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
 
         <span class="k">if</span> <span class="n">max_env_steps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -318,11 +322,12 @@
 
         <span class="c1"># Logging config:</span>
         <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
-        <span class="n">log_levels</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">WARNING</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">INFO</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">DEBUG</span><span class="p">)]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">WARNING</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">log_levels</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">log_levels</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">WARNING</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">INFO</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">DEBUG</span><span class="p">)]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">WARNING</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">log_levels</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">value</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;Launcher_shell&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
 
         <span class="c1"># Seeding:</span>

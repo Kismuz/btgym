@@ -17,7 +17,7 @@
 #
 ###############################################################################
 
-#import logging
+from logbook import Logger, StreamHandler, WARNING, INFO, DEBUG
 import sys
 import time
 import zmq
@@ -89,14 +89,42 @@ class BTgymEnv(gym.Env):
 
     # Logging and id:
     log = None
-    log_level = None
-    verbose = 0  # verbosity mode: 0 - silent, 1 - info, 2 - debugging level (lot of traffic!).
+    log_level = None  # logbook level: NOTICE, WARNING, INFO, DEBUG etc. or its integer equivalent;
+    verbose = 0  # verbosity mode, valid only if no `log_level` arg has been provided:
+    # 0 - WARNING, 1 - INFO, 2 - DEBUG.
     task = 0
 
     closed = True
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         """
+        Keyword Args:
+
+            filename=None (str, list):                      csv data file.
+            **datafeed_args (any):                          any datafeed-related args, passed through to
+                                                            default btgym.datafeed class.
+            dataset=None (btgym.datafeed):                  BTgymDataDomain instance,
+                                                            overrides `filename` or any other datafeed-related args.
+            strategy=None (btgym.startegy):                 strategy to use.
+            engine=None (bt.Cerebro):                       bt.Cerebro subclass for server to execute,
+                                                            overrides `strategy` arg.
+            network_address=`tcp://127.0.0.1:` (str):       BTGym_server address.
+            port=5500 (int):                                network port to use for server - API_shell communication.
+            data_master=True (bool):                        let this environment control over data_server;
+            data_network_address=`tcp://127.0.0.1:` (str):  data_server address.
+            data_port=4999 (int):                           network port to use for server -- data_server communication.
+            connect_timeout=60 (int):                       server connection timeout in seconds.
+            render_enabled=True (bool):                     enable rendering for this environment;
+            render_modes=['human', 'episode'] (list):       `episode` - plotted episode results;
+                                                            `human` - raw_state observation.
+            **render_args (any):                            any render-related args, passed through to renderer class.
+            verbose=0 (int):                                verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}
+            log_level=None (int):                           logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},
+                                                            overrides `verbose` arg;
+            log=None (logbook.Logger):                      external logbook logger,
+                                                            overrides `log_level` and `verbose` args.
+            task=0 (int):                                   environment id
+
         Environment kwargs applying logic::
 
             if <engine> kwarg is given:
@@ -148,7 +176,7 @@ class BTgymEnv(gym.Env):
             ),
             render = dict(),
         )
-        p2 = dict(
+        p2 = dict(  # IS HERE FOR REFERENCE ONLY
             # Strategy related parameters:
             # Observation state shape is dictionary of Gym spaces,
             # at least should contain `raw_state` field.
@@ -185,14 +213,14 @@ class BTgymEnv(gym.Env):
 
         # Logging and verbosity control:
         if self.log is None:
-            from logbook import Logger, StreamHandler, WARNING, INFO, DEBUG
             StreamHandler(sys.stdout).push_application()
-            log_levels = [(0, WARNING), (1, INFO), (2, DEBUG)]
-            self.log_level = WARNING
-            for key, value in log_levels:
-                if key == self.verbose:
-                    self.log_level = value
-            self.log = Logger('BTgym_API_shell_{}'.format(self.task), level=self.log_level)
+            if self.log_level is None:
+                log_levels = [(0, WARNING), (1, INFO), (2, DEBUG)]
+                self.log_level = WARNING
+                for key, value in log_levels:
+                    if key == self.verbose:
+                        self.log_level = value
+            self.log = Logger('BTGym_API_shell_{}'.format(self.task), level=self.log_level)
 
         # Network parameters:
         self.network_address += str(self.port)
@@ -353,8 +381,6 @@ class BTgymEnv(gym.Env):
         self.server_response = None
         self.env_response = None
 
-        # If instance is datamaster - it may or may not want to launch self BTgymServer (can do it later via reset);
-        # else it always need to launch it:
         #if not self.data_master:
         self._start_server()
         self.closed = False
@@ -384,9 +410,9 @@ class BTgymEnv(gym.Env):
 
         Returns:
             dictionary:
-                status: communication result;
-                message: received message if status == `ok` or None;
-                time: remote side response time.
+                `status`: communication result;
+                `message`: received message if status == `ok` or None;
+                `time`: remote side response time.
         """
         response = dict(
             status='ok',
@@ -528,11 +554,12 @@ class BTgymEnv(gym.Env):
         roughly checks if we really talking to environment (== episode is running).
         Rises exception if response given is not as expected.
         """
-        if type(response) == tuple and len(response) == 4:
-            pass
+        try:
+            assert type(response) == tuple and len(response) == 4
 
-        else:
+        except AssertionError:
             msg = 'Unexpected environment response: {}\nHint: Forgot to call reset() or reset_data()?'.format(response)
+            self.log.exception(msg)
             raise AssertionError(msg)
 
         self.log.debug('Response checker received:\n{}\nas type: {}'.
@@ -540,7 +567,6 @@ class BTgymEnv(gym.Env):
 
     def _print_space(self, space, _tab=''):
         """
-        TODO: MAKe IT WORK
         Parses observation space shape or response.
 
         Args:
@@ -576,25 +602,21 @@ class BTgymEnv(gym.Env):
 
         return response
 
-    def reset(self, new_trial=True, episode_type=None, **kwargs):
+    def reset(self, **kwargs):
         """
-        Implementation of OpenAI Gym env.reset method. Starts new episode. Episode data are sampled from current Trial
-        according to data provider class logic. If called with default parameters, it is assumed that
-        Trial contains single episode. Refer `datafeed` classes for data iteration details.
+        Implementation of OpenAI Gym env.reset method. Starts new episode. Episode data are sampled
+        according to data provider class logic, controlled via kwargs. Refer `BTgym_Server` and data provider
+        classes for details.
 
         Args:
-            new_trial:      bool, if True - start new trial, continue sampling from current trial otherwise, def=True;
-            episode_type:   str, eihter 'train', 'test', or None.
-                            If not None, forces sampling from specified data subset,
-                            else follows data provider class logic.  Def=None;
-            kwargs:         any kwargs passed directly to BTgym server, not used.
+            kwargs:         any kwargs; this dictionary is passed through to BTgym_server side without any checks and
+                            modifications; currently used for data sampling control;
 
         Returns:
             observation space state
 
         Note:
-            This method is extension of OpenAI Gym as it accepts arguments (base nethod does not).
-
+            This method is extension of OpenAI Gym as it accepts kwargs (base nethod does not).
         """
         # Data Server check:
         if self.data_master:
@@ -619,17 +641,10 @@ class BTgymEnv(gym.Env):
             self._start_server()
 
         if self._force_control_mode():
-            args ={
-                'new_trial': new_trial,
-                'episode_type': episode_type
-            }
-            args.update(kwargs)
-
             self.server_response = self._comm_with_timeout(
                 socket=self.socket,
-                message={'ctrl': '_reset', 'kwargs': args}
+                message={'ctrl': '_reset', 'kwargs': kwargs}
             )
-
             # Get initial environment response:
             self.env_response = self._step(0)
 
@@ -663,7 +678,7 @@ class BTgymEnv(gym.Env):
                     self.env_response[2],
                     msg3,
                 )
-                self.log.error(msg)
+                self.log.exception(msg)
                 self._stop_server()
                 raise AssertionError(msg)
 
@@ -672,14 +687,13 @@ class BTgymEnv(gym.Env):
 
         else:
             msg = 'Something went wrong. env.reset() can not get response from server.'
-            self.log.error(msg)
+            self.log.exception(msg)
             raise ChildProcessError(msg)
 
     def _step(self, action):
         """
         Implementation of OpenAI Gym env.step() method.
-        Makes a step in the environment
-        Relies on remote backtrader server for actual environment dynamics computing.
+        Makes a step in the environment.
 
         Args:
             action:     int, number representing action from env.action_space

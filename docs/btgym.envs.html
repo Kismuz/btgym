@@ -95,7 +95,7 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
-<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework">A3C framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">btgym.envs package</a><ul>
@@ -186,8 +186,43 @@
 <span id="btgym-envs-backtrader-module"></span><h2>btgym.envs.backtrader module<a class="headerlink" href="#module-btgym.envs.backtrader" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.envs.backtrader.BTgymEnv">
-<em class="property">class </em><code class="descclassname">btgym.envs.backtrader.</code><code class="descname">BTgymEnv</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.envs.backtrader.</code><code class="descname">BTgymEnv</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv" title="Permalink to this definition">¶</a></dt>
 <dd><p>OpenAI Gym API shell for Backtrader backtesting/trading library.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Keyword Arguments:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body"><ul class="first last simple">
+<li><strong>filename=None</strong> (<em>str, list</em>) – csv data file.</li>
+<li><strong>**datafeed_args</strong> (<em>any</em>) – any datafeed-related args, passed through to
+default btgym.datafeed class.</li>
+<li><strong>dataset=None</strong> (<em>btgym.datafeed</em>) – BTgymDataDomain instance,
+overrides <cite>filename</cite> or any other datafeed-related args.</li>
+<li><strong>strategy=None</strong> (<em>btgym.startegy</em>) – strategy to use.</li>
+<li><strong>engine=None</strong> (<em>bt.Cerebro</em>) – bt.Cerebro subclass for server to execute,
+overrides <cite>strategy</cite> arg.</li>
+<li><strong>network_address=`tcp://127.0.0.1:`</strong> (<em>str</em>) – BTGym_server address.</li>
+<li><strong>port=5500</strong> (<em>int</em>) – network port to use for server - API_shell communication.</li>
+<li><strong>data_master=True</strong> (<em>bool</em>) – let this environment control over data_server;</li>
+<li><strong>data_network_address=`tcp://127.0.0.1:`</strong> (<em>str</em>) – data_server address.</li>
+<li><strong>data_port=4999</strong> (<em>int</em>) – network port to use for server – data_server communication.</li>
+<li><strong>connect_timeout=60</strong> (<em>int</em>) – server connection timeout in seconds.</li>
+<li><strong>render_enabled=True</strong> (<em>bool</em>) – enable rendering for this environment;</li>
+<li><strong>render_modes=[‘human’, ‘episode’]</strong> (<em>list</em>) – <cite>episode</cite> - plotted episode results;
+<cite>human</cite> - raw_state observation.</li>
+<li><strong>**render_args</strong> (<em>any</em>) – any render-related args, passed through to renderer class.</li>
+<li><strong>verbose=0</strong> (<em>int</em>) – verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}</li>
+<li><strong>log_level=None</strong> (<em>int</em>) – logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},
+overrides <cite>verbose</cite> arg;</li>
+<li><strong>log=None</strong> (<em>logbook.Logger</em>) – external logbook logger,
+overrides <cite>log_level</cite> and <cite>verbose</cite> args.</li>
+<li><strong>task=0</strong> (<em>int</em>) – environment id</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 <p>Environment kwargs applying logic:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="o">&lt;</span><span class="n">engine</span><span class="o">&gt;</span> <span class="n">kwarg</span> <span class="ow">is</span> <span class="n">given</span><span class="p">:</span>
     <span class="n">do</span> <span class="ow">not</span> <span class="n">use</span> <span class="n">default</span> <span class="n">engine</span> <span class="ow">and</span> <span class="n">strategy</span> <span class="n">parameters</span><span class="p">;</span>
@@ -259,9 +294,9 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">status: communication result;
-message: received message if status == <cite>ok</cite> or None;
-time: remote side response time.</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><cite>status</cite>: communication result;
+<cite>message</cite>: received message if status == <cite>ok</cite> or None;
+<cite>time</cite>: remote side response time.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dictionary</td>
 </tr>
@@ -298,8 +333,7 @@ Rises exception if response given is not as expected.</p>
 <dl class="method">
 <dt id="btgym.envs.backtrader.BTgymEnv._print_space">
 <code class="descname">_print_space</code><span class="sig-paren">(</span><em>space</em>, <em>_tab=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._print_space"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._print_space" title="Permalink to this definition">¶</a></dt>
-<dd><p>TODO: MAKe IT WORK
-Parses observation space shape or response.</p>
+<dd><p>Parses observation space shape or response.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -314,31 +348,24 @@ Parses observation space shape or response.</p>
 
 <dl class="method">
 <dt id="btgym.envs.backtrader.BTgymEnv.reset">
-<code class="descname">reset</code><span class="sig-paren">(</span><em>new_trial=True</em>, <em>episode_type=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv.reset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Implementation of OpenAI Gym env.reset method. Starts new episode. Episode data are sampled from current Trial
-according to data provider class logic. If called with default parameters, it is assumed that
-Trial contains single episode. Refer <cite>datafeed</cite> classes for data iteration details.</p>
+<code class="descname">reset</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implementation of OpenAI Gym env.reset method. Starts new episode. Episode data are sampled
+according to data provider class logic, controlled via kwargs. Refer <cite>BTgym_Server</cite> and data provider
+classes for details.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>new_trial</strong> – bool, if True - start new trial, continue sampling from current trial otherwise, def=True;</li>
-<li><strong>episode_type</strong> – str, eihter ‘train’, ‘test’, or None.
-If not None, forces sampling from specified data subset,
-else follows data provider class logic.  Def=None;</li>
-<li><strong>kwargs</strong> – any kwargs passed directly to BTgym server, not used.</li>
-</ul>
-</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – any kwargs; this dictionary is passed through to BTgym_server side without any checks and
+modifications; currently used for data sampling control;</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">observation space state</p>
-</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">observation space state</td>
 </tr>
 </tbody>
 </table>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">This method is extension of OpenAI Gym as it accepts arguments (base nethod does not).</p>
+<p class="last">This method is extension of OpenAI Gym as it accepts kwargs (base nethod does not).</p>
 </div>
 </dd></dl>
 

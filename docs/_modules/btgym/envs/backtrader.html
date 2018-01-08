@@ -196,7 +196,7 @@
 <span class="c1">#</span>
 <span class="c1">###############################################################################</span>
 
-<span class="c1">#import logging</span>
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span><span class="p">,</span> <span class="n">WARNING</span><span class="p">,</span> <span class="n">INFO</span><span class="p">,</span> <span class="n">DEBUG</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">zmq</span>
@@ -268,14 +268,42 @@
 
     <span class="c1"># Logging and id:</span>
     <span class="n">log</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">log_level</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">verbose</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># verbosity mode: 0 - silent, 1 - info, 2 - debugging level (lot of traffic!).</span>
+    <span class="n">log_level</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># logbook level: NOTICE, WARNING, INFO, DEBUG etc. or its integer equivalent;</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># verbosity mode, valid only if no `log_level` arg has been provided:</span>
+    <span class="c1"># 0 - WARNING, 1 - INFO, 2 - DEBUG.</span>
     <span class="n">task</span> <span class="o">=</span> <span class="mi">0</span>
 
     <span class="n">closed</span> <span class="o">=</span> <span class="kc">True</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Keyword Args:</span>
+
+<span class="sd">            filename=None (str, list):                      csv data file.</span>
+<span class="sd">            **datafeed_args (any):                          any datafeed-related args, passed through to</span>
+<span class="sd">                                                            default btgym.datafeed class.</span>
+<span class="sd">            dataset=None (btgym.datafeed):                  BTgymDataDomain instance,</span>
+<span class="sd">                                                            overrides `filename` or any other datafeed-related args.</span>
+<span class="sd">            strategy=None (btgym.startegy):                 strategy to use.</span>
+<span class="sd">            engine=None (bt.Cerebro):                       bt.Cerebro subclass for server to execute,</span>
+<span class="sd">                                                            overrides `strategy` arg.</span>
+<span class="sd">            network_address=`tcp://127.0.0.1:` (str):       BTGym_server address.</span>
+<span class="sd">            port=5500 (int):                                network port to use for server - API_shell communication.</span>
+<span class="sd">            data_master=True (bool):                        let this environment control over data_server;</span>
+<span class="sd">            data_network_address=`tcp://127.0.0.1:` (str):  data_server address.</span>
+<span class="sd">            data_port=4999 (int):                           network port to use for server -- data_server communication.</span>
+<span class="sd">            connect_timeout=60 (int):                       server connection timeout in seconds.</span>
+<span class="sd">            render_enabled=True (bool):                     enable rendering for this environment;</span>
+<span class="sd">            render_modes=[&#39;human&#39;, &#39;episode&#39;] (list):       `episode` - plotted episode results;</span>
+<span class="sd">                                                            `human` - raw_state observation.</span>
+<span class="sd">            **render_args (any):                            any render-related args, passed through to renderer class.</span>
+<span class="sd">            verbose=0 (int):                                verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}</span>
+<span class="sd">            log_level=None (int):                           logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},</span>
+<span class="sd">                                                            overrides `verbose` arg;</span>
+<span class="sd">            log=None (logbook.Logger):                      external logbook logger,</span>
+<span class="sd">                                                            overrides `log_level` and `verbose` args.</span>
+<span class="sd">            task=0 (int):                                   environment id</span>
+
 <span class="sd">        Environment kwargs applying logic::</span>
 
 <span class="sd">            if &lt;engine&gt; kwarg is given:</span>
@@ -327,7 +355,7 @@
             <span class="p">),</span>
             <span class="n">render</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(),</span>
         <span class="p">)</span>
-        <span class="n">p2</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">p2</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>  <span class="c1"># IS HERE FOR REFERENCE ONLY</span>
             <span class="c1"># Strategy related parameters:</span>
             <span class="c1"># Observation state shape is dictionary of Gym spaces,</span>
             <span class="c1"># at least should contain `raw_state` field.</span>
@@ -364,14 +392,14 @@
 
         <span class="c1"># Logging and verbosity control:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span><span class="p">,</span> <span class="n">WARNING</span><span class="p">,</span> <span class="n">INFO</span><span class="p">,</span> <span class="n">DEBUG</span>
             <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
-            <span class="n">log_levels</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">WARNING</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">INFO</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">DEBUG</span><span class="p">)]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">WARNING</span>
-            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">log_levels</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">value</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTgym_API_shell_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">log_levels</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">WARNING</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">INFO</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">DEBUG</span><span class="p">)]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">WARNING</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">log_levels</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTGym_API_shell_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
 
         <span class="c1"># Network parameters:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">network_address</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
@@ -532,8 +560,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="c1"># If instance is datamaster - it may or may not want to launch self BTgymServer (can do it later via reset);</span>
-        <span class="c1"># else it always need to launch it:</span>
         <span class="c1">#if not self.data_master:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_start_server</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">closed</span> <span class="o">=</span> <span class="kc">False</span>
@@ -563,9 +589,9 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            dictionary:</span>
-<span class="sd">                status: communication result;</span>
-<span class="sd">                message: received message if status == `ok` or None;</span>
-<span class="sd">                time: remote side response time.</span>
+<span class="sd">                `status`: communication result;</span>
+<span class="sd">                `message`: received message if status == `ok` or None;</span>
+<span class="sd">                `time`: remote side response time.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">response</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
             <span class="n">status</span><span class="o">=</span><span class="s1">&#39;ok&#39;</span><span class="p">,</span>
@@ -707,11 +733,12 @@
 <span class="sd">        roughly checks if we really talking to environment (== episode is running).</span>
 <span class="sd">        Rises exception if response given is not as expected.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
-            <span class="k">pass</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span>
 
-        <span class="k">else</span><span class="p">:</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
             <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Unexpected environment response: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">Hint: Forgot to call reset() or reset_data()?&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Response checker received:</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s1">as type: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
@@ -719,7 +746,6 @@
 
 <div class="viewcode-block" id="BTgymEnv._print_space"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._print_space">[docs]</a>    <span class="k">def</span> <span class="nf">_print_space</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">,</span> <span class="n">_tab</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        TODO: MAKe IT WORK</span>
 <span class="sd">        Parses observation space shape or response.</span>
 
 <span class="sd">        Args:</span>
@@ -755,25 +781,21 @@
 
         <span class="k">return</span> <span class="n">response</span></div>
 
-<div class="viewcode-block" id="BTgymEnv.reset"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_trial</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">episode_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymEnv.reset"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Implementation of OpenAI Gym env.reset method. Starts new episode. Episode data are sampled from current Trial</span>
-<span class="sd">        according to data provider class logic. If called with default parameters, it is assumed that</span>
-<span class="sd">        Trial contains single episode. Refer `datafeed` classes for data iteration details.</span>
+<span class="sd">        Implementation of OpenAI Gym env.reset method. Starts new episode. Episode data are sampled</span>
+<span class="sd">        according to data provider class logic, controlled via kwargs. Refer `BTgym_Server` and data provider</span>
+<span class="sd">        classes for details.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            new_trial:      bool, if True - start new trial, continue sampling from current trial otherwise, def=True;</span>
-<span class="sd">            episode_type:   str, eihter &#39;train&#39;, &#39;test&#39;, or None.</span>
-<span class="sd">                            If not None, forces sampling from specified data subset,</span>
-<span class="sd">                            else follows data provider class logic.  Def=None;</span>
-<span class="sd">            kwargs:         any kwargs passed directly to BTgym server, not used.</span>
+<span class="sd">            kwargs:         any kwargs; this dictionary is passed through to BTgym_server side without any checks and</span>
+<span class="sd">                            modifications; currently used for data sampling control;</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            observation space state</span>
 
 <span class="sd">        Note:</span>
-<span class="sd">            This method is extension of OpenAI Gym as it accepts arguments (base nethod does not).</span>
-
+<span class="sd">            This method is extension of OpenAI Gym as it accepts kwargs (base nethod does not).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Data Server check:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
@@ -798,17 +820,10 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_start_server</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_force_control_mode</span><span class="p">():</span>
-            <span class="n">args</span> <span class="o">=</span><span class="p">{</span>
-                <span class="s1">&#39;new_trial&#39;</span><span class="p">:</span> <span class="n">new_trial</span><span class="p">,</span>
-                <span class="s1">&#39;episode_type&#39;</span><span class="p">:</span> <span class="n">episode_type</span>
-            <span class="p">}</span>
-            <span class="n">args</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
-
             <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
                 <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="p">,</span>
-                <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_reset&#39;</span><span class="p">,</span> <span class="s1">&#39;kwargs&#39;</span><span class="p">:</span> <span class="n">args</span><span class="p">}</span>
+                <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_reset&#39;</span><span class="p">,</span> <span class="s1">&#39;kwargs&#39;</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">}</span>
             <span class="p">)</span>
-
             <span class="c1"># Get initial environment response:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 
@@ -842,7 +857,7 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
                     <span class="n">msg3</span><span class="p">,</span>
                 <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_stop_server</span><span class="p">()</span>
                 <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
@@ -851,7 +866,7 @@
 
         <span class="k">else</span><span class="p">:</span>
             <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Something went wrong. env.reset() can not get response from server.&#39;</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ChildProcessError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._step"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._step">[docs]</a>    <span class="k">def</span> <span class="nf">_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
