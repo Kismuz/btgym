@@ -399,7 +399,7 @@
                 <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">log_levels</span><span class="p">:</span>
                     <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">value</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTGym_API_shell_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTgymAPIshell_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
 
         <span class="c1"># Network parameters:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">network_address</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
@@ -444,7 +444,7 @@
                 <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Base Dataset class used.&#39;</span>
 
             <span class="c1"># Append logging:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">set_logger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">set_logger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
 
             <span class="c1"># Update params -2: pull from dataset, remove used kwargs:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;dataset&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
@@ -749,7 +749,7 @@
 <span class="sd">        Parses observation space shape or response.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            space: gym observation space or response.</span>
+<span class="sd">            space: gym observation space or state.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            description as string.</span>
@@ -794,8 +794,23 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            observation space state</span>
 
-<span class="sd">        Note:</span>
-<span class="sd">            This method is extension of OpenAI Gym as it accepts kwargs (base nethod does not).</span>
+<span class="sd">        Notes:</span>
+<span class="sd">            Current kwarg accepted is::</span>
+
+<span class="sd">                data_control = dict(</span>
+<span class="sd">                    episode=dict(</span>
+<span class="sd">                        get_new=True,</span>
+<span class="sd">                        sample_type=0,</span>
+<span class="sd">                        b_alpha=1,</span>
+<span class="sd">                        b_beta=1</span>
+<span class="sd">                    ),</span>
+<span class="sd">                    trial=dict(</span>
+<span class="sd">                        get_new=True,</span>
+<span class="sd">                        sample_type=0,</span>
+<span class="sd">                        b_alpha=1,</span>
+<span class="sd">                        b_beta=1</span>
+<span class="sd">                    )</span>
+<span class="sd">                )</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Data Server check:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>

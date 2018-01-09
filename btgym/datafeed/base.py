@@ -29,6 +29,29 @@ import sys
 import backtrader.feeds as btfeeds
 import pandas as pd
 
+DataSampleConfig = dict(
+    get_new=True,
+    sample_type=0,
+    b_alpha=1,
+    b_beta=1
+)
+"""
+dict: Conventional sampling configuration template to pass to data class `sample()` method:
+
+```sample = my_data.sample(**DataSampleConfig)```
+"""
+
+
+EnvResetConfig = dict(
+    episode_config=copy.deepcopy(DataSampleConfig),
+    trial_config=copy.deepcopy(DataSampleConfig),
+)
+"""
+dict: Conventional reset configuration template to pass to environment `reset()` method:
+
+```observation = env.reset(**EnvResetConfig)```
+"""
+
 
 class BTgymBaseData:
     """
@@ -180,6 +203,8 @@ class BTgymBaseData:
         self.start_00 = None
         self.expanding = None
 
+        self.sample_instance = None
+
         self.test_range_delta = None
         self.train_range_delta = None
         self.test_num_records = 0
@@ -237,7 +262,7 @@ class BTgymBaseData:
         for key, value in params_dict.items():
             setattr(self, key, value)
 
-    def set_logger(self, level=None):
+    def set_logger(self, level=None, task=None):
         """
         Sets logbook logger.
 
@@ -245,7 +270,11 @@ class BTgymBaseData:
             name:   channel name, str
             level:  logbook.level, int
         """
-        self.log = Logger('{}_{}'.format(self.name, self.task), level=level)
+        if task is not None:
+            self.task = task
+
+        if level is not None:
+            self.log = Logger('{}_{}'.format(self.name, self.task), level=level)
 
     def reset(self, data_filename=None, **kwargs):
         """
@@ -407,14 +436,16 @@ class BTgymBaseData:
             self.log.error(msg)
             raise AssertionError(msg)
 
-    def sample(self, sample_type=0, b_alpha=1, b_beta=1, **kwargs):
+    def sample(self, get_new=True, sample_type=0, b_alpha=1.0, b_beta=1.0):
         """
         Samples continuous subset of data.
 
         Args:
-            sample_type:    int, def=0 (train) or 1 (test) - to sample from train or test data subsets respectively.
-            b_alpha:        beta-distribution sampling alpha, valid for train episodes, def=1.
-            b_beta:         beta-distribution sampling beta, valid for train episodes, def=1.
+            get_new (bool):                 sample new (True) or reuse (False) last made sample;
+            sample_type (int or bool):      0 (train) or 1 (test) - get sample from train or test data subsets
+                                            respectively.
+            b_alpha (float):                beta-distribution sampling alpha > 0, valid for train episodes.
+            b_beta (float):                 beta-distribution sampling beta > 0, valid for train episodes.
 
         Returns:
         if no sample_class_ref param been set:
@@ -435,30 +466,34 @@ class BTgymBaseData:
         assert sample_type in [0, 1], 'Sampling attempt: expected sample type be in {}, got: {}'.\
             format([0, 1], sample_type)
 
-        if sample_type == 0:
-            # Get beta_distributed sample in train interval:
-            sample = self._sample_interval(
-                self.train_interval,
-                b_alpha=b_alpha,
-                b_beta=b_beta,
-                name='train_' + self.sample_name
-            )
+        if self.sample_instance is None or get_new:
+            if sample_type == 0:
+                # Get beta_distributed sample in train interval:
+                self.sample_instance = self._sample_interval(
+                    self.train_interval,
+                    b_alpha=b_alpha,
+                    b_beta=b_beta,
+                    name='train_' + self.sample_name
+                )
+
+            else:
+                # Get uniform sample in test interval:
+                self.sample_instance = self._sample_interval(
+                    self.test_interval,
+                    b_alpha=1,
+                    b_beta=1,
+                    name='test_' + self.sample_name
+                )
+            self.sample_instance.metadata['type'] = sample_type
+            self.sample_instance.metadata['sample_num'] = self.sample_num
+            self.sample_instance.metadata['parent_sample_num'] = copy.deepcopy(self.metadata['sample_num'])
+            self.sample_num += 1
 
         else:
-            # Get uniform sample in test interval:
-            sample = self._sample_interval(
-                self.test_interval,
-                b_alpha=1,
-                b_beta=1,
-                name='test_' + self.sample_name
-            )
+            # Do nothing:
+            self.log.debug('Reusing sample, id: {}'.format(self.sample_instance.filename))
 
-        sample.metadata['type'] = sample_type
-        sample.metadata['sample_num'] = self.sample_num
-        sample.metadata['parent_sample_num']=copy.deepcopy(self.metadata['sample_num'])
-        self.sample_num += 1
-
-        return sample
+        return self.sample_instance
 
     def _sample_random(self, name='random_sample_'):
         """
@@ -546,7 +581,7 @@ class BTgymBaseData:
         self.log.error(msg)
         raise RuntimeError(msg)
 
-    def _sample_interval(self, interval, b_alpha=1, b_beta=1, name='interval_sample_'):
+    def _sample_interval(self, interval, b_alpha=1.0, b_beta=1.0, name='interval_sample_'):
         """
         Samples continuous subset of data,
         such as entire episode records lie within positions specified by interval.
@@ -644,7 +679,7 @@ class BTgymBaseData:
                 # If sample OK - return new dataset:
                 new_instance = self.nested_class_ref(**self.nested_params)
                 new_instance.filename = name + 'num_{}_at_{}'.format(self.sample_num, adj_timedate)
-                self.log.info('Sample id: <{}>.'.format(new_instance.filename))
+                self.log.info('New sample id: <{}>.'.format(new_instance.filename))
                 new_instance.data = sampled_data
                 new_instance.metadata['type'] = 'interval_sample'
                 new_instance.metadata['first_row'] = first_row

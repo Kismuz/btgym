@@ -144,30 +144,33 @@ class BTgymSequentialDataDomain(BTgymRandomDataDomain):
 
     def sample(self, **kwargs):
         """
-        Iteratively samples from sequence of `Trials` .
+        Iteratively samples from sequence of `Trials`.
 
         Sampling loop::
 
             - until Trial_sequence is exhausted or .reset():
                 - sample next Trial in Trial_sequence;
+
         Args:
-            kwargs:     not used.
+            kwargs:             not used.
 
         Returns:
             Trial as `BTgymBaseDataTrial` instance;
             None, if trial's sequence is exhausted.
         """
-        trial, trial_num = self._sample_sequential()
-
-        if trial is None:
-            return None
+        self.sample_instance = self._sample_sequential()
+        if self.sample_instance is None:
+            # Exhausted:
+            return False
 
         else:
-            #trial.metadata['trial_num'] = trial_num
-            trial.metadata['type'] = 'trial'  # 0 - train, 1 - test
-            trial.metadata['sample_num'] = trial_num
-            self.log.debug('trial is ready with metadata: {}'.format(trial.metadata))
-            return trial
+            self.sample_instance.metadata['type'] = 0  # 0 - always train
+            self.sample_instance.metadata['sample_num'] = self.sample_num
+            self.log.debug(
+                'got ne trial <{}> with metadata: {}'.
+                format(self.sample_instance.filename, self.sample_instance.metadata)
+            )
+            return self.sample_instance
 
     def _get_interval(self, sample_num):
         """
@@ -279,9 +282,8 @@ class BTgymSequentialDataDomain(BTgymRandomDataDomain):
 
         if self.sample_num > self.total_samples:
             self.is_ready = False
-            self.log.warning('Trial`s sequence exhausted.')
-
-            return None, self.sample_num
+            self.log.warning('Sampling sequence exhausted at {}-th Trial'.format(self.sample_num))
+            return None
 
         else:
             # Get Trial:
@@ -300,4 +302,4 @@ class BTgymSequentialDataDomain(BTgymRandomDataDomain):
             )
             trial = self._sample_interval(interval, name='sequential_trial_')
             self.sample_num += 1
-            return trial, self.sample_num
+            return trial

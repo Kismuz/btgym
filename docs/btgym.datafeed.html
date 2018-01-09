@@ -186,6 +186,18 @@
 <h1>btgym.datafeed package<a class="headerlink" href="#btgym-datafeed-package" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="module-btgym.datafeed.base">
 <span id="btgym-datafeed-base-module"></span><h2>btgym.datafeed.base module<a class="headerlink" href="#module-btgym.datafeed.base" title="Permalink to this headline">¶</a></h2>
+<dl class="data">
+<dt id="btgym.datafeed.base.DataSampleConfig">
+<code class="descclassname">btgym.datafeed.base.</code><code class="descname">DataSampleConfig</code><em class="property"> = {'get_new': True, 'sample_type': 0, 'b_alpha': 1, 'b_beta': 1}</em><a class="headerlink" href="#btgym.datafeed.base.DataSampleConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>dict</em> – Conventional sampling configuration template to pass to data class <cite>sample()</cite> method – <code class="docutils literal"><span class="pre">`sample</span> <span class="pre">=</span> <span class="pre">my_data.sample(**DataSampleConfig)`</span></code></p>
+</dd></dl>
+
+<dl class="data">
+<dt id="btgym.datafeed.base.EnvResetConfig">
+<code class="descclassname">btgym.datafeed.base.</code><code class="descname">EnvResetConfig</code><em class="property"> = {'episode_config': {'get_new': True, 'sample_type': 0, 'b_alpha': 1, 'b_beta': 1}, 'trial_config': {'get_new': True, 'sample_type': 0, 'b_alpha': 1, 'b_beta': 1}}</em><a class="headerlink" href="#btgym.datafeed.base.EnvResetConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>dict</em> – Conventional reset configuration template to pass to environment <cite>reset()</cite> method – <code class="docutils literal"><span class="pre">`observation</span> <span class="pre">=</span> <span class="pre">env.reset(**EnvResetConfig)`</span></code></p>
+</dd></dl>
+
 <dl class="class">
 <dt id="btgym.datafeed.base.BTgymBaseData">
 <em class="property">class </em><code class="descclassname">btgym.datafeed.base.</code><code class="descname">BTgymBaseData</code><span class="sig-paren">(</span><em>filename=None</em>, <em>parsing_params=None</em>, <em>sampling_params=None</em>, <em>name='base_data'</em>, <em>task=0</em>, <em>log_level=13</em>, <em>_config_stack=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/base.html#BTgymBaseData"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.base.BTgymBaseData" title="Permalink to this definition">¶</a></dt>
@@ -269,7 +281,7 @@ data files from www.HistData.com. Tune according to your data source.</li>
 
 <dl class="method">
 <dt id="btgym.datafeed.base.BTgymBaseData.set_logger">
-<code class="descname">set_logger</code><span class="sig-paren">(</span><em>level=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/base.html#BTgymBaseData.set_logger"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.base.BTgymBaseData.set_logger" title="Permalink to this definition">¶</a></dt>
+<code class="descname">set_logger</code><span class="sig-paren">(</span><em>level=None</em>, <em>task=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/base.html#BTgymBaseData.set_logger"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.base.BTgymBaseData.set_logger" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets logbook logger.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -356,16 +368,18 @@ data files from www.HistData.com. Tune according to your data source.</li>
 
 <dl class="method">
 <dt id="btgym.datafeed.base.BTgymBaseData.sample">
-<code class="descname">sample</code><span class="sig-paren">(</span><em>sample_type=0</em>, <em>b_alpha=1</em>, <em>b_beta=1</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/base.html#BTgymBaseData.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.base.BTgymBaseData.sample" title="Permalink to this definition">¶</a></dt>
+<code class="descname">sample</code><span class="sig-paren">(</span><em>get_new=True</em>, <em>sample_type=0</em>, <em>b_alpha=1.0</em>, <em>b_beta=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/base.html#BTgymBaseData.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.base.BTgymBaseData.sample" title="Permalink to this definition">¶</a></dt>
 <dd><p>Samples continuous subset of data.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>sample_type</strong> – int, def=0 (train) or 1 (test) - to sample from train or test data subsets respectively.</li>
-<li><strong>b_alpha</strong> – beta-distribution sampling alpha, valid for train episodes, def=1.</li>
-<li><strong>b_beta</strong> – beta-distribution sampling beta, valid for train episodes, def=1.</li>
+<li><strong>get_new</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#bool" title="(in Python v2.7)"><em>bool</em></a>) – sample new (True) or reuse (False) last made sample;</li>
+<li><strong>sample_type</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/2/library/functions.html#bool" title="(in Python v2.7)"><em>bool</em></a>) – 0 (train) or 1 (test) - get sample from train or test data subsets
+respectively.</li>
+<li><strong>b_alpha</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a>) – beta-distribution sampling alpha &gt; 0, valid for train episodes.</li>
+<li><strong>b_beta</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a>) – beta-distribution sampling beta &gt; 0, valid for train episodes.</li>
 </ul>
 </td>
 </tr>
@@ -409,7 +423,7 @@ where <cite>~</cite> tolerance is set by <cite>time_gap</cite> param.</td>
 
 <dl class="method">
 <dt id="btgym.datafeed.base.BTgymBaseData._sample_interval">
-<code class="descname">_sample_interval</code><span class="sig-paren">(</span><em>interval</em>, <em>b_alpha=1</em>, <em>b_beta=1</em>, <em>name='interval_sample_'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/base.html#BTgymBaseData._sample_interval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.base.BTgymBaseData._sample_interval" title="Permalink to this definition">¶</a></dt>
+<code class="descname">_sample_interval</code><span class="sig-paren">(</span><em>interval</em>, <em>b_alpha=1.0</em>, <em>b_beta=1.0</em>, <em>name='interval_sample_'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/base.html#BTgymBaseData._sample_interval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.base.BTgymBaseData._sample_interval" title="Permalink to this definition">¶</a></dt>
 <dd><p>Samples continuous subset of data,
 such as entire episode records lie within positions specified by interval.
 Episode start position within interval is drawn from beta-distribution parametrised by <cite>b_alpha, b_beta</cite>.
@@ -673,7 +687,7 @@ by amount of test interval.</p>
 <dl class="method">
 <dt id="btgym.datafeed.stateful.BTgymSequentialDataDomain.sample">
 <code class="descname">sample</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/stateful.html#BTgymSequentialDataDomain.sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.stateful.BTgymSequentialDataDomain.sample" title="Permalink to this definition">¶</a></dt>
-<dd><p>Iteratively samples from sequence of <cite>Trials</cite> .</p>
+<dd><p>Iteratively samples from sequence of <cite>Trials</cite>.</p>
 <p>Sampling loop:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">until</span> <span class="n">Trial_sequence</span> <span class="ow">is</span> <span class="n">exhausted</span> <span class="ow">or</span> <span class="o">.</span><span class="n">reset</span><span class="p">():</span>
     <span class="o">-</span> <span class="n">sample</span> <span class="nb">next</span> <span class="n">Trial</span> <span class="ow">in</span> <span class="n">Trial_sequence</span><span class="p">;</span>

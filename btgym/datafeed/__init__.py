@@ -18,6 +18,6 @@
 ###############################################################################
 
 
-from .base import BTgymBaseData
+from .base import BTgymBaseData, DataSampleConfig, EnvResetConfig
 from .derivative import BTgymEpisode, BTgymDataTrial, BTgymRandomDataDomain, BTgymDataset
 from .stateful import BTgymSequentialDataDomain

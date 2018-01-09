@@ -338,7 +338,7 @@ Rises exception if response given is not as expected.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>space</strong> – gym observation space or response.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>space</strong> – gym observation space or state.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">description as string.</td>
 </tr>
@@ -363,9 +363,23 @@ modifications; currently used for data sampling control;</td>
 </tr>
 </tbody>
 </table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">This method is extension of OpenAI Gym as it accepts kwargs (base nethod does not).</p>
+<p class="rubric">Notes</p>
+<p>Current kwarg accepted is:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">data_control</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">episode</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+        <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">),</span>
+    <span class="n">trial</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+        <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
 </div>
 </dd></dl>
 

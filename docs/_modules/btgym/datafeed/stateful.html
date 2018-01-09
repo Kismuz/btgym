@@ -325,30 +325,33 @@
 
 <div class="viewcode-block" id="BTgymSequentialDataDomain.sample"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.stateful.BTgymSequentialDataDomain.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Iteratively samples from sequence of `Trials` .</span>
+<span class="sd">        Iteratively samples from sequence of `Trials`.</span>
 
 <span class="sd">        Sampling loop::</span>
 
 <span class="sd">            - until Trial_sequence is exhausted or .reset():</span>
 <span class="sd">                - sample next Trial in Trial_sequence;</span>
+
 <span class="sd">        Args:</span>
-<span class="sd">            kwargs:     not used.</span>
+<span class="sd">            kwargs:             not used.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Trial as `BTgymBaseDataTrial` instance;</span>
 <span class="sd">            None, if trial&#39;s sequence is exhausted.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">trial</span><span class="p">,</span> <span class="n">trial_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_sequential</span><span class="p">()</span>
-
-        <span class="k">if</span> <span class="n">trial</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_sequential</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Exhausted:</span>
+            <span class="k">return</span> <span class="kc">False</span>
 
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1">#trial.metadata[&#39;trial_num&#39;] = trial_num</span>
-            <span class="n">trial</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;trial&#39;</span>  <span class="c1"># 0 - train, 1 - test</span>
-            <span class="n">trial</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trial_num</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;trial is ready with metadata: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">trial</span><span class="o">.</span><span class="n">metadata</span><span class="p">))</span>
-            <span class="k">return</span> <span class="n">trial</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># 0 - always train</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s1">&#39;got ne trial &lt;</span><span class="si">{}</span><span class="s1">&gt; with metadata: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span></div>
 
     <span class="k">def</span> <span class="nf">_get_interval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_num</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -460,9 +463,8 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_samples</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">is_ready</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Trial`s sequence exhausted.&#39;</span><span class="p">)</span>
-
-            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Sampling sequence exhausted at </span><span class="si">{}</span><span class="s1">-th Trial&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span><span class="p">))</span>
+            <span class="k">return</span> <span class="kc">None</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Get Trial:</span>
@@ -481,7 +483,7 @@
             <span class="p">)</span>
             <span class="n">trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_interval</span><span class="p">(</span><span class="n">interval</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;sequential_trial_&#39;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="k">return</span> <span class="n">trial</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span></div>
+            <span class="k">return</span> <span class="n">trial</span></div>
 </pre></div>
 
            </div>

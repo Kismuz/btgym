@@ -200,6 +200,8 @@
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">zmq</span>
 
+<span class="kn">from</span> <span class="nn">.datafeed</span> <span class="k">import</span> <span class="n">DataSampleConfig</span>
+
 
 <div class="viewcode-block" id="BTgymDataFeedServer"><a class="viewcode-back" href="../../btgym.html#btgym.dataserver.BTgymDataFeedServer">[docs]</a><span class="k">class</span> <span class="nc">BTgymDataFeedServer</span><span class="p">(</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">Process</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -228,48 +230,43 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">network_address</span> <span class="o">=</span> <span class="n">network_address</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-            <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-            <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-            <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span>
-        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample_config</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">DataSampleConfig</span><span class="p">)</span>
 
-<div class="viewcode-block" id="BTgymDataFeedServer.get_data"><a class="viewcode-back" href="../../btgym.html#btgym.dataserver.BTgymDataFeedServer.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_params</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymDataFeedServer.get_data"><a class="viewcode-back" href="../../btgym.html#btgym.dataserver.BTgymDataFeedServer.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get Trial sample according to parameters received.</span>
 <span class="sd">        If no parameters being passed - just makes and stores pre-sample.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            sample_params:   dictionary of sampling parameters</span>
+<span class="sd">            sample_config:   sampling parameters configuration dictionary</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            tuple (sample, dataset_stat): if `sample_params` arg has been passed</span>
+<span class="sd">            sample:     if `sample_params` arg has been passed and dataset is ready</span>
 <span class="sd">            None:       otherwise</span>
 
 <span class="sd">        Notes:</span>
-<span class="sd">        Use some heuristic here: to save time we pre-sample data with most probable parameters;</span>
-<span class="sd">        first guessed sample gets type =`Train`, b_alpha=1, b_beta=1, and subsequent ones get actual</span>
-<span class="sd">        sampling params of previous accepted sample. If newly received parameters doesnt match pre-sampled ones -</span>
-<span class="sd">        we discard our guess and sample again with actual params.</span>
+<span class="sd">            Some heuristic used here: to enable parallelism we pre-sample data with most probable parameters;</span>
+<span class="sd">            first guessed sample gets type =`Train`, b_alpha=1, b_beta=1, and subsequent ones get actual</span>
+<span class="sd">            sampling params of previous accepted sample. If newly received parameters doesnt match pre-sampled ones -</span>
+<span class="sd">            we discard our guess and sample again with actual params.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;is_ready: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">is_ready</span><span class="p">))</span>
+        <span class="c1">#self.log.debug(&#39;is_ready: {}&#39;.format(self.dataset.is_ready))</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">is_ready</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">sample_params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample_params</span> <span class="o">==</span> <span class="n">sample_params</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sample_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample_config</span> <span class="o">==</span> <span class="n">sample_config</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Pre-sampling guess failed, resampling.&#39;</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample_params</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">sample_params</span><span class="p">)</span>
-                    <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">sample_params</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample_config</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">sample_config</span><span class="p">)</span>
+                    <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="o">**</span><span class="n">sample_config</span><span class="p">)</span>
 
                 <span class="k">else</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Pre-sampling guess succeeded.&#39;</span><span class="p">)</span>
                     <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample</span>
 
             <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Guessing sample with params: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_sample_params</span><span class="p">))</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_sample_params</span><span class="p">)</span>
-                <span class="k">return</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Guessing sample with params: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_sample_config</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_sample_config</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">None</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">local_step</span> <span class="o">+=</span> <span class="mi">1</span>
 
@@ -278,9 +275,7 @@
             <span class="n">sample</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">pre_sample</span> <span class="o">=</span> <span class="kc">None</span>
 
-
-
-        <span class="k">return</span> <span class="n">sample</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span></div>
+        <span class="k">return</span> <span class="n">sample</span></div>
 
 <div class="viewcode-block" id="BTgymDataFeedServer.run"><a class="viewcode-back" href="../../btgym.html#btgym.dataserver.BTgymDataFeedServer.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -292,7 +287,7 @@
         <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">WARNING</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTgym_DataServer_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTgymDataServer_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">current_process</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;PID: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">pid</span><span class="p">))</span>
@@ -313,14 +308,17 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
 
         <span class="c1"># Main loop:</span>
+        <span class="n">get_new</span> <span class="o">=</span> <span class="kc">True</span>
+
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">get_new</span><span class="p">:</span>
             <span class="c1"># Guess sample:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+                <span class="n">get_new</span> <span class="o">=</span> <span class="kc">False</span>
 
             <span class="c1"># Stick here with data in hand until receive any request:</span>
             <span class="n">service_input</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Received &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">service_input</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Received &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">service_input</span><span class="p">))</span>
 
             <span class="k">if</span> <span class="s1">&#39;ctrl&#39;</span> <span class="ow">in</span> <span class="n">service_input</span><span class="p">:</span>
                 <span class="c1"># It&#39;s time to exit:</span>
@@ -344,19 +342,20 @@
 
                     <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
                     <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;Reset with kwargs: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)}</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sent: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Data_is_ready: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">is_ready</span><span class="p">))</span>
                     <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">local_step</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="n">get_new</span> <span class="o">=</span> <span class="kc">True</span>
 
-                <span class="c1"># Send episode datafeed:</span>
+                <span class="c1"># Send dataset sample:</span>
                 <span class="k">elif</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_get_data&#39;</span><span class="p">:</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">is_ready</span><span class="p">:</span>
                         <span class="c1"># Call get_data to verify sampling guess or resample:</span>
-                        <span class="n">sample</span><span class="p">,</span> <span class="n">stat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">sample_params</span><span class="o">=</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">])</span>
+                        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">sample_config</span><span class="o">=</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">])</span>
                         <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Sending sample_#</span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">local_step</span><span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-                        <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">({</span><span class="s1">&#39;sample&#39;</span><span class="p">:</span> <span class="n">sample</span><span class="p">,</span> <span class="s1">&#39;stat&#39;</span><span class="p">:</span> <span class="n">stat</span><span class="p">})</span>
+                        <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">({</span><span class="s1">&#39;sample&#39;</span><span class="p">:</span> <span class="n">sample</span><span class="p">,</span> <span class="s1">&#39;stat&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="p">})</span>
+                        <span class="n">get_new</span> <span class="o">=</span> <span class="kc">True</span>
 
                     <span class="k">else</span><span class="p">:</span>
                         <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;Dataset not ready, waiting for control key &lt;_reset_data&gt;&#39;</span><span class="p">}</span>

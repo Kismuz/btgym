@@ -19,7 +19,6 @@
 
 import multiprocessing
 import gc
-import psutil
 
 import itertools
 import zmq
@@ -30,6 +29,7 @@ import random
 from datetime import timedelta
 
 import backtrader as bt
+from .datafeed import DataSampleConfig, EnvResetConfig
 
 ###################### BT Server in-episode communocation method ##############
 
@@ -414,7 +414,7 @@ class BTgymServer(multiprocessing.Process):
 
                     # Start episode:
                     elif service_input['ctrl'] == '_reset':
-                        message = 'Starting episode with kwargs: {}'.format(service_input['kwargs'])
+                        message = 'Preparing new episode with kwargs: {}'.format(service_input['kwargs'])
                         self.log.debug(message)
                         self.socket.send_pyobj(message)  # pairs '_reset'
                         break
@@ -463,47 +463,38 @@ class BTgymServer(multiprocessing.Process):
 
             # Data preparation:
             # Parse args we got with _reset call:
-            data_control = dict(
-                episode=dict(
-                    get_new=True,
-                    sample_type=0,
-                    b_alpha=1,
-                    b_beta=1
-                ),
-                trial=dict(
-                    get_new=True,
-                    sample_type=0,
-                    b_alpha=1,
-                    b_beta=1
-                )
+            #sample_config = copy.deepcopy(EnvResetConfig)
+
+            sample_config = dict(
+                episode_config=copy.deepcopy(DataSampleConfig),
+                trial_config=copy.deepcopy(DataSampleConfig)
             )
-            try:
-                data_control.update(service_input['kwargs']['data_control'])
+            for key, config in sample_config.items():
+                try:
+                    config.update(service_input['kwargs'][key])
 
-            except KeyError:
-                self.log.warning('<data_control> arg not found, using defaults: {}'.format(data_control))
+                except KeyError:
+                    self.log.warning(
+                        '_reset <{}> kwarg not found, using default values: {}'.format(key, config)
+                    )
 
-            # Get new Trial from data_server if requested:
-            if data_control['trial']['get_new'] or trial_sample is None:
+            # Get new Trial from data_server if requested,
+            # despite bult-in new/reuse data object sampling option, perform checks here to avoid
+            # redundant traffic:
+            if sample_config['trial_config']['get_new'] or trial_sample is None:
                 self.log.debug(
-                    'Requesting new Trial sample with args: {}'.format(data_control['trial'])
+                    'Requesting new Trial sample with args: {}'.format(sample_config['trial_config'])
                 )
-                trial_sample, trial_stat, dataset_stat = self.get_data(**data_control['trial'])
-                self.log.debug('...got new Trial: <{}>'.format(trial_sample.filename))
+                trial_sample, trial_stat, dataset_stat = self.get_data(**sample_config['trial_config'])
+                trial_sample.set_logger(self.log_level, self.task)
+                self.log.debug('Got new Trial: <{}>'.format(trial_sample.filename))
 
             else:
                 self.log.debug('Reusing Trial <{}>'.format(trial_sample.filename))
 
-            # Get new episode if requested:
-            if data_control['episode']['get_new'] or episode_sample is None:
-                self.log.debug(
-                    'Sampling new Episode with args: {}'.format(data_control['episode'])
-                )
-                episode_sample = trial_sample.sample(**data_control['episode'])
-                self.log.debug('...got new Episode <{}> '.format(episode_sample.filename))
-
-            else:
-                self.log.debug('Reusing Episode <{}>'.format(episode_sample.filename))
+            # Get episode:
+            self.log.debug('Requesting episode from <{}>'.format(trial_sample.filename))
+            episode_sample = trial_sample.sample(**sample_config['episode_config'])
 
             # Get episode data statistic and pass it to strategy params:
             cerebro.strats[0][0][2]['trial_stat'] = trial_stat

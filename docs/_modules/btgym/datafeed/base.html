@@ -210,6 +210,29 @@
 <span class="kn">import</span> <span class="nn">backtrader.feeds</span> <span class="k">as</span> <span class="nn">btfeeds</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 
+<span class="n">DataSampleConfig</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">dict: Conventional sampling configuration template to pass to data class `sample()` method:</span>
+
+<span class="sd">```sample = my_data.sample(**DataSampleConfig)```</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="n">EnvResetConfig</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">episode_config</span><span class="o">=</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">DataSampleConfig</span><span class="p">),</span>
+    <span class="n">trial_config</span><span class="o">=</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">DataSampleConfig</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">dict: Conventional reset configuration template to pass to environment `reset()` method:</span>
+
+<span class="sd">```observation = env.reset(**EnvResetConfig)```</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
 
 <div class="viewcode-block" id="BTgymBaseData"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData">[docs]</a><span class="k">class</span> <span class="nc">BTgymBaseData</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -361,6 +384,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">start_00</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">expanding</span> <span class="o">=</span> <span class="kc">None</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span> <span class="o">=</span> <span class="kc">None</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">test_range_delta</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">train_range_delta</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span> <span class="o">=</span> <span class="mi">0</span>
@@ -418,7 +443,7 @@
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="BTgymBaseData.set_logger"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.set_logger">[docs]</a>    <span class="k">def</span> <span class="nf">set_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymBaseData.set_logger"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.set_logger">[docs]</a>    <span class="k">def</span> <span class="nf">set_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Sets logbook logger.</span>
 
@@ -426,7 +451,11 @@
 <span class="sd">            name:   channel name, str</span>
 <span class="sd">            level:  logbook.level, int</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">)</span></div>
+        <span class="k">if</span> <span class="n">task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
+
+        <span class="k">if</span> <span class="n">level</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="BTgymBaseData.reset"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -588,14 +617,16 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="BTgymBaseData.sample"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymBaseData.sample"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">b_alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">b_beta</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Samples continuous subset of data.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            sample_type:    int, def=0 (train) or 1 (test) - to sample from train or test data subsets respectively.</span>
-<span class="sd">            b_alpha:        beta-distribution sampling alpha, valid for train episodes, def=1.</span>
-<span class="sd">            b_beta:         beta-distribution sampling beta, valid for train episodes, def=1.</span>
+<span class="sd">            get_new (bool):                 sample new (True) or reuse (False) last made sample;</span>
+<span class="sd">            sample_type (int or bool):      0 (train) or 1 (test) - get sample from train or test data subsets</span>
+<span class="sd">                                            respectively.</span>
+<span class="sd">            b_alpha (float):                beta-distribution sampling alpha &gt; 0, valid for train episodes.</span>
+<span class="sd">            b_beta (float):                 beta-distribution sampling beta &gt; 0, valid for train episodes.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">        if no sample_class_ref param been set:</span>
@@ -616,30 +647,34 @@
         <span class="k">assert</span> <span class="n">sample_type</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;Sampling attempt: expected sample type be in </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
             <span class="nb">format</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">sample_type</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">sample_type</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="c1"># Get beta_distributed sample in train interval:</span>
-            <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_interval</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">train_interval</span><span class="p">,</span>
-                <span class="n">b_alpha</span><span class="o">=</span><span class="n">b_alpha</span><span class="p">,</span>
-                <span class="n">b_beta</span><span class="o">=</span><span class="n">b_beta</span><span class="p">,</span>
-                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;train_&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span>
-            <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">get_new</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sample_type</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># Get beta_distributed sample in train interval:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_interval</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">train_interval</span><span class="p">,</span>
+                    <span class="n">b_alpha</span><span class="o">=</span><span class="n">b_alpha</span><span class="p">,</span>
+                    <span class="n">b_beta</span><span class="o">=</span><span class="n">b_beta</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;train_&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span>
+                <span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Get uniform sample in test interval:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_interval</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">test_interval</span><span class="p">,</span>
+                    <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;test_&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sample_type</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;parent_sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Get uniform sample in test interval:</span>
-            <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_interval</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">test_interval</span><span class="p">,</span>
-                <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;test_&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span>
-            <span class="p">)</span>
+            <span class="c1"># Do nothing:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Reusing sample, id: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
 
-        <span class="n">sample</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sample_type</span>
-        <span class="n">sample</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span>
-        <span class="n">sample</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;parent_sample_num&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">+=</span> <span class="mi">1</span>
-
-        <span class="k">return</span> <span class="n">sample</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span></div>
 
 <div class="viewcode-block" id="BTgymBaseData._sample_random"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData._sample_random">[docs]</a>    <span class="k">def</span> <span class="nf">_sample_random</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;random_sample_&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -727,7 +762,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="BTgymBaseData._sample_interval"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData._sample_interval">[docs]</a>    <span class="k">def</span> <span class="nf">_sample_interval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;interval_sample_&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymBaseData._sample_interval"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData._sample_interval">[docs]</a>    <span class="k">def</span> <span class="nf">_sample_interval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">b_alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">b_beta</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;interval_sample_&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Samples continuous subset of data,</span>
 <span class="sd">        such as entire episode records lie within positions specified by interval.</span>
@@ -825,7 +860,7 @@
                 <span class="c1"># If sample OK - return new dataset:</span>
                 <span class="n">new_instance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nested_class_ref</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">nested_params</span><span class="p">)</span>
                 <span class="n">new_instance</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;num_</span><span class="si">{}</span><span class="s1">_at_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span><span class="p">,</span> <span class="n">adj_timedate</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Sample id: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">new_instance</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;New sample id: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">new_instance</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
                 <span class="n">new_instance</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">sampled_data</span>
                 <span class="n">new_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;interval_sample&#39;</span>
                 <span class="n">new_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;first_row&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">first_row</span>

@@ -265,7 +265,7 @@ class BTgymEnv(gym.Env):
                 msg = 'Base Dataset class used.'
 
             # Append logging:
-            self.dataset.set_logger(self.log_level)
+            self.dataset.set_logger(self.log_level, self.task)
 
             # Update params -2: pull from dataset, remove used kwargs:
             self.params['dataset'].update(self.dataset.params)
@@ -570,7 +570,7 @@ class BTgymEnv(gym.Env):
         Parses observation space shape or response.
 
         Args:
-            space: gym observation space or response.
+            space: gym observation space or state.
 
         Returns:
             description as string.

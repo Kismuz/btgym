@@ -21,6 +21,8 @@ import multiprocessing
 import copy
 import zmq
 
+from .datafeed import DataSampleConfig
+
 
 class BTgymDataFeedServer(multiprocessing.Process):
     """
@@ -49,47 +51,42 @@ class BTgymDataFeedServer(multiprocessing.Process):
         self.dataset = dataset
         self.network_address = network_address
         self.pre_sample = None
-        self.pre_sample_params = dict(
-            get_new=True,
-            sample_type=0,
-            b_alpha=1,
-            b_beta=1
-        )
+        self.pre_sample_config = copy.deepcopy(DataSampleConfig)
 
-    def get_data(self, sample_params=None):
+    def get_data(self, sample_config=None):
         """
         Get Trial sample according to parameters received.
         If no parameters being passed - just makes and stores pre-sample.
 
         Args:
-            sample_params:   dictionary of sampling parameters
+            sample_config:   sampling parameters configuration dictionary
 
         Returns:
             sample:     if `sample_params` arg has been passed and dataset is ready
             None:       otherwise
 
         Notes:
-            Use some heuristic here: to save time we pre-sample data with most probable parameters;
+            Some heuristic used here: to enable parallelism we pre-sample data with most probable parameters;
             first guessed sample gets type =`Train`, b_alpha=1, b_beta=1, and subsequent ones get actual
             sampling params of previous accepted sample. If newly received parameters doesnt match pre-sampled ones -
             we discard our guess and sample again with actual params.
         """
 
-        self.log.debug('is_ready: {}'.format(self.dataset.is_ready))
+        #self.log.debug('is_ready: {}'.format(self.dataset.is_ready))
         if self.dataset.is_ready:
-            if sample_params is not None:
-                if self.pre_sample is None or not self.pre_sample_params == sample_params:
+            if sample_config is not None:
+                if self.pre_sample is None or not self.pre_sample_config == sample_config:
                     self.log.debug('Pre-sampling guess failed, resampling.')
-                    self.pre_sample_params = copy.deepcopy(sample_params)
-                    sample = self.dataset.sample(**sample_params)
+                    self.pre_sample_config = copy.deepcopy(sample_config)
+                    sample = self.dataset.sample(**sample_config)
 
                 else:
                     self.log.debug('Pre-sampling guess succeeded.')
                     sample = self.pre_sample
 
             else:
-                self.log.debug('Guessing sample with params: {}'.format(self.pre_sample_params))
-                self.pre_sample = self.dataset.sample(**self.pre_sample_params)
+                self.log.debug('Guessing sample with params: {}'.format(self.pre_sample_config))
+                self.pre_sample = self.dataset.sample(**self.pre_sample_config)
                 return None
 
             self.local_step += 1
@@ -132,14 +129,17 @@ class BTgymDataFeedServer(multiprocessing.Process):
         self.dataset_stat = self.dataset.describe()
 
         # Main loop:
+        get_new = True
+
         while True:
+            if get_new:
             # Guess sample:
-            self.get_data()
+                self.get_data()
+                get_new = False
 
             # Stick here with data in hand until receive any request:
             service_input = socket.recv_pyobj()
-            msg = 'Received <{}>'.format(service_input)
-            self.log.debug(msg)
+            self.log.debug('Received <{}>'.format(service_input))
 
             if 'ctrl' in service_input:
                 # It's time to exit:
@@ -163,19 +163,20 @@ class BTgymDataFeedServer(multiprocessing.Process):
 
                     self.dataset.reset(**kwargs)
                     message = {'ctrl': 'Reset with kwargs: {}'.format(kwargs)}
-                    self.log.debug('Sent: ' + str(message))
                     self.log.debug('Data_is_ready: {}'.format(self.dataset.is_ready))
                     socket.send_pyobj(message)
                     self.local_step = 0
+                    get_new = True
 
-                # Send episode datafeed:
+                # Send dataset sample:
                 elif service_input['ctrl'] == '_get_data':
                     if self.dataset.is_ready:
                         # Call get_data to verify sampling guess or resample:
-                        sample = self.get_data(sample_params=service_input['kwargs'])
+                        sample = self.get_data(sample_config=service_input['kwargs'])
                         message = 'Sending sample_#{}.'.format(self.local_step)
                         self.log.debug(message)
                         socket.send_pyobj({'sample': sample, 'stat': self.dataset_stat})
+                        get_new = True
 
                     else:
                         message = {'ctrl': 'Dataset not ready, waiting for control key <_reset_data>'}
