@@ -103,7 +103,8 @@ class BTgymDataTrial(BTgymBaseData):
 
 class BTgymRandomDataDomain(BTgymBaseData):
     """
-    Top-level data class. Supports source and target data domains separation. Implements pipe::
+    Top-level data class. Implements one way data domains can be defined,
+    namely when source domain precedes and target one. Implements pipe::
 
         Domain.sample() --> Trial.sample() --> Episode.to_btfeed() --> bt.Startegy
 
@@ -132,7 +133,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
 
             target_period:      dict, domain target period, def={'days': 0, 'hours': 0, 'minutes': 0};
                                 setting this param to non-zero duration forces separation to source/target
-                                domains (which can be thought as creating  top-level train/test subsets) with
+                                domains (which can be thought of as creating  top-level train/test subsets) with
                                 target data duration equal to `target_period`. Source data always precedes target one.
             name:               str, optional
             task:               int, optional

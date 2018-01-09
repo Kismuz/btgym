@@ -543,7 +543,8 @@ Do not use directly.</p>
 <dl class="class">
 <dt id="btgym.datafeed.derivative.BTgymRandomDataDomain">
 <em class="property">class </em><code class="descclassname">btgym.datafeed.derivative.</code><code class="descname">BTgymRandomDataDomain</code><span class="sig-paren">(</span><em>filename=None</em>, <em>parsing_params=None</em>, <em>trial_params=None</em>, <em>episode_params=None</em>, <em>target_period=None</em>, <em>name='RndDataDomain'</em>, <em>task=0</em>, <em>log_level=13</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/derivative.html#BTgymRandomDataDomain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.derivative.BTgymRandomDataDomain" title="Permalink to this definition">¶</a></dt>
-<dd><p>Top-level data class. Supports source and target data domains separation. Implements pipe:</p>
+<dd><p>Top-level data class. Implements one way data domains can be defined,
+namely when source domain precedes and target one. Implements pipe:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Domain</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span> <span class="o">--&gt;</span> <span class="n">Trial</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span> <span class="o">--&gt;</span> <span class="n">Episode</span><span class="o">.</span><span class="n">to_btfeed</span><span class="p">()</span> <span class="o">--&gt;</span> <span class="n">bt</span><span class="o">.</span><span class="n">Startegy</span>
 </pre></div>
 </div>
@@ -561,7 +562,7 @@ Do not use directly.</p>
 {sample_duration, time_gap, start_00, start_weekdays};</li>
 <li><strong>target_period</strong> – dict, domain target period, def={‘days’: 0, ‘hours’: 0, ‘minutes’: 0};
 setting this param to non-zero duration forces separation to source/target
-domains (which can be thought as creating  top-level train/test subsets) with
+domains (which can be thought of as creating  top-level train/test subsets) with
 target data duration equal to <cite>target_period</cite>. Source data always precedes target one.</li>
 <li><strong>name</strong> – str, optional</li>
 <li><strong>task</strong> – int, optional</li>
@@ -618,8 +619,8 @@ subsets. Train data always precedes test one.</li>
 <dt id="btgym.datafeed.stateful.BTgymSequentialDataDomain">
 <em class="property">class </em><code class="descclassname">btgym.datafeed.stateful.</code><code class="descname">BTgymSequentialDataDomain</code><span class="sig-paren">(</span><em>name='SeqDataDomain'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/stateful.html#BTgymSequentialDataDomain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.stateful.BTgymSequentialDataDomain" title="Permalink to this definition">¶</a></dt>
 <dd><p>Top-level sequential data iterator.
-Implements sliding or expanding time-window training and testing.
-Due to sequential nature doesnt support source/target domain separation.</p>
+Implements conception of sliding [or expanding] train/test time-window.
+Due to sequential nature doesnt support firm source/target domain separation.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p>Single Trial is defined by support interval (overall duration)  and test interval:</p>

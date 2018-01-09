@@ -27,8 +27,8 @@ from .derivative import BTgymRandomDataDomain
 class BTgymSequentialDataDomain(BTgymRandomDataDomain):
     """
     Top-level sequential data iterator.
-    Implements sliding or expanding time-window training and testing.
-    Due to sequential nature doesnt support source/target domain separation.
+    Implements conception of sliding [or expanding] train/test time-window.
+    Due to sequential nature doesnt support firm source/target domain separation.
 
     Note:
 

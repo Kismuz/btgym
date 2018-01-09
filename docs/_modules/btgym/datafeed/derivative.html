@@ -284,7 +284,8 @@
 
 <div class="viewcode-block" id="BTgymRandomDataDomain"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.derivative.BTgymRandomDataDomain">[docs]</a><span class="k">class</span> <span class="nc">BTgymRandomDataDomain</span><span class="p">(</span><span class="n">BTgymBaseData</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Top-level data class. Supports source and target data domains separation. Implements pipe::</span>
+<span class="sd">    Top-level data class. Implements one way data domains can be defined,</span>
+<span class="sd">    namely when source domain precedes and target one. Implements pipe::</span>
 
 <span class="sd">        Domain.sample() --&gt; Trial.sample() --&gt; Episode.to_btfeed() --&gt; bt.Startegy</span>
 
@@ -313,7 +314,7 @@
 
 <span class="sd">            target_period:      dict, domain target period, def={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0};</span>
 <span class="sd">                                setting this param to non-zero duration forces separation to source/target</span>
-<span class="sd">                                domains (which can be thought as creating  top-level train/test subsets) with</span>
+<span class="sd">                                domains (which can be thought of as creating  top-level train/test subsets) with</span>
 <span class="sd">                                target data duration equal to `target_period`. Source data always precedes target one.</span>
 <span class="sd">            name:               str, optional</span>
 <span class="sd">            task:               int, optional</span>
