@@ -257,7 +257,7 @@ class BTgymSequentialDataDomain(BTgymRandomDataDomain):
         else:
             t_type = 'SLIDING'
 
-        self.log.warning(
+        self.log.notice(
             (
                 '\nTrial type: {}; [initial] train interval: {}; test interval: {}.' +
                 '\nCardinality: {}; iterating from: {}.'
@@ -289,10 +289,10 @@ class BTgymSequentialDataDomain(BTgymRandomDataDomain):
             # Get Trial:
             interval, time = self._get_interval(self.sample_num)
 
-            self.log.warning(
+            self.log.notice(
                 'Trial #{} @: {} <--> {};'.format(self.sample_num, time[0], time[-1])
             )
-            self.log.warning(
+            self.log.notice(
                 'Trial #{} rows: {} <--> {}'.
                     format(
                     self.sample_num,

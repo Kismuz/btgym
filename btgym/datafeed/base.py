@@ -436,7 +436,10 @@ class BTgymBaseData:
             self.log.error(msg)
             raise AssertionError(msg)
 
-    def sample(self, get_new=True, sample_type=0, b_alpha=1.0, b_beta=1.0):
+    def sample(self, **kwargs):
+        return self._sample(**kwargs)
+
+    def _sample(self, get_new=True, sample_type=0, b_alpha=1.0, b_beta=1.0):
         """
         Samples continuous subset of data.
 
