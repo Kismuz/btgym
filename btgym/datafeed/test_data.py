@@ -1,4 +1,4 @@
-import os
+
 import unittest
 from .derivative import BTgymDataset, BTgymRandomDataDomain
 from .stateful import BTgymSequentialDataDomain
@@ -31,7 +31,7 @@ class DomainTest(unittest.TestCase):
 
     def test_domain_target_period_bounds_fail(self):
         """
-        Tests non-zero train size
+        Tests non-zero train size check
         """
         with self.assertRaises(AssertionError) as cm:
             domain = BTgymDataset(
@@ -42,8 +42,6 @@ class DomainTest(unittest.TestCase):
                 test_period={'days': 360, 'hours': 0, 'minutes': 0}
             )
             domain.reset()
-
-        #print(cm.exception)
 
     def test_BTgymDataset_sampling_bounds_consistency(self):
         """

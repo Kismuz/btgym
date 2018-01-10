@@ -226,7 +226,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
         # TODO: force pos. close is a primitive. To be refined if exiting early
         if self.iteration >= self.data.numrecords - self.inner_embedding - self.p.skip_frame - 1:
             self.order = self.close()
-            self.broker_message = 'Final CLOSE created; ' + self.broker_message
+            self.broker_message = 'End-data CLOSE created; ' + self.broker_message
         else:
             # Simple action-to-order logic:
             if self.action == 'hold' or self.order:
