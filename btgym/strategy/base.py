@@ -117,12 +117,15 @@ class BTgymBaseStrategy(bt.Strategy):
         self.iteration = 1
         self.inner_embedding = 1
         self.is_done = False
+        self.is_done_enabled = False
+        self.steps_till_is_done = 2  # extra steps to make when episode terminal conditions are met
         self.action = 'hold'
         self.last_action = 'hold'
         self.reward = 0
         self.order = None
         self.order_failed = 0
-        self.broker_message = '-'
+        self.broker_message = '_'
+        self.final_message = '_'
         self.raw_state = None
         self.state = dict()
 
@@ -421,7 +424,7 @@ class BTgymBaseStrategy(bt.Strategy):
                is sent as part of environment response.
             2. Got '_done' signal from outside. E.g. via env.reset() method invoked by outer RL algorithm.
             3. Hit drawdown threshold.
-            4. Hit target profit treshhold.
+            4. Hit target profit threshold.
 
         This method shouldn't be overridden or called explicitly.
 
@@ -431,24 +434,50 @@ class BTgymBaseStrategy(bt.Strategy):
                 OR
                 ANY _get_done() default condition is met.
         """
-        # Base episode termination rules:
-        is_done_rules = [
-            # Will it be last step of the episode?:
-            (self.iteration >= self.data.numrecords - self.inner_embedding, 'END OF DATA!'),
-            # Any money left?:
-            (self.stats.drawdown.maxdrawdown[0] >= self.p.drawdown_call, 'DRAWDOWN CALL!'),
-            # Party time?
-            (self.env.broker.get_value() > self.target_value, 'TARGET REACHED!'),
-        ]
-        # Append custom get_done() results, if any:
-        is_done_rules += [self.get_done()]
+        if not self.is_done_enabled:
+            # Episode is on its way,
+            # apply base episode termination rules:
+            is_done_rules = [
+                # Do we approaching the end of the episode?:
+                (self.iteration >= \
+                 self.data.numrecords - self.inner_embedding - self.p.skip_frame - self.steps_till_is_done,
+                 'END OF DATA'),
+                # Any money left?:
+                (self.stats.drawdown.maxdrawdown[0] >= self.p.drawdown_call, 'DRAWDOWN CALL'),
+                # Party time?
+                (self.env.broker.get_value() > self.target_value, 'TARGET REACHED'),
+            ]
+            # Append custom get_done() results, if any:
+            is_done_rules += [self.get_done()]
 
-        # Sweep through rules:
-        for (condition, message) in is_done_rules:
-            if condition:
-                self.is_done = True
-                self.broker_message = message
-                self.order = self.close()
+            # Sweep through rules:
+            for (condition, message) in is_done_rules:
+                if condition:
+                    # Start episode termination countdown for clean exit:
+                    # to forcefully execute final `close` order and compute proper reward
+                    # we need to make `steps_till_is_done` number of steps until `is_done` flag can be safely risen:
+                    self.is_done_enabled = True
+                    self.broker_message += message
+                    self.final_message = message
+                    self.order = self.close()
+                    self.log.debug(
+                        'Episode countdown started at: {}, {}, r:{}'.format(self.iteration, message, self.reward)
+                    )
+
+        else:
+            # Now in episode termination phase,
+            # just keep hitting `Close` button:
+            self.steps_till_is_done -=1
+            self.broker_message = 'CLOSE, {}'.format(self.final_message)
+            self.order = self.close()
+            self.log.debug(
+                'Episode countdown contd. at: {}, {}, r:{}'.format(self.iteration, self.broker_message, self.reward)
+            )
+
+        if self.steps_till_is_done <= 0:
+            # Now we've done, terminate:
+            self.is_done = True
+
         return self.is_done
 
     def notify_order(self, order):
@@ -489,7 +518,7 @@ class BTgymBaseStrategy(bt.Strategy):
         At least, it should handle order execution logic according to action received.
         """
         # Simple action-to-order logic:
-        if self.action == 'hold' or self.order:
+        if self.action == 'hold' or self.order or self.is_done_enabled:
             pass
         elif self.action == 'buy':
             self.order = self.buy()

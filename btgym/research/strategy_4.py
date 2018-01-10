@@ -31,10 +31,6 @@ class DevStrat_4_6(BTgymBaseStrategy):
         reward shaping search:
            potential-based shaping functions
 
-        add:
-            force position close at the end of the episode (basic, at data end)
-
-
     Data:
         synthetic/real
     """
@@ -218,32 +214,6 @@ class DevStrat_4_6(BTgymBaseStrategy):
         self.reward = np.clip(self.reward, -1, 1)
 
         return self.reward
-
-    def next(self):
-        """
-        Default + force position close at the end of the episode.
-        """
-        # TODO: force pos. close is a primitive. To be refined if exiting early
-        if self.iteration >= self.data.numrecords - self.inner_embedding - self.p.skip_frame - 1:
-            self.order = self.close()
-            self.broker_message = 'End-data CLOSE created; ' + self.broker_message
-        else:
-            # Simple action-to-order logic:
-            if self.action == 'hold' or self.order:
-                pass
-
-            elif self.action == 'buy':
-                self.order = self.buy()
-                self.broker_message = 'New BUY created; ' + self.broker_message
-
-            elif self.action == 'sell':
-                self.order = self.sell()
-                self.broker_message = 'New SELL created; ' + self.broker_message
-
-            elif self.action == 'close':
-                self.order = self.close()
-                self.broker_message = 'New CLOSE created; ' + self.broker_message
-
 
 
 class DevStrat_4_7(DevStrat_4_6):

@@ -16,7 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ###############################################################################
-import logging
+from logbook import Logger, StreamHandler, WARNING
+import sys
 import numpy as np
 
 #from .plotter import BTgymPlotter
@@ -52,6 +53,7 @@ class BTgymRendering():
                             ),
         plt_backend='Agg',  # Not used.
     )
+    enabled = True
 
     def __init__(self, render_modes, **kwargs):
         """
@@ -84,10 +86,12 @@ class BTgymRendering():
         for key, value in self.params.items():
                 setattr(self, key, value)
 
-        # To log or not:
-        if 'log' not in dir(self):
-            self.log = logging.getLogger('dummy')
-            self.log.addHandler(logging.NullHandler())
+        # Logging:
+        if 'log_level' not in dir(self):
+            self.log_level = WARNING
+
+        StreamHandler(sys.stdout).push_application()
+        self.log = Logger('BTgymRenderer', level=self.log_level)
 
         #from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
         #self.FigureCanvas = FigureCanvas
@@ -431,11 +435,12 @@ class BTgymNullRendering():
     """
     Empty renderer to use when resources are concern.
     """
-
+    enabled = False
     def __init__(self, *args, **kwargs):
         self.plug = (np.random.rand(100, 200, 3) * 255).astype(dtype=np.uint8)
         self.params = {'rendering': 'disabled'}
         self.render_modes = []
+
 
     def initialize_pyplot(self):
         pass

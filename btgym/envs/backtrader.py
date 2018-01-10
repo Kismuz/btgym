@@ -228,7 +228,7 @@ class BTgymEnv(gym.Env):
 
         # Set server rendering:
         if self.render_enabled:
-            self.renderer = BTgymRendering(self.metadata['render.modes'], **kwargs)
+            self.renderer = BTgymRendering(self.metadata['render.modes'], log_level=self.log_level, **kwargs)
 
         else:
             self.renderer = BTgymNullRendering()

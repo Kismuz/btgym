@@ -30,6 +30,7 @@ from datetime import timedelta
 
 import backtrader as bt
 from .datafeed import DataSampleConfig, EnvResetConfig
+from .strategy.observers import NormPnL, Position, Reward
 
 ###################### BT Server in-episode communocation method ##############
 
@@ -388,9 +389,15 @@ class BTgymServer(multiprocessing.Process):
             self.log.error(msg)
             raise ConnectionError(msg)
 
-
         # Init renderer:
         self.render.initialize_pyplot()
+
+        # Plotting observers to add to data-master startegy instance: TODO: make it args?
+        if self.render.enabled:
+            aux_obsrevers = [bt.observers.DrawDown, NormPnL, Position, Reward]
+
+        else:
+            aux_obsrevers = []
 
         # Server 'Control Mode' loop:
         for episode_number in itertools.count(0):
@@ -448,23 +455,21 @@ class BTgymServer(multiprocessing.Process):
             cerebro._socket = self.socket
             cerebro._log = self.log
             cerebro._render = self.render
-            # Add DrawDown observer if not already:
-            dd_added = False
-            for observer in cerebro.observers:
 
-                if bt.observers.DrawDown in observer:
-                    dd_added = True
-
-            if not dd_added:
-                cerebro.addobserver(bt.observers.DrawDown)
+            # Add auxillary observers, if not already:
+            for aux in aux_obsrevers:
+                is_added = False
+                for observer in cerebro.observers:
+                    if aux in observer:
+                        is_added = True
+                if not is_added:
+                    cerebro.addobserver(aux)
 
             # Add communication utility:
             cerebro.addanalyzer(_BTgymAnalyzer, _name='_env_analyzer',)
 
             # Data preparation:
             # Parse args we got with _reset call:
-            #sample_config = copy.deepcopy(EnvResetConfig)
-
             sample_config = dict(
                 episode_config=copy.deepcopy(DataSampleConfig),
                 trial_config=copy.deepcopy(DataSampleConfig)
@@ -474,7 +479,7 @@ class BTgymServer(multiprocessing.Process):
                     config.update(service_input['kwargs'][key])
 
                 except KeyError:
-                    self.log.warning(
+                    self.log.debug(
                         '_reset <{}> kwarg not found, using default values: {}'.format(key, config)
                     )
 
