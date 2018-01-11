@@ -53,6 +53,9 @@ class BTgymDataFeedServer(multiprocessing.Process):
         self.pre_sample = None
         self.pre_sample_config = copy.deepcopy(DataSampleConfig)
 
+        self.debug_pre_sample_fails = 0
+        self.debug_pre_sample_attempts = 0
+
     def get_data(self, sample_config=None):
         """
         Get Trial sample according to parameters received.
@@ -66,19 +69,21 @@ class BTgymDataFeedServer(multiprocessing.Process):
             None:       otherwise
 
         Notes:
-            Some heuristic used here: to enable parallelism we pre-sample data with most probable parameters;
+            Some heuristic used here to enable parallelism: as training usually requires long series of similar samples,
+            we pre-sample data with most probable parameters;
             first guessed sample gets type =`Train`, b_alpha=1, b_beta=1, and subsequent ones get actual
             sampling params of previous accepted sample. If newly received parameters doesnt match pre-sampled ones -
             we discard our guess and sample again with actual params.
+            TODO: should be switched off if using decaying `b_alpha` and `b_beta` params.
         """
-
-        #self.log.debug('is_ready: {}'.format(self.dataset.is_ready))
         if self.dataset.is_ready:
             if sample_config is not None:
                 if self.pre_sample is None or not self.pre_sample_config == sample_config:
                     self.log.debug('Pre-sampling guess failed, resampling.')
                     self.pre_sample_config = copy.deepcopy(sample_config)
                     sample = self.dataset.sample(**sample_config)
+
+                    self.debug_pre_sample_fails += 1
 
                 else:
                     self.log.debug('Pre-sampling guess succeeded.')
@@ -87,10 +92,23 @@ class BTgymDataFeedServer(multiprocessing.Process):
             else:
                 self.log.debug('Guessing sample with params: {}'.format(self.pre_sample_config))
                 self.pre_sample = self.dataset.sample(**self.pre_sample_config)
+
+                self.debug_pre_sample_attempts += 1
+
                 return None
 
             self.local_step += 1
 
+            # Debug:
+            if self.local_step % 100 == 0:
+                self.log.debug(
+                    'Pre_samples: {}, failed: {}, fails/attempts: {}'.
+                        format(
+                        self.debug_pre_sample_attempts,
+                        self.debug_pre_sample_fails,
+                        self.debug_pre_sample_fails / (self.debug_pre_sample_attempts + 1e-10)
+                    )
+                )
         else:
             # Dataset not ready, make dummy:
             sample = None
