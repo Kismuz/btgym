@@ -71,7 +71,11 @@ class DomainTest(unittest.TestCase):
 
             with self.subTest(msg='sub_{}'.format(i), train_trial=train_trial.filename, test_trial=test_trial.filename):
                 self.assertLess(sup_train_time, inf_test_time)
-                #print('wow_', i)
+                with self.subTest('Train/test should be irrelevant dor Dataset episodes'):
+                    train_trial.reset()
+                    test_trial.reset()
+                    episode_1 = test_trial.sample(get_new=True, sample_type=1)
+                    episode_2 = train_trial.sample(get_new=True, sample_type=1)
 
     def test_BTgymRandomDataDomain_sampling_bounds_consistency(self):
         """

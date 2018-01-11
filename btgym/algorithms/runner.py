@@ -132,8 +132,8 @@ def env_runner(sess,
 
     else:
         memory = _DummyMemory()
-
-    last_state = env.reset()
+    # Pass sample config to environment:
+    last_state = env.reset(**policy.get_sample_config())
     last_context = policy.get_initial_features(state=last_state)
     length = 0
     local_episode = 0
@@ -240,7 +240,7 @@ def env_runner(sess,
                     cpu_time += [episode_stat['runtime'].total_seconds()]
                     final_value += [last_i['broker_value']]
                     total_steps += [episode_stat['length']]
-                #print('ep. metadata:', state['metadata'])
+                #print('last_episode.metadata:', state['metadata'])
 
                 # Episode statistics:
                 try:
@@ -294,7 +294,7 @@ def env_runner(sess,
                         render_stat = dict(render_atari=state['external'][None,:] * 255)
 
                 # New episode:
-                last_state = env.reset()
+                last_state = env.reset(**policy.get_sample_config())
                 last_context = policy.get_initial_features(state=last_state, context=last_context)
                 length = 0
                 reward_sum = 0

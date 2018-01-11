@@ -111,6 +111,10 @@ class BTgymRandomDataDomain(BTgymBaseData):
     This particular class randomly samples Trials from provided dataset.
 
     """
+    # Classes to use for sample objects:
+    trial_class_ref = BTgymDataTrial
+    episode_class_ref = BTgymEpisode
+
     def __init__(
             self,
             filename=None,
@@ -178,7 +182,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
         trial_params['test_period'] = target_period
 
         episode_config = dict(
-            class_ref=BTgymEpisode,
+            class_ref=self.episode_class_ref,
             kwargs=dict(
                 parsing_params=parsing_params,
                 sampling_params=None,
@@ -189,7 +193,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
             ),
         )
         trial_config = dict(
-            class_ref=BTgymDataTrial,
+            class_ref=self.trial_class_ref,
             kwargs=dict(
                 parsing_params=parsing_params,
                 sampling_params=episode_params,
@@ -218,11 +222,22 @@ class BTgymDataset(BTgymRandomDataDomain):
     Supports source and target data domains separation with some caveat - see Note.
 
     Note:
-        Due to current implementation sampling test episode actually requires sampling test trial
-        and train episode of same size. To be improved.
+        Due to current implementation sampling test episode actually requires sampling test TRIAL.
+        To be improved.
 
     """
-    # TODO: mod to sample() to get rid of test-episode mess
+    class BTgymSimpleTrial(BTgymDataTrial):
+        """
+        Truncated Trial without test period: always samples from train,
+        sampled episode inherits tarin/test metadata of parent trail.
+        """
+        def sample(self, sample_type=0, **kwargs):
+            episode = self._sample(sample_type=0, **kwargs)
+            episode.metadata['type'] = sample_type
+            return episode
+
+    # Override trial sample class:
+    trial_class_ref = BTgymSimpleTrial
 
     params_deprecated=dict(
         episode_len_days=('episode_duration', 'days'),

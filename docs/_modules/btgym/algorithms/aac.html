@@ -251,6 +251,7 @@
                  <span class="n">opt_epsilon</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span>
                  <span class="n">rollout_length</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
                  <span class="n">time_flat</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">episode_train_test_cycle</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
                  <span class="n">episode_summary_freq</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>  <span class="c1"># every i`th environment episode</span>
                  <span class="n">env_render_freq</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># every i`th environment episode</span>
                  <span class="n">model_summary_freq</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>  <span class="c1"># every i`th algorithm iteration</span>
@@ -272,7 +273,8 @@
                  <span class="n">clip_epsilon</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
                  <span class="n">num_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                  <span class="n">pi_prime_update_period</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                 <span class="n">_use_target_policy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>  <span class="c1"># target policy tracking behavioral one with delay</span>
+                 <span class="n">_use_target_policy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># target policy tracking behavioral one with delay</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
@@ -298,6 +300,9 @@
 <span class="sd">            opt_epsilon:            scalar, optimizer epsilon</span>
 <span class="sd">            rollout_length:         int, on-policy rollout length</span>
 <span class="sd">            time_flat:              bool, flatten rnn time-steps in rollouts while training - see `Notes` below</span>
+<span class="sd">            episode_train_test_cycle:   tuple or list as (train_number, test_number), def=(1,0):</span>
+<span class="sd">                                        cycle run `train_number` of train data episodes,</span>
+<span class="sd">                                        than `test_number` of test data episodes</span>
 <span class="sd">            episode_summary_freq:   int, write episode summary for every i&#39;th episode</span>
 <span class="sd">            env_render_freq:        int, write environment rendering summary for every i&#39;th train step</span>
 <span class="sd">            model_summary_freq:     int, write model summary for every i&#39;th train step</span>
@@ -363,6 +368,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;rnd_seed:</span><span class="si">{}</span><span class="s1">, log_u_sample_(0,1]x5: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
                        <span class="nb">format</span><span class="p">(</span><span class="n">random_seed</span><span class="p">,</span> <span class="n">log_uniform</span><span class="p">([</span><span class="mf">1e-10</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="mi">5</span><span class="p">)))</span>
 
+        <span class="k">if</span> <span class="n">kwargs</span> <span class="o">!=</span> <span class="p">{}:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Unexpected kwargs found: </span><span class="si">{}</span><span class="s1">, ignored.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">kwargs</span><span class="p">))</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span> <span class="o">=</span> <span class="n">env</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
@@ -371,10 +379,16 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">env</span><span class="p">]</span>
 
         <span class="n">ref_env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># reference instance to get obs shapes etc.</span>
-        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">,</span> <span class="n">ObSpace</span><span class="p">),</span>\
-            <span class="s1">&#39;expected environment observation space of type </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
-            <span class="nb">format</span><span class="p">(</span><span class="n">ObSpace</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">))</span>
 
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">,</span> <span class="n">ObSpace</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="s1">&#39;expected environment observation space of type </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
+                <span class="nb">format</span><span class="p">(</span><span class="n">ObSpace</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="k">raise</span>  <span class="ne">AssertionError</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">policy_kwargs</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span>
@@ -411,6 +425,24 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">opt_epsilon</span> <span class="o">=</span> <span class="n">opt_epsilon</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">opt_momentum</span> <span class="o">=</span> <span class="n">opt_momentum</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rollout_length</span> <span class="o">=</span> <span class="n">rollout_length</span>
+
+        <span class="c1"># Data sampling control:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span> <span class="o">=</span> <span class="n">episode_train_test_cycle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span> <span class="o">=</span> <span class="n">episode_train_test_cycle</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="s1">&#39;Train/test episode cycle values could not be both zeroes or negative, got: train=</span><span class="si">{}</span><span class="s1">, test=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
+                <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="c1"># Summaries :</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">episode_summary_freq</span> <span class="o">=</span> <span class="n">episode_summary_freq</span>
@@ -546,17 +578,6 @@
             <span class="c1"># Start accumulating total loss:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">on_pi_loss</span>
             <span class="n">model_summaries</span> <span class="o">=</span> <span class="n">on_pi_summaries</span>
-
-            <span class="c1"># wrong EXPERIMENT:</span>
-            <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
-                <span class="n">min_max_loss</span><span class="p">,</span> <span class="n">min_max_summaries</span> <span class="o">=</span> <span class="n">state_min_max_loss_def</span><span class="p">(</span>
-                    <span class="n">ohlc_targets</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">raw_state</span><span class="p">,</span>
-                    <span class="n">min_max_state</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">state_min_max</span><span class="p">,</span>
-                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy&#39;</span><span class="p">,</span>
-                    <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
-                <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">min_max_loss</span>
-                <span class="n">model_summaries</span> <span class="o">+=</span> <span class="n">min_max_summaries</span>
 
             <span class="c1"># Off-policy losses:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">off_pi_act_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span>
@@ -774,6 +795,69 @@
 
         <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="p">[</span><span class="n">stream</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">stream</span> <span class="ow">in</span> <span class="n">data_streams</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_streams</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span></div>
 
+<div class="viewcode-block" id="BaseAAC.get_sample_config"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_sample_config">[docs]</a>    <span class="k">def</span> <span class="nf">get_sample_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns environment configuration parameters for next episode to sample.</span>
+<span class="sd">        By default is simple stateful iterator,</span>
+<span class="sd">        works correctly with `DTGymDataset` data class, repeating cycle:</span>
+<span class="sd">            - sample `num_train_episodes` from train data,</span>
+<span class="sd">            - sample `num_test_episodes` from test data.</span>
+
+<span class="sd">        Convention: supposed to override dummy method of local policy instance, see inside .make_policy() method</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            configuration dictionary of type `btgym.datafeed.base.EnvResetConfig`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># sess = tf.get_default_session()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span><span class="p">:</span>
+            <span class="n">episode_type</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># train</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s1">&#39;c_1, c_train=</span><span class="si">{}</span><span class="s1">, c_test=</span><span class="si">{}</span><span class="s1">, type=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                        <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span><span class="p">,</span> <span class="n">episode_type</span><span class="p">)</span>
+                <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span><span class="p">:</span>
+                <span class="n">episode_type</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># test</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="s1">&#39;c_2, c_train=</span><span class="si">{}</span><span class="s1">, c_test=</span><span class="si">{}</span><span class="s1">, type=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                            <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span><span class="p">,</span> <span class="n">episode_type</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># cycle end, reset and start new (rec. depth 1)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="s1">&#39;c_3, c_train=</span><span class="si">{}</span><span class="s1">, c_test=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                            <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample_config</span><span class="p">()</span>
+
+        <span class="c1"># Compose btgym.datafeed.base.EnvResetConfig-consistent dict:</span>
+        <span class="n">sample_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">episode_config</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">sample_type</span><span class="o">=</span><span class="n">episode_type</span><span class="p">,</span>
+                <span class="n">b_alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                <span class="n">b_beta</span><span class="o">=</span><span class="mf">1.0</span>
+            <span class="p">),</span>
+            <span class="n">trial_config</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">sample_type</span><span class="o">=</span><span class="n">episode_type</span><span class="p">,</span>
+                <span class="n">b_alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                <span class="n">b_beta</span><span class="o">=</span><span class="mf">1.0</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">sample_config</span></div>
+
 <div class="viewcode-block" id="BaseAAC.make_policy"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.make_policy">[docs]</a>    <span class="k">def</span> <span class="nf">make_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Configures and instantiates policy network and ops.</span>
@@ -796,16 +880,19 @@
                     <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;global_step&#39;</span><span class="p">)</span> <span class="ow">and</span> \
                            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;global_episode&#39;</span><span class="p">)</span> <span class="ow">and</span> \
                            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;inc_episode&#39;</span><span class="p">)</span>
-                    <span class="c1"># Set for local:</span>
+                    <span class="c1"># Add attrs to local:</span>
                     <span class="n">network</span><span class="o">.</span><span class="n">global_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span>
                     <span class="n">network</span><span class="o">.</span><span class="n">global_episode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_episode</span>
                     <span class="n">network</span><span class="o">.</span><span class="n">inc_episode</span><span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc_episode</span>
+                    <span class="c1"># Override:</span>
+                    <span class="n">network</span><span class="o">.</span><span class="n">get_sample_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample_config</span>
 
                 <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
-                        <span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: `global` name_scope network should be defined before any `local`s.&#39;</span><span class="o">.</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                        <span class="s1">&#39;`global` name_scope network should be defined before any `local` ones.&#39;</span><span class="o">.</span>
                         <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
                     <span class="p">)</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># Set counters:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>

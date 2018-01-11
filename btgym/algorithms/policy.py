@@ -12,6 +12,7 @@ from btgym.algorithms.nn_utils import *
 from btgym.algorithms.utils import *
 import tensorflow as tf
 from tensorflow.contrib.layers import flatten as batch_flatten
+from btgym.datafeed.base import EnvResetConfig
 
 
 class BaseAacPolicy(object):
@@ -284,6 +285,15 @@ class BaseAacPolicy(object):
         feeder = {self.pc_change_state_in: state['external'], self.pc_change_last_state_in: last_state['external']}
 
         return sess.run(self.pc_target, feeder)[0,...,0]
+
+    def get_sample_config(self):
+        """
+        Dummy implementation.
+
+        Returns:
+                default data sample configuration dictionary `btgym.datafeed.base.EnvResetConfig`
+        """
+        return EnvResetConfig
 
 
 class Aac1dPolicy(BaseAacPolicy):

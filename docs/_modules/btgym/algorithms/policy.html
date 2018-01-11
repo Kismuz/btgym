@@ -191,6 +191,7 @@
 <span class="kn">from</span> <span class="nn">btgym.algorithms.utils</span> <span class="k">import</span> <span class="o">*</span>
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 <span class="kn">from</span> <span class="nn">tensorflow.contrib.layers</span> <span class="k">import</span> <span class="n">flatten</span> <span class="k">as</span> <span class="n">batch_flatten</span>
+<span class="kn">from</span> <span class="nn">btgym.datafeed.base</span> <span class="k">import</span> <span class="n">EnvResetConfig</span>
 
 
 <div class="viewcode-block" id="BaseAacPolicy"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.policy.BaseAacPolicy">[docs]</a><span class="k">class</span> <span class="nc">BaseAacPolicy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -462,7 +463,16 @@
         <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_session</span><span class="p">()</span>
         <span class="n">feeder</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_change_state_in</span><span class="p">:</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_change_last_state_in</span><span class="p">:</span> <span class="n">last_state</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">]}</span>
 
-        <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">,</span> <span class="n">feeder</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span><span class="o">...</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span></div></div>
+        <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">,</span> <span class="n">feeder</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span><span class="o">...</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="BaseAacPolicy.get_sample_config"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.policy.BaseAacPolicy.get_sample_config">[docs]</a>    <span class="k">def</span> <span class="nf">get_sample_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Dummy implementation.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">                default data sample configuration dictionary `btgym.datafeed.base.EnvResetConfig`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">EnvResetConfig</span></div></div>
 
 
 <div class="viewcode-block" id="Aac1dPolicy"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.policy.Aac1dPolicy">[docs]</a><span class="k">class</span> <span class="nc">Aac1dPolicy</span><span class="p">(</span><span class="n">BaseAacPolicy</span><span class="p">):</span>

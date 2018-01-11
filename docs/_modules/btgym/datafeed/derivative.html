@@ -292,6 +292,10 @@
 <span class="sd">    This particular class randomly samples Trials from provided dataset.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Classes to use for sample objects:</span>
+    <span class="n">trial_class_ref</span> <span class="o">=</span> <span class="n">BTgymDataTrial</span>
+    <span class="n">episode_class_ref</span> <span class="o">=</span> <span class="n">BTgymEpisode</span>
+
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
             <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -359,7 +363,7 @@
         <span class="n">trial_params</span><span class="p">[</span><span class="s1">&#39;test_period&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_period</span>
 
         <span class="n">episode_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-            <span class="n">class_ref</span><span class="o">=</span><span class="n">BTgymEpisode</span><span class="p">,</span>
+            <span class="n">class_ref</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">episode_class_ref</span><span class="p">,</span>
             <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
                 <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
                 <span class="n">sampling_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -370,7 +374,7 @@
             <span class="p">),</span>
         <span class="p">)</span>
         <span class="n">trial_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-            <span class="n">class_ref</span><span class="o">=</span><span class="n">BTgymDataTrial</span><span class="p">,</span>
+            <span class="n">class_ref</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_class_ref</span><span class="p">,</span>
             <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
                 <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
                 <span class="n">sampling_params</span><span class="o">=</span><span class="n">episode_params</span><span class="p">,</span>
@@ -399,11 +403,22 @@
 <span class="sd">    Supports source and target data domains separation with some caveat - see Note.</span>
 
 <span class="sd">    Note:</span>
-<span class="sd">        Due to current implementation sampling test episode actually requires sampling test trial</span>
-<span class="sd">        and train episode of same size. To be improved.</span>
+<span class="sd">        Due to current implementation sampling test episode actually requires sampling test TRIAL.</span>
+<span class="sd">        To be improved.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># TODO: mod to sample() to get rid of test-episode mess</span>
+<div class="viewcode-block" id="BTgymDataset.BTgymSimpleTrial"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.derivative.BTgymDataset.BTgymSimpleTrial">[docs]</a>    <span class="k">class</span> <span class="nc">BTgymSimpleTrial</span><span class="p">(</span><span class="n">BTgymDataTrial</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Truncated Trial without test period: always samples from train,</span>
+<span class="sd">        sampled episode inherits tarin/test metadata of parent trail.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">episode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample</span><span class="p">(</span><span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sample_type</span>
+            <span class="k">return</span> <span class="n">episode</span></div>
+
+    <span class="c1"># Override trial sample class:</span>
+    <span class="n">trial_class_ref</span> <span class="o">=</span> <span class="n">BTgymSimpleTrial</span>
 
     <span class="n">params_deprecated</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
         <span class="n">episode_len_days</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;episode_duration&#39;</span><span class="p">,</span> <span class="s1">&#39;days&#39;</span><span class="p">),</span>

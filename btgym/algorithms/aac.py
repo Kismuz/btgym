@@ -72,6 +72,7 @@ class BaseAAC(object):
                  opt_epsilon=1e-8,
                  rollout_length=20,
                  time_flat=False,
+                 episode_train_test_cycle=(1,0),
                  episode_summary_freq=2,  # every i`th environment episode
                  env_render_freq=10,  # every i`th environment episode
                  model_summary_freq=100,  # every i`th algorithm iteration
@@ -93,7 +94,8 @@ class BaseAAC(object):
                  clip_epsilon=0.1,
                  num_epochs=1,
                  pi_prime_update_period=1,
-                 _use_target_policy=False):  # target policy tracking behavioral one with delay
+                 _use_target_policy=False,  # target policy tracking behavioral one with delay
+                 **kwargs):
         """
 
         Args:
@@ -119,6 +121,9 @@ class BaseAAC(object):
             opt_epsilon:            scalar, optimizer epsilon
             rollout_length:         int, on-policy rollout length
             time_flat:              bool, flatten rnn time-steps in rollouts while training - see `Notes` below
+            episode_train_test_cycle:   tuple or list as (train_number, test_number), def=(1,0):
+                                        cycle run `train_number` of train data episodes,
+                                        than `test_number` of test data episodes
             episode_summary_freq:   int, write episode summary for every i'th episode
             env_render_freq:        int, write environment rendering summary for every i'th train step
             model_summary_freq:     int, write model summary for every i'th train step
@@ -184,6 +189,9 @@ class BaseAAC(object):
         self.log.debug('rnd_seed:{}, log_u_sample_(0,1]x5: {}'.
                        format(random_seed, log_uniform([1e-10,1], 5)))
 
+        if kwargs != {}:
+            self.log.warning('Unexpected kwargs found: {}, ignored.'.format(kwargs))
+
         self.env_list = env
         try:
             assert isinstance(self.env_list, list)
@@ -192,10 +200,16 @@ class BaseAAC(object):
             self.env_list = [env]
 
         ref_env = self.env_list[0]  # reference instance to get obs shapes etc.
-        assert isinstance(ref_env.observation_space, ObSpace),\
-            'expected environment observation space of type {}, got: {}'.\
-            format(ObSpace, type(ref_env.observation_space))
 
+        try:
+            assert isinstance(ref_env.observation_space, ObSpace)
+
+        except AssertionError:
+            self.log.exception(
+                'expected environment observation space of type {}, got: {}'.\
+                format(ObSpace, type(ref_env.observation_space))
+            )
+            raise  AssertionError
 
         self.policy_class = policy_config['class_ref']
         self.policy_kwargs = policy_config['kwargs']
@@ -232,6 +246,24 @@ class BaseAAC(object):
         self.opt_epsilon = opt_epsilon
         self.opt_momentum = opt_momentum
         self.rollout_length = rollout_length
+
+        # Data sampling control:
+        self.num_train_episodes = episode_train_test_cycle[0]
+        self.num_test_episodes = episode_train_test_cycle[-1]
+        try:
+            assert self.num_train_episodes + self.num_test_episodes > 0 and \
+                self.num_train_episodes >= 0 and \
+                self.num_test_episodes >= 0
+
+        except AssertionError:
+            self.log.exception(
+                'Train/test episode cycle values could not be both zeroes or negative, got: train={}, test={}'.\
+                format(self.num_train_episodes, self.num_test_episodes)
+            )
+            raise AssertionError
+
+        self.current_train_episode = 0
+        self.current_test_episode = 0
 
         # Summaries :
         self.episode_summary_freq = episode_summary_freq
@@ -367,17 +399,6 @@ class BaseAAC(object):
             # Start accumulating total loss:
             self.loss = on_pi_loss
             model_summaries = on_pi_summaries
-
-            # wrong EXPERIMENT:
-            if False:
-                min_max_loss, min_max_summaries = state_min_max_loss_def(
-                    ohlc_targets=pi.raw_state,
-                    min_max_state=pi.state_min_max,
-                    name='on_policy',
-                    verbose=True
-                )
-                self.loss = self.loss + 0.1 * min_max_loss
-                model_summaries += min_max_summaries
 
             # Off-policy losses:
             self.off_pi_act_target = tf.placeholder(
@@ -595,6 +616,69 @@ class BaseAAC(object):
 
         return {key: [stream[key] for stream in data_streams] for key in data_streams[0].keys()}
 
+    def get_sample_config(self):
+        """
+        Returns environment configuration parameters for next episode to sample.
+        By default is simple stateful iterator,
+        works correctly with `DTGymDataset` data class, repeating cycle:
+            - sample `num_train_episodes` from train data,
+            - sample `num_test_episodes` from test data.
+
+        Convention: supposed to override dummy method of local policy instance, see inside .make_policy() method
+
+        Returns:
+            configuration dictionary of type `btgym.datafeed.base.EnvResetConfig`
+        """
+        # sess = tf.get_default_session()
+        if self.current_train_episode < self.num_train_episodes:
+            episode_type = 0  # train
+            self.current_train_episode += 1
+            if False:
+                print(
+                    'c_1, c_train={}, c_test={}, type={}'.
+                        format(self.current_train_episode, self.current_test_episode, episode_type)
+                )
+
+        else:
+            if self.current_test_episode < self.num_test_episodes:
+                episode_type = 1  # test
+                self.current_test_episode += 1
+                if False:
+                    print(
+                        'c_2, c_train={}, c_test={}, type={}'.
+                            format(self.current_train_episode, self.current_test_episode, episode_type)
+                    )
+
+
+            else:
+                # cycle end, reset and start new (rec. depth 1)
+                self.current_train_episode = 0
+                self.current_test_episode = 0
+                if False:
+                    print(
+                        'c_3, c_train={}, c_test={}'.
+                            format(self.current_train_episode, self.current_test_episode)
+                    )
+
+                return self.get_sample_config()
+
+        # Compose btgym.datafeed.base.EnvResetConfig-consistent dict:
+        sample_config = dict(
+            episode_config=dict(
+                get_new=True,
+                sample_type=episode_type,
+                b_alpha=1.0,
+                b_beta=1.0
+            ),
+            trial_config=dict(
+                get_new=True,
+                sample_type=episode_type,
+                b_alpha=1.0,
+                b_beta=1.0
+            )
+        )
+        return sample_config
+
     def make_policy(self, scope):
         """
         Configures and instantiates policy network and ops.
@@ -617,16 +701,19 @@ class BaseAAC(object):
                     assert hasattr(self, 'global_step') and \
                            hasattr(self, 'global_episode') and \
                            hasattr(self, 'inc_episode')
-                    # Set for local:
+                    # Add attrs to local:
                     network.global_step = self.global_step
                     network.global_episode = self.global_episode
                     network.inc_episode= self.inc_episode
+                    # Override:
+                    network.get_sample_config = self.get_sample_config
 
                 except AssertionError:
-                    raise AttributeError(
-                        'AAC_{}: `global` name_scope network should be defined before any `local`s.'.
+                    self.log.exception(
+                        '`global` name_scope network should be defined before any `local` ones.'.
                         format(self.task)
                     )
+                    raise RuntimeError
             else:
                 # Set counters:
                 self.global_step = tf.get_variable(
