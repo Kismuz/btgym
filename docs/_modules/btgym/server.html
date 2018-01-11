@@ -209,6 +209,7 @@
 
 <span class="kn">import</span> <span class="nn">backtrader</span> <span class="k">as</span> <span class="nn">bt</span>
 <span class="kn">from</span> <span class="nn">.datafeed</span> <span class="k">import</span> <span class="n">DataSampleConfig</span><span class="p">,</span> <span class="n">EnvResetConfig</span>
+<span class="kn">from</span> <span class="nn">.strategy.observers</span> <span class="k">import</span> <span class="n">NormPnL</span><span class="p">,</span> <span class="n">Position</span><span class="p">,</span> <span class="n">Reward</span>
 
 <span class="c1">###################### BT Server in-episode communocation method ##############</span>
 
@@ -567,9 +568,16 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
-
         <span class="c1"># Init renderer:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="o">.</span><span class="n">initialize_pyplot</span><span class="p">()</span>
+
+        <span class="c1"># Mandatory DrawDown and auxillary plotting observers to add to data-master startegy instance:</span>
+        <span class="c1"># TODO: make plotters optional args</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+            <span class="n">aux_obsrevers</span> <span class="o">=</span> <span class="p">[</span><span class="n">bt</span><span class="o">.</span><span class="n">observers</span><span class="o">.</span><span class="n">DrawDown</span><span class="p">,</span> <span class="n">NormPnL</span><span class="p">,</span> <span class="n">Position</span><span class="p">,</span> <span class="n">Reward</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">aux_obsrevers</span> <span class="o">=</span> <span class="p">[</span><span class="n">bt</span><span class="o">.</span><span class="n">observers</span><span class="o">.</span><span class="n">DrawDown</span><span class="p">]</span>
 
         <span class="c1"># Server &#39;Control Mode&#39; loop:</span>
         <span class="k">for</span> <span class="n">episode_number</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mi">0</span><span class="p">):</span>
@@ -627,23 +635,21 @@
             <span class="n">cerebro</span><span class="o">.</span><span class="n">_socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">_render</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render</span>
-            <span class="c1"># Add DrawDown observer if not already:</span>
-            <span class="n">dd_added</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">for</span> <span class="n">observer</span> <span class="ow">in</span> <span class="n">cerebro</span><span class="o">.</span><span class="n">observers</span><span class="p">:</span>
 
-                <span class="k">if</span> <span class="n">bt</span><span class="o">.</span><span class="n">observers</span><span class="o">.</span><span class="n">DrawDown</span> <span class="ow">in</span> <span class="n">observer</span><span class="p">:</span>
-                    <span class="n">dd_added</span> <span class="o">=</span> <span class="kc">True</span>
-
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">dd_added</span><span class="p">:</span>
-                <span class="n">cerebro</span><span class="o">.</span><span class="n">addobserver</span><span class="p">(</span><span class="n">bt</span><span class="o">.</span><span class="n">observers</span><span class="o">.</span><span class="n">DrawDown</span><span class="p">)</span>
+            <span class="c1"># Add auxillary observers, if not already:</span>
+            <span class="k">for</span> <span class="n">aux</span> <span class="ow">in</span> <span class="n">aux_obsrevers</span><span class="p">:</span>
+                <span class="n">is_added</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">for</span> <span class="n">observer</span> <span class="ow">in</span> <span class="n">cerebro</span><span class="o">.</span><span class="n">observers</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">aux</span> <span class="ow">in</span> <span class="n">observer</span><span class="p">:</span>
+                        <span class="n">is_added</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">is_added</span><span class="p">:</span>
+                    <span class="n">cerebro</span><span class="o">.</span><span class="n">addobserver</span><span class="p">(</span><span class="n">aux</span><span class="p">)</span>
 
             <span class="c1"># Add communication utility:</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">addanalyzer</span><span class="p">(</span><span class="n">_BTgymAnalyzer</span><span class="p">,</span> <span class="n">_name</span><span class="o">=</span><span class="s1">&#39;_env_analyzer&#39;</span><span class="p">,)</span>
 
             <span class="c1"># Data preparation:</span>
             <span class="c1"># Parse args we got with _reset call:</span>
-            <span class="c1">#sample_config = copy.deepcopy(EnvResetConfig)</span>
-
             <span class="n">sample_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
                 <span class="n">episode_config</span><span class="o">=</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">DataSampleConfig</span><span class="p">),</span>
                 <span class="n">trial_config</span><span class="o">=</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">DataSampleConfig</span><span class="p">)</span>
@@ -653,7 +659,7 @@
                     <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">])</span>
 
                 <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
                         <span class="s1">&#39;_reset &lt;</span><span class="si">{}</span><span class="s1">&gt; kwarg not found, using default values: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
                     <span class="p">)</span>
 

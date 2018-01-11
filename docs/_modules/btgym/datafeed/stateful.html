@@ -438,7 +438,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">t_type</span> <span class="o">=</span> <span class="s1">&#39;SLIDING&#39;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span>
             <span class="p">(</span>
                 <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Trial type: </span><span class="si">{}</span><span class="s1">; [initial] train interval: </span><span class="si">{}</span><span class="s1">; test interval: </span><span class="si">{}</span><span class="s1">.&#39;</span> <span class="o">+</span>
                 <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Cardinality: </span><span class="si">{}</span><span class="s1">; iterating from: </span><span class="si">{}</span><span class="s1">.&#39;</span>
@@ -470,10 +470,10 @@
             <span class="c1"># Get Trial:</span>
             <span class="n">interval</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_interval</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span>
                 <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1"> @: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span><span class="p">,</span> <span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
             <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span>
                 <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1"> rows: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
                     <span class="nb">format</span><span class="p">(</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span><span class="p">,</span>

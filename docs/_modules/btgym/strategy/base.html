@@ -296,12 +296,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_done</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_done_enabled</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">steps_till_is_done</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># extra steps to make when episode terminal conditions are met</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">=</span> <span class="s1">&#39;hold&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_action</span> <span class="o">=</span> <span class="s1">&#39;hold&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">order_failed</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;-&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">final_message</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">raw_state</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
 
@@ -600,7 +603,7 @@
 <span class="sd">               is sent as part of environment response.</span>
 <span class="sd">            2. Got &#39;_done&#39; signal from outside. E.g. via env.reset() method invoked by outer RL algorithm.</span>
 <span class="sd">            3. Hit drawdown threshold.</span>
-<span class="sd">            4. Hit target profit treshhold.</span>
+<span class="sd">            4. Hit target profit threshold.</span>
 
 <span class="sd">        This method shouldn&#39;t be overridden or called explicitly.</span>
 
@@ -610,24 +613,50 @@
 <span class="sd">                OR</span>
 <span class="sd">                ANY _get_done() default condition is met.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Base episode termination rules:</span>
-        <span class="n">is_done_rules</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="c1"># Will it be last step of the episode?:</span>
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iteration</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numrecords</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span><span class="p">,</span> <span class="s1">&#39;END OF DATA!&#39;</span><span class="p">),</span>
-            <span class="c1"># Any money left?:</span>
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">drawdown</span><span class="o">.</span><span class="n">maxdrawdown</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">drawdown_call</span><span class="p">,</span> <span class="s1">&#39;DRAWDOWN CALL!&#39;</span><span class="p">),</span>
-            <span class="c1"># Party time?</span>
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span><span class="p">,</span> <span class="s1">&#39;TARGET REACHED!&#39;</span><span class="p">),</span>
-        <span class="p">]</span>
-        <span class="c1"># Append custom get_done() results, if any:</span>
-        <span class="n">is_done_rules</span> <span class="o">+=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_done</span><span class="p">()]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_done_enabled</span><span class="p">:</span>
+            <span class="c1"># Episode is on its way,</span>
+            <span class="c1"># apply base episode termination rules:</span>
+            <span class="n">is_done_rules</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="c1"># Do we approaching the end of the episode?:</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iteration</span> <span class="o">&gt;=</span> \
+                 <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numrecords</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">steps_till_is_done</span><span class="p">,</span>
+                 <span class="s1">&#39;END OF DATA&#39;</span><span class="p">),</span>
+                <span class="c1"># Any money left?:</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">drawdown</span><span class="o">.</span><span class="n">maxdrawdown</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">drawdown_call</span><span class="p">,</span> <span class="s1">&#39;DRAWDOWN CALL&#39;</span><span class="p">),</span>
+                <span class="c1"># Party time?</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span><span class="p">,</span> <span class="s1">&#39;TARGET REACHED&#39;</span><span class="p">),</span>
+            <span class="p">]</span>
+            <span class="c1"># Append custom get_done() results, if any:</span>
+            <span class="n">is_done_rules</span> <span class="o">+=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_done</span><span class="p">()]</span>
 
-        <span class="c1"># Sweep through rules:</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span> <span class="ow">in</span> <span class="n">is_done_rules</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">condition</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">is_done</span> <span class="o">=</span> <span class="kc">True</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="n">message</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="c1"># Sweep through rules:</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span> <span class="ow">in</span> <span class="n">is_done_rules</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">condition</span><span class="p">:</span>
+                    <span class="c1"># Start episode termination countdown for clean exit:</span>
+                    <span class="c1"># to forcefully execute final `close` order and compute proper reward</span>
+                    <span class="c1"># we need to make `steps_till_is_done` number of steps until `is_done` flag can be safely risen:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">is_done_enabled</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">+=</span> <span class="n">message</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">final_message</span> <span class="o">=</span> <span class="n">message</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                        <span class="s1">&#39;Episode countdown started at: </span><span class="si">{}</span><span class="s1">, </span><span class="si">{}</span><span class="s1">, r:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iteration</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Now in episode termination phase,</span>
+            <span class="c1"># just keep hitting `Close` button:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">steps_till_is_done</span> <span class="o">-=</span><span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;CLOSE, </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">final_message</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s1">&#39;Episode countdown contd. at: </span><span class="si">{}</span><span class="s1">, </span><span class="si">{}</span><span class="s1">, r:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iteration</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">steps_till_is_done</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Now we&#39;ve done, terminate:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_done</span> <span class="o">=</span> <span class="kc">True</span>
+
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_done</span>
 
 <div class="viewcode-block" id="BTgymBaseStrategy.notify_order"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.notify_order">[docs]</a>    <span class="k">def</span> <span class="nf">notify_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order</span><span class="p">):</span>
@@ -668,7 +697,7 @@
 <span class="sd">        At least, it should handle order execution logic according to action received.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Simple action-to-order logic:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;hold&#39;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;hold&#39;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_done_enabled</span><span class="p">:</span>
             <span class="k">pass</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;buy&#39;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">buy</span><span class="p">()</span>

@@ -225,7 +225,7 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
 ### <a name="news"></a>[News and updates:](#title)
 - 7.01.18: Update:
     - Major data pipe redesign. `Domain -> Trial -> Episode` sampling routine implemented. For motivation and 
-      and formal definitions refer to 
+      formal definitions refer to 
       [Section 1.Data of this DRAFT](https://github.com/Kismuz/btgym/blob/master/docs/papers/btgym_formalism_draft.pdf), 
       API [Documentation](https://kismuz.github.io/btgym/btgym.datafeed.html#btgym-datafeed-package) 
       and [Intro example](./examples/data_domain_api_intro.ipynb). Changes should be backward compatible.

@@ -210,10 +210,6 @@
 <span class="sd">        reward shaping search:</span>
 <span class="sd">           potential-based shaping functions</span>
 
-<span class="sd">        add:</span>
-<span class="sd">            force position close at the end of the episode (basic, at data end)</span>
-
-
 <span class="sd">    Data:</span>
 <span class="sd">        synthetic/real</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -396,33 +392,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span></div>
-
-<div class="viewcode-block" id="DevStrat_4_6.next"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_4.DevStrat_4_6.next">[docs]</a>    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Default + force position close at the end of the episode.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># TODO: force pos. close is a primitive. To be refined if exiting early</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numrecords</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;Final CLOSE created; &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Simple action-to-order logic:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;hold&#39;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span><span class="p">:</span>
-                <span class="k">pass</span>
-
-            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;buy&#39;</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">buy</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;New BUY created; &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span>
-
-            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;sell&#39;</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sell</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;New SELL created; &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span>
-
-            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;close&#39;</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span> <span class="o">=</span> <span class="s1">&#39;New CLOSE created; &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_message</span></div></div>
-
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span></div></div>
 
 
 <div class="viewcode-block" id="DevStrat_4_7"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_4.DevStrat_4_7">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_7</span><span class="p">(</span><span class="n">DevStrat_4_6</span><span class="p">):</span>

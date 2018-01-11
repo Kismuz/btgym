@@ -94,7 +94,7 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
-<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework">A3C framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
@@ -207,8 +207,6 @@ time_embedded vector of last actions recieved (one-hot)
 time_embedded vector of rewards</dd>
 <dt>reward shaping search:</dt>
 <dd>potential-based shaping functions</dd>
-<dt>add:</dt>
-<dd>force position close at the end of the episode (basic, at data end)</dd>
 </dl>
 </dd>
 <dt>Data:</dt>
@@ -241,12 +239,6 @@ F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
 </dl>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.research.strategy_4.DevStrat_4_6.next">
-<code class="descname">next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_4.html#DevStrat_4_6.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_4.DevStrat_4_6.next" title="Permalink to this definition">¶</a></dt>
-<dd><p>Default + force position close at the end of the episode.</p>
 </dd></dl>
 
 </dd></dl>
