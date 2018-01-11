@@ -392,12 +392,13 @@ class BTgymServer(multiprocessing.Process):
         # Init renderer:
         self.render.initialize_pyplot()
 
-        # Plotting observers to add to data-master startegy instance: TODO: make it args?
+        # Mandatory DrawDown and auxillary plotting observers to add to data-master startegy instance:
+        # TODO: make plotters optional args
         if self.render.enabled:
             aux_obsrevers = [bt.observers.DrawDown, NormPnL, Position, Reward]
 
         else:
-            aux_obsrevers = []
+            aux_obsrevers = [bt.observers.DrawDown]
 
         # Server 'Control Mode' loop:
         for episode_number in itertools.count(0):
