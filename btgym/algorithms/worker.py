@@ -148,25 +148,35 @@ class Worker(multiprocessing.Process):
             data_master = env_kwargs.pop('data_master')
             render_enabled = env_kwargs.pop('render_enabled')
 
+            # Parallel envs. numbering:
+            if len(port_list) > 1:
+                task_id = 0.0
+            else:
+                task_id = 0
+
             for port in port_list:
                 if not self.test_mode:
                     # Assume BTgym env. class:
-                    self.log.debug('env @port_{} is data_master: {}'.format(port, data_master))
+                    self.log.debug('env at port_{} is data_master: {}'.format(port, data_master))
                     try:
                         self.env_list.append(
                             self.env_class(
                                 port=port,
                                 data_master=data_master,
                                 render_enabled=render_enabled,
+                                task= self.task + task_id,
                                 **env_kwargs
                             )
                         )
                         data_master = False
                         render_enabled = False
-                        self.log.debug('set BTGym environment @port_{}.'.format(port))
+                        self.log.info('set BTGym environment {} at port_{}.'.format(self.task + task_id, port))
+                        task_id += 0.01
 
                     except:
-                        self.log.exception('failed to make BTGym environment')
+                        self.log.exception(
+                            'failed to make BTGym environment at port_{}.'.format(port)
+                        )
                         raise RuntimeError
 
                 else:

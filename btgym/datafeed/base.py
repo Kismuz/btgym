@@ -267,8 +267,9 @@ class BTgymBaseData:
         Sets logbook logger.
 
         Args:
-            name:   channel name, str
             level:  logbook.level, int
+            task:   task id, int
+
         """
         if task is not None:
             self.task = task
