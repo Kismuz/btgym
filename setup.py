@@ -28,7 +28,7 @@ setup(name='btgym',
       gurl = 'https://github.com/Kismuz/btgym',
       license='GPLv3+',
       classifiers=['Development Status :: 3 - Alpha',],
-      version='0.0.6',
+      version='0.0.7',
       install_requires=[
             'tensorflow',
             'opencv-python',
