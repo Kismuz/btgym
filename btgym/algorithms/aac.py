@@ -121,9 +121,10 @@ class BaseAAC(object):
             opt_epsilon:            scalar, optimizer epsilon
             rollout_length:         int, on-policy rollout length
             time_flat:              bool, flatten rnn time-steps in rollouts while training - see `Notes` below
-            episode_train_test_cycle:   tuple or list as (train_number, test_number), def=(1,0):
-                                        cycle run `train_number` of train data episodes,
-                                        than `test_number` of test data episodes
+            episode_train_test_cycle:   tuple or list as (train_number, test_number), def=(1,0): enables infinite
+                                        loop such as: run `train_number` of train data episodes,
+                                        than `test_number` of test data episodes, repeat. Should be consistent
+                                        with provided dataset parameters (test data should exist if `test_number > 0`)
             episode_summary_freq:   int, write episode summary for every i'th episode
             env_render_freq:        int, write environment rendering summary for every i'th train step
             model_summary_freq:     int, write model summary for every i'th train step

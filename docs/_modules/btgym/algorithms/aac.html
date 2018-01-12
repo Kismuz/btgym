@@ -300,9 +300,10 @@
 <span class="sd">            opt_epsilon:            scalar, optimizer epsilon</span>
 <span class="sd">            rollout_length:         int, on-policy rollout length</span>
 <span class="sd">            time_flat:              bool, flatten rnn time-steps in rollouts while training - see `Notes` below</span>
-<span class="sd">            episode_train_test_cycle:   tuple or list as (train_number, test_number), def=(1,0):</span>
-<span class="sd">                                        cycle run `train_number` of train data episodes,</span>
-<span class="sd">                                        than `test_number` of test data episodes</span>
+<span class="sd">            episode_train_test_cycle:   tuple or list as (train_number, test_number), def=(1,0): enables infinite</span>
+<span class="sd">                                        loop such as: run `train_number` of train data episodes,</span>
+<span class="sd">                                        than `test_number` of test data episodes, repeat. Should be consistent</span>
+<span class="sd">                                        with provided dataset parameters (test data should exist if `test_number &gt; 0`)</span>
 <span class="sd">            episode_summary_freq:   int, write episode summary for every i&#39;th episode</span>
 <span class="sd">            env_render_freq:        int, write environment rendering summary for every i&#39;th train step</span>
 <span class="sd">            model_summary_freq:     int, write model summary for every i&#39;th train step</span>

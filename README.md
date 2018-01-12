@@ -223,6 +223,11 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  
  
 ### <a name="news"></a>[News and updates:](#title)
+- 12.01.18: Minor fixes to logging, enabled BTgymDataset train/test data split. AAC framework train/test cycle enabled 
+            via 
+            [`episode_train_test_cycle`](https://kismuz.github.io/btgym/btgym.algorithms.html#module-btgym.algorithms.aac) 
+            kwarg.
+
 - 7.01.18: Update:
     - Major data pipe redesign. `Domain -> Trial -> Episode` sampling routine implemented. For motivation and 
       formal definitions refer to 

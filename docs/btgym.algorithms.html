@@ -363,9 +363,10 @@ Can be configured to run with different losses and policies.</p>
 <li><strong>opt_epsilon</strong> – scalar, optimizer epsilon</li>
 <li><strong>rollout_length</strong> – int, on-policy rollout length</li>
 <li><strong>time_flat</strong> – bool, flatten rnn time-steps in rollouts while training - see <cite>Notes</cite> below</li>
-<li><strong>episode_train_test_cycle</strong> – tuple or list as (train_number, test_number), def=(1,0):
-cycle run <cite>train_number</cite> of train data episodes,
-than <cite>test_number</cite> of test data episodes</li>
+<li><strong>episode_train_test_cycle</strong> – tuple or list as (train_number, test_number), def=(1,0): enables infinite
+loop such as: run <cite>train_number</cite> of train data episodes,
+than <cite>test_number</cite> of test data episodes, repeat. Should be consistent
+with provided dataset parameters (test data should exist if <cite>test_number &gt; 0</cite>)</li>
 <li><strong>episode_summary_freq</strong> – int, write episode summary for every i’th episode</li>
 <li><strong>env_render_freq</strong> – int, write environment rendering summary for every i’th train step</li>
 <li><strong>model_summary_freq</strong> – int, write model summary for every i’th train step</li>
