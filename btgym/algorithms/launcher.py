@@ -27,7 +27,7 @@ import sys
 sys.path.insert(0,'..')
 
 import os
-from logbook import Logger, StreamHandler, WARNING, INFO, DEBUG
+from logbook import Logger, StreamHandler, WARNING, NOTICE, INFO, DEBUG
 import sys
 #import logging
 import time
@@ -142,10 +142,9 @@ class Launcher():
         self.trainer_config['kwargs']['test_mode'] = self.test_mode
 
         # Logging config:
-        # TODO: Warnings --> to Notices
         StreamHandler(sys.stdout).push_application()
         if self.log_level is None:
-            log_levels = [(0, WARNING), (1, INFO), (2, DEBUG)]
+            log_levels = [(0, NOTICE), (1, INFO), (2, DEBUG)]
             self.log_level = WARNING
             for key, value in log_levels:
                 if key == self.verbose:
@@ -172,14 +171,14 @@ class Launcher():
                 if confirm in 'y':
                     files = glob.glob(self.cluster_config['log_dir'] + '/*')
                     p = psutil.Popen(['rm', '-R', ] + files, stdout=PIPE, stderr=PIPE)
-                    self.log.warning('Files in <{}> purged.'.format(self.cluster_config['log_dir']))
+                    self.log.notice('Files in <{}> purged.'.format(self.cluster_config['log_dir']))
 
             else:
-                self.log.warning('Appending to <{}>.'.format(self.cluster_config['log_dir']))
+                self.log.notice('Appending to <{}>.'.format(self.cluster_config['log_dir']))
 
         else:
             os.makedirs(self.cluster_config['log_dir'])
-            self.log.warning('<{}> created.'.format(self.cluster_config['log_dir']))
+            self.log.notice('<{}> created.'.format(self.cluster_config['log_dir']))
 
         for kwarg in ['port', 'data_port']:
             assert kwarg in self.env_config['kwargs'].keys()
@@ -193,13 +192,6 @@ class Launcher():
         self.workers_config_list = []
         env_ports = np.arange(self.cluster_config['num_envs'])
         worker_port = self.env_config['kwargs']['port']  # start value for BTGym comm. port
-
-        #for k, v in self.env_config['kwargs'].items():
-        #    try:
-        #        c = copy.deepcopy(v)
-        #        print('key: {} -- deepcopy ok.'.format(k))
-        #    except:
-        #        print('key: {} -- deepcopy failed!.'.format(k))
 
         # TODO: Hacky, cause dataset is threadlocked; do: pass dataset as class_ref + kwargs_dict:
         if self.test_mode:
@@ -237,7 +229,6 @@ class Launcher():
                         'test_mode': self.test_mode,
                         'log_dir': self.cluster_config['log_dir'],
                         'max_env_steps': self.max_env_steps,
-                        #'log': self.log,
                         'log_level': self.log_level,
                         'random_seed': workers_rnd_seeds.pop()
                     }
@@ -359,26 +350,28 @@ class Launcher():
         signal.signal(signal.SIGINT, signal_handler)
 
         # Halt here:
-        msg = 'Press `Ctrl-C` or [Kernel]->[Interrupt] to stop training and close launcher.'
+        msg = '\n************************************************************************************\n' +\
+              '**  Press `Ctrl-C` or [Kernel]->[Interrupt] to stop training and close launcher.  **\n' + \
+              '************************************************************************************\n'
         print(msg)
-        self.log.info(msg)
+        #self.log.notice(msg)
         signal.pause()
 
         # Wait every worker to finish:
         for worker in workers_list:
             worker.join()
-            self.log.info('worker_{} has joined.'.format(worker.task))
+            self.log.notice('worker_{} has joined.'.format(worker.task))
 
         chief_worker.join()
-        self.log.info('chief_worker_{} has joined.'.format(chief_worker.task))
+        self.log.notice('chief_worker_{} has joined.'.format(chief_worker.task))
 
         for ps in p_servers_list:
             ps.join()
-            self.log.info('parameter_server_{} has joined.'.format(ps.task))
+            self.log.notice('parameter_server_{} has joined.'.format(ps.task))
 
         # TODO: close tensorboard
 
-        self.log.info('Launcher closed.')
+        self.log.notice('Launcher closed.')
 
 
 

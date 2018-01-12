@@ -166,7 +166,8 @@ class Worker(multiprocessing.Process):
                         self.log.debug('set BTGym environment @port_{}.'.format(port))
 
                     except:
-                        raise RuntimeError('Worker_{}: failed to make BTGym environment'.format(self.task))
+                        self.log.exception('failed to make BTGym environment')
+                        raise RuntimeError
 
                 else:
                     # Assume atari testing:
@@ -175,7 +176,8 @@ class Worker(multiprocessing.Process):
                         self.log.debug('set Gyn/Atari environment.')
 
                     except:
-                        raise SystemExit('Worker_{} failed to make Gym/Atari environment'.format(self.task))
+                        self.log.exception('failed to make Gym/Atari environment')
+                        raise RuntimeError
 
 
 
@@ -203,7 +205,7 @@ class Worker(multiprocessing.Process):
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
             def init_fn(ses):
-                self.log.debug("initializing all parameters.")
+                self.log.info("initializing all parameters.")
                 ses.run(init_all_op)
 
             config = tf.ConfigProto(device_filters=["/job:ps", "/job:worker/task:{}/cpu:0".format(self.task)])
@@ -223,7 +225,7 @@ class Worker(multiprocessing.Process):
                 global_step=trainer.global_step,
                 save_model_secs=300,
             )
-            self.log.debug("connecting to the parameter server... ")
+            self.log.info("connecting to the parameter server... ")
 
             with sv.managed_session(server.target, config=config) as sess, sess.as_default():
                 sess.run(trainer.sync)
@@ -236,7 +238,7 @@ class Worker(multiprocessing.Process):
                     if not trainer.memory.is_full():
                         trainer.memory.fill()
 
-                self.log.warning("started training at step: {}".format(global_step))
+                self.log.notice("started training at step: {}".format(global_step))
                 while not sv.should_stop() and global_step < self.max_env_steps:
                     trainer.process(sess)
                     global_step = sess.run(trainer.global_step)
@@ -246,7 +248,7 @@ class Worker(multiprocessing.Process):
                     env.close()
 
                 sv.stop()
-            self.log.warning('reached {} steps, exiting.'.format(global_step))
+            self.log.notice('reached {} steps, exiting.'.format(global_step))
 
 
 

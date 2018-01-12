@@ -315,17 +315,17 @@ class BaseAAC(object):
 
         self.use_target_policy = _use_target_policy
 
-        self.log.warning('learn_rate: {:1.6f}, entropy_beta: {:1.6f}'.format(self.opt_learn_rate, self.model_beta))
+        self.log.notice('learn_rate: {:1.6f}, entropy_beta: {:1.6f}'.format(self.opt_learn_rate, self.model_beta))
 
         if self.use_off_policy_aac:
-            self.log.warning('off_aac_lambda: {:1.6f}'.format(self.off_aac_lambda,))
+            self.log.notice('off_aac_lambda: {:1.6f}'.format(self.off_aac_lambda,))
 
         if self.use_any_aux_tasks:
-            self.log.warning('vr_lambda: {:1.6f}, pc_lambda: {:1.6f}, rp_lambda: {:1.6f}'.
+            self.log.notice('vr_lambda: {:1.6f}, pc_lambda: {:1.6f}, rp_lambda: {:1.6f}'.
                           format(self.vr_lambda, self.pc_lambda, self.rp_lambda))
 
 
-        #self.log.info(
+        #self.log.notice(
         #    'AAC_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
         #        format(self.task, self.opt_max_env_steps, self.opt_decay_steps, self.opt_end_learn_rate))
 
@@ -380,7 +380,9 @@ class BaseAAC(object):
             self.log.debug('learn rate ok')
 
             # On-policy AAC loss definition:
-            self.on_pi_act_target = tf.placeholder(tf.float32, [None, ref_env.action_space.n], name="on_policy_action_pl")
+            self.on_pi_act_target = tf.placeholder(
+                tf.float32, [None, ref_env.action_space.n], name="on_policy_action_pl"
+            )
             self.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
             self.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
 
@@ -824,16 +826,16 @@ class BaseAAC(object):
     def process(self, sess):
         """
         Grabs a on_policy_rollout that's been produced by the thread runner. If data identified as 'train data' -
-        samples off_policy rollout[s] from replay memory and updates the parameters; writes summaries if any.
-        The update is then sent to the parameter server.
-        If on_policy_rollout contains 'test data' -  no policy update is performed and learn rate is set to zero;
-        Meanwile test data are stored in replay memory.
+        samples off_policy rollout[s] from replay memory, computes gradients and updates the parameters;
+        writes summaries if any. The update is then sent to the parameter server.
+        If on_policy_rollout identified as 'test data' -  no policy update is performed (learn rate is set to zero);
+        Note that test data does not get stored in replay memory (thread runner area).
         """
 
         # Collect data from child thread runners:
         data = self.get_data()
 
-        # Test or train: if at least one rollout from parallel runners is test rollout -
+        # Test or train: if at least one rollout from parallel runners is test one -
         # set learn rate to zero for entire minibatch. Doh.
         try:
             is_train = not np.asarray([env['state']['metadata']['type'] for env in data['on_policy']]).any()
@@ -846,7 +848,7 @@ class BaseAAC(object):
             sess.run(self.sync_pi_prime)
 
         if is_train:
-            # If there is no testing rollouts  - copy weights from shared to local new_policy:
+            # If there is no any test rollouts  - copy weights from shared to local new_policy:
             sess.run(self.sync_pi)
 
         #self.log.debug('is_train: {}'.format(is_train))

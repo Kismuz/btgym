@@ -17,7 +17,7 @@
 #
 ###############################################################################
 
-from logbook import Logger, StreamHandler, WARNING, INFO, DEBUG
+from logbook import Logger, StreamHandler, WARNING, NOTICE, INFO, DEBUG
 import sys
 import time
 import zmq
@@ -215,7 +215,7 @@ class BTgymEnv(gym.Env):
         if self.log is None:
             StreamHandler(sys.stdout).push_application()
             if self.log_level is None:
-                log_levels = [(0, WARNING), (1, INFO), (2, DEBUG)]
+                log_levels = [(0, NOTICE), (1, INFO), (2, DEBUG)]
                 self.log_level = WARNING
                 for key, value in log_levels:
                     if key == self.verbose:
@@ -489,7 +489,7 @@ class BTgymEnv(gym.Env):
             message={'ctrl': 'ping!'}
         )
         if self.server_response['status'] in 'ok':
-            self.log.debug('Server seems ready with response: <{}>'.
+            self.log.info('Server seems ready with response: <{}>'.
                            format(self.server_response['message']))
 
         else:
@@ -874,7 +874,7 @@ class BTgymEnv(gym.Env):
         self.data_socket.connect(self.data_network_address)
 
         # Check connection:
-        self.log.info('Pinging data_server at: {} ...'.format(self.data_network_address))
+        self.log.debug('Pinging data_server at: {} ...'.format(self.data_network_address))
 
         self.data_server_response = self._comm_with_timeout(
             socket=self.data_socket,
@@ -888,7 +888,7 @@ class BTgymEnv(gym.Env):
             msg = 'Data_server unreachable with status: <{}>.'.\
                 format(self.data_server_response['status'])
             self.log.error(msg)
-            raise SystemExit(msg)
+            raise ConnectionError(msg)
 
         # Get info and statistic:
         self.dataset_stat, self.dataset_columns, self.data_server_pid = self._get_dataset_info()

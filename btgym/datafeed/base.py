@@ -309,13 +309,26 @@ class BTgymBaseData:
 
         break_point = self.train_num_records
 
-        assert self.train_num_records >= self.sample_num_records,\
-            'Train subset should contain at least one sample, got: train_set size: {} rows, sample_size: {} rows'.\
-            format(self.train_num_records, self.sample_num_records)
+        try:
+            assert self.train_num_records >= self.sample_num_records
+
+        except AssertionError:
+            self.log.exception(
+                'Train subset should contain at least one sample, got: train_set size: {} rows, sample_size: {} rows'.
+                format(self.train_num_records, self.sample_num_records)
+            )
+            raise AssertionError
+
         if self.test_num_records > 0:
-            assert self.test_num_records >= self.sample_num_records,\
-                'Test subset should contain at least one sample, got: test_set size: {} rows, sample_size: {} rows'.\
-            format(self.test_num_records, self.sample_num_records)
+            try:
+                assert self.test_num_records >= self.sample_num_records
+
+            except AssertionError:
+                self.log.exception(
+                    'Test subset should contain at least one sample, got: test_set size: {} rows, sample_size: {} rows'.
+                    format(self.test_num_records, self.sample_num_records)
+                )
+                raise AssertionError
 
         self.train_interval = [0, break_point]
         self.test_interval = [break_point, self.data.shape[0]]
@@ -395,7 +408,7 @@ class BTgymBaseData:
             assert not self.data.empty
             pass
 
-        except:
+        except (AssertionError, AttributeError) as e:
             self.read_csv()
             flush_data = True
 
@@ -465,9 +478,24 @@ class BTgymBaseData:
                 Test samples are always uniform one.
 
         """
-        assert self.is_ready, 'Sampling attempt: data not ready. Hint: forgot to call data.reset()?'
-        assert sample_type in [0, 1], 'Sampling attempt: expected sample type be in {}, got: {}'.\
-            format([0, 1], sample_type)
+        try:
+            assert self.is_ready
+
+        except AssertionError:
+            self.log.exception(
+                'Sampling attempt: data not ready. Hint: forgot to call data.reset()?'
+            )
+            raise AssertionError
+
+        try:
+            assert sample_type in [0, 1]
+
+        except AssertionError:
+            self.log.exception(
+                'Sampling attempt: expected sample type be in {}, got: {}'.\
+                format([0, 1], sample_type)
+            )
+            raise AssertionError
 
         if self.sample_instance is None or get_new:
             if sample_type == 0:
@@ -513,7 +541,8 @@ class BTgymBaseData:
             assert not self.data.empty
 
         except (AssertionError, AttributeError) as e:
-            raise  AssertionError('Instance holds no data. Hint: forgot to call .read_csv()?')
+            self.log.exception('Instance holds no data. Hint: forgot to call .read_csv()?')
+            raise AssertionError
 
         self.log.debug('Maximum sample time duration set to: {}.'.format(self.max_sample_len_delta))
         self.log.debug('Respective number of steps: {}.'.format(self.sample_num_records))
@@ -608,18 +637,38 @@ class BTgymBaseData:
             assert not self.data.empty
 
         except (AssertionError, AttributeError) as e:
-            raise  AssertionError('Instance holds no data. Hint: forgot to call .read_csv()?')
+            self.log.exception('Instance holds no data. Hint: forgot to call .read_csv()?')
+            raise  AssertionError
 
-        assert len(interval) == 2, 'Invalid interval arg: expected list or tuple of size 2, got: {}'.format(interval)
+        try:
+            assert len(interval) == 2
 
-        assert b_alpha > 0 and b_beta > 0, 'Expected positive B-distribution [alpha, beta] params, got: {}'. \
-            format([b_alpha, b_beta])
+        except AssertionError:
+            self.log.exception(
+                'Invalid interval arg: expected list or tuple of size 2, got: {}'.format(interval)
+            )
+            raise AssertionError
+
+        try:
+            assert b_alpha > 0 and b_beta > 0
+
+        except AssertionError:
+            self.log.exception(
+                'Expected positive B-distribution [alpha, beta] params, got: {}'.format([b_alpha, b_beta])
+            )
+            raise AssertionError
 
         sample_num_records = self.sample_num_records
 
-        assert interval[0] < interval[-1] <= self.data.shape[0], \
-            'Cannot sample with size {}, inside {} from dataset of {} records'.\
-             format(sample_num_records, interval, self.data.shape[0])
+        try:
+            assert interval[0] < interval[-1] <= self.data.shape[0]
+
+        except AssertionError:
+            self.log.exception(
+                'Cannot sample with size {}, inside {} from dataset of {} records'.
+                 format(sample_num_records, interval, self.data.shape[0])
+            )
+            raise AssertionError
 
         self.log.debug('Maximum sample time duration set to: {}.'.format(self.max_sample_len_delta))
         self.log.debug('Respective number of steps: {}.'.format(sample_num_records))
@@ -655,9 +704,15 @@ class BTgymBaseData:
                 attempts += 1
 
             # Check if managed to get proper weekday:
-            assert attempts <= max_attempts, \
-                'Quitting after {} sampling attempts. Hint: check sampling params / dataset consistency.'.\
-                format(attempts)
+            try:
+                assert attempts <= max_attempts
+
+            except AssertionError:
+                self.log.exception(
+                    'Quitting after {} sampling attempts. Hint: check sampling params / dataset consistency.'.
+                    format(attempts)
+                )
+                raise RuntimeError
 
             # If 00 option set, get index of first record of that day:
             if self.start_00:
@@ -696,8 +751,8 @@ class BTgymBaseData:
         # Got here -> sanity check failed:
         msg = ('Quitting after {} sampling attempts.' +
                'Hint: check sampling params / dataset consistency.').format(attempts)
-        self.log.warning(msg)
-        raise AssertionError(msg)
+        self.log.error(msg)
+        raise RuntimeError(msg)
 
 
 

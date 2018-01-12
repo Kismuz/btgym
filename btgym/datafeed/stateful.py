@@ -97,7 +97,7 @@ class BTgymSequentialDataDomain(BTgymRandomDataDomain):
 
     @staticmethod
     def _exp_decay(step, param_0, max_steps, gamma=3.5):
-        # TODO: move to utils
+        # TODO: not used here anymore, move to utils
         """
         For given step <= max_steps returns exp-decayed value in [param_0, 1]; returns 1 if step > max_steps;
         gamma - steepness control.
@@ -167,7 +167,7 @@ class BTgymSequentialDataDomain(BTgymRandomDataDomain):
             self.sample_instance.metadata['type'] = 0  # 0 - always train
             self.sample_instance.metadata['sample_num'] = self.sample_num
             self.log.debug(
-                'got ne trial <{}> with metadata: {}'.
+                'got new trial <{}> with metadata: {}'.
                 format(self.sample_instance.filename, self.sample_instance.metadata)
             )
             return self.sample_instance
@@ -217,8 +217,15 @@ class BTgymSequentialDataDomain(BTgymRandomDataDomain):
         if total_steps is not None:
             self.total_steps = total_steps
             self.global_step = global_step
-            assert self.global_step < self.total_steps, 'Outer space jumps not supported. Got: global_step={} of {}.'.\
-                format(self.global_step, self.total_steps)
+            try:
+                assert self.global_step < self.total_steps
+
+            except AssertionError:
+                self.log.exception(
+                    'Outer space jumps not supported. Got: global_step={} of {}.'.
+                    format(self.global_step, self.total_steps)
+                )
+                raise AssertionError
 
         else:
             self.global_step = 0
@@ -234,8 +241,15 @@ class BTgymSequentialDataDomain(BTgymRandomDataDomain):
         # Infer Trial train support interval in number of records:
         self.trial_train_range_delta = self.max_sample_len_delta - self.trial_test_range_delta
 
-        assert self.trial_train_range_delta.total_seconds() > 0,\
-            'Trial train period should not be negative, got: {}'.format(self.trial_train_range_delta)
+        try:
+            assert self.trial_train_range_delta.total_seconds() > 0
+
+        except AssertionError:
+            self.log.exception(
+                'Trial train period should not be negative, got: {}'.format(self.trial_train_range_delta)
+            )
+            raise AssertionError
+
         self.trial_train_range_row = int(self.trial_train_range_delta.total_seconds() / (self.timeframe * 60))
 
         # Infer cardinality of Trials:
@@ -246,7 +260,14 @@ class BTgymSequentialDataDomain(BTgymRandomDataDomain):
         # Set domain sample stride as duration of Trial test period:
         self.sample_stride = self.trial_test_range_row
 
-        assert self.total_samples > 0, 'Trial`s cardinality below 1. Hint: check data parameters consistency.'
+        try:
+            assert self.total_samples > 0
+
+        except AssertionError:
+            self.log.exception(
+                'Trial`s cardinality below 1. Hint: check data parameters consistency.'
+            )
+            raise AssertionError
 
         # Current trial to start with:
         self.sample_num = int(self.total_samples * self.global_step / self.total_steps)
@@ -292,7 +313,7 @@ class BTgymSequentialDataDomain(BTgymRandomDataDomain):
             self.log.notice(
                 'Trial #{} @: {} <--> {};'.format(self.sample_num, time[0], time[-1])
             )
-            self.log.notice(
+            self.log.debug(
                 'Trial #{} rows: {} <--> {}'.
                     format(
                     self.sample_num,

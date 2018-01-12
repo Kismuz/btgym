@@ -278,7 +278,7 @@
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_exp_decay</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">param_0</span><span class="p">,</span> <span class="n">max_steps</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mf">3.5</span><span class="p">):</span>
-        <span class="c1"># TODO: move to utils</span>
+        <span class="c1"># TODO: not used here anymore, move to utils</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        For given step &lt;= max_steps returns exp-decayed value in [param_0, 1]; returns 1 if step &gt; max_steps;</span>
 <span class="sd">        gamma - steepness control.</span>
@@ -348,7 +348,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># 0 - always train</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;sample_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                <span class="s1">&#39;got ne trial &lt;</span><span class="si">{}</span><span class="s1">&gt; with metadata: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                <span class="s1">&#39;got new trial &lt;</span><span class="si">{}</span><span class="s1">&gt; with metadata: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
                 <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span></div>
@@ -398,8 +398,15 @@
         <span class="k">if</span> <span class="n">total_steps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">=</span> <span class="n">total_steps</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">=</span> <span class="n">global_step</span>
-            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">,</span> <span class="s1">&#39;Outer space jumps not supported. Got: global_step=</span><span class="si">{}</span><span class="s1"> of </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span>\
-                <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span>
+
+            <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                    <span class="s1">&#39;Outer space jumps not supported. Got: global_step=</span><span class="si">{}</span><span class="s1"> of </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span>
+                    <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">AssertionError</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">=</span> <span class="mi">0</span>
@@ -415,8 +422,15 @@
         <span class="c1"># Infer Trial train support interval in number of records:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">trial_train_range_delta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_test_range_delta</span>
 
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_train_range_delta</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>\
-            <span class="s1">&#39;Trial train period should not be negative, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_train_range_delta</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_train_range_delta</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="s1">&#39;Trial train period should not be negative, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_train_range_delta</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">trial_train_range_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_train_range_delta</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timeframe</span> <span class="o">*</span> <span class="mi">60</span><span class="p">))</span>
 
         <span class="c1"># Infer cardinality of Trials:</span>
@@ -427,7 +441,14 @@
         <span class="c1"># Set domain sample stride as duration of Trial test period:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sample_stride</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_test_range_row</span>
 
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_samples</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Trial`s cardinality below 1. Hint: check data parameters consistency.&#39;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_samples</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="s1">&#39;Trial`s cardinality below 1. Hint: check data parameters consistency.&#39;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span>
 
         <span class="c1"># Current trial to start with:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_samples</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">)</span>
@@ -473,7 +494,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span>
                 <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1"> @: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span><span class="p">,</span> <span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
             <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
                 <span class="s1">&#39;Trial #</span><span class="si">{}</span><span class="s1"> rows: </span><span class="si">{}</span><span class="s1"> &lt;--&gt; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
                     <span class="nb">format</span><span class="p">(</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span><span class="p">,</span>

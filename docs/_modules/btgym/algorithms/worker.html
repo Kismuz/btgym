@@ -345,7 +345,8 @@
                         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;set BTGym environment @port_</span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">))</span>
 
                     <span class="k">except</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Worker_</span><span class="si">{}</span><span class="s1">: failed to make BTGym environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s1">&#39;failed to make BTGym environment&#39;</span><span class="p">)</span>
+                        <span class="k">raise</span> <span class="ne">RuntimeError</span>
 
                 <span class="k">else</span><span class="p">:</span>
                     <span class="c1"># Assume atari testing:</span>
@@ -354,7 +355,8 @@
                         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;set Gyn/Atari environment.&#39;</span><span class="p">)</span>
 
                     <span class="k">except</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39;Worker_</span><span class="si">{}</span><span class="s1"> failed to make Gym/Atari environment&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s1">&#39;failed to make Gym/Atari environment&#39;</span><span class="p">)</span>
+                        <span class="k">raise</span> <span class="ne">RuntimeError</span>
 
 
 
@@ -382,7 +384,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()))</span>
 
             <span class="k">def</span> <span class="nf">init_fn</span><span class="p">(</span><span class="n">ses</span><span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;initializing all parameters.&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;initializing all parameters.&quot;</span><span class="p">)</span>
                 <span class="n">ses</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">init_all_op</span><span class="p">)</span>
 
             <span class="n">config</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span><span class="n">device_filters</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;/job:ps&quot;</span><span class="p">,</span> <span class="s2">&quot;/job:worker/task:</span><span class="si">{}</span><span class="s2">/cpu:0&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)])</span>
@@ -402,7 +404,7 @@
                 <span class="n">global_step</span><span class="o">=</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">,</span>
                 <span class="n">save_model_secs</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;connecting to the parameter server... &quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;connecting to the parameter server... &quot;</span><span class="p">)</span>
 
             <span class="k">with</span> <span class="n">sv</span><span class="o">.</span><span class="n">managed_session</span><span class="p">(</span><span class="n">server</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span> <span class="k">as</span> <span class="n">sess</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
                 <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">sync</span><span class="p">)</span>
@@ -415,7 +417,7 @@
                     <span class="k">if</span> <span class="ow">not</span> <span class="n">trainer</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">is_full</span><span class="p">():</span>
                         <span class="n">trainer</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">fill</span><span class="p">()</span>
 
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;started training at step: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_step</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s2">&quot;started training at step: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_step</span><span class="p">))</span>
                 <span class="k">while</span> <span class="ow">not</span> <span class="n">sv</span><span class="o">.</span><span class="n">should_stop</span><span class="p">()</span> <span class="ow">and</span> <span class="n">global_step</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_env_steps</span><span class="p">:</span>
                     <span class="n">trainer</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">sess</span><span class="p">)</span>
                     <span class="n">global_step</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span>
@@ -425,7 +427,7 @@
                     <span class="n">env</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
                 <span class="n">sv</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;reached </span><span class="si">{}</span><span class="s1"> steps, exiting.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_step</span><span class="p">))</span></div></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;reached </span><span class="si">{}</span><span class="s1"> steps, exiting.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_step</span><span class="p">))</span></div></div>
 
 
 

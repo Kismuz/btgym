@@ -490,13 +490,26 @@
 
         <span class="n">break_point</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_num_records</span>
 
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_num_records</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">,</span>\
-            <span class="s1">&#39;Train subset should contain at least one sample, got: train_set size: </span><span class="si">{}</span><span class="s1"> rows, sample_size: </span><span class="si">{}</span><span class="s1"> rows&#39;</span><span class="o">.</span>\
-            <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_num_records</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_num_records</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="s1">&#39;Train subset should contain at least one sample, got: train_set size: </span><span class="si">{}</span><span class="s1"> rows, sample_size: </span><span class="si">{}</span><span class="s1"> rows&#39;</span><span class="o">.</span>
+                <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_num_records</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span>
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">,</span>\
-                <span class="s1">&#39;Test subset should contain at least one sample, got: test_set size: </span><span class="si">{}</span><span class="s1"> rows, sample_size: </span><span class="si">{}</span><span class="s1"> rows&#39;</span><span class="o">.</span>\
-            <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span>
+
+            <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                    <span class="s1">&#39;Test subset should contain at least one sample, got: test_set size: </span><span class="si">{}</span><span class="s1"> rows, sample_size: </span><span class="si">{}</span><span class="s1"> rows&#39;</span><span class="o">.</span>
+                    <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_num_records</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">AssertionError</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">train_interval</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">break_point</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">test_interval</span> <span class="o">=</span> <span class="p">[</span><span class="n">break_point</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
@@ -576,7 +589,7 @@
             <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">empty</span>
             <span class="k">pass</span>
 
-        <span class="k">except</span><span class="p">:</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">read_csv</span><span class="p">()</span>
             <span class="n">flush_data</span> <span class="o">=</span> <span class="kc">True</span>
 
@@ -646,9 +659,24 @@
 <span class="sd">                Test samples are always uniform one.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_ready</span><span class="p">,</span> <span class="s1">&#39;Sampling attempt: data not ready. Hint: forgot to call data.reset()?&#39;</span>
-        <span class="k">assert</span> <span class="n">sample_type</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;Sampling attempt: expected sample type be in </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
-            <span class="nb">format</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">sample_type</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_ready</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="s1">&#39;Sampling attempt: data not ready. Hint: forgot to call data.reset()?&#39;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">sample_type</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="s1">&#39;Sampling attempt: expected sample type be in </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
+                <span class="nb">format</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">sample_type</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_instance</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">get_new</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">sample_type</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -694,7 +722,8 @@
             <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">empty</span>
 
         <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="k">raise</span>  <span class="ne">AssertionError</span><span class="p">(</span><span class="s1">&#39;Instance holds no data. Hint: forgot to call .read_csv()?&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s1">&#39;Instance holds no data. Hint: forgot to call .read_csv()?&#39;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Maximum sample time duration set to: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Respective number of steps: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span><span class="p">))</span>
@@ -789,18 +818,38 @@
             <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">empty</span>
 
         <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="k">raise</span>  <span class="ne">AssertionError</span><span class="p">(</span><span class="s1">&#39;Instance holds no data. Hint: forgot to call .read_csv()?&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s1">&#39;Instance holds no data. Hint: forgot to call .read_csv()?&#39;</span><span class="p">)</span>
+            <span class="k">raise</span>  <span class="ne">AssertionError</span>
 
-        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;Invalid interval arg: expected list or tuple of size 2, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
 
-        <span class="k">assert</span> <span class="n">b_alpha</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">b_beta</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Expected positive B-distribution [alpha, beta] params, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span> \
-            <span class="nb">format</span><span class="p">([</span><span class="n">b_alpha</span><span class="p">,</span> <span class="n">b_beta</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="s1">&#39;Invalid interval arg: expected list or tuple of size 2, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">b_alpha</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">b_beta</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="s1">&#39;Expected positive B-distribution [alpha, beta] params, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">([</span><span class="n">b_alpha</span><span class="p">,</span> <span class="n">b_beta</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span>
 
         <span class="n">sample_num_records</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_num_records</span>
 
-        <span class="k">assert</span> <span class="n">interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">interval</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> \
-            <span class="s1">&#39;Cannot sample with size </span><span class="si">{}</span><span class="s1">, inside </span><span class="si">{}</span><span class="s1"> from dataset of </span><span class="si">{}</span><span class="s1"> records&#39;</span><span class="o">.</span>\
-             <span class="nb">format</span><span class="p">(</span><span class="n">sample_num_records</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">interval</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="s1">&#39;Cannot sample with size </span><span class="si">{}</span><span class="s1">, inside </span><span class="si">{}</span><span class="s1"> from dataset of </span><span class="si">{}</span><span class="s1"> records&#39;</span><span class="o">.</span>
+                 <span class="nb">format</span><span class="p">(</span><span class="n">sample_num_records</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Maximum sample time duration set to: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Respective number of steps: </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_num_records</span><span class="p">))</span>
@@ -836,9 +885,15 @@
                 <span class="n">attempts</span> <span class="o">+=</span> <span class="mi">1</span>
 
             <span class="c1"># Check if managed to get proper weekday:</span>
-            <span class="k">assert</span> <span class="n">attempts</span> <span class="o">&lt;=</span> <span class="n">max_attempts</span><span class="p">,</span> \
-                <span class="s1">&#39;Quitting after </span><span class="si">{}</span><span class="s1"> sampling attempts. Hint: check sampling params / dataset consistency.&#39;</span><span class="o">.</span>\
-                <span class="nb">format</span><span class="p">(</span><span class="n">attempts</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">attempts</span> <span class="o">&lt;=</span> <span class="n">max_attempts</span>
+
+            <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                    <span class="s1">&#39;Quitting after </span><span class="si">{}</span><span class="s1"> sampling attempts. Hint: check sampling params / dataset consistency.&#39;</span><span class="o">.</span>
+                    <span class="nb">format</span><span class="p">(</span><span class="n">attempts</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span>
 
             <span class="c1"># If 00 option set, get index of first record of that day:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_00</span><span class="p">:</span>
@@ -877,8 +932,8 @@
         <span class="c1"># Got here -&gt; sanity check failed:</span>
         <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;Quitting after </span><span class="si">{}</span><span class="s1"> sampling attempts.&#39;</span> <span class="o">+</span>
                <span class="s1">&#39;Hint: check sampling params / dataset consistency.&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">attempts</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div></div>
 
 
 

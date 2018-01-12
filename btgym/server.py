@@ -527,7 +527,7 @@ class BTgymServer(multiprocessing.Process):
             analyzers_list.remove('_env_analyzer')
 
             elapsed_time = timedelta(seconds=time.time() - start_time)
-            self.log.info('Episode elapsed time: {}.'.format(elapsed_time))
+            self.log.debug('Episode elapsed time: {}.'.format(elapsed_time))
 
             episode_result['episode'] = episode_number
             episode_result['runtime'] = elapsed_time

@@ -513,10 +513,10 @@ works correctly with <cite>DTGymDataset</cite> data class, repeating cycle:</p>
 <dt id="btgym.algorithms.aac.BaseAAC.process">
 <code class="descname">process</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.process" title="Permalink to this definition">¶</a></dt>
 <dd><p>Grabs a on_policy_rollout that’s been produced by the thread runner. If data identified as ‘train data’ -
-samples off_policy rollout[s] from replay memory and updates the parameters; writes summaries if any.
-The update is then sent to the parameter server.
-If on_policy_rollout contains ‘test data’ -  no policy update is performed and learn rate is set to zero;
-Meanwile test data are stored in replay memory.</p>
+samples off_policy rollout[s] from replay memory, computes gradients and updates the parameters;
+writes summaries if any. The update is then sent to the parameter server.
+If on_policy_rollout identified as ‘test data’ -  no policy update is performed (learn rate is set to zero);
+Note that test data does not get stored in replay memory (thread runner area).</p>
 </dd></dl>
 
 </dd></dl>

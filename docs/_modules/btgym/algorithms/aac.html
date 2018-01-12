@@ -494,17 +494,17 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span> <span class="o">=</span> <span class="n">_use_target_policy</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;learn_rate: </span><span class="si">{:1.6f}</span><span class="s1">, entropy_beta: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;learn_rate: </span><span class="si">{:1.6f}</span><span class="s1">, entropy_beta: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_off_policy_aac</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;off_aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span><span class="p">,))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;off_aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span><span class="p">,))</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;vr_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, pc_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, rp_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;vr_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, pc_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, rp_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
                           <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span><span class="p">))</span>
 
 
-        <span class="c1">#self.log.info(</span>
+        <span class="c1">#self.log.notice(</span>
         <span class="c1">#    &#39;AAC_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},&#39;.</span>
         <span class="c1">#        format(self.task, self.opt_max_env_steps, self.opt_decay_steps, self.opt_end_learn_rate))</span>
 
@@ -559,7 +559,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;learn rate ok&#39;</span><span class="p">)</span>
 
             <span class="c1"># On-policy AAC loss definition:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_act_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_action_pl&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_act_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_action_pl&quot;</span>
+            <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_adv_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_advantage_pl&quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_r_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_return_pl&quot;</span><span class="p">)</span>
 
@@ -1003,16 +1005,16 @@
 <div class="viewcode-block" id="BaseAAC.process"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.process">[docs]</a>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Grabs a on_policy_rollout that&#39;s been produced by the thread runner. If data identified as &#39;train data&#39; -</span>
-<span class="sd">        samples off_policy rollout[s] from replay memory and updates the parameters; writes summaries if any.</span>
-<span class="sd">        The update is then sent to the parameter server.</span>
-<span class="sd">        If on_policy_rollout contains &#39;test data&#39; -  no policy update is performed and learn rate is set to zero;</span>
-<span class="sd">        Meanwile test data are stored in replay memory.</span>
+<span class="sd">        samples off_policy rollout[s] from replay memory, computes gradients and updates the parameters;</span>
+<span class="sd">        writes summaries if any. The update is then sent to the parameter server.</span>
+<span class="sd">        If on_policy_rollout identified as &#39;test data&#39; -  no policy update is performed (learn rate is set to zero);</span>
+<span class="sd">        Note that test data does not get stored in replay memory (thread runner area).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># Collect data from child thread runners:</span>
         <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
 
-        <span class="c1"># Test or train: if at least one rollout from parallel runners is test rollout -</span>
+        <span class="c1"># Test or train: if at least one rollout from parallel runners is test one -</span>
         <span class="c1"># set learn rate to zero for entire minibatch. Doh.</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">is_train</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">env</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">env</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;on_policy&#39;</span><span class="p">]])</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
@@ -1025,7 +1027,7 @@
             <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi_prime</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">is_train</span><span class="p">:</span>
-            <span class="c1"># If there is no testing rollouts  - copy weights from shared to local new_policy:</span>
+            <span class="c1"># If there is no any test rollouts  - copy weights from shared to local new_policy:</span>
             <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi</span><span class="p">)</span>
 
         <span class="c1">#self.log.debug(&#39;is_train: {}&#39;.format(is_train))</span>
