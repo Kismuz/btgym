@@ -420,6 +420,10 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">train_phase</span><span class="p">:</span> <span class="kc">False</span>
             <span class="p">}</span>
         <span class="p">)</span>
+        <span class="c1">#print(&#39;feeder keys:&#39;)</span>
+        <span class="c1">#for k in feeder.keys():</span>
+        <span class="c1">#    print(&#39;key: {}, type: &lt;{}&gt;&#39;.format(k, type(feeder[k])))</span>
+        <span class="c1">#print(&#39;ops:&#39;, [self.on_sample, self.on_vf, self.on_lstm_state_out])</span>
         <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">on_sample</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_vf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_state_out</span><span class="p">],</span> <span class="n">feeder</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="BaseAacPolicy.get_value"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.policy.BaseAacPolicy.get_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">lstm_state</span><span class="p">,</span> <span class="n">action_reward</span><span class="p">):</span>

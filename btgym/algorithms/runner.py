@@ -160,6 +160,8 @@ def env_runner(sess,
 
         action, value_, context = policy.act(last_state, last_context, last_action_reward)
 
+        #print('*_runner: A: {}, V: {}, step: {} '.format(action, value_, length))
+
         # argmax to convert from one-hot:
         state, reward, terminal, info = env.step(action.argmax())
 
@@ -191,10 +193,10 @@ def env_runner(sess,
                 # Continue adding experiences to rollout:
                 action, value_, context = policy.act(last_state, last_context, last_action_reward)
 
+                #print('runner: A: {}, V: {}, step: {} '.format(action, value_, length))
+
                 # Argmax to convert from one-hot:
                 state, reward, terminal, info = env.step(action.argmax())
-                #if not atari_test:
-                #        state = state['model_input']
 
                 # Partially collect next experience:
                 experience = {

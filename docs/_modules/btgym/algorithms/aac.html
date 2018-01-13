@@ -524,14 +524,14 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;started building graphs&#39;</span><span class="p">)</span>
         <span class="c1"># PS:</span>
         <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">replica_device_setter</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">worker_device</span><span class="o">=</span><span class="n">worker_device</span><span class="p">)):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_policy</span><span class="p">(</span><span class="s1">&#39;global&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;global&#39;</span><span class="p">)</span>
 
         <span class="c1"># Worker:</span>
         <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">worker_device</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">local_network</span> <span class="o">=</span> <span class="n">pi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_policy</span><span class="p">(</span><span class="s1">&#39;local&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">local_network</span> <span class="o">=</span> <span class="n">pi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;local&#39;</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">local_network_prime</span> <span class="o">=</span> <span class="n">pi_prime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_policy</span><span class="p">(</span><span class="s1">&#39;local_prime&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">local_network_prime</span> <span class="o">=</span> <span class="n">pi_prime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;local_prime&#39;</span><span class="p">)</span>
 
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">local_network_prime</span> <span class="o">=</span> <span class="n">pi_prime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_dummy_policy</span><span class="p">()</span>
@@ -646,9 +646,13 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span> <span class="o">*</span> <span class="n">rp_loss</span>
                 <span class="n">model_summaries</span> <span class="o">+=</span> <span class="n">rp_summaries</span>
 
-            <span class="n">grads</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gradients</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">)</span>
-            <span class="n">grads</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">clip_by_global_norm</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">)</span>
+            <span class="c1">#grads = tf.gradients(self.loss, pi.var_list)</span>
 
+            <span class="c1"># Clipped gradients:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">clip_by_global_norm</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">gradients</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">),</span>
+                <span class="mf">40.0</span>
+            <span class="p">)</span>
             <span class="c1"># Copy weights from the parameter server to the local model</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">sync</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sync_pi</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">v1</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">v2</span><span class="p">)</span> <span class="k">for</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">var_list</span><span class="p">)])</span>
 
@@ -656,15 +660,15 @@
                 <span class="c1"># Copy weights from new policy model to target one:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">sync_pi_prime</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">v1</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">v2</span><span class="p">)</span> <span class="k">for</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pi_prime</span><span class="o">.</span><span class="n">var_list</span><span class="p">,</span> <span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">)])</span>
 
-            <span class="n">grads_and_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">var_list</span><span class="p">))</span>
+            <span class="n">grads_and_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">var_list</span><span class="p">))</span>
 
             <span class="c1"># Since every observation mod. has same batch size - just take first key in a row:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">inc_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">on_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]])[</span><span class="mi">0</span><span class="p">])</span>
 
             <span class="c1"># Each worker gets a different set of adam optimizer parameters:</span>
-            <span class="n">opt</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">AdamOptimizer</span><span class="p">(</span><span class="n">train_learn_rate</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">AdamOptimizer</span><span class="p">(</span><span class="n">train_learn_rate</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
 
-            <span class="c1">#opt = tf.train.RMSPropOptimizer(</span>
+            <span class="c1">#self.optimizer = tf.train.RMSPropOptimizer(</span>
             <span class="c1">#    learning_rate=train_learn_rate,</span>
             <span class="c1">#    decay=self.opt_decay,</span>
             <span class="c1">#    momentum=self.opt_momentum,</span>
@@ -673,12 +677,12 @@
 
             <span class="c1">#self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), self.inc_step)</span>
             <span class="c1">#self.train_op = tf.group(opt.apply_gradients(grads_and_vars), self.inc_step)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">train_op</span> <span class="o">=</span> <span class="n">opt</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="n">grads_and_vars</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="n">grads_and_vars</span><span class="p">)</span>
 
             <span class="c1"># Add model-wide statistics:</span>
             <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">name_scope</span><span class="p">(</span><span class="s1">&#39;model&#39;</span><span class="p">):</span>
                 <span class="n">model_summaries</span> <span class="o">+=</span> <span class="p">[</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;grad_global_norm&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_norm</span><span class="p">(</span><span class="n">grads</span><span class="p">)),</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;grad_global_norm&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">)),</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;var_global_norm&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_norm</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">)),</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;learn_rate&quot;</span><span class="p">,</span> <span class="n">learn_rate_decayed</span><span class="p">),</span>  <span class="c1"># cause actual rate is a jaggy due to testing</span>
                     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;total_loss&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span>
@@ -786,7 +790,7 @@
 
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;.init() done&#39;</span><span class="p">)</span>
 
-<div class="viewcode-block" id="BaseAAC.get_data"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Collect rollouts from every environmnet.</span>
 
@@ -796,7 +800,7 @@
         <span class="c1"># TODO: nowait?</span>
         <span class="n">data_streams</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_it</span><span class="p">()</span> <span class="k">for</span> <span class="n">get_it</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_getter</span><span class="p">]</span>
 
-        <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="p">[</span><span class="n">stream</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">stream</span> <span class="ow">in</span> <span class="n">data_streams</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_streams</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span></div>
+        <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="p">[</span><span class="n">stream</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">stream</span> <span class="ow">in</span> <span class="n">data_streams</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_streams</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
 
 <div class="viewcode-block" id="BaseAAC.get_sample_config"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_sample_config">[docs]</a>    <span class="k">def</span> <span class="nf">get_sample_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -806,7 +810,7 @@
 <span class="sd">            - sample `num_train_episodes` from train data,</span>
 <span class="sd">            - sample `num_test_episodes` from test data.</span>
 
-<span class="sd">        Convention: supposed to override dummy method of local policy instance, see inside .make_policy() method</span>
+<span class="sd">        Convention: supposed to override dummy method of local policy instance, see inside ._make_policy() method</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            configuration dictionary of type `btgym.datafeed.base.EnvResetConfig`</span>
@@ -861,7 +865,7 @@
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">sample_config</span></div>
 
-<div class="viewcode-block" id="BaseAAC.make_policy"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.make_policy">[docs]</a>    <span class="k">def</span> <span class="nf">make_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_make_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Configures and instantiates policy network and ops.</span>
 
@@ -920,7 +924,7 @@
                 <span class="p">)</span>
                 <span class="c1"># Increment episode count:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">inc_episode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_episode</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">network</span></div>
+        <span class="k">return</span> <span class="n">network</span>
 
     <span class="k">def</span> <span class="nf">_make_dummy_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 
@@ -946,13 +950,38 @@
 
         <span class="k">return</span> <span class="n">_Dummy</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseAAC.start"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes all initializing operations,</span>
+<span class="sd">        starts environment runner[s].</span>
+<span class="sd">        Supposed to be called by parent worker just before training loop starts.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sess:           tf session object.</span>
+<span class="sd">            kwargs:         not used by default.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Copy weights from global to local:</span>
+        <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync</span><span class="p">)</span>
+
+        <span class="c1"># Start thread_runners:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_runners</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_start_runners</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sess:</span>
+<span class="sd">            summary_writer:</span>
+
+<span class="sd">        Returns:</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">runner</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">runners</span><span class="p">:</span>
             <span class="n">runner</span><span class="o">.</span><span class="n">start_runner</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">)</span>  <span class="c1"># starting runner threads</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="n">summary_writer</span>
 
-<div class="viewcode-block" id="BaseAAC.get_rp_feeder"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_rp_feeder">[docs]</a>    <span class="k">def</span> <span class="nf">get_rp_feeder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_get_rp_feeder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns feed dictionary for `reward prediction` loss estimation subgraph.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -963,9 +992,9 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">local_network</span><span class="o">.</span><span class="n">rp_batch_size</span><span class="p">:</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">],</span>
             <span class="p">}</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">feeder</span></div>
+        <span class="k">return</span> <span class="n">feeder</span>
 
-<div class="viewcode-block" id="BaseAAC.get_vr_feeder"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_vr_feeder">[docs]</a>    <span class="k">def</span> <span class="nf">get_vr_feeder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_get_vr_feeder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns feed dictionary for `value replay` loss estimation subgraph.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -982,9 +1011,9 @@
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">feeder</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">vr_target</span><span class="p">:</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]}</span>  <span class="c1"># redundant actually :)</span>
-        <span class="k">return</span> <span class="n">feeder</span></div>
+        <span class="k">return</span> <span class="n">feeder</span>
 
-<div class="viewcode-block" id="BaseAAC.get_pc_feeder"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_pc_feeder">[docs]</a>    <span class="k">def</span> <span class="nf">get_pc_feeder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_get_pc_feeder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns feed dictionary for `pixel control` loss estimation subgraph.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1001,38 +1030,19 @@
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">feeder</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_action</span><span class="p">:</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">:</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;pixel_change&#39;</span><span class="p">]}</span>
-        <span class="k">return</span> <span class="n">feeder</span></div>
+        <span class="k">return</span> <span class="n">feeder</span>
 
-<div class="viewcode-block" id="BaseAAC.process"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.process">[docs]</a>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseAAC.process_data"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.process_data">[docs]</a>    <span class="k">def</span> <span class="nf">process_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">is_train</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Grabs a on_policy_rollout that&#39;s been produced by the thread runner. If data identified as &#39;train data&#39; -</span>
-<span class="sd">        samples off_policy rollout[s] from replay memory, computes gradients and updates the parameters;</span>
-<span class="sd">        writes summaries if any. The update is then sent to the parameter server.</span>
-<span class="sd">        If on_policy_rollout identified as &#39;test data&#39; -  no policy update is performed (learn rate is set to zero);</span>
-<span class="sd">        Note that test data does not get stored in replay memory (thread runner area).</span>
+<span class="sd">        Processes data, composes train step feed dictionary.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            sess:               tf session obj.</span>
+<span class="sd">            data (dict):        data dictionary</span>
+<span class="sd">            is_train (bool):    is data provided are train or test</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            feed_dict (dict):   train step feed dictionary</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="c1"># Collect data from child thread runners:</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
-
-        <span class="c1"># Test or train: if at least one rollout from parallel runners is test one -</span>
-        <span class="c1"># set learn rate to zero for entire minibatch. Doh.</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">is_train</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">env</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">env</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;on_policy&#39;</span><span class="p">]])</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
-
-        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-            <span class="n">is_train</span> <span class="o">=</span> <span class="kc">True</span>
-
-        <span class="c1"># Copy weights from local policy to local target policy:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">pi_prime_update_period</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi_prime</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">is_train</span><span class="p">:</span>
-            <span class="c1"># If there is no any test rollouts  - copy weights from shared to local new_policy:</span>
-            <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi</span><span class="p">)</span>
-
-        <span class="c1">#self.log.debug(&#39;is_train: {}&#39;.format(is_train))</span>
-
         <span class="c1"># Process minibatch for on-policy train step:</span>
         <span class="n">on_policy_rollouts</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;on_policy&#39;</span><span class="p">]</span>
         <span class="n">on_policy_batch</span> <span class="o">=</span> <span class="n">batch_stack</span><span class="p">(</span>
@@ -1126,17 +1136,27 @@
                 <span class="c1"># Rebalanced 50/50 sample for RP:</span>
                 <span class="n">rp_rollouts</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;off_policy_rp&#39;</span><span class="p">]</span>
                 <span class="n">rp_batch</span> <span class="o">=</span> <span class="n">batch_stack</span><span class="p">([</span><span class="n">rp</span><span class="o">.</span><span class="n">process_rp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_reward_threshold</span><span class="p">)</span> <span class="k">for</span> <span class="n">rp</span> <span class="ow">in</span> <span class="n">rp_rollouts</span><span class="p">])</span>
-                <span class="n">feed_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_rp_feeder</span><span class="p">(</span><span class="n">rp_batch</span><span class="p">))</span>
+                <span class="n">feed_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_rp_feeder</span><span class="p">(</span><span class="n">rp_batch</span><span class="p">))</span>
 
             <span class="c1"># Pixel control ...</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_pixel_control</span><span class="p">:</span>
-                <span class="n">feed_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_pc_feeder</span><span class="p">(</span><span class="n">off_policy_batch</span><span class="p">))</span>
+                <span class="n">feed_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_pc_feeder</span><span class="p">(</span><span class="n">off_policy_batch</span><span class="p">))</span>
 
             <span class="c1"># VR...</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_value_replay</span><span class="p">:</span>
-                <span class="n">feed_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_vr_feeder</span><span class="p">(</span><span class="n">off_policy_batch</span><span class="p">))</span>
+                <span class="n">feed_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_vr_feeder</span><span class="p">(</span><span class="n">off_policy_batch</span><span class="p">))</span>
 
-        <span class="c1"># Every worker writes train episode and model summaries:</span>
+        <span class="k">return</span> <span class="n">feed_dict</span></div>
+
+<div class="viewcode-block" id="BaseAAC.process_summary"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.process_summary">[docs]</a>    <span class="k">def</span> <span class="nf">process_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">model_data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fetches and writes summary data from `data` and `model_data`.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            sess:               tf summary obj.</span>
+<span class="sd">            data(dict):         thread_runner rollouts and metadata</span>
+<span class="sd">            model_data(dict):   model summary data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Every worker writes train episode summaries:</span>
         <span class="n">ep_summary_feeder</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="c1"># Look for train episode summaries from all env runners:</span>
@@ -1182,12 +1202,8 @@
                 <span class="p">}</span>
                 <span class="n">fetched_test_episode_stat</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_btgym_stat_op&#39;</span><span class="p">],</span> <span class="n">test_ep_summary_feed_dict</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">add_summary</span><span class="p">(</span><span class="n">fetched_test_episode_stat</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_episode</span><span class="p">))</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
 
-        <span class="n">wirte_model_summary</span> <span class="o">=</span>\
-            <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_summary_freq</span> <span class="o">==</span> <span class="mi">0</span>
-
-        <span class="c1"># Look for renderings (chief worker only, always 0-numbered environment):</span>
+        <span class="c1"># Look for renderings (chief worker only, always 0-numbered environment in a list):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;render_summary&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">render_feed_dict</span> <span class="o">=</span> <span class="p">{</span>
@@ -1196,6 +1212,51 @@
                 <span class="n">renderings</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_op&#39;</span><span class="p">],</span> <span class="n">render_feed_dict</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">add_summary</span><span class="p">(</span><span class="n">renderings</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_episode</span><span class="p">))</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+        <span class="c1"># Every worker writes train episode summaries:</span>
+        <span class="k">if</span> <span class="n">model_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">add_summary</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">Summary</span><span class="o">.</span><span class="n">FromString</span><span class="p">(</span><span class="n">model_data</span><span class="p">),</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="BaseAAC.process"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.process">[docs]</a>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Grabs an on_policy_rollout [and off_policy rollout[s] from replay memory] that&#39;s been produced</span>
+<span class="sd">        by the thread runner. If data identified as &#39;train data&#39; - computes gradients and updates the parameters;</span>
+<span class="sd">        writes summaries if any. The update is then sent to the parameter server.</span>
+<span class="sd">        If on_policy_rollout identified as &#39;test data&#39; -  no policy update is performed (learn rate is set to zero);</span>
+<span class="sd">        Note that test data does not get stored in replay memory (thread runner area).</span>
+<span class="sd">        Writes all available summaries.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sess (tensorflow.Session):   tf session obj.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Collect data from child thread runners:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_data</span><span class="p">()</span>
+
+        <span class="c1"># Copy weights from local policy to local target policy:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">pi_prime_update_period</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi_prime</span><span class="p">)</span>
+
+        <span class="c1"># Test or train: if at least one on-policy rollout from parallel runners is test one -</span>
+        <span class="c1"># set learn rate to zero for entire minibatch. Doh.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">is_train</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">env</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">env</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;on_policy&#39;</span><span class="p">]])</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">is_train</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="n">is_train</span><span class="p">:</span>
+            <span class="c1"># If there is no any test rollouts  - copy weights from shared to local new_policy:</span>
+            <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi</span><span class="p">)</span>
+
+        <span class="c1"># self.log.debug(&#39;is_train: {}&#39;.format(is_train))</span>
+
+        <span class="n">feed_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_data</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">is_train</span><span class="p">)</span>
+
+        <span class="c1"># Say No to redundant summaries:</span>
+        <span class="n">wirte_model_summary</span> <span class="o">=</span>\
+            <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_summary_freq</span> <span class="o">==</span> <span class="mi">0</span>
 
         <span class="c1">#fetches = [self.train_op, self.local_network.debug]  # include policy debug shapes</span>
         <span class="n">fetches</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">train_op</span><span class="p">]</span>
@@ -1213,8 +1274,13 @@
         <span class="n">fetched</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">fetches_last</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="n">feed_dict</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">wirte_model_summary</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">add_summary</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">Summary</span><span class="o">.</span><span class="n">FromString</span><span class="p">(</span><span class="n">fetched</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]),</span> <span class="n">fetched</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="n">model_summary</span> <span class="o">=</span> <span class="n">fetched</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">model_summary</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Write down summaries:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process_summary</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">model_summary</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">+=</span> <span class="mi">1</span></div></div>
 
@@ -1230,6 +1296,7 @@
         <span class="c1">#        print(k, type(v))</span>
 
         <span class="c1"># # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #</span>
+
 
 <span class="n">Unreal</span> <span class="o">=</span> <span class="n">BaseAAC</span>
 

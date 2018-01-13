@@ -189,7 +189,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
                 # Send dataset sample:
                 elif service_input['ctrl'] == '_get_data':
                     if self.dataset.is_ready:
-                        # Call get_data to verify sampling guess or resample:
+                        # Call _get_data to verify sampling guess or resample:
                         sample = self.get_data(sample_config=service_input['kwargs'])
                         message = 'Sending sample_#{}.'.format(self.local_step)
                         self.log.debug(message)

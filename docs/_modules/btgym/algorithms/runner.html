@@ -339,6 +339,8 @@
 
         <span class="n">action</span><span class="p">,</span> <span class="n">value_</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="n">last_state</span><span class="p">,</span> <span class="n">last_context</span><span class="p">,</span> <span class="n">last_action_reward</span><span class="p">)</span>
 
+        <span class="c1">#print(&#39;*_runner: A: {}, V: {}, step: {} &#39;.format(action, value_, length))</span>
+
         <span class="c1"># argmax to convert from one-hot:</span>
         <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">terminal</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">argmax</span><span class="p">())</span>
 
@@ -370,10 +372,10 @@
                 <span class="c1"># Continue adding experiences to rollout:</span>
                 <span class="n">action</span><span class="p">,</span> <span class="n">value_</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="n">last_state</span><span class="p">,</span> <span class="n">last_context</span><span class="p">,</span> <span class="n">last_action_reward</span><span class="p">)</span>
 
+                <span class="c1">#print(&#39;runner: A: {}, V: {}, step: {} &#39;.format(action, value_, length))</span>
+
                 <span class="c1"># Argmax to convert from one-hot:</span>
                 <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">terminal</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">argmax</span><span class="p">())</span>
-                <span class="c1">#if not atari_test:</span>
-                <span class="c1">#        state = state[&#39;model_input&#39;]</span>
 
                 <span class="c1"># Partially collect next experience:</span>
                 <span class="n">experience</span> <span class="o">=</span> <span class="p">{</span>

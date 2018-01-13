@@ -241,6 +241,10 @@ class BaseAacPolicy(object):
                 self.train_phase: False
             }
         )
+        #print('feeder keys:')
+        #for k in feeder.keys():
+        #    print('key: {}, type: <{}>'.format(k, type(feeder[k])))
+        #print('ops:', [self.on_sample, self.on_vf, self.on_lstm_state_out])
         return sess.run([self.on_sample, self.on_vf, self.on_lstm_state_out], feeder)
 
     def get_value(self, observation, lstm_state, action_reward):

@@ -345,14 +345,14 @@ class BaseAAC(object):
         self.log.debug('started building graphs')
         # PS:
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
-            self.network = self.make_policy('global')
+            self.network = self._make_policy('global')
 
         # Worker:
         with tf.device(worker_device):
-            self.local_network = pi = self.make_policy('local')
+            self.local_network = pi = self._make_policy('local')
 
             if self.use_target_policy:
-                self.local_network_prime = pi_prime = self.make_policy('local_prime')
+                self.local_network_prime = pi_prime = self._make_policy('local_prime')
 
             else:
                 self.local_network_prime = pi_prime = self._make_dummy_policy()
@@ -467,9 +467,13 @@ class BaseAAC(object):
                 self.loss = self.loss + self.rp_lambda * rp_loss
                 model_summaries += rp_summaries
 
-            grads = tf.gradients(self.loss, pi.var_list)
-            grads, _ = tf.clip_by_global_norm(grads, 40.0)
+            #grads = tf.gradients(self.loss, pi.var_list)
 
+            # Clipped gradients:
+            self.grads, _ = tf.clip_by_global_norm(
+                tf.gradients(self.loss, pi.var_list),
+                40.0
+            )
             # Copy weights from the parameter server to the local model
             self.sync = self.sync_pi = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
 
@@ -477,15 +481,15 @@ class BaseAAC(object):
                 # Copy weights from new policy model to target one:
                 self.sync_pi_prime = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi_prime.var_list, pi.var_list)])
 
-            grads_and_vars = list(zip(grads, self.network.var_list))
+            grads_and_vars = list(zip(self.grads, self.network.var_list))
 
             # Since every observation mod. has same batch size - just take first key in a row:
             self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in[list(pi.on_state_in.keys())[0]])[0])
 
             # Each worker gets a different set of adam optimizer parameters:
-            opt = tf.train.AdamOptimizer(train_learn_rate, epsilon=1e-5)
+            self.optimizer = tf.train.AdamOptimizer(train_learn_rate, epsilon=1e-5)
 
-            #opt = tf.train.RMSPropOptimizer(
+            #self.optimizer = tf.train.RMSPropOptimizer(
             #    learning_rate=train_learn_rate,
             #    decay=self.opt_decay,
             #    momentum=self.opt_momentum,
@@ -494,12 +498,12 @@ class BaseAAC(object):
 
             #self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), self.inc_step)
             #self.train_op = tf.group(opt.apply_gradients(grads_and_vars), self.inc_step)
-            self.train_op = opt.apply_gradients(grads_and_vars)
+            self.train_op = self.optimizer.apply_gradients(grads_and_vars)
 
             # Add model-wide statistics:
             with tf.name_scope('model'):
                 model_summaries += [
-                    tf.summary.scalar("grad_global_norm", tf.global_norm(grads)),
+                    tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
                     tf.summary.scalar("var_global_norm", tf.global_norm(pi.var_list)),
                     tf.summary.scalar("learn_rate", learn_rate_decayed),  # cause actual rate is a jaggy due to testing
                     tf.summary.scalar("total_loss", self.loss),
@@ -607,7 +611,7 @@ class BaseAAC(object):
 
             self.log.debug('.init() done')
 
-    def get_data(self):
+    def _get_data(self):
         """
         Collect rollouts from every environmnet.
 
@@ -627,7 +631,7 @@ class BaseAAC(object):
             - sample `num_train_episodes` from train data,
             - sample `num_test_episodes` from test data.
 
-        Convention: supposed to override dummy method of local policy instance, see inside .make_policy() method
+        Convention: supposed to override dummy method of local policy instance, see inside ._make_policy() method
 
         Returns:
             configuration dictionary of type `btgym.datafeed.base.EnvResetConfig`
@@ -682,7 +686,7 @@ class BaseAAC(object):
         )
         return sample_config
 
-    def make_policy(self, scope):
+    def _make_policy(self, scope):
         """
         Configures and instantiates policy network and ops.
 
@@ -767,13 +771,38 @@ class BaseAAC(object):
 
         return _Dummy()
 
-    def start(self, sess, summary_writer):
+    def start(self, sess, summary_writer, **kwargs):
+        """
+        Executes all initializing operations,
+        starts environment runner[s].
+        Supposed to be called by parent worker just before training loop starts.
+
+        Args:
+            sess:           tf session object.
+            kwargs:         not used by default.
+        """
+        # Copy weights from global to local:
+        sess.run(self.sync)
+
+        # Start thread_runners:
+        self._start_runners(sess, summary_writer)
+
+    def _start_runners(self, sess, summary_writer):
+        """
+
+        Args:
+            sess:
+            summary_writer:
+
+        Returns:
+
+        """
         for runner in self.runners:
             runner.start_runner(sess, summary_writer)  # starting runner threads
 
         self.summary_writer = summary_writer
 
-    def get_rp_feeder(self, batch):
+    def _get_rp_feeder(self, batch):
         """
         Returns feed dictionary for `reward prediction` loss estimation subgraph.
         """
@@ -786,7 +815,7 @@ class BaseAAC(object):
         )
         return feeder
 
-    def get_vr_feeder(self, batch):
+    def _get_vr_feeder(self, batch):
         """
         Returns feed dictionary for `value replay` loss estimation subgraph.
         """
@@ -805,7 +834,7 @@ class BaseAAC(object):
             feeder = {self.vr_target: batch['r']}  # redundant actually :)
         return feeder
 
-    def get_pc_feeder(self, batch):
+    def _get_pc_feeder(self, batch):
         """
         Returns feed dictionary for `pixel control` loss estimation subgraph.
         """
@@ -824,36 +853,17 @@ class BaseAAC(object):
             feeder = {self.pc_action: batch['action'], self.pc_target: batch['pixel_change']}
         return feeder
 
-    def process(self, sess):
+    def process_data(self, sess, data, is_train):
         """
-        Grabs a on_policy_rollout that's been produced by the thread runner. If data identified as 'train data' -
-        samples off_policy rollout[s] from replay memory, computes gradients and updates the parameters;
-        writes summaries if any. The update is then sent to the parameter server.
-        If on_policy_rollout identified as 'test data' -  no policy update is performed (learn rate is set to zero);
-        Note that test data does not get stored in replay memory (thread runner area).
+        Processes data, composes train step feed dictionary.
+        Args:
+            sess:               tf session obj.
+            data (dict):        data dictionary
+            is_train (bool):    is data provided are train or test
+
+        Returns:
+            feed_dict (dict):   train step feed dictionary
         """
-
-        # Collect data from child thread runners:
-        data = self.get_data()
-
-        # Test or train: if at least one rollout from parallel runners is test one -
-        # set learn rate to zero for entire minibatch. Doh.
-        try:
-            is_train = not np.asarray([env['state']['metadata']['type'] for env in data['on_policy']]).any()
-
-        except KeyError:
-            is_train = True
-
-        # Copy weights from local policy to local target policy:
-        if self.use_target_policy and self.local_steps % self.pi_prime_update_period == 0:
-            sess.run(self.sync_pi_prime)
-
-        if is_train:
-            # If there is no any test rollouts  - copy weights from shared to local new_policy:
-            sess.run(self.sync_pi)
-
-        #self.log.debug('is_train: {}'.format(is_train))
-
         # Process minibatch for on-policy train step:
         on_policy_rollouts = data['on_policy']
         on_policy_batch = batch_stack(
@@ -947,17 +957,27 @@ class BaseAAC(object):
                 # Rebalanced 50/50 sample for RP:
                 rp_rollouts = data['off_policy_rp']
                 rp_batch = batch_stack([rp.process_rp(self.rp_reward_threshold) for rp in rp_rollouts])
-                feed_dict.update(self.get_rp_feeder(rp_batch))
+                feed_dict.update(self._get_rp_feeder(rp_batch))
 
             # Pixel control ...
             if self.use_pixel_control:
-                feed_dict.update(self.get_pc_feeder(off_policy_batch))
+                feed_dict.update(self._get_pc_feeder(off_policy_batch))
 
             # VR...
             if self.use_value_replay:
-                feed_dict.update(self.get_vr_feeder(off_policy_batch))
+                feed_dict.update(self._get_vr_feeder(off_policy_batch))
 
-        # Every worker writes train episode and model summaries:
+        return feed_dict
+
+    def process_summary(self, sess, data, model_data=None):
+        """
+        Fetches and writes summary data from `data` and `model_data`.
+        Args:
+            sess:               tf summary obj.
+            data(dict):         thread_runner rollouts and metadata
+            model_data(dict):   model summary data
+        """
+        # Every worker writes train episode summaries:
         ep_summary_feeder = {}
 
         # Look for train episode summaries from all env runners:
@@ -1003,12 +1023,8 @@ class BaseAAC(object):
                 }
                 fetched_test_episode_stat = sess.run(self.ep_summary['test_btgym_stat_op'], test_ep_summary_feed_dict)
                 self.summary_writer.add_summary(fetched_test_episode_stat, sess.run(self.global_episode))
-                self.summary_writer.flush()
 
-        wirte_model_summary =\
-            self.local_steps % self.model_summary_freq == 0
-
-        # Look for renderings (chief worker only, always 0-numbered environment):
+        # Look for renderings (chief worker only, always 0-numbered environment in a list):
         if self.task == 0:
             if data['render_summary'][0] is not None:
                 render_feed_dict = {
@@ -1017,6 +1033,51 @@ class BaseAAC(object):
                 renderings = sess.run(self.ep_summary['render_op'], render_feed_dict)
                 self.summary_writer.add_summary(renderings, sess.run(self.global_episode))
                 self.summary_writer.flush()
+
+        # Every worker writes train episode summaries:
+        if model_data is not None:
+            self.summary_writer.add_summary(tf.Summary.FromString(model_data), sess.run(self.global_step))
+            self.summary_writer.flush()
+
+    def process(self, sess):
+        """
+        Grabs an on_policy_rollout [and off_policy rollout[s] from replay memory] that's been produced
+        by the thread runner. If data identified as 'train data' - computes gradients and updates the parameters;
+        writes summaries if any. The update is then sent to the parameter server.
+        If on_policy_rollout identified as 'test data' -  no policy update is performed (learn rate is set to zero);
+        Note that test data does not get stored in replay memory (thread runner area).
+        Writes all available summaries.
+
+        Args:
+            sess (tensorflow.Session):   tf session obj.
+        """
+
+        # Collect data from child thread runners:
+        data = self._get_data()
+
+        # Copy weights from local policy to local target policy:
+        if self.use_target_policy and self.local_steps % self.pi_prime_update_period == 0:
+            sess.run(self.sync_pi_prime)
+
+        # Test or train: if at least one on-policy rollout from parallel runners is test one -
+        # set learn rate to zero for entire minibatch. Doh.
+        try:
+            is_train = not np.asarray([env['state']['metadata']['type'] for env in data['on_policy']]).any()
+
+        except KeyError:
+            is_train = True
+
+        if is_train:
+            # If there is no any test rollouts  - copy weights from shared to local new_policy:
+            sess.run(self.sync_pi)
+
+        # self.log.debug('is_train: {}'.format(is_train))
+
+        feed_dict = self.process_data(sess, data, is_train)
+
+        # Say No to redundant summaries:
+        wirte_model_summary =\
+            self.local_steps % self.model_summary_freq == 0
 
         #fetches = [self.train_op, self.local_network.debug]  # include policy debug shapes
         fetches = [self.train_op]
@@ -1034,8 +1095,13 @@ class BaseAAC(object):
         fetched = sess.run(fetches_last, feed_dict=feed_dict)
 
         if wirte_model_summary:
-            self.summary_writer.add_summary(tf.Summary.FromString(fetched[-2]), fetched[-1])
-            self.summary_writer.flush()
+            model_summary = fetched[-2]
+
+        else:
+            model_summary = None
+
+        # Write down summaries:
+        self.process_summary(sess, data, model_summary)
 
         self.local_steps += 1
 
@@ -1051,6 +1117,7 @@ class BaseAAC(object):
         #        print(k, type(v))
 
         # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 
 Unreal = BaseAAC
 

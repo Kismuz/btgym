@@ -407,14 +407,14 @@
 
         <span class="c1"># PS:</span>
         <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">replica_device_setter</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">worker_device</span><span class="o">=</span><span class="n">worker_device</span><span class="p">)):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_policy</span><span class="p">(</span><span class="s1">&#39;global&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;global&#39;</span><span class="p">)</span>
 
         <span class="c1"># Worker:</span>
         <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">worker_device</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">local_network</span> <span class="o">=</span> <span class="n">pi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_policy</span><span class="p">(</span><span class="s1">&#39;local&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">local_network</span> <span class="o">=</span> <span class="n">pi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;local&#39;</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">local_network_prime</span> <span class="o">=</span> <span class="n">pi_prime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_policy</span><span class="p">(</span><span class="s1">&#39;local_prime&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">local_network_prime</span> <span class="o">=</span> <span class="n">pi_prime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;local_prime&#39;</span><span class="p">)</span>
 
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">local_network_prime</span> <span class="o">=</span> <span class="n">pi_prime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_dummy_policy</span><span class="p">()</span>
@@ -646,7 +646,7 @@
 
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">: init() done&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">))</span>
 
-<div class="viewcode-block" id="Unreal.make_policy"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.Unreal.make_policy">[docs]</a>    <span class="k">def</span> <span class="nf">make_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">):</span>
+<div class="viewcode-block" id="Unreal._make_policy"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.unreal.Unreal._make_policy">[docs]</a>    <span class="k">def</span> <span class="nf">_make_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Configures and instantiates policy network and ops.</span>
 

@@ -238,17 +238,14 @@ class Worker(multiprocessing.Process):
             self.log.info("connecting to the parameter server... ")
 
             with sv.managed_session(server.target, config=config) as sess, sess.as_default():
-                sess.run(trainer.sync)
+                #sess.run(trainer.sync)
                 trainer.start(sess, summary_writer)
+
                 # Note: `self.global_step` refers to number of environment steps
                 # summarized over all environment instances, not to number of policy optimizer train steps.
                 global_step = sess.run(trainer.global_step)
-                # Fill replay memory, if any: TODO: remove
-                if hasattr(trainer,'memory'):
-                    if not trainer.memory.is_full():
-                        trainer.memory.fill()
-
                 self.log.notice("started training at step: {}".format(global_step))
+
                 while not sv.should_stop() and global_step < self.max_env_steps:
                     trainer.process(sess)
                     global_step = sess.run(trainer.global_step)

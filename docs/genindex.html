@@ -460,11 +460,9 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_data">get_data() (btgym.algorithms.aac.BaseAAC method)</a>
+      <li><a href="btgym.html#btgym.dataserver.BTgymDataFeedServer.get_data">get_data() (btgym.dataserver.BTgymDataFeedServer method)</a>
 
       <ul>
-        <li><a href="btgym.html#btgym.dataserver.BTgymDataFeedServer.get_data">(btgym.dataserver.BTgymDataFeedServer method)</a>
-</li>
         <li><a href="btgym.html#btgym.server.BTgymServer.get_data">(btgym.server.BTgymServer method)</a>
 </li>
       </ul></li>
@@ -480,8 +478,6 @@
         <li><a href="btgym.research.html#btgym.research.policy_stacked_lstm.AacStackedRL2Policy.get_initial_features">(btgym.research.policy_stacked_lstm.AacStackedRL2Policy method)</a>
 </li>
       </ul></li>
-      <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_pc_feeder">get_pc_feeder() (btgym.algorithms.aac.BaseAAC method)</a>
-</li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.policy.BaseAacPolicy.get_pc_target">get_pc_target() (btgym.algorithms.policy.BaseAacPolicy method)</a>
 </li>
   </ul></td>
@@ -496,8 +492,6 @@
         <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_reward">(btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
       </ul></li>
-      <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_rp_feeder">get_rp_feeder() (btgym.algorithms.aac.BaseAAC method)</a>
-</li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_sample_config">get_sample_config() (btgym.algorithms.aac.BaseAAC method)</a>
 
       <ul>
@@ -509,8 +503,6 @@
       <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_state">get_state() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.policy.BaseAacPolicy.get_value">get_value() (btgym.algorithms.policy.BaseAacPolicy method)</a>
-</li>
-      <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_vr_feeder">get_vr_feeder() (btgym.algorithms.aac.BaseAAC method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -542,11 +534,9 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.launcher.Launcher.make_cluster_spec">make_cluster_spec() (btgym.algorithms.launcher.Launcher method)</a>
 </li>
-      <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.make_data_getter">make_data_getter() (in module btgym.algorithms.rollout)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.make_policy">make_policy() (btgym.algorithms.aac.BaseAAC method)</a>
+      <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.make_data_getter">make_data_getter() (in module btgym.algorithms.rollout)</a>
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.memory.Memory">Memory (class in btgym.algorithms.memory)</a>
 </li>
@@ -580,10 +570,10 @@
 </li>
       <li><a href="btgym.strategy.html#btgym.strategy.observers.Position">Position (class in btgym.strategy.observers)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.aac.PPO">PPO (class in btgym.algorithms.aac)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.losses.ppo_loss_def">ppo_loss_def() (in module btgym.algorithms.losses)</a>
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.process">process() (btgym.algorithms.aac.BaseAAC method)</a>
@@ -592,7 +582,11 @@
         <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.Rollout.process">(btgym.algorithms.rollout.Rollout method)</a>
 </li>
       </ul></li>
+      <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.process_data">process_data() (btgym.algorithms.aac.BaseAAC method)</a>
+</li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.Rollout.process_rp">process_rp() (btgym.algorithms.rollout.Rollout method)</a>
+</li>
+      <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.process_summary">process_summary() (btgym.algorithms.aac.BaseAAC method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -664,9 +658,11 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.research.html#btgym.research.policy_stacked_lstm.StackedLstmPolicy">StackedLstmPolicy (class in btgym.research.policy_stacked_lstm)</a>
 </li>
-      <li><a href="btgym.monitor.html#btgym.monitor.tensorboard.Tensorboard.start">start() (btgym.monitor.tensorboard.Tensorboard method)</a>
+      <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.start">start() (btgym.algorithms.aac.BaseAAC method)</a>
 
       <ul>
+        <li><a href="btgym.monitor.html#btgym.monitor.tensorboard.Tensorboard.start">(btgym.monitor.tensorboard.Tensorboard method)</a>
+</li>
         <li><a href="btgym.monitor.html#btgym.monitor.tensorboard2.Tensorboard.start">(btgym.monitor.tensorboard2.Tensorboard method)</a>
 </li>
       </ul></li>
