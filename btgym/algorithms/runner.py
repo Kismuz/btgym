@@ -76,7 +76,6 @@ class RunnerThread(threading.Thread):
         try:
             self.sess = sess
             self.summary_writer = summary_writer
-            y = 1/0
             self.start()
 
         except:
