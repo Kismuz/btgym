@@ -2,6 +2,9 @@
 # https://github.com/openai/universe-starter-agent
 #
 
+from logbook import Logger, StreamHandler, WARNING
+import sys
+
 import numpy as np
 import six.moves.queue as queue
 import threading
@@ -34,7 +37,8 @@ class RunnerThread(threading.Thread):
                  env_render_freq,
                  test,
                  ep_summary,
-                 memory_config=None):
+                 memory_config=None,
+                 log_level=WARNING,):
         """
 
         Args:
@@ -47,6 +51,7 @@ class RunnerThread(threading.Thread):
             test:                   Atari or BTGyn
             ep_summary:             tf.summary
             memory_config:          replay memory configuration dictionary
+            log_level:              int, logbook.level
         """
         threading.Thread.__init__(self)
         self.queue = queue.Queue(5)
@@ -63,16 +68,32 @@ class RunnerThread(threading.Thread):
         self.test = test
         self.ep_summary = ep_summary
         self.memory_config = memory_config
+        self.log_level = log_level
+        StreamHandler(sys.stdout).push_application()
+        self.log = Logger('ThreadRunner_{}'.format(self.task), level=self.log_level)
 
     def start_runner(self, sess, summary_writer):
-        self.sess = sess
-        self.summary_writer = summary_writer
-        self.start()
+        try:
+            self.sess = sess
+            self.summary_writer = summary_writer
+            y = 1/0
+            self.start()
+
+        except:
+            msg = 'start() exception occurred.\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
+            self.log.exception(msg)
+            raise RuntimeError
 
     def run(self):
         """Just keep running."""
-        with self.sess.as_default():
-            self._run()
+        try:
+            with self.sess.as_default():
+                self._run()
+
+        except:
+            msg = 'RunTime exception occurred.\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
+            self.log.exception(msg)
+            raise RuntimeError
 
     def _run(self):
         rollout_provider = env_runner(
@@ -86,7 +107,8 @@ class RunnerThread(threading.Thread):
             self.env_render_freq,
             self.test,
             self.ep_summary,
-            self.memory_config
+            self.memory_config,
+            self.log
         )
         while True:
             # the timeout variable exists because apparently, if one worker dies, the other workers
@@ -106,7 +128,8 @@ def env_runner(sess,
                env_render_freq,
                atari_test,
                ep_summary,
-               memory_config):
+               memory_config,
+               log):
     """
     The logic of the thread runner.
     In brief, it constantly keeps on running
@@ -123,6 +146,7 @@ def env_runner(sess,
         atari_test:             bool, Atari or BTGyn
         ep_summary:             dict of tf.summary op and placeholders
         memory_config:          replay memory configuration dictionary
+        log:                    logbook logger
 
     Yelds:
         collected data as dictionary of on_policy, off_policy rollouts and episode statistics.
@@ -160,7 +184,7 @@ def env_runner(sess,
 
         action, value_, context = policy.act(last_state, last_context, last_action_reward)
 
-        #print('*_runner: A: {}, V: {}, step: {} '.format(action, value_, length))
+        #log.debug('*: A: {}, V: {}, step: {} '.format(action, value_, length))
 
         # argmax to convert from one-hot:
         state, reward, terminal, info = env.step(action.argmax())
@@ -193,7 +217,7 @@ def env_runner(sess,
                 # Continue adding experiences to rollout:
                 action, value_, context = policy.act(last_state, last_context, last_action_reward)
 
-                #print('runner: A: {}, V: {}, step: {} '.format(action, value_, length))
+                #log.debug('A: {}, V: {}, step: {} '.format(action, value_, length))
 
                 # Argmax to convert from one-hot:
                 state, reward, terminal, info = env.step(action.argmax())
@@ -242,7 +266,6 @@ def env_runner(sess,
                     cpu_time += [episode_stat['runtime'].total_seconds()]
                     final_value += [last_i['broker_value']]
                     total_steps += [episode_stat['length']]
-                #print('last_episode.metadata:', state['metadata'])
 
                 # Episode statistics:
                 try:
@@ -257,7 +280,6 @@ def env_runner(sess,
                     is_test_episode = False
 
                 if is_test_episode:
-                    #print(task, total_r)
                     test_ep_stat = dict(
                         total_r=total_r[-1],
                         final_value=final_value[-1],

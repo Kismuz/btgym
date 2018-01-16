@@ -350,11 +350,10 @@ class Launcher():
         signal.signal(signal.SIGINT, signal_handler)
 
         # Halt here:
-        msg = '\n************************************************************************************\n' +\
-              '**  Press `Ctrl-C` or [Kernel]->[Interrupt] to stop training and close launcher.  **\n' + \
-              '************************************************************************************\n'
+        msg = '\n********************************************************************************************\n' +\
+                '**  Press `Ctrl-C` or jupyter:[Kernel]->[Interrupt] to stop training and close launcher.  **\n' + \
+                '********************************************************************************************\n'
         print(msg)
-        #self.log.notice(msg)
         signal.pause()
 
         # Wait every worker to finish:

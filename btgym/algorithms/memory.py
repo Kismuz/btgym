@@ -2,6 +2,9 @@
 # https://miyosuda.github.io/
 # https://github.com/miyosuda/unreal
 
+from logbook import Logger, StreamHandler, WARNING
+import sys
+
 import numpy as np
 from collections import deque
 from btgym.algorithms import Rollout
@@ -14,7 +17,7 @@ class Memory(object):
     Note:
         must be filled up before calling sampling methods.
     """
-    def __init__(self, history_size, max_sample_size, priority_sample_size, log,
+    def __init__(self, history_size, max_sample_size, priority_sample_size, log_level=WARNING,
                  rollout_provider=None, task=-1, reward_threshold=0.1, use_priority_sampling=False):
         """
 
@@ -22,7 +25,7 @@ class Memory(object):
             history_size:           number of experiences stored;
             max_sample_size:        maximum allowed sample size (e.g. off-policy rollout length);
             priority_sample_size:   sample size of priority_sample() method
-            log:                    parent logger;
+            log_level:              int, logbook.level;
             rollout_provider:       callable returning list of Rollouts NOT USED
             task:                   parent worker id;
             reward_threshold:       if |experience.reward| > reward_threshold: experience is saved as 'prioritized';
@@ -33,7 +36,9 @@ class Memory(object):
         self.max_sample_size = int(max_sample_size)
         self.priority_sample_size = int(priority_sample_size)
         self.rollout_provider = rollout_provider
-        self.log = log
+        self.log_level = log_level
+        StreamHandler(sys.stdout).push_application()
+        self.log = Logger('ReplayMemory_{}'.format(self.task), level=self.log_level)
         self.task = task
         self.use_priority_sampling = use_priority_sampling
         # Indices for non-priority frames:

@@ -28,7 +28,7 @@ import tensorflow as tf
 from btgym.spaces import DictSpace as ObSpace  # now can simply be gym.Dict
 from btgym.algorithms import Memory, make_data_getter, RunnerThread
 from btgym.algorithms.math_utils import log_uniform
-from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def, ppo_loss_def, state_min_max_loss_def
+from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def, ppo_loss_def
 from btgym.algorithms.utils import feed_dict_rnn_context, feed_dict_from_nested, batch_stack
 
 
@@ -54,6 +54,7 @@ class BaseAAC(object):
                  task,
                  policy_config,
                  log_level,
+                 _log_name='AAC',
                  on_policy_loss=aac_loss_def,
                  off_policy_loss=aac_loss_def,
                  vr_loss=value_fn_loss_def,
@@ -103,6 +104,7 @@ class BaseAAC(object):
             task:                   int, parent worker id
             policy_config:          policy estimator class and configuration dictionary
             log_level:              int, logbook.level
+            _log_name:              str, class-wide logger name
             on_policy_loss:         callable returning tensor holding on_policy training loss graph and summaries
             off_policy_loss:        callable returning tensor holding off_policy training loss graph and summaries
             vr_loss:                callable returning tensor holding value replay loss graph and summaries
@@ -179,437 +181,447 @@ class BaseAAC(object):
         """
         # Logging:
         self.log_level = log_level
+        self.log_name = _log_name
         self.task = task
         StreamHandler(sys.stdout).push_application()
-        self.log = Logger('AAC_{}'.format(self.task), level=self.log_level)
+        self.log = Logger('{}_{}'.format(self.log_name, self.task), level=self.log_level)
 
-        self.random_seed = random_seed
-        if self.random_seed is not None:
-            np.random.seed(self.random_seed)
-            tf.set_random_seed(self.random_seed)
-        self.log.debug('rnd_seed:{}, log_u_sample_(0,1]x5: {}'.
-                       format(random_seed, log_uniform([1e-10,1], 5)))
-
-        if kwargs != {}:
-            self.log.warning('Unexpected kwargs found: {}, ignored.'.format(kwargs))
-
-        self.env_list = env
+        # Get direct traceback:
         try:
-            assert isinstance(self.env_list, list)
+            self.random_seed = random_seed
+            if self.random_seed is not None:
+                np.random.seed(self.random_seed)
+                tf.set_random_seed(self.random_seed)
+            self.log.debug('rnd_seed:{}, log_u_sample_(0,1]x5: {}'.
+                           format(random_seed, log_uniform([1e-10,1], 5)))
 
-        except AssertionError:
-            self.env_list = [env]
+            if kwargs != {}:
+                self.log.warning('Unexpected kwargs found: {}, ignored.'.format(kwargs))
 
-        ref_env = self.env_list[0]  # reference instance to get obs shapes etc.
+            self.env_list = env
+            try:
+                assert isinstance(self.env_list, list)
 
-        try:
-            assert isinstance(ref_env.observation_space, ObSpace)
+            except AssertionError:
+                self.env_list = [env]
 
-        except AssertionError:
-            self.log.exception(
-                'expected environment observation space of type {}, got: {}'.\
-                format(ObSpace, type(ref_env.observation_space))
-            )
-            raise  AssertionError
+            ref_env = self.env_list[0]  # reference instance to get obs shapes etc.
 
-        self.policy_class = policy_config['class_ref']
-        self.policy_kwargs = policy_config['kwargs']
+            try:
+                assert isinstance(ref_env.observation_space, ObSpace)
 
-        # Losses:
-        self.on_policy_loss = on_policy_loss
-        self.off_policy_loss = off_policy_loss
-        self.vr_loss = vr_loss
-        self.rp_loss = rp_loss
-        self.pc_loss = pc_loss
+            except AssertionError:
+                self.log.exception(
+                    'expected environment observation space of type {}, got: {}'.\
+                    format(ObSpace, type(ref_env.observation_space))
+                )
+                raise  AssertionError
 
-        # AAC specific:
-        self.model_gamma = model_gamma  # decay
-        self.model_gae_lambda = model_gae_lambda  # general advantage estimator lambda
-        self.model_beta = log_uniform(model_beta, 1)  # entropy reg.
+            self.policy_class = policy_config['class_ref']
+            self.policy_kwargs = policy_config['kwargs']
 
-        self.time_flat = time_flat
+            # Losses:
+            self.on_policy_loss = on_policy_loss
+            self.off_policy_loss = off_policy_loss
+            self.vr_loss = vr_loss
+            self.rp_loss = rp_loss
+            self.pc_loss = pc_loss
 
-        # Optimizer
-        self.opt_max_env_steps = opt_max_env_steps
-        self.opt_learn_rate = log_uniform(opt_learn_rate, 1)
+            # AAC specific:
+            self.model_gamma = model_gamma  # decay
+            self.model_gae_lambda = model_gae_lambda  # general advantage estimator lambda
+            self.model_beta = log_uniform(model_beta, 1)  # entropy reg.
 
-        if opt_end_learn_rate is None:
-            self.opt_end_learn_rate = self.opt_learn_rate
-        else:
-            self.opt_end_learn_rate = opt_end_learn_rate
+            self.time_flat = time_flat
 
-        if opt_decay_steps is None:
-            self.opt_decay_steps = self.opt_max_env_steps
-        else:
-            self.opt_decay_steps = opt_decay_steps
+            # Optimizer
+            self.opt_max_env_steps = opt_max_env_steps
+            self.opt_learn_rate = log_uniform(opt_learn_rate, 1)
 
-        self.opt_decay = opt_decay
-        self.opt_epsilon = opt_epsilon
-        self.opt_momentum = opt_momentum
-        self.rollout_length = rollout_length
+            if opt_end_learn_rate is None:
+                self.opt_end_learn_rate = self.opt_learn_rate
+            else:
+                self.opt_end_learn_rate = opt_end_learn_rate
 
-        # Data sampling control:
-        self.num_train_episodes = episode_train_test_cycle[0]
-        self.num_test_episodes = episode_train_test_cycle[-1]
-        try:
-            assert self.num_train_episodes + self.num_test_episodes > 0 and \
-                self.num_train_episodes >= 0 and \
-                self.num_test_episodes >= 0
+            if opt_decay_steps is None:
+                self.opt_decay_steps = self.opt_max_env_steps
+            else:
+                self.opt_decay_steps = opt_decay_steps
 
-        except AssertionError:
-            self.log.exception(
-                'Train/test episode cycle values could not be both zeroes or negative, got: train={}, test={}'.\
-                format(self.num_train_episodes, self.num_test_episodes)
-            )
-            raise AssertionError
+            self.opt_decay = opt_decay
+            self.opt_epsilon = opt_epsilon
+            self.opt_momentum = opt_momentum
+            self.rollout_length = rollout_length
 
-        self.current_train_episode = 0
-        self.current_test_episode = 0
+            # Data sampling control:
+            self.num_train_episodes = episode_train_test_cycle[0]
+            self.num_test_episodes = episode_train_test_cycle[-1]
+            try:
+                assert self.num_train_episodes + self.num_test_episodes > 0 and \
+                    self.num_train_episodes >= 0 and \
+                    self.num_test_episodes >= 0
 
-        # Summaries :
-        self.episode_summary_freq = episode_summary_freq
-        self.env_render_freq = env_render_freq
-        self.model_summary_freq = model_summary_freq
+            except AssertionError:
+                self.log.exception(
+                    'Train/test episode cycle values could not be both zeroes or negative, got: train={}, test={}'.\
+                    format(self.num_train_episodes, self.num_test_episodes)
+                )
+                raise AssertionError
 
-        # If True - use ATARI gym env.:
-        self.test_mode = test_mode
+            self.current_train_episode = 0
+            self.current_test_episode = 0
 
-        # UNREAL/AUX and Off-policy specific:
-        self.off_aac_lambda = log_uniform(off_aac_lambda, 1)
-        self.rp_lambda = log_uniform(rp_lambda, 1)
-        self.pc_lambda = log_uniform(pc_lambda, 1)
-        self.vr_lambda = log_uniform(vr_lambda, 1)
-        self.gamma_pc = gamma_pc
-        self.replay_memory_size = replay_memory_size
+            # Summaries :
+            self.episode_summary_freq = episode_summary_freq
+            self.env_render_freq = env_render_freq
+            self.model_summary_freq = model_summary_freq
 
-        if replay_rollout_length is not None:
-            self.replay_rollout_length = replay_rollout_length
+            # If True - use ATARI gym env.:
+            self.test_mode = test_mode
 
-        else:
-            self.replay_rollout_length = rollout_length # by default off-rollout equals on-policy one
+            # UNREAL/AUX and Off-policy specific:
+            self.off_aac_lambda = log_uniform(off_aac_lambda, 1)
+            self.rp_lambda = log_uniform(rp_lambda, 1)
+            self.pc_lambda = log_uniform(pc_lambda, 1)
+            self.vr_lambda = log_uniform(vr_lambda, 1)
+            self.gamma_pc = gamma_pc
+            self.replay_memory_size = replay_memory_size
 
-        self.rp_sequence_size = rp_sequence_size
-        self.rp_reward_threshold = rp_reward_threshold
-
-        if replay_batch_size is not None:
-            self.replay_batch_size = replay_batch_size
-
-        else:
-            self.replay_batch_size = len(self.env_list)  # by default off-batch equals on-policy one
-
-        # PPO related:
-        self.clip_epsilon = clip_epsilon
-        self.num_epochs = num_epochs
-        self.pi_prime_update_period = pi_prime_update_period
-
-        # On/off switchers for off-policy training and auxiliary tasks:
-        self.use_off_policy_aac = use_off_policy_aac
-        self.use_reward_prediction = use_reward_prediction
-        self.use_pixel_control = use_pixel_control
-        if use_off_policy_aac:
-            self.use_value_replay = False  # v-replay is redundant in this case
-        else:
-            self.use_value_replay = use_value_replay
-
-        self.use_any_aux_tasks = use_value_replay or use_pixel_control or use_reward_prediction
-        self.use_memory = self.use_any_aux_tasks or self.use_off_policy_aac
-
-        self.use_target_policy = _use_target_policy
-
-        self.log.notice('learn_rate: {:1.6f}, entropy_beta: {:1.6f}'.format(self.opt_learn_rate, self.model_beta))
-
-        if self.use_off_policy_aac:
-            self.log.notice('off_aac_lambda: {:1.6f}'.format(self.off_aac_lambda,))
-
-        if self.use_any_aux_tasks:
-            self.log.notice('vr_lambda: {:1.6f}, pc_lambda: {:1.6f}, rp_lambda: {:1.6f}'.
-                          format(self.vr_lambda, self.pc_lambda, self.rp_lambda))
-
-
-        #self.log.notice(
-        #    'AAC_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
-        #        format(self.task, self.opt_max_env_steps, self.opt_decay_steps, self.opt_end_learn_rate))
-
-        worker_device = "/job:worker/task:{}/cpu:0".format(task)
-
-        # Update policy configuration
-        self.policy_kwargs.update(
-            {
-                'ob_space': ref_env.observation_space.shape,
-                'ac_space': ref_env.action_space.n,
-                'rp_sequence_size': self.rp_sequence_size,
-                'aux_estimate': self.use_any_aux_tasks,
-            }
-        )
-        # Start building graphs:
-        self.log.debug('started building graphs')
-        # PS:
-        with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
-            self.network = self._make_policy('global')
-
-        # Worker:
-        with tf.device(worker_device):
-            self.local_network = pi = self._make_policy('local')
-
-            if self.use_target_policy:
-                self.local_network_prime = pi_prime = self._make_policy('local_prime')
+            if replay_rollout_length is not None:
+                self.replay_rollout_length = replay_rollout_length
 
             else:
-                self.local_network_prime = pi_prime = self._make_dummy_policy()
+                self.replay_rollout_length = rollout_length # by default off-rollout equals on-policy one
 
-            # Meant for Batch-norm layers:
-            pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
+            self.rp_sequence_size = rp_sequence_size
+            self.rp_reward_threshold = rp_reward_threshold
 
-            self.log.debug('local_network_upd_ops_collection:\n{}'.format(pi.update_ops))
-            self.log.debug('\nlocal_network_var_list_to_save:')
-            for v in pi.var_list:
-                self.log.debug('{}: {}'.format(v.name, v.get_shape()))
+            if replay_batch_size is not None:
+                self.replay_batch_size = replay_batch_size
 
-            #  Learning rate annealing:
-            learn_rate_decayed = tf.train.polynomial_decay(
-                self.opt_learn_rate,
-                self.global_step + 1,
-                self.opt_decay_steps,
-                self.opt_end_learn_rate,
-                power=1,
-                cycle=False,
-            )
-            clip_epsilon = tf.cast(self.clip_epsilon * learn_rate_decayed / self.opt_learn_rate, tf.float32)
+            else:
+                self.replay_batch_size = len(self.env_list)  # by default off-batch equals on-policy one
 
-            # Freeze training if train_phase is False:
-            train_learn_rate = learn_rate_decayed * tf.cast(pi.train_phase, tf.float64)
-            self.log.debug('learn rate ok')
+            # PPO related:
+            self.clip_epsilon = clip_epsilon
+            self.num_epochs = num_epochs
+            self.pi_prime_update_period = pi_prime_update_period
 
-            # On-policy AAC loss definition:
-            self.on_pi_act_target = tf.placeholder(
-                tf.float32, [None, ref_env.action_space.n], name="on_policy_action_pl"
-            )
-            self.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
-            self.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
+            # On/off switchers for off-policy training and auxiliary tasks:
+            self.use_off_policy_aac = use_off_policy_aac
+            self.use_reward_prediction = use_reward_prediction
+            self.use_pixel_control = use_pixel_control
+            if use_off_policy_aac:
+                self.use_value_replay = False  # v-replay is redundant in this case
+            else:
+                self.use_value_replay = use_value_replay
 
-            on_pi_loss, on_pi_summaries = self.on_policy_loss(
-                act_target=self.on_pi_act_target,
-                adv_target=self.on_pi_adv_target,
-                r_target=self.on_pi_r_target,
-                pi_logits=pi.on_logits,
-                pi_vf=pi.on_vf,
-                pi_prime_logits=pi_prime.on_logits,
-                entropy_beta=self.model_beta,
-                epsilon=clip_epsilon,
-                name='on_policy',
-                verbose=True
-            )
-            # Start accumulating total loss:
-            self.loss = on_pi_loss
-            model_summaries = on_pi_summaries
+            self.use_any_aux_tasks = use_value_replay or use_pixel_control or use_reward_prediction
+            self.use_memory = self.use_any_aux_tasks or self.use_off_policy_aac
 
-            # Off-policy losses:
-            self.off_pi_act_target = tf.placeholder(
-                tf.float32, [None, ref_env.action_space.n], name="off_policy_action_pl")
-            self.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
-            self.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
+            self.use_target_policy = _use_target_policy
+
+            self.log.notice('learn_rate: {:1.6f}, entropy_beta: {:1.6f}'.format(self.opt_learn_rate, self.model_beta))
 
             if self.use_off_policy_aac:
-                # Off-policy AAC loss graph mirrors on-policy:
-                off_pi_loss, off_pi_summaries = self.off_policy_loss(
-                    act_target=self.off_pi_act_target,
-                    adv_target=self.off_pi_adv_target,
-                    r_target=self.off_pi_r_target,
-                    pi_logits=pi.off_logits,
-                    pi_vf=pi.off_vf,
-                    pi_prime_logits=pi_prime.off_logits,
+                self.log.notice('off_aac_lambda: {:1.6f}'.format(self.off_aac_lambda,))
+
+            if self.use_any_aux_tasks:
+                self.log.notice('vr_lambda: {:1.6f}, pc_lambda: {:1.6f}, rp_lambda: {:1.6f}'.
+                              format(self.vr_lambda, self.pc_lambda, self.rp_lambda))
+
+
+            #self.log.notice(
+            #    'AAC_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
+            #        format(self.task, self.opt_max_env_steps, self.opt_decay_steps, self.opt_end_learn_rate))
+
+            self.worker_device = "/job:worker/task:{}/cpu:0".format(task)
+
+            # Update policy configuration
+            self.policy_kwargs.update(
+                {
+                    'ob_space': ref_env.observation_space.shape,
+                    'ac_space': ref_env.action_space.n,
+                    'rp_sequence_size': self.rp_sequence_size,
+                    'aux_estimate': self.use_any_aux_tasks,
+                }
+            )
+            # Start building graphs:
+            self.log.debug('started building graphs')
+            # PS:
+            with tf.device(tf.train.replica_device_setter(1, worker_device=self.worker_device)):
+                self.network = self._make_policy('global')
+
+            # Worker:
+            with tf.device(self.worker_device):
+                self.local_network = pi = self._make_policy('local')
+
+                if self.use_target_policy:
+                    self.local_network_prime = pi_prime = self._make_policy('local_prime')
+
+                else:
+                    self.local_network_prime = pi_prime = self._make_dummy_policy()
+
+                # Meant for Batch-norm layers:
+                pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
+
+                self.log.debug('local_network_upd_ops_collection:\n{}'.format(pi.update_ops))
+                self.log.debug('\nlocal_network_var_list_to_save:')
+                for v in pi.var_list:
+                    self.log.debug('{}: {}'.format(v.name, v.get_shape()))
+
+                #  Learning rate annealing:
+                learn_rate_decayed = tf.train.polynomial_decay(
+                    self.opt_learn_rate,
+                    self.global_step + 1,
+                    self.opt_decay_steps,
+                    self.opt_end_learn_rate,
+                    power=1,
+                    cycle=False,
+                )
+                clip_epsilon = tf.cast(self.clip_epsilon * learn_rate_decayed / self.opt_learn_rate, tf.float32)
+
+                # Freeze training if train_phase is False:
+                train_learn_rate = learn_rate_decayed * tf.cast(pi.train_phase, tf.float64)
+                self.log.debug('learn rate ok')
+
+                # On-policy AAC loss definition:
+                self.on_pi_act_target = tf.placeholder(
+                    tf.float32, [None, ref_env.action_space.n], name="on_policy_action_pl"
+                )
+                self.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
+                self.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
+
+                on_pi_loss, on_pi_summaries = self.on_policy_loss(
+                    act_target=self.on_pi_act_target,
+                    adv_target=self.on_pi_adv_target,
+                    r_target=self.on_pi_r_target,
+                    pi_logits=pi.on_logits,
+                    pi_vf=pi.on_vf,
+                    pi_prime_logits=pi_prime.on_logits,
                     entropy_beta=self.model_beta,
                     epsilon=clip_epsilon,
-                    name='off_policy',
-                    verbose=False
-                )
-                self.loss = self.loss + self.off_aac_lambda * off_pi_loss
-                model_summaries += off_pi_summaries
-
-            if self.use_pixel_control:
-                # Pixel control loss:
-                self.pc_action = tf.placeholder(tf.float32, [None, ref_env.action_space.n], name="pc_action")
-                self.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
-
-                pc_loss, pc_summaries = self.pc_loss(
-                    actions=self.pc_action,
-                    targets=self.pc_target,
-                    pi_pc_q=pi.pc_q,
-                    name='off_policy',
+                    name='on_policy',
                     verbose=True
                 )
-                self.loss = self.loss + self.pc_lambda * pc_loss
-                # Add specific summary:
-                model_summaries += pc_summaries
+                # Start accumulating total loss:
+                self.loss = on_pi_loss
+                model_summaries = on_pi_summaries
 
-            if self.use_value_replay:
-                # Value function replay loss:
-                self.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
-                vr_loss, vr_summaries = self.vr_loss(
-                    r_target=self.vr_target,
-                    pi_vf=pi.vr_value,
-                    name='off_policy',
-                    verbose=True
-                )
-                self.loss = self.loss + self.vr_lambda * vr_loss
-                model_summaries += vr_summaries
+                # Off-policy losses:
+                self.off_pi_act_target = tf.placeholder(
+                    tf.float32, [None, ref_env.action_space.n], name="off_policy_action_pl")
+                self.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
+                self.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
 
-            if self.use_reward_prediction:
-                # Reward prediction loss:
-                self.rp_target = tf.placeholder(tf.float32, [None, 3], name="rp_target")
-
-                rp_loss, rp_summaries = self.rp_loss(
-                    rp_targets=self.rp_target,
-                    pi_rp_logits=pi.rp_logits,
-                    name='off_policy',
-                    verbose=True
-                )
-                self.loss = self.loss + self.rp_lambda * rp_loss
-                model_summaries += rp_summaries
-
-            #grads = tf.gradients(self.loss, pi.var_list)
-
-            # Clipped gradients:
-            self.grads, _ = tf.clip_by_global_norm(
-                tf.gradients(self.loss, pi.var_list),
-                40.0
-            )
-            # Copy weights from the parameter server to the local model
-            self.sync = self.sync_pi = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
-
-            if self.use_target_policy:
-                # Copy weights from new policy model to target one:
-                self.sync_pi_prime = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi_prime.var_list, pi.var_list)])
-
-            grads_and_vars = list(zip(self.grads, self.network.var_list))
-
-            # Since every observation mod. has same batch size - just take first key in a row:
-            self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in[list(pi.on_state_in.keys())[0]])[0])
-
-            # Each worker gets a different set of adam optimizer parameters:
-            self.optimizer = tf.train.AdamOptimizer(train_learn_rate, epsilon=1e-5)
-
-            #self.optimizer = tf.train.RMSPropOptimizer(
-            #    learning_rate=train_learn_rate,
-            #    decay=self.opt_decay,
-            #    momentum=self.opt_momentum,
-            #    epsilon=self.opt_epsilon,
-            #)
-
-            #self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), self.inc_step)
-            #self.train_op = tf.group(opt.apply_gradients(grads_and_vars), self.inc_step)
-            self.train_op = self.optimizer.apply_gradients(grads_and_vars)
-
-            # Add model-wide statistics:
-            with tf.name_scope('model'):
-                model_summaries += [
-                    tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
-                    tf.summary.scalar("var_global_norm", tf.global_norm(pi.var_list)),
-                    tf.summary.scalar("learn_rate", learn_rate_decayed),  # cause actual rate is a jaggy due to testing
-                    tf.summary.scalar("total_loss", self.loss),
-                ]
-
-            self.summary_writer = None
-            self.local_steps = 0
-
-            self.log.debug('train op defined')
-
-            # Model stat. summary:
-            self.model_summary_op = tf.summary.merge(model_summaries, name='model_summary')
-
-            # Episode-related summaries:
-            self.ep_summary = dict(
-                # Summary placeholders
-                render_atari=tf.placeholder(tf.uint8, [None, None, None, 1]),
-                total_r=tf.placeholder(tf.float32, ),
-                cpu_time=tf.placeholder(tf.float32, ),
-                final_value=tf.placeholder(tf.float32, ),
-                steps=tf.placeholder(tf.int32, ),
-            )
-
-            if self.test_mode:
-                # For Atari:
-                self.ep_summary['render_op'] = tf.summary.image("model/state", self.ep_summary['render_atari'])
-
-            else:
-                # BTGym rendering:
-                self.ep_summary.update(
-                    {
-                        mode: tf.placeholder(tf.uint8, [None, None, None, 3]) for mode in self.env_list[0].render_modes
-                    }
-                )
-                self.ep_summary['render_op'] = tf.summary.merge(
-                    [tf.summary.image(mode, self.ep_summary[mode]) for mode in self.env_list[0].render_modes]
-                )
-
-            # Episode stat. summary:
-            self.ep_summary['btgym_stat_op'] = tf.summary.merge(
-                [
-                    tf.summary.scalar('episode_train/total_reward', self.ep_summary['total_r']),
-                    tf.summary.scalar('episode_train/cpu_time_sec', self.ep_summary['cpu_time']),
-                    tf.summary.scalar('episode_train/final_value', self.ep_summary['final_value']),
-                    tf.summary.scalar('episode_train/env_steps', self.ep_summary['steps'])
-                ],
-                name='episode_train_btgym'
-            )
-            # Test episode stat. summary:
-            self.ep_summary['test_btgym_stat_op'] = tf.summary.merge(
-                [
-                    tf.summary.scalar('episode_test/total_reward', self.ep_summary['total_r']),
-                    tf.summary.scalar('episode_test/final_value', self.ep_summary['final_value']),
-                    tf.summary.scalar('episode_test/env_steps', self.ep_summary['steps'])
-                ],
-                name='episode_test_btgym'
-            )
-            self.ep_summary['atari_stat_op'] = tf.summary.merge(
-                [
-                    tf.summary.scalar('episode/total_reward', self.ep_summary['total_r']),
-                    tf.summary.scalar('episode/steps', self.ep_summary['steps'])
-                ],
-                name='episode_atari'
-            )
-
-            # Replay memory_config:
-            if self.use_memory:
-                memory_config = dict(
-                    class_ref=Memory,
-                    kwargs=dict(
-                        history_size=self.replay_memory_size,
-                        max_sample_size=self.replay_rollout_length,
-                        priority_sample_size=self.rp_sequence_size,
-                        reward_threshold=self.rp_reward_threshold,
-                        use_priority_sampling=self.use_reward_prediction,
-                        task=self.task,
-                        log=self.log,
+                if self.use_off_policy_aac:
+                    # Off-policy AAC loss graph mirrors on-policy:
+                    off_pi_loss, off_pi_summaries = self.off_policy_loss(
+                        act_target=self.off_pi_act_target,
+                        adv_target=self.off_pi_adv_target,
+                        r_target=self.off_pi_r_target,
+                        pi_logits=pi.off_logits,
+                        pi_vf=pi.off_vf,
+                        pi_prime_logits=pi_prime.off_logits,
+                        entropy_beta=self.model_beta,
+                        epsilon=clip_epsilon,
+                        name='off_policy',
+                        verbose=False
                     )
-                )
-            else:
-                memory_config = None
+                    self.loss = self.loss + self.off_aac_lambda * off_pi_loss
+                    model_summaries += off_pi_summaries
 
-            # Make runners:
-            # `rollout_length` represents the number of "local steps":  the number of time steps
-            # we run the policy before we get full rollout, run train step and update the parameters.
-            self.runners = []
-            task = 100 * self.task  # Runners will have [worker_task][env_count] id's
-            for env in self.env_list:
-                self.runners.append(
-                     RunnerThread(
-                        env,
-                        pi,
-                        task,
-                        self.rollout_length,  # ~20
-                        self.episode_summary_freq,
-                        self.env_render_freq,
-                        self.test_mode,
-                        self.ep_summary,
-                        memory_config
-                     )
-                )
-                task += 1
-            # Make rollouts provider[s]:
-            self.data_getter = [make_data_getter(runner.queue) for runner in self.runners]
+                if self.use_pixel_control:
+                    # Pixel control loss:
+                    self.pc_action = tf.placeholder(tf.float32, [None, ref_env.action_space.n], name="pc_action")
+                    self.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
 
-            self.log.debug('.init() done')
+                    pc_loss, pc_summaries = self.pc_loss(
+                        actions=self.pc_action,
+                        targets=self.pc_target,
+                        pi_pc_q=pi.pc_q,
+                        name='off_policy',
+                        verbose=True
+                    )
+                    self.loss = self.loss + self.pc_lambda * pc_loss
+                    # Add specific summary:
+                    model_summaries += pc_summaries
+
+                if self.use_value_replay:
+                    # Value function replay loss:
+                    self.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
+                    vr_loss, vr_summaries = self.vr_loss(
+                        r_target=self.vr_target,
+                        pi_vf=pi.vr_value,
+                        name='off_policy',
+                        verbose=True
+                    )
+                    self.loss = self.loss + self.vr_lambda * vr_loss
+                    model_summaries += vr_summaries
+
+                if self.use_reward_prediction:
+                    # Reward prediction loss:
+                    self.rp_target = tf.placeholder(tf.float32, [None, 3], name="rp_target")
+
+                    rp_loss, rp_summaries = self.rp_loss(
+                        rp_targets=self.rp_target,
+                        pi_rp_logits=pi.rp_logits,
+                        name='off_policy',
+                        verbose=True
+                    )
+                    self.loss = self.loss + self.rp_lambda * rp_loss
+                    model_summaries += rp_summaries
+
+                #grads = tf.gradients(self.loss, pi.var_list)
+
+                # Clipped gradients:
+                self.grads, _ = tf.clip_by_global_norm(
+                    tf.gradients(self.loss, pi.var_list),
+                    40.0
+                )
+                # Copy weights from the parameter server to the local model
+                self.sync = self.sync_pi = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
+
+                if self.use_target_policy:
+                    # Copy weights from new policy model to target one:
+                    self.sync_pi_prime = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi_prime.var_list, pi.var_list)])
+
+                grads_and_vars = list(zip(self.grads, self.network.var_list))
+
+                # Since every observation mod. has same batch size - just take first key in a row:
+                self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in[list(pi.on_state_in.keys())[0]])[0])
+
+                # Each worker gets a different set of adam optimizer parameters:
+                self.optimizer = tf.train.AdamOptimizer(train_learn_rate, epsilon=1e-5)
+
+                #self.optimizer = tf.train.RMSPropOptimizer(
+                #    learning_rate=train_learn_rate,
+                #    decay=self.opt_decay,
+                #    momentum=self.opt_momentum,
+                #    epsilon=self.opt_epsilon,
+                #)
+
+                #self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), self.inc_step)
+                #self.train_op = tf.group(opt.apply_gradients(grads_and_vars), self.inc_step)
+                self.train_op = self.optimizer.apply_gradients(grads_and_vars)
+
+                # Add model-wide statistics:
+                with tf.name_scope('model'):
+                    model_summaries += [
+                        tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
+                        tf.summary.scalar("var_global_norm", tf.global_norm(pi.var_list)),
+                        tf.summary.scalar("learn_rate", learn_rate_decayed),  # cause actual rate is a jaggy due to testing
+                        tf.summary.scalar("total_loss", self.loss),
+                    ]
+
+                self.summary_writer = None
+                self.local_steps = 0
+
+                self.log.debug('train op defined')
+
+                # Model stat. summary:
+                self.model_summary_op = tf.summary.merge(model_summaries, name='model_summary')
+
+                # Episode-related summaries:
+                self.ep_summary = dict(
+                    # Summary placeholders
+                    render_atari=tf.placeholder(tf.uint8, [None, None, None, 1]),
+                    total_r=tf.placeholder(tf.float32, ),
+                    cpu_time=tf.placeholder(tf.float32, ),
+                    final_value=tf.placeholder(tf.float32, ),
+                    steps=tf.placeholder(tf.int32, ),
+                )
+
+                if self.test_mode:
+                    # For Atari:
+                    self.ep_summary['render_op'] = tf.summary.image("model/state", self.ep_summary['render_atari'])
+
+                else:
+                    # BTGym rendering:
+                    self.ep_summary.update(
+                        {
+                            mode: tf.placeholder(tf.uint8, [None, None, None, 3]) for mode in self.env_list[0].render_modes
+                        }
+                    )
+                    self.ep_summary['render_op'] = tf.summary.merge(
+                        [tf.summary.image(mode, self.ep_summary[mode]) for mode in self.env_list[0].render_modes]
+                    )
+
+                # Episode stat. summary:
+                self.ep_summary['btgym_stat_op'] = tf.summary.merge(
+                    [
+                        tf.summary.scalar('episode_train/total_reward', self.ep_summary['total_r']),
+                        tf.summary.scalar('episode_train/cpu_time_sec', self.ep_summary['cpu_time']),
+                        tf.summary.scalar('episode_train/final_value', self.ep_summary['final_value']),
+                        tf.summary.scalar('episode_train/env_steps', self.ep_summary['steps'])
+                    ],
+                    name='episode_train_btgym'
+                )
+                # Test episode stat. summary:
+                self.ep_summary['test_btgym_stat_op'] = tf.summary.merge(
+                    [
+                        tf.summary.scalar('episode_test/total_reward', self.ep_summary['total_r']),
+                        tf.summary.scalar('episode_test/final_value', self.ep_summary['final_value']),
+                        tf.summary.scalar('episode_test/env_steps', self.ep_summary['steps'])
+                    ],
+                    name='episode_test_btgym'
+                )
+                self.ep_summary['atari_stat_op'] = tf.summary.merge(
+                    [
+                        tf.summary.scalar('episode/total_reward', self.ep_summary['total_r']),
+                        tf.summary.scalar('episode/steps', self.ep_summary['steps'])
+                    ],
+                    name='episode_atari'
+                )
+
+                # Replay memory_config:
+                if self.use_memory:
+                    memory_config = dict(
+                        class_ref=Memory,
+                        kwargs=dict(
+                            history_size=self.replay_memory_size,
+                            max_sample_size=self.replay_rollout_length,
+                            priority_sample_size=self.rp_sequence_size,
+                            reward_threshold=self.rp_reward_threshold,
+                            use_priority_sampling=self.use_reward_prediction,
+                            task=self.task,
+                            log_level=self.log_level,
+                        )
+                    )
+                else:
+                    memory_config = None
+
+                # Make runners:
+                # `rollout_length` represents the number of "local steps":  the number of time steps
+                # we run the policy before we get full rollout, run train step and update the parameters.
+                self.runners = []
+                task = 0  # Runners will have [worker_task][env_count] id's
+                for env in self.env_list:
+                    self.runners.append(
+                        RunnerThread(
+                            env,
+                            pi,
+                            self.task + task,
+                            self.rollout_length,  # ~20
+                            self.episode_summary_freq,
+                            self.env_render_freq,
+                            self.test_mode,
+                            self.ep_summary,
+                            memory_config,
+                            log_level,
+                        )
+                    )
+                    task += 0.01
+                # Make rollouts provider[s]:
+                self.data_getter = [make_data_getter(runner.queue) for runner in self.runners]
+
+                self.log.debug('trainer.init() done')
+
+        except:
+            msg = 'Base class __init__() exception occurred.' +\
+                  '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
+            self.log.exception(msg)
+            raise RuntimeError(msg)
 
     def _get_data(self):
         """
@@ -781,11 +793,18 @@ class BaseAAC(object):
             sess:           tf session object.
             kwargs:         not used by default.
         """
-        # Copy weights from global to local:
-        sess.run(self.sync)
+        try:
+            # Copy weights from global to local:
+            sess.run(self.sync)
 
-        # Start thread_runners:
-        self._start_runners(sess, summary_writer)
+            # Start thread_runners:
+            self._start_runners(sess, summary_writer)
+
+        except:
+            msg = 'start() exception occurred' + \
+                '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
+            self.log.exception(msg)
+            raise RuntimeError(msg)
 
     def _start_runners(self, sess, summary_writer):
         """
@@ -1051,75 +1070,186 @@ class BaseAAC(object):
         Args:
             sess (tensorflow.Session):   tf session obj.
         """
-
-        # Collect data from child thread runners:
-        data = self._get_data()
-
-        # Copy weights from local policy to local target policy:
-        if self.use_target_policy and self.local_steps % self.pi_prime_update_period == 0:
-            sess.run(self.sync_pi_prime)
-
-        # Test or train: if at least one on-policy rollout from parallel runners is test one -
-        # set learn rate to zero for entire minibatch. Doh.
+        # Quick wrap to get direct traceback from this trainer if something goes wrong:
         try:
-            is_train = not np.asarray([env['state']['metadata']['type'] for env in data['on_policy']]).any()
+            # Collect data from child thread runners:
+            data = self._get_data()
 
-        except KeyError:
-            is_train = True
+            # Copy weights from local policy to local target policy:
+            if self.use_target_policy and self.local_steps % self.pi_prime_update_period == 0:
+                sess.run(self.sync_pi_prime)
 
-        if is_train:
-            # If there is no any test rollouts  - copy weights from shared to local new_policy:
-            sess.run(self.sync_pi)
+            # Test or train: if at least one on-policy rollout from parallel runners is test one -
+            # set learn rate to zero for entire minibatch. Doh.
+            try:
+                is_train = not np.asarray([env['state']['metadata']['type'] for env in data['on_policy']]).any()
 
-        # self.log.debug('is_train: {}'.format(is_train))
+            except KeyError:
+                is_train = True
 
-        feed_dict = self.process_data(sess, data, is_train)
+            if is_train:
+                # If there is no any test rollouts  - copy weights from shared to local new_policy:
+                sess.run(self.sync_pi)
 
-        # Say No to redundant summaries:
-        wirte_model_summary =\
-            self.local_steps % self.model_summary_freq == 0
+            # self.log.debug('is_train: {}'.format(is_train))
 
-        #fetches = [self.train_op, self.local_network.debug]  # include policy debug shapes
-        fetches = [self.train_op]
+            feed_dict = self.process_data(sess, data, is_train)
 
-        if wirte_model_summary:
-            fetches_last = fetches + [self.model_summary_op, self.inc_step]
-        else:
-            fetches_last = fetches + [self.inc_step]
+            # Say No to redundant summaries:
+            wirte_model_summary =\
+                self.local_steps % self.model_summary_freq == 0
 
-        # Do a number of SGD train epochs:
-        # When doing more than one epoch, we actually use only last summary:
-        for i in range(self.num_epochs - 1):
-            fetched = sess.run(fetches, feed_dict=feed_dict)
+            #fetches = [self.train_op, self.local_network.debug]  # include policy debug shapes
+            fetches = [self.train_op]
 
-        fetched = sess.run(fetches_last, feed_dict=feed_dict)
+            if wirte_model_summary:
+                fetches_last = fetches + [self.model_summary_op, self.inc_step]
+            else:
+                fetches_last = fetches + [self.inc_step]
 
-        if wirte_model_summary:
-            model_summary = fetched[-2]
+            # Do a number of SGD train epochs:
+            # When doing more than one epoch, we actually use only last summary:
+            for i in range(self.num_epochs - 1):
+                fetched = sess.run(fetches, feed_dict=feed_dict)
 
-        else:
-            model_summary = None
+            fetched = sess.run(fetches_last, feed_dict=feed_dict)
 
-        # Write down summaries:
-        self.process_summary(sess, data, model_summary)
+            if wirte_model_summary:
+                model_summary = fetched[-2]
 
-        self.local_steps += 1
+            else:
+                model_summary = None
 
-        # print debug info:
-        #for k, v in fetched[1].items():
-        #    print('{}: {}'.format(k,v))
-        #print('\n')
+            # Write down summaries:
+            self.process_summary(sess, data, model_summary)
 
-        #for k, v in feed_dict.items():
-        #    try:
-        #        print(k, v.shape)
-        #    except:
-        #        print(k, type(v))
+            self.local_steps += 1
 
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+            # print debug info:
+            #for k, v in fetched[1].items():
+            #    print('{}: {}'.format(k,v))
+            #print('\n')
+
+            #for k, v in feed_dict.items():
+            #    try:
+            #        print(k, v.shape)
+            #    except:
+            #        print(k, type(v))
+
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+        except:
+            msg = 'process() exception occurred' + \
+                '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
+            self.log.exception(msg)
+            raise RuntimeError(msg)
 
 
-Unreal = BaseAAC
+class Unreal(BaseAAC):
+    """
+    Unreal: Asynchronous Advantage Actor Critic with auxiliary control tasks.
+
+    Auxiliary tasks implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+    https://miyosuda.github.io/
+    https://github.com/miyosuda/unreal
+
+    Original A3C code comes from OpenAI repository under MIT licence:
+    https://github.com/openai/universe-starter-agent
+
+    Papers:
+    https://arxiv.org/abs/1602.01783
+    https://arxiv.org/abs/1611.05397
+    """
+    def __init__(self, **kwargs):
+        """
+        See BaseAAC class args for details:
+
+        Args:
+            env:                    environment instance or list of instances
+            task:                   int, parent worker id
+            policy_config:          policy estimator class and configuration dictionary
+            log_level:              int, logbook.level
+            on_policy_loss:         callable returning tensor holding on_policy training loss graph and summaries
+            off_policy_loss:        callable returning tensor holding off_policy training loss graph and summaries
+            vr_loss:                callable returning tensor holding value replay loss graph and summaries
+            rp_loss:                callable returning tensor holding reward prediction loss graph and summaries
+            pc_loss:                callable returning tensor holding pixel_control loss graph and summaries
+            random_seed:            int or None
+            model_gamma:            scalar, gamma discount factor
+            model_gae_lambda:       scalar, GAE lambda
+            model_beta:             entropy regularization beta, scalar or [high_bound, low_bound] for log_uniform.
+            opt_max_env_steps:      int, total number of environment steps to run training on.
+            opt_decay_steps:        int, learn ratio decay steps, in number of environment steps.
+            opt_end_learn_rate:     scalar, final learn rate
+            opt_learn_rate:         start learn rate, scalar or [high_bound, low_bound] for log_uniform distr.
+            opt_decay:              scalar, optimizer decay, if apll.
+            opt_momentum:           scalar, optimizer momentum, if apll.
+            opt_epsilon:            scalar, optimizer epsilon
+            rollout_length:         int, on-policy rollout length
+            time_flat:              bool, flatten rnn time-steps in rollouts while training - see `Notes` below
+            episode_train_test_cycle:   tuple or list as (train_number, test_number), def=(1,0): enables infinite
+                                        loop such as: run `train_number` of train data episodes,
+                                        than `test_number` of test data episodes, repeat. Should be consistent
+                                        with provided dataset parameters (test data should exist if `test_number > 0`)
+            episode_summary_freq:   int, write episode summary for every i'th episode
+            env_render_freq:        int, write environment rendering summary for every i'th train step
+            model_summary_freq:     int, write model summary for every i'th train step
+            test_mode:              bool, True: Atari, False: BTGym
+            replay_memory_size:     int, in number of experiences
+            replay_batch_size:      int, mini-batch size for off-policy training, def = 1
+            replay_rollout_length:  int off-policy rollout length by def. equals on_policy_rollout_length
+            use_off_policy_aac:     bool, use full AAC off-policy loss instead of Value-replay
+            use_reward_prediction:  bool, use aux. off-policy reward prediction task
+            use_pixel_control:      bool, use aux. off-policy pixel control task
+            use_value_replay:       bool, use aux. off-policy value replay task (not used if use_off_policy_aac=True)
+            rp_lambda:              reward prediction loss weight, scalar or [high, low] for log_uniform distr.
+            pc_lambda:              pixel control loss weight, scalar or [high, low] for log_uniform distr.
+            vr_lambda:              value replay loss weight, scalar or [high, low] for log_uniform distr.
+            off_aac_lambda:         off-policy AAC loss weight, scalar or [high, low] for log_uniform distr.
+            gamma_pc:               NOT USED
+            rp_reward_threshold:    scalar, reward prediction classification threshold, above which reward is 'non-zero'
+            rp_sequence_size:       int, reward prediction sample size, in number of experiences
+            clip_epsilon:           scalar, PPO: surrogate L^clip epsilon
+            num_epochs:             int, num. of SGD runs for every train step, val. > 1 should be used with caution.
+            pi_prime_update_period: int, PPO: pi to pi_old update period in number of train steps, def: 1
+            _use_target_policy:     bool, PPO: use target policy (aka pi_old), delayed by `pi_prime_update_period` delay
+
+        Note:
+            - On `time_flat` arg:
+
+                There are two alternatives to run RNN part of policy estimator:
+
+                a. Feed initial RNN state for every experience frame in rollout
+                        (those are stored anyway if we want random memory repaly sampling) and do single time-step RNN
+                        advance for all experiences in a batch; this is when time_flat=True;
+
+                b. Reshape incoming batch after convolution part of network in time-wise fashion
+                        for every rollout in a batch i.e. batch_size=number_of_rollouts and
+                        rnn_timesteps=max_rollout_length. In this case we need to feed initial rnn_states
+                        for rollouts only. There is some little extra work to pad rollouts to max_time_size
+                        and feed true rollout lengths to rnn. Thus, when time_flat=False, we unroll RNN in
+                        specified number of time-steps for every rollout.
+
+                Both options has pros and cons:
+
+                Unrolling dynamic RNN is computationally more expensive but gives clearly faster convergence,
+                    [possibly] due to the fact that RNN states for 2nd, 3rd, ... frames
+                    of rollouts are computed using updated policy estimator, which is supposed to be
+                    closer to optimal one. When time_flattened, every time-step uses RNN states computed
+                    when rollout was collected (i.e. by behavioral policy estimator with older
+                    parameters).
+
+                Nevertheless, time_flatting can be interesting
+                    because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
+                    ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).
+        """
+        super(Unreal, self).__init__(
+            on_policy_loss=ppo_loss_def,
+            off_policy_loss=ppo_loss_def,
+            _use_target_policy=True,
+            _log_name='UNREAL',
+            **kwargs
+        )
 
 
 class A3C(BaseAAC):
@@ -1165,6 +1295,7 @@ class A3C(BaseAAC):
             use_pixel_control=False,
             use_value_replay=False,
             _use_target_policy=False,
+            _log_name='A3C',
             **kwargs
         )
 
@@ -1231,6 +1362,7 @@ class PPO(BaseAAC):
             on_policy_loss=ppo_loss_def,
             off_policy_loss=ppo_loss_def,
             _use_target_policy=True,
+            _log_name='PPO',
             **kwargs
         )
 

@@ -804,3 +804,145 @@ class DevStrat_4_11(DevStrat_4_10):
         )
         x_broker = tanh(np.gradient(x_broker, axis=-1) * T_b)
         return x_broker[:, None, :]
+
+
+class DevStrat_4_12(DevStrat_4_11):
+    """
+    4_11 + sma-features 512; h and c swapped
+    """
+    # Time embedding period:
+    time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
+
+    # Number of environment steps to skip before returning next response,
+    # e.g. if set to 10 -- agent will interact with environment every 10th step;
+    # every other step agent action is assumed to be 'hold':
+    skip_frame = 10
+
+    # Number of timesteps reward estimation statistics are averaged over, should be:
+    # skip_frame_period <= avg_period <= time_embedding_period:
+    avg_period = 20
+
+    # Possible agent actions:
+    portfolio_actions = ('hold', 'buy', 'sell', 'close')
+
+    gamma = 1.0  # fi_gamma, should be MDP gamma decay, but somehow undiscounted works better <- wtf?!
+
+    reward_scale = 1  # reward multiplicator
+
+    params = dict(
+        # Note: fake `Width` dimension to use 2d conv etc.:
+        state_shape=
+        {
+            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 6, 1)),
+            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 5, 1)),
+            'metadata': DictSpace(
+                {
+                    'type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1
+                    ),
+                    'trial_num': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10
+                    ),
+                    'sample_num': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10
+                    ),
+                    'first_row': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10
+                    )
+                }
+            )
+        },
+        drawdown_call=5,
+        target_call=19,
+        portfolio_actions=portfolio_actions,
+        skip_frame=skip_frame,
+        gamma=gamma,
+        reward_scale=reward_scale,
+        metadata={},
+    )
+
+    def set_datalines(self):
+        self.data.sma_16 = btind.SimpleMovingAverage(self.datas[0], period=16)
+        self.data.sma_32 = btind.SimpleMovingAverage(self.datas[0], period=32)
+        self.data.sma_64 = btind.SimpleMovingAverage(self.datas[0], period=64)
+        self.data.sma_128 = btind.SimpleMovingAverage(self.datas[0], period=128)
+        self.data.sma_256 = btind.SimpleMovingAverage(self.datas[0], period=256)
+        self.data.sma_512 = btind.SimpleMovingAverage(self.datas[0], period=512)
+
+        self.data.dim_sma = btind.SimpleMovingAverage(
+            self.datas[0],
+            period=(512 + self.time_dim)
+        )
+        self.data.dim_sma.plotinfo.plot = False
+
+        # Define data channels:
+        #self.channel_dO = bt.Sum(self.data.open, - self.data.open(-1))
+        #self.channel_dH = bt.Sum(self.data.high, - self.data.high(-1))
+        #self.channel_dL = bt.Sum(self.data.low, - self.data.low(-1))
+
+    def get_market_state(self):
+        T = 2e3  # EURUSD
+        T2 = 2e3
+
+        if False:
+            x_p = np.stack(
+                [
+                    #np.frombuffer(self.channel_dO.get(size=self.time_dim)),
+                    #np.frombuffer(self.channel_dH.get(size=self.time_dim)),
+                    #np.frombuffer(self.channel_dL.get(size=self.time_dim)),
+
+                    np.frombuffer(self.data.open.get(size=self.time_dim)),
+                    np.frombuffer(self.data.high.get(size=self.time_dim)),
+                    np.frombuffer(self.data.low.get(size=self.time_dim)),
+                ],
+                axis=-1
+            )
+            x_p = np.gradient(x_p, axis=0)
+            x_p = tanh(x_p * T)
+
+        x_sma = np.stack(
+            [
+                np.frombuffer(self.data.sma_16.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_32.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_64.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_128.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_256.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_512.get(size=self.time_dim)),
+            ],
+            axis=-1
+        )
+        # Gradient along features axis:
+        x_sma = np.gradient(x_sma, axis=-1) * T2
+
+        # Log-scale:
+        #x_sma = log_transform(x_sma)
+        x_sma = tanh(x_sma)
+
+        #x = np.concatenate([x_p, x_sma], axis=-1)
+        x = x_sma
+        #x = x_p
+
+        return x[..., None]
+
+    def get_broker_state(self):
+        T_b = 1
+        x_broker = np.concatenate(
+            [
+                np.asarray(self.sliding_stat['broker_value'])[..., None],
+                np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
+                np.asarray(self.sliding_stat['realized_pnl'])[..., None],
+                np.asarray(self.sliding_stat['broker_cash'])[..., None],
+                np.asarray(self.sliding_stat['exposure'])[..., None],
+            ],
+            axis=-1
+        )
+        x_broker = tanh(np.gradient(x_broker, axis=-1) * T_b)
+        return x_broker[..., None]
