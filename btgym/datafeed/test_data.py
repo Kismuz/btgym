@@ -8,15 +8,15 @@ filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv'
 
 trial_params=dict(
     start_weekdays={0, 1, 2, 3, 4, 5, 6},
-    sample_duration={'days': 10, 'hours': 0, 'minutes': 0},
-    start_00=True,
-    time_gap={'days': 5, 'hours': 0},
+    sample_duration={'days': 4, 'hours': 0, 'minutes': 0},
+    start_00=False,
+    time_gap={'days': 0, 'hours': 20},
     test_period={'days': 2, 'hours': 0, 'minutes': 0},
 )
 
 episode_params=dict(
     start_weekdays={0, 1, 2, 3, 4, 5, 6},
-    sample_duration={'days': 0, 'hours': 23, 'minutes': 55},
+    sample_duration={'days': 1, 'hours': 23, 'minutes': 55},
     start_00=False,
     time_gap={'days': 0, 'hours': 23},
 )

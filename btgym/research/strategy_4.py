@@ -114,7 +114,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
         # Episodic metadata:
         self.state['metadata'] = {
             'type': np.asarray(self.p.metadata['type']),
-            'trial_num': np.asarray(0), # plug, should be key: 'parent_sample_num'
+            'trial_num': np.asarray(self.p.metadata['parent_sample_num']),
             'sample_num': np.asarray(self.p.metadata['sample_num']),
             'first_row': np.asarray(self.p.metadata['first_row'])
         }

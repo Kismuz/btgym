@@ -371,7 +371,7 @@ class BaseAAC(object):
                     self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
                 #  Learning rate annealing:
-                learn_rate_decayed = tf.train.polynomial_decay(
+                self.learn_rate_decayed = tf.train.polynomial_decay(
                     self.opt_learn_rate,
                     self.global_step + 1,
                     self.opt_decay_steps,
@@ -379,10 +379,10 @@ class BaseAAC(object):
                     power=1,
                     cycle=False,
                 )
-                clip_epsilon = tf.cast(self.clip_epsilon * learn_rate_decayed / self.opt_learn_rate, tf.float32)
+                clip_epsilon = tf.cast(self.clip_epsilon * self.learn_rate_decayed / self.opt_learn_rate, tf.float32)
 
                 # Freeze training if train_phase is False:
-                train_learn_rate = learn_rate_decayed * tf.cast(pi.train_phase, tf.float64)
+                train_learn_rate = self.learn_rate_decayed * tf.cast(pi.train_phase, tf.float64)
                 self.log.debug('learn rate ok')
 
                 # On-policy AAC loss definition:
@@ -510,7 +510,7 @@ class BaseAAC(object):
                     model_summaries += [
                         tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
                         tf.summary.scalar("var_global_norm", tf.global_norm(pi.var_list)),
-                        tf.summary.scalar("learn_rate", learn_rate_decayed),  # cause actual rate is a jaggy due to testing
+                        tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to testing
                         tf.summary.scalar("total_loss", self.loss),
                     ]
 
@@ -652,33 +652,26 @@ class BaseAAC(object):
         if self.current_train_episode < self.num_train_episodes:
             episode_type = 0  # train
             self.current_train_episode += 1
-            if False:
-                print(
-                    'c_1, c_train={}, c_test={}, type={}'.
-                        format(self.current_train_episode, self.current_test_episode, episode_type)
-                )
-
+            self.log.debug(
+                'c_1, c_train={}, c_test={}, type={}'.
+                format(self.current_train_episode, self.current_test_episode, episode_type)
+            )
         else:
             if self.current_test_episode < self.num_test_episodes:
                 episode_type = 1  # test
                 self.current_test_episode += 1
-                if False:
-                    print(
-                        'c_2, c_train={}, c_test={}, type={}'.
-                            format(self.current_train_episode, self.current_test_episode, episode_type)
-                    )
-
-
+                self.log.debug(
+                    'c_2, c_train={}, c_test={}, type={}'.
+                    format(self.current_train_episode, self.current_test_episode, episode_type)
+                )
             else:
                 # cycle end, reset and start new (rec. depth 1)
                 self.current_train_episode = 0
                 self.current_test_episode = 0
-                if False:
-                    print(
-                        'c_3, c_train={}, c_test={}'.
-                            format(self.current_train_episode, self.current_test_episode)
-                    )
-
+                self.log.debug(
+                    'c_3, c_train={}, c_test={}'.
+                    format(self.current_train_episode, self.current_test_episode)
+                )
                 return self.get_sample_config()
 
         # Compose btgym.datafeed.base.EnvResetConfig-consistent dict:
