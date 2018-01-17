@@ -205,7 +205,9 @@ class Worker(multiprocessing.Process):
 
             # Saver-related:
             variables_to_save = [v for v in tf.global_variables() if not v.name.startswith("local")]
+            local_variables = [v for v in tf.global_variables() if v.name.startswith("local")]
             init_op = tf.variables_initializer(variables_to_save)
+            local_init_op = tf.variables_initializer(local_variables)
             init_all_op = tf.global_variables_initializer()
 
             saver = _FastSaver(variables_to_save)
@@ -230,8 +232,10 @@ class Worker(multiprocessing.Process):
                 saver=saver,
                 summary_op=None,
                 init_op=init_op,
+                local_init_op=local_init_op,
                 init_fn=init_fn,
-                ready_op=tf.report_uninitialized_variables(variables_to_save),
+                #ready_op=tf.report_uninitialized_variables(variables_to_save),
+                ready_op=tf.report_uninitialized_variables(),
                 global_step=trainer.global_step,
                 save_model_secs=300,
             )

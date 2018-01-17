@@ -21,7 +21,7 @@ class GA3C_0_0(BaseAAC):
                 local_grads_and_vars = list(zip(self.grads, self.local_network.var_list))
                 self.local_train_op = self.optimizer.apply_gradients(local_grads_and_vars)
                 #self.local_initializer = tf.variables_initializer(self.local_network.var_list) #TODO: WTF?
-                self.local_initializer = tf.global_variables_initializer()
+                #self.local_initializer = tf.global_variables_initializer()
 
         except:
             msg = 'Child class __init()__ exception occurred' + \
@@ -41,7 +41,7 @@ class GA3C_0_0(BaseAAC):
         """
         try:
             # Initialize local:
-            sess.run(self.local_initializer)
+            #sess.run(self.local_initializer)
             # Copy weights from global to local:
             sess.run(self.sync)
 
