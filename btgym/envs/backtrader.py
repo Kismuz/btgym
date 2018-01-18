@@ -521,6 +521,7 @@ class BTgymEnv(gym.Env):
         # Release client-side, if any:
         if self.context:
             self.context.destroy()
+            self.socket = None
 
     def _force_control_mode(self):
         """Puts BT server to control mode.
@@ -758,6 +759,7 @@ class BTgymEnv(gym.Env):
         Implementation of OpenAI Gym env.close method.
         Puts BTgym server in Control Mode.
         """
+        self.log.debug('close.call()')
         self._stop_server()
         self._stop_data_server()
         self.log.info('Environment closed.')
@@ -911,9 +913,9 @@ class BTgymEnv(gym.Env):
 
             self.log.info('{} Exit code: {}'.format(self.data_server_response, self.data_server.exitcode))
 
-        #if self.data_context:
-        #    self.data_context.destroy()
-        #    self.data_socket = None
+        if self.data_context:
+            self.data_context.destroy()
+            self.data_socket = None
 
     def _restart_data_server(self):
         """
