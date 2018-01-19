@@ -488,8 +488,11 @@ class BaseAAC(object):
 
                 grads_and_vars = list(zip(self.grads, self.network.var_list))
 
-                # Since every observation mod. has same batch size - just take first key in a row:
-                self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in[list(pi.on_state_in.keys())[0]])[0])
+                # Set global_step incremention equal to observation space  batch size:
+                obs_space_keys = list(pi.on_state_in.keys())
+                assert 'external' in obs_space_keys,\
+                    'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
+                self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in['external'])[0])
 
                 # Each worker gets a different set of adam optimizer parameters:
                 self.optimizer = tf.train.AdamOptimizer(train_learn_rate, epsilon=1e-5)
