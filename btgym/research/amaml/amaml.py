@@ -11,10 +11,18 @@ class MetaA3C_0_0(BaseAAC):
     Develop:
         Meta-learning A3C to be.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, cycles_per_trial=1, **kwargs):
+        """
+
+        Args:
+            cycles_per_trial (int):         outer loop
+            kwargs:                         BaseAAC kwargs
+        """
         super(MetaA3C_0_0, self).__init__(_log_name='MetaA3C_0.0', _use_target_policy=True, **kwargs)
         try:
             self.current_trial_num = -1
+            self.cycles_per_trial = cycles_per_trial
+            self.cycles_counter = 1
             with tf.device(self.worker_device):
                 with tf.name_scope('local'):
                     # Make local optimizer:
@@ -59,15 +67,7 @@ class MetaA3C_0_0(BaseAAC):
     def get_sample_config(self):
         """
         Returns environment configuration parameters for next episode to sample.
-
-        MAML: IN PROGRESS
-
-        By default is simple stateful iterator,
-        works correctly with `DTGymDataset` data class, repeating cycle:
-            - sample `num_train_episodes` from train data,
-            - sample `num_test_episodes` from test data.
-
-        Convention: supposed to override dummy method of local policy instance, see inside ._make_policy() method
+        Controls Trials and Episodes data distributions.
 
         Returns:
             configuration dictionary of type `btgym.datafeed.base.EnvResetConfig`
@@ -77,42 +77,62 @@ class MetaA3C_0_0(BaseAAC):
         if self.current_train_episode < self.num_train_episodes:
             episode_type = 0  # train
             self.current_train_episode += 1
-            self.log.debug(
-                'c_1, c_train={}, c_test={}, type={}'.
+            self.log.info(
+                'training, c_train={}, c_test={}, type={}'.
                 format(self.current_train_episode, self.current_test_episode, episode_type)
             )
         else:
             if self.current_test_episode < self.num_test_episodes:
                 episode_type = 1  # test
                 self.current_test_episode += 1
-                self.log.debug(
-                    'c_2, c_train={}, c_test={}, type={}'.
+                self.log.info(
+                    'meta-training, c_train={}, c_test={}, type={}'.
                     format(self.current_train_episode, self.current_test_episode, episode_type)
                 )
             else:
-                # cycle end, request new Trial:
+                # single cycle end, reset counters:
                 self.current_train_episode = 0
                 self.current_test_episode = 0
-                self.log.debug(
-                    'c_3, c_train={}, c_test={}'.
-                    format(self.current_train_episode, self.current_test_episode)
-                )
-                # Compose initial btgym.datafeed.base.EnvResetConfig-consistent dict:
-                init_sample_config = dict(
-                    episode_config=dict(
-                        get_new=True,
-                        sample_type=0,
-                        b_alpha=1.0,
-                        b_beta=1.0
-                    ),
-                    trial_config=dict(
-                        get_new=True,
-                        sample_type=0,
-                        b_alpha=1.0,
-                        b_beta=1.0
+                if self.cycles_counter < self.cycles_per_trial:
+                    cycle_start_sample_config = dict(
+                        episode_config=dict(
+                            get_new=True,
+                            sample_type=0,
+                            b_alpha=1.0,
+                            b_beta=1.0
+                        ),
+                        trial_config=dict(
+                            get_new=False,
+                            sample_type=0,
+                            b_alpha=1.0,
+                            b_beta=1.0
+                        )
                     )
-                )
-                return init_sample_config
+                    self.cycles_counter += 1
+                    self.log.info(
+                        'training (new cycle), c_train={}, c_test={}, type={}'.
+                            format(self.current_train_episode, self.current_test_episode, 0)
+                    )
+                    return cycle_start_sample_config
+
+                else:
+                    init_sample_config = dict(
+                        episode_config=dict(
+                            get_new=True,
+                            sample_type=0,
+                            b_alpha=1.0,
+                            b_beta=1.0
+                        ),
+                        trial_config=dict(
+                            get_new=True,
+                            sample_type=0,
+                            b_alpha=1.0,
+                            b_beta=1.0
+                        )
+                    )
+                    self.cycles_counter = 1
+                    self.log.info('new Trial at {}-th local iteration'.format(self.local_steps))
+                    return init_sample_config
 
         # Compose btgym.datafeed.base.EnvResetConfig-consistent dict:
         sample_config = dict(
@@ -161,7 +181,7 @@ class MetaA3C_0_0(BaseAAC):
 
             feed_dict = self.process_data(sess, data, is_train=True)
 
-            # Say No to redundant summaries:
+            # Say `No` to redundant summaries:
             wirte_model_summary =\
                 self.local_steps % self.model_summary_freq == 0
 

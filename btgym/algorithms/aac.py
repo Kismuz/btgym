@@ -510,7 +510,8 @@ class BaseAAC(object):
                     model_summaries += [
                         tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
                         tf.summary.scalar("var_global_norm", tf.global_norm(pi.var_list)),
-                        tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to testing
+                        tf.summary.scalar("learn_rate", train_learn_rate),
+                        #tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to testing
                         tf.summary.scalar("total_loss", self.loss),
                     ]
 
