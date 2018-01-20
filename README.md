@@ -181,6 +181,10 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
     - my commit was to treat backtrader engine as black box and create wrapper using explicitly
     defined and documented methods only. While it is not efficiency-optimised approach, I think
     it is still decent alpha-solution.
+    
+ 8. *Note:* `.research` subpackage code can (and usually does) contain errors, logic flaws and can be 
+    poor performing generally.
+
 ****
    
     
