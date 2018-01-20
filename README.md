@@ -181,6 +181,7 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
    
     
 ### <a name="reference"></a> [Documentation and API Reference >>](https://kismuz.github.io/btgym/)
+### [Development Wiki >>](https://github.com/Kismuz/btgym/wiki)
 
 ****
 ### <a name="issues"></a> [Current issues and limitations:](#title)
@@ -223,6 +224,8 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  
  
 ### <a name="news"></a>[News and updates:](#title)
+- 20.01.18: Project [Wiki pages](https://github.com/Kismuz/btgym/wiki) added.
+
 - 12.01.18: Minor fixes to logging, enabled BTgymDataset train/test data split. AAC framework train/test cycle enabled 
             via 
             [`episode_train_test_cycle`](https://kismuz.github.io/btgym/btgym.algorithms.html#module-btgym.algorithms.aac) 
