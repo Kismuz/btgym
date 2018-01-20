@@ -153,8 +153,7 @@ class MetaA3C_0_0(BaseAAC):
 
     def process(self, sess):
         """
-        Overrides default:
-            Local training. Global model updated at every 50th train step.
+        Overrides default
         """
         try:
             # Collect data from child thread runners:
@@ -235,3 +234,100 @@ class MetaA3C_0_0(BaseAAC):
             self.log.exception(msg)
             raise RuntimeError(msg)
 
+
+class MetaA3C_0_1(MetaA3C_0_0):
+    """
+    0_0 +: Local model got updated after every meta-optimization update.
+    """
+
+    def __init__(self, **kwargs):
+        super(MetaA3C_0_1, self).__init__(**kwargs)
+
+    def process(self, sess):
+        """
+        Overrides default
+        """
+        try:
+            # Collect data from child thread runners:
+            data = self._get_data()
+
+            # Test or train: if at least one on-policy rollout from parallel runners is test one -
+            # set learn rate to zero for entire minibatch. Doh.
+            try:
+                is_train = not np.asarray([env['state']['metadata']['type'] for env in data['on_policy']]).any()
+
+            except KeyError:
+                is_train = True
+
+            # New or same trial:
+            # If at least one trial number from parallel runners has changed - assume new cycle start:
+            # Pull trial number's from on_policy metadata:
+            trial_num = np.asarray([env['state']['metadata']['trial_num'][-1] for env in data['on_policy']])
+            if (trial_num != self.current_trial_num).any():
+                # Copy global -> local:
+                sess.run(self.sync_pi)
+                self.log.debug(
+                    'New Trial_{}, local<-global update at {}-th local iteration'.format(trial_num, self.local_steps))
+                self.current_trial_num = trial_num
+
+            feed_dict = self.process_data(sess, data, is_train=True)
+
+            # Say `No` to redundant summaries:
+            wirte_model_summary =\
+                self.local_steps % self.model_summary_freq == 0
+
+            if is_train:
+                # Train locally:
+                fetches = [self.local_train_op]
+                self.log.debug(
+                    'local<-d.local update at {}-th local iteration'.format(self.local_steps)
+                )
+            else:
+                # Meta training, restore local_prime -> local: use stored after last local train update parameters:
+                sess.run(self.sync_pi_from_pi_prime)
+                fetches = [self.train_op]
+                self.log.debug(
+                    'global<-d.local(~local_prime) update at {}-th local iteration'.format(self.local_steps)
+                )
+
+            if wirte_model_summary:
+                fetches_last = fetches + [self.model_summary_op, self.inc_step]
+            else:
+                fetches_last = fetches + [self.inc_step]
+
+            # Do a number of SGD train epochs: HERE==1 !
+            # When doing more than one epoch, we actually use only last summary:
+            for i in range(self.num_epochs - 1):
+                fetched = sess.run(fetches, feed_dict=feed_dict)
+
+            fetched = sess.run(fetches_last, feed_dict=feed_dict)
+
+            if is_train:
+                # Back up updated local -> local_prime after local train step:
+                sess.run(self.sync_pi_prime)
+                self.log.debug(
+                    'local_prime<-local update at {}-th local iteration'.format(self.local_steps)
+                )
+            else:
+                # Copy global -> local for the next train cycle,
+                # redundant if doing several meta-updates in a cycle (only last counts):
+                sess.run(self.sync_pi)
+                self.log.debug(
+                    'local<-global update at {}-th local iteration'.format(trial_num, self.local_steps))
+
+            if wirte_model_summary:
+                model_summary = fetched[-2]
+
+            else:
+                model_summary = None
+
+            # Write down summaries:
+            self.process_summary(sess, data, model_summary)
+
+            self.local_steps += 1
+
+        except:
+            msg = 'Train step exception occurred' + \
+                '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
+            self.log.exception(msg)
+            raise RuntimeError(msg)
