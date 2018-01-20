@@ -39,10 +39,10 @@ Include as many details as possible:
    ```
 
 #### Proposing framework features:
-- Provide a step-by-step description of the suggested feature or enhancement 
+- Provide a step-by-step description and motivation of the suggested feature or enhancement 
   in as many details as possible;
 - Provide specific examples to demonstrate the steps; Include copy/pasteable 
-  snippets which you use in those examples, as Markdown code blocks.
+  snippets which you use in those examples as Markdown code blocks.
 - Describe the current behavior and explain which behavior you expected to see 
   instead and why;
 - Explain why this enhancement would be useful;
