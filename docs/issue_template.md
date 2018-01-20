@@ -1,5 +1,4 @@
-Use this template when reporting bugs, errors or unexpected behaviour. 
-Override for general questions, feature requests, proposals etc.
+
 
 
 ##### Running environment:
