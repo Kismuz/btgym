@@ -94,6 +94,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#data-flow-structure">Data flow structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul>
@@ -181,6 +182,9 @@
 <span class="c1"># https://github.com/openai/universe-starter-agent</span>
 <span class="c1">#</span>
 
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span><span class="p">,</span> <span class="n">WARNING</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">six.moves.queue</span> <span class="k">as</span> <span class="nn">queue</span>
 <span class="kn">import</span> <span class="nn">threading</span>
@@ -213,7 +217,8 @@
                  <span class="n">env_render_freq</span><span class="p">,</span>
                  <span class="n">test</span><span class="p">,</span>
                  <span class="n">ep_summary</span><span class="p">,</span>
-                 <span class="n">memory_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                 <span class="n">memory_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
@@ -226,6 +231,7 @@
 <span class="sd">            test:                   Atari or BTGyn</span>
 <span class="sd">            ep_summary:             tf.summary</span>
 <span class="sd">            memory_config:          replay memory configuration dictionary</span>
+<span class="sd">            log_level:              int, logbook.level</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">queue</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
@@ -242,16 +248,31 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">test</span> <span class="o">=</span> <span class="n">test</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span> <span class="o">=</span> <span class="n">ep_summary</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">memory_config</span> <span class="o">=</span> <span class="n">memory_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level</span>
+        <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;ThreadRunner_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">start_runner</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sess</span> <span class="o">=</span> <span class="n">sess</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="n">summary_writer</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sess</span> <span class="o">=</span> <span class="n">sess</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="n">summary_writer</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;start() exception occurred.</span><span class="se">\n\n</span><span class="s1">Press `Ctrl-C` or jupyter:[Kernel]-&gt;[Interrupt] for clean exit.</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span>
 
 <div class="viewcode-block" id="RunnerThread.run"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.runner.RunnerThread.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Just keep running.&quot;&quot;&quot;</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_run</span><span class="p">()</span></div>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_run</span><span class="p">()</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;RunTime exception occurred.</span><span class="se">\n\n</span><span class="s1">Press `Ctrl-C` or jupyter:[Kernel]-&gt;[Interrupt] for clean exit.</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span></div>
 
     <span class="k">def</span> <span class="nf">_run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">rollout_provider</span> <span class="o">=</span> <span class="n">env_runner</span><span class="p">(</span>
@@ -265,7 +286,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">env_render_freq</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">memory_config</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory_config</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span>
         <span class="p">)</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="c1"># the timeout variable exists because apparently, if one worker dies, the other workers</span>
@@ -285,7 +307,8 @@
                <span class="n">env_render_freq</span><span class="p">,</span>
                <span class="n">atari_test</span><span class="p">,</span>
                <span class="n">ep_summary</span><span class="p">,</span>
-               <span class="n">memory_config</span><span class="p">):</span>
+               <span class="n">memory_config</span><span class="p">,</span>
+               <span class="n">log</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The logic of the thread runner.</span>
 <span class="sd">    In brief, it constantly keeps on running</span>
@@ -302,6 +325,7 @@
 <span class="sd">        atari_test:             bool, Atari or BTGyn</span>
 <span class="sd">        ep_summary:             dict of tf.summary op and placeholders</span>
 <span class="sd">        memory_config:          replay memory configuration dictionary</span>
+<span class="sd">        log:                    logbook logger</span>
 
 <span class="sd">    Yelds:</span>
 <span class="sd">        collected data as dictionary of on_policy, off_policy rollouts and episode statistics.</span>
@@ -339,7 +363,7 @@
 
         <span class="n">action</span><span class="p">,</span> <span class="n">value_</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="n">last_state</span><span class="p">,</span> <span class="n">last_context</span><span class="p">,</span> <span class="n">last_action_reward</span><span class="p">)</span>
 
-        <span class="c1">#print(&#39;*_runner: A: {}, V: {}, step: {} &#39;.format(action, value_, length))</span>
+        <span class="c1">#log.debug(&#39;*: A: {}, V: {}, step: {} &#39;.format(action, value_, length))</span>
 
         <span class="c1"># argmax to convert from one-hot:</span>
         <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">terminal</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">argmax</span><span class="p">())</span>
@@ -372,7 +396,7 @@
                 <span class="c1"># Continue adding experiences to rollout:</span>
                 <span class="n">action</span><span class="p">,</span> <span class="n">value_</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="n">last_state</span><span class="p">,</span> <span class="n">last_context</span><span class="p">,</span> <span class="n">last_action_reward</span><span class="p">)</span>
 
-                <span class="c1">#print(&#39;runner: A: {}, V: {}, step: {} &#39;.format(action, value_, length))</span>
+                <span class="c1">#log.debug(&#39;A: {}, V: {}, step: {} &#39;.format(action, value_, length))</span>
 
                 <span class="c1"># Argmax to convert from one-hot:</span>
                 <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">terminal</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">argmax</span><span class="p">())</span>
@@ -421,7 +445,6 @@
                     <span class="n">cpu_time</span> <span class="o">+=</span> <span class="p">[</span><span class="n">episode_stat</span><span class="p">[</span><span class="s1">&#39;runtime&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()]</span>
                     <span class="n">final_value</span> <span class="o">+=</span> <span class="p">[</span><span class="n">last_i</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">]]</span>
                     <span class="n">total_steps</span> <span class="o">+=</span> <span class="p">[</span><span class="n">episode_stat</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]]</span>
-                <span class="c1">#print(&#39;last_episode.metadata:&#39;, state[&#39;metadata&#39;])</span>
 
                 <span class="c1"># Episode statistics:</span>
                 <span class="k">try</span><span class="p">:</span>
@@ -436,7 +459,6 @@
                     <span class="n">is_test_episode</span> <span class="o">=</span> <span class="kc">False</span>
 
                 <span class="k">if</span> <span class="n">is_test_episode</span><span class="p">:</span>
-                    <span class="c1">#print(task, total_r)</span>
                     <span class="n">test_ep_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
                         <span class="n">total_r</span><span class="o">=</span><span class="n">total_r</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
                         <span class="n">final_value</span><span class="o">=</span><span class="n">final_value</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>

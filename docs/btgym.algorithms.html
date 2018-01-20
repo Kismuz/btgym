@@ -324,7 +324,7 @@ it’s own ThreadRunner process.</dd>
 <span id="btgym-algorithms-aac-module"></span><h2>btgym.algorithms.aac module<a class="headerlink" href="#module-btgym.algorithms.aac" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.aac.BaseAAC">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log_level</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_train_test_cycle=(1</em>, <em>0)</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1.0</em>, <em>pc_lambda=1.0</em>, <em>vr_lambda=1.0</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>_use_target_policy=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log_level</em>, <em>_log_name='AAC'</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_train_test_cycle=(1</em>, <em>0)</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1.0</em>, <em>pc_lambda=1.0</em>, <em>vr_lambda=1.0</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>_use_target_policy=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base Asynchronous Advantage Actor Critic algorithm framework class with auxiliary control tasks and
 option to run several instances of environment for every worker in vectorized fashion, PAAC-like.
 Can be configured to run with different losses and policies.</p>
@@ -345,6 +345,7 @@ Can be configured to run with different losses and policies.</p>
 <li><strong>task</strong> – int, parent worker id</li>
 <li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
 <li><strong>log_level</strong> – int, logbook.level</li>
+<li><strong>_log_name</strong> – str, class-wide logger name</li>
 <li><strong>on_policy_loss</strong> – callable returning tensor holding on_policy training loss graph and summaries</li>
 <li><strong>off_policy_loss</strong> – callable returning tensor holding off_policy training loss graph and summaries</li>
 <li><strong>vr_loss</strong> – callable returning tensor holding value replay loss graph and summaries</li>
@@ -535,10 +536,118 @@ Writes all available summaries.</p>
 
 </dd></dl>
 
-<dl class="attribute">
+<dl class="class">
 <dt id="btgym.algorithms.aac.Unreal">
-<code class="descclassname">btgym.algorithms.aac.</code><code class="descname">Unreal</code><a class="headerlink" href="#btgym.algorithms.aac.Unreal" title="Permalink to this definition">¶</a></dt>
-<dd><p>alias of <a class="reference internal" href="#btgym.algorithms.aac.BaseAAC" title="btgym.algorithms.aac.BaseAAC"><code class="xref py py-class docutils literal"><span class="pre">BaseAAC</span></code></a></p>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">Unreal</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#Unreal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.Unreal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unreal: Asynchronous Advantage Actor Critic with auxiliary control tasks.</p>
+<p>Auxiliary tasks implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+<a class="reference external" href="https://miyosuda.github.io/">https://miyosuda.github.io/</a>
+<a class="reference external" href="https://github.com/miyosuda/unreal">https://github.com/miyosuda/unreal</a></p>
+<p>Original A3C code comes from OpenAI repository under MIT licence:
+<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
+<p>Papers:
+<a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a>
+<a class="reference external" href="https://arxiv.org/abs/1611.05397">https://arxiv.org/abs/1611.05397</a></p>
+<p>See BaseAAC class args for details:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env</strong> – environment instance or list of instances</li>
+<li><strong>task</strong> – int, parent worker id</li>
+<li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
+<li><strong>log_level</strong> – int, logbook.level</li>
+<li><strong>on_policy_loss</strong> – callable returning tensor holding on_policy training loss graph and summaries</li>
+<li><strong>off_policy_loss</strong> – callable returning tensor holding off_policy training loss graph and summaries</li>
+<li><strong>vr_loss</strong> – callable returning tensor holding value replay loss graph and summaries</li>
+<li><strong>rp_loss</strong> – callable returning tensor holding reward prediction loss graph and summaries</li>
+<li><strong>pc_loss</strong> – callable returning tensor holding pixel_control loss graph and summaries</li>
+<li><strong>random_seed</strong> – int or None</li>
+<li><strong>model_gamma</strong> – scalar, gamma discount factor</li>
+<li><strong>model_gae_lambda</strong> – scalar, GAE lambda</li>
+<li><strong>model_beta</strong> – entropy regularization beta, scalar or [high_bound, low_bound] for log_uniform.</li>
+<li><strong>opt_max_env_steps</strong> – int, total number of environment steps to run training on.</li>
+<li><strong>opt_decay_steps</strong> – int, learn ratio decay steps, in number of environment steps.</li>
+<li><strong>opt_end_learn_rate</strong> – scalar, final learn rate</li>
+<li><strong>opt_learn_rate</strong> – start learn rate, scalar or [high_bound, low_bound] for log_uniform distr.</li>
+<li><strong>opt_decay</strong> – scalar, optimizer decay, if apll.</li>
+<li><strong>opt_momentum</strong> – scalar, optimizer momentum, if apll.</li>
+<li><strong>opt_epsilon</strong> – scalar, optimizer epsilon</li>
+<li><strong>rollout_length</strong> – int, on-policy rollout length</li>
+<li><strong>time_flat</strong> – bool, flatten rnn time-steps in rollouts while training - see <cite>Notes</cite> below</li>
+<li><strong>episode_train_test_cycle</strong> – tuple or list as (train_number, test_number), def=(1,0): enables infinite
+loop such as: run <cite>train_number</cite> of train data episodes,
+than <cite>test_number</cite> of test data episodes, repeat. Should be consistent
+with provided dataset parameters (test data should exist if <cite>test_number &gt; 0</cite>)</li>
+<li><strong>episode_summary_freq</strong> – int, write episode summary for every i’th episode</li>
+<li><strong>env_render_freq</strong> – int, write environment rendering summary for every i’th train step</li>
+<li><strong>model_summary_freq</strong> – int, write model summary for every i’th train step</li>
+<li><strong>test_mode</strong> – bool, True: Atari, False: BTGym</li>
+<li><strong>replay_memory_size</strong> – int, in number of experiences</li>
+<li><strong>replay_batch_size</strong> – int, mini-batch size for off-policy training, def = 1</li>
+<li><strong>replay_rollout_length</strong> – int off-policy rollout length by def. equals on_policy_rollout_length</li>
+<li><strong>use_off_policy_aac</strong> – bool, use full AAC off-policy loss instead of Value-replay</li>
+<li><strong>use_reward_prediction</strong> – bool, use aux. off-policy reward prediction task</li>
+<li><strong>use_pixel_control</strong> – bool, use aux. off-policy pixel control task</li>
+<li><strong>use_value_replay</strong> – bool, use aux. off-policy value replay task (not used if use_off_policy_aac=True)</li>
+<li><strong>rp_lambda</strong> – reward prediction loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>pc_lambda</strong> – pixel control loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>vr_lambda</strong> – value replay loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>off_aac_lambda</strong> – off-policy AAC loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>gamma_pc</strong> – NOT USED</li>
+<li><strong>rp_reward_threshold</strong> – scalar, reward prediction classification threshold, above which reward is ‘non-zero’</li>
+<li><strong>rp_sequence_size</strong> – int, reward prediction sample size, in number of experiences</li>
+<li><strong>clip_epsilon</strong> – scalar, PPO: surrogate L^clip epsilon</li>
+<li><strong>num_epochs</strong> – int, num. of SGD runs for every train step, val. &gt; 1 should be used with caution.</li>
+<li><strong>pi_prime_update_period</strong> – int, PPO: pi to pi_old update period in number of train steps, def: 1</li>
+<li><strong>_use_target_policy</strong> – bool, PPO: use target policy (aka pi_old), delayed by <cite>pi_prime_update_period</cite> delay</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last">
+<li><p class="first">On <cite>time_flat</cite> arg:</p>
+<blockquote>
+<div><p>There are two alternatives to run RNN part of policy estimator:</p>
+<ol class="loweralpha simple">
+<li><dl class="first docutils">
+<dt>Feed initial RNN state for every experience frame in rollout</dt>
+<dd>(those are stored anyway if we want random memory repaly sampling) and do single time-step RNN
+advance for all experiences in a batch; this is when time_flat=True;</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Reshape incoming batch after convolution part of network in time-wise fashion</dt>
+<dd>for every rollout in a batch i.e. batch_size=number_of_rollouts and
+rnn_timesteps=max_rollout_length. In this case we need to feed initial rnn_states
+for rollouts only. There is some little extra work to pad rollouts to max_time_size
+and feed true rollout lengths to rnn. Thus, when time_flat=False, we unroll RNN in
+specified number of time-steps for every rollout.</dd>
+</dl>
+</li>
+</ol>
+<p>Both options has pros and cons:</p>
+<dl class="docutils">
+<dt>Unrolling dynamic RNN is computationally more expensive but gives clearly faster convergence,</dt>
+<dd><p class="first last">[possibly] due to the fact that RNN states for 2nd, 3rd, … frames
+of rollouts are computed using updated policy estimator, which is supposed to be
+closer to optimal one. When time_flattened, every time-step uses RNN states computed
+when rollout was collected (i.e. by behavioral policy estimator with older
+parameters).</p>
+</dd>
+<dt>Nevertheless, time_flatting can be interesting</dt>
+<dd><p class="first last">because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
+ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).</p>
+</dd>
+</dl>
+</div></blockquote>
+</li>
+</ul>
+</div>
 </dd></dl>
 
 <dl class="class">
@@ -1194,7 +1303,7 @@ holding one hot encodings for classes {zero, positive, negative}.</td>
 <span id="btgym-algorithms-memory-module"></span><h2>btgym.algorithms.memory module<a class="headerlink" href="#module-btgym.algorithms.memory" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.memory.Memory">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.memory.</code><code class="descname">Memory</code><span class="sig-paren">(</span><em>history_size</em>, <em>max_sample_size</em>, <em>priority_sample_size</em>, <em>log</em>, <em>rollout_provider=None</em>, <em>task=-1</em>, <em>reward_threshold=0.1</em>, <em>use_priority_sampling=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.memory.</code><code class="descname">Memory</code><span class="sig-paren">(</span><em>history_size</em>, <em>max_sample_size</em>, <em>priority_sample_size</em>, <em>log_level=13</em>, <em>rollout_provider=None</em>, <em>task=-1</em>, <em>reward_threshold=0.1</em>, <em>use_priority_sampling=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/memory.html#Memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.memory.Memory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Replay memory with rebalanced replay based on reward value.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -1208,7 +1317,7 @@ holding one hot encodings for classes {zero, positive, negative}.</td>
 <li><strong>history_size</strong> – number of experiences stored;</li>
 <li><strong>max_sample_size</strong> – maximum allowed sample size (e.g. off-policy rollout length);</li>
 <li><strong>priority_sample_size</strong> – sample size of priority_sample() method</li>
-<li><strong>log</strong> – parent logger;</li>
+<li><strong>log_level</strong> – int, logbook.level;</li>
 <li><strong>rollout_provider</strong> – callable returning list of Rollouts NOT USED</li>
 <li><strong>task</strong> – parent worker id;</li>
 <li><strong>reward_threshold</strong> – if <a href="#id9"><span class="problematic" id="id10">|experience.reward|</span></a> &gt; reward_threshold: experience is saved as ‘prioritized’;</li>
@@ -1330,7 +1439,7 @@ normalized in [0,1] grayscale 42x42 visual output.</p>
 <span id="btgym-algorithms-runner-module"></span><h2>btgym.algorithms.runner module<a class="headerlink" href="#module-btgym.algorithms.runner" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.runner.RunnerThread">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.runner.</code><code class="descname">RunnerThread</code><span class="sig-paren">(</span><em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>test</em>, <em>ep_summary</em>, <em>memory_config=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#RunnerThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.RunnerThread" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.runner.</code><code class="descname">RunnerThread</code><span class="sig-paren">(</span><em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>test</em>, <em>ep_summary</em>, <em>memory_config=None</em>, <em>log_level=13</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#RunnerThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.RunnerThread" title="Permalink to this definition">¶</a></dt>
 <dd><p>Async. framework code comes from OpenAI repository under MIT licence:
 <a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
 <p>Despite the fact BTgym is not real-time environment [yet], thread-runner approach is still here. From
@@ -1355,6 +1464,7 @@ So, replay memory is also here, as well as some service functions (collecting su
 <li><strong>test</strong> – Atari or BTGyn</li>
 <li><strong>ep_summary</strong> – tf.summary</li>
 <li><strong>memory_config</strong> – replay memory configuration dictionary</li>
+<li><strong>log_level</strong> – int, logbook.level</li>
 </ul>
 </td>
 </tr>
@@ -1370,7 +1480,7 @@ So, replay memory is also here, as well as some service functions (collecting su
 
 <dl class="function">
 <dt id="btgym.algorithms.runner.env_runner">
-<code class="descclassname">btgym.algorithms.runner.</code><code class="descname">env_runner</code><span class="sig-paren">(</span><em>sess</em>, <em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>summary_writer</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>atari_test</em>, <em>ep_summary</em>, <em>memory_config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#env_runner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.env_runner" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.runner.</code><code class="descname">env_runner</code><span class="sig-paren">(</span><em>sess</em>, <em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>summary_writer</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>atari_test</em>, <em>ep_summary</em>, <em>memory_config</em>, <em>log</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#env_runner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.env_runner" title="Permalink to this definition">¶</a></dt>
 <dd><p>The logic of the thread runner.
 In brief, it constantly keeps on running
 the policy, and as long as the rollout exceeds a certain length, the thread
@@ -1389,6 +1499,7 @@ runner appends all the collected data to the queue.</p>
 <li><strong>atari_test</strong> – bool, Atari or BTGyn</li>
 <li><strong>ep_summary</strong> – dict of tf.summary op and placeholders</li>
 <li><strong>memory_config</strong> – replay memory configuration dictionary</li>
+<li><strong>log</strong> – logbook logger</li>
 </ul>
 </td>
 </tr>

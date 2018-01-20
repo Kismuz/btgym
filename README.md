@@ -232,7 +232,7 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  
  
 ### <a name="news"></a>[News and updates:](#title)
-- 20.01.18: Project [Wiki pages](https://github.com/Kismuz/btgym/wiki) added.
+- 20.01.18: Project [Wiki pages](https://github.com/Kismuz/btgym/wiki) added;
 
 - 12.01.18: Minor fixes to logging, enabled BTgymDataset train/test data split. AAC framework train/test cycle enabled 
             via 

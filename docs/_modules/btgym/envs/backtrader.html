@@ -94,6 +94,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#data-flow-structure">Data flow structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul>
@@ -699,7 +700,8 @@
 
         <span class="c1"># Release client-side, if any:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._force_control_mode"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._force_control_mode">[docs]</a>    <span class="k">def</span> <span class="nf">_force_control_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Puts BT server to control mode.</span>
@@ -937,6 +939,7 @@
 <span class="sd">        Implementation of OpenAI Gym env.close method.</span>
 <span class="sd">        Puts BTgym server in Control Mode.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;close.call()&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stop_server</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stop_data_server</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Environment closed.&#39;</span><span class="p">)</span></div>
@@ -1088,11 +1091,11 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span> <span class="o">=</span> <span class="s1">&#39;Data_server process terminated.&#39;</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> Exit code: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span><span class="o">.</span><span class="n">exitcode</span><span class="p">))</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> Exit code: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span><span class="o">.</span><span class="n">exitcode</span><span class="p">))</span>
 
-        <span class="c1">#if self.data_context:</span>
-        <span class="c1">#    self.data_context.destroy()</span>
-        <span class="c1">#    self.data_socket = None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_context</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._restart_data_server"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._restart_data_server">[docs]</a>    <span class="k">def</span> <span class="nf">_restart_data_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>

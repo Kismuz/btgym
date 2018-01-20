@@ -229,6 +229,16 @@ simple Request/Reply pattern (every request should be paired with reply message)
                 Wait for incoming <action> message
                 Send (state, reward, done, info) response
 
+
+
+Data flow structure
+-------------------
+
+.. image:: data_domain_iteration.png
+   :scale: 50 %
+   :alt: Btgym Data Domain Structure
+
+
 A3C framework description
 -------------------------
 
@@ -278,6 +288,8 @@ Other details:
 .. image:: a3c_stacked_lstm_agent.png
    :scale: 50 %
    :alt: A3C stacked LSTM agent architecture
+
+
 
 
 

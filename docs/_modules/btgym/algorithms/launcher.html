@@ -94,6 +94,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#data-flow-structure">Data flow structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul>
@@ -529,11 +530,10 @@
         <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">signal_handler</span><span class="p">)</span>
 
         <span class="c1"># Halt here:</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">************************************************************************************</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>\
-              <span class="s1">&#39;**  Press `Ctrl-C` or [Kernel]-&gt;[Interrupt] to stop training and close launcher.  **</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> \
-              <span class="s1">&#39;************************************************************************************</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">********************************************************************************************</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>\
+                <span class="s1">&#39;**  Press `Ctrl-C` or jupyter:[Kernel]-&gt;[Interrupt] to stop training and close launcher.  **</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> \
+                <span class="s1">&#39;********************************************************************************************</span><span class="se">\n</span><span class="s1">&#39;</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-        <span class="c1">#self.log.notice(msg)</span>
         <span class="n">signal</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
 
         <span class="c1"># Wait every worker to finish:</span>
