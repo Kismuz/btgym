@@ -25,8 +25,12 @@ Code presented here is research/development grade.
 Can be unstable, buggy, poor performing and is subject to change.
 
 Note that this package is neither out-of-the-box-moneymaker, nor it provides ready-to-converge RL solutions.
-Think of it as framework for setting experiments with complex, non stationary, time-series based environments.
-I have no idea what kind of algorithm and setup will solve it [if any]. This is work in progress.
+Think of it as framework for setting experiments with complex non-stationary stochastic environments.
+
+As a research project BTGym in its current stage can hardly deliver easy end-user experience in as sense that 
+setting meaninfull  experiments will require some practical programming experience as well as general knowledge 
+of reinforcement learning theory.
+
 ```
 
 ****
