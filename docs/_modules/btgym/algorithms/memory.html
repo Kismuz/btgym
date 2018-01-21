@@ -94,6 +94,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#data-flow-structure">Data flow structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul>
@@ -181,6 +182,9 @@
 <span class="c1"># https://miyosuda.github.io/</span>
 <span class="c1"># https://github.com/miyosuda/unreal</span>
 
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span><span class="p">,</span> <span class="n">WARNING</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">Rollout</span>
@@ -193,7 +197,7 @@
 <span class="sd">    Note:</span>
 <span class="sd">        must be filled up before calling sampling methods.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history_size</span><span class="p">,</span> <span class="n">max_sample_size</span><span class="p">,</span> <span class="n">priority_sample_size</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history_size</span><span class="p">,</span> <span class="n">max_sample_size</span><span class="p">,</span> <span class="n">priority_sample_size</span><span class="p">,</span> <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
                  <span class="n">rollout_provider</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">task</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">reward_threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">use_priority_sampling</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
@@ -201,7 +205,7 @@
 <span class="sd">            history_size:           number of experiences stored;</span>
 <span class="sd">            max_sample_size:        maximum allowed sample size (e.g. off-policy rollout length);</span>
 <span class="sd">            priority_sample_size:   sample size of priority_sample() method</span>
-<span class="sd">            log:                    parent logger;</span>
+<span class="sd">            log_level:              int, logbook.level;</span>
 <span class="sd">            rollout_provider:       callable returning list of Rollouts NOT USED</span>
 <span class="sd">            task:                   parent worker id;</span>
 <span class="sd">            reward_threshold:       if |experience.reward| &gt; reward_threshold: experience is saved as &#39;prioritized&#39;;</span>
@@ -212,7 +216,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_sample_size</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">priority_sample_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">priority_sample_size</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rollout_provider</span> <span class="o">=</span> <span class="n">rollout_provider</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level</span>
+        <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;ReplayMemory_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">use_priority_sampling</span> <span class="o">=</span> <span class="n">use_priority_sampling</span>
         <span class="c1"># Indices for non-priority frames:</span>

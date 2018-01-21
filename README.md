@@ -181,6 +181,10 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
     - my commit was to treat backtrader engine as black box and create wrapper using explicitly
     defined and documented methods only. While it is not efficiency-optimised approach, I think
     it is still decent alpha-solution.
+    
+ 8. *Note:* `.research` subpackage code can (and usually does) contain errors, logic flaws and can be 
+    poor performing generally.
+
 ****
    
     
@@ -228,7 +232,7 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
  
  
 ### <a name="news"></a>[News and updates:](#title)
-- 20.01.18: Project [Wiki pages](https://github.com/Kismuz/btgym/wiki) added.
+- 20.01.18: Project [Wiki pages](https://github.com/Kismuz/btgym/wiki) added;
 
 - 12.01.18: Minor fixes to logging, enabled BTgymDataset train/test data split. AAC framework train/test cycle enabled 
             via 

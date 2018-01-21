@@ -94,6 +94,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#data-flow-structure">Data flow structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul>
@@ -384,7 +385,9 @@
 
             <span class="c1"># Saver-related:</span>
             <span class="n">variables_to_save</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;local&quot;</span><span class="p">)]</span>
+            <span class="n">local_variables</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;local&quot;</span><span class="p">)]</span>
             <span class="n">init_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">variables_initializer</span><span class="p">(</span><span class="n">variables_to_save</span><span class="p">)</span>
+            <span class="n">local_init_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">variables_initializer</span><span class="p">(</span><span class="n">local_variables</span><span class="p">)</span>
             <span class="n">init_all_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables_initializer</span><span class="p">()</span>
 
             <span class="n">saver</span> <span class="o">=</span> <span class="n">_FastSaver</span><span class="p">(</span><span class="n">variables_to_save</span><span class="p">)</span>
@@ -409,8 +412,10 @@
                 <span class="n">saver</span><span class="o">=</span><span class="n">saver</span><span class="p">,</span>
                 <span class="n">summary_op</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">init_op</span><span class="o">=</span><span class="n">init_op</span><span class="p">,</span>
+                <span class="n">local_init_op</span><span class="o">=</span><span class="n">local_init_op</span><span class="p">,</span>
                 <span class="n">init_fn</span><span class="o">=</span><span class="n">init_fn</span><span class="p">,</span>
-                <span class="n">ready_op</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">report_uninitialized_variables</span><span class="p">(</span><span class="n">variables_to_save</span><span class="p">),</span>
+                <span class="c1">#ready_op=tf.report_uninitialized_variables(variables_to_save),</span>
+                <span class="n">ready_op</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">report_uninitialized_variables</span><span class="p">(),</span>
                 <span class="n">global_step</span><span class="o">=</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">,</span>
                 <span class="n">save_model_secs</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
             <span class="p">)</span>

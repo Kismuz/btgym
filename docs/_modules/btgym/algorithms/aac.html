@@ -94,6 +94,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#data-flow-structure">Data flow structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul>
@@ -207,7 +208,7 @@
 <span class="kn">from</span> <span class="nn">btgym.spaces</span> <span class="k">import</span> <span class="n">DictSpace</span> <span class="k">as</span> <span class="n">ObSpace</span>  <span class="c1"># now can simply be gym.Dict</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">Memory</span><span class="p">,</span> <span class="n">make_data_getter</span><span class="p">,</span> <span class="n">RunnerThread</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms.math_utils</span> <span class="k">import</span> <span class="n">log_uniform</span>
-<span class="kn">from</span> <span class="nn">btgym.algorithms.losses</span> <span class="k">import</span> <span class="n">value_fn_loss_def</span><span class="p">,</span> <span class="n">rp_loss_def</span><span class="p">,</span> <span class="n">pc_loss_def</span><span class="p">,</span> <span class="n">aac_loss_def</span><span class="p">,</span> <span class="n">ppo_loss_def</span><span class="p">,</span> <span class="n">state_min_max_loss_def</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.losses</span> <span class="k">import</span> <span class="n">value_fn_loss_def</span><span class="p">,</span> <span class="n">rp_loss_def</span><span class="p">,</span> <span class="n">pc_loss_def</span><span class="p">,</span> <span class="n">aac_loss_def</span><span class="p">,</span> <span class="n">ppo_loss_def</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms.utils</span> <span class="k">import</span> <span class="n">feed_dict_rnn_context</span><span class="p">,</span> <span class="n">feed_dict_from_nested</span><span class="p">,</span> <span class="n">batch_stack</span>
 
 
@@ -233,6 +234,7 @@
                  <span class="n">task</span><span class="p">,</span>
                  <span class="n">policy_config</span><span class="p">,</span>
                  <span class="n">log_level</span><span class="p">,</span>
+                 <span class="n">_log_name</span><span class="o">=</span><span class="s1">&#39;AAC&#39;</span><span class="p">,</span>
                  <span class="n">on_policy_loss</span><span class="o">=</span><span class="n">aac_loss_def</span><span class="p">,</span>
                  <span class="n">off_policy_loss</span><span class="o">=</span><span class="n">aac_loss_def</span><span class="p">,</span>
                  <span class="n">vr_loss</span><span class="o">=</span><span class="n">value_fn_loss_def</span><span class="p">,</span>
@@ -282,6 +284,7 @@
 <span class="sd">            task:                   int, parent worker id</span>
 <span class="sd">            policy_config:          policy estimator class and configuration dictionary</span>
 <span class="sd">            log_level:              int, logbook.level</span>
+<span class="sd">            _log_name:              str, class-wide logger name</span>
 <span class="sd">            on_policy_loss:         callable returning tensor holding on_policy training loss graph and summaries</span>
 <span class="sd">            off_policy_loss:        callable returning tensor holding off_policy training loss graph and summaries</span>
 <span class="sd">            vr_loss:                callable returning tensor holding value replay loss graph and summaries</span>
@@ -358,437 +361,450 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Logging:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_name</span> <span class="o">=</span> <span class="n">_log_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;AAC_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="o">=</span> <span class="n">random_seed</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">)</span>
-            <span class="n">tf</span><span class="o">.</span><span class="n">set_random_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;rnd_seed:</span><span class="si">{}</span><span class="s1">, log_u_sample_(0,1]x5: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
-                       <span class="nb">format</span><span class="p">(</span><span class="n">random_seed</span><span class="p">,</span> <span class="n">log_uniform</span><span class="p">([</span><span class="mf">1e-10</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="mi">5</span><span class="p">)))</span>
-
-        <span class="k">if</span> <span class="n">kwargs</span> <span class="o">!=</span> <span class="p">{}:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Unexpected kwargs found: </span><span class="si">{}</span><span class="s1">, ignored.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">kwargs</span><span class="p">))</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="c1"># Get direct traceback:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="o">=</span> <span class="n">random_seed</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">)</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">set_random_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;rnd_seed:</span><span class="si">{}</span><span class="s1">, log_u_sample_(0,1]x5: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                           <span class="nb">format</span><span class="p">(</span><span class="n">random_seed</span><span class="p">,</span> <span class="n">log_uniform</span><span class="p">([</span><span class="mf">1e-10</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="mi">5</span><span class="p">)))</span>
 
-        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">env</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">kwargs</span> <span class="o">!=</span> <span class="p">{}:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Unexpected kwargs found: </span><span class="si">{}</span><span class="s1">, ignored.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">kwargs</span><span class="p">))</span>
 
-        <span class="n">ref_env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># reference instance to get obs shapes etc.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span> <span class="o">=</span> <span class="n">env</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
 
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">,</span> <span class="n">ObSpace</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">env</span><span class="p">]</span>
 
-        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
-                <span class="s1">&#39;expected environment observation space of type </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
-                <span class="nb">format</span><span class="p">(</span><span class="n">ObSpace</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">))</span>
-            <span class="p">)</span>
-            <span class="k">raise</span>  <span class="ne">AssertionError</span>
+            <span class="n">ref_env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># reference instance to get obs shapes etc.</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">policy_kwargs</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">,</span> <span class="n">ObSpace</span><span class="p">)</span>
 
-        <span class="c1"># Losses:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">on_policy_loss</span> <span class="o">=</span> <span class="n">on_policy_loss</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">off_policy_loss</span> <span class="o">=</span> <span class="n">off_policy_loss</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">vr_loss</span> <span class="o">=</span> <span class="n">vr_loss</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">rp_loss</span> <span class="o">=</span> <span class="n">rp_loss</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pc_loss</span> <span class="o">=</span> <span class="n">pc_loss</span>
+            <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                    <span class="s1">&#39;expected environment observation space of type </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
+                    <span class="nb">format</span><span class="p">(</span><span class="n">ObSpace</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">))</span>
+                <span class="p">)</span>
+                <span class="k">raise</span>  <span class="ne">AssertionError</span>
 
-        <span class="c1"># AAC specific:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model_gamma</span> <span class="o">=</span> <span class="n">model_gamma</span>  <span class="c1"># decay</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model_gae_lambda</span> <span class="o">=</span> <span class="n">model_gae_lambda</span>  <span class="c1"># general advantage estimator lambda</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">model_beta</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># entropy reg.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">policy_class</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">policy_kwargs</span> <span class="o">=</span> <span class="n">policy_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">time_flat</span> <span class="o">=</span> <span class="n">time_flat</span>
+            <span class="c1"># Losses:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">on_policy_loss</span> <span class="o">=</span> <span class="n">on_policy_loss</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">off_policy_loss</span> <span class="o">=</span> <span class="n">off_policy_loss</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">vr_loss</span> <span class="o">=</span> <span class="n">vr_loss</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rp_loss</span> <span class="o">=</span> <span class="n">rp_loss</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pc_loss</span> <span class="o">=</span> <span class="n">pc_loss</span>
 
-        <span class="c1"># Optimizer</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opt_max_env_steps</span> <span class="o">=</span> <span class="n">opt_max_env_steps</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="c1"># AAC specific:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_gamma</span> <span class="o">=</span> <span class="n">model_gamma</span>  <span class="c1"># decay</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_gae_lambda</span> <span class="o">=</span> <span class="n">model_gae_lambda</span>  <span class="c1"># general advantage estimator lambda</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">model_beta</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># entropy reg.</span>
 
-        <span class="k">if</span> <span class="n">opt_end_learn_rate</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">opt_end_learn_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">opt_end_learn_rate</span> <span class="o">=</span> <span class="n">opt_end_learn_rate</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">time_flat</span> <span class="o">=</span> <span class="n">time_flat</span>
 
-        <span class="k">if</span> <span class="n">opt_decay_steps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">opt_decay_steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_max_env_steps</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">opt_decay_steps</span> <span class="o">=</span> <span class="n">opt_decay_steps</span>
+            <span class="c1"># Optimizer</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opt_max_env_steps</span> <span class="o">=</span> <span class="n">opt_max_env_steps</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">opt_decay</span> <span class="o">=</span> <span class="n">opt_decay</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opt_epsilon</span> <span class="o">=</span> <span class="n">opt_epsilon</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opt_momentum</span> <span class="o">=</span> <span class="n">opt_momentum</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">rollout_length</span> <span class="o">=</span> <span class="n">rollout_length</span>
+            <span class="k">if</span> <span class="n">opt_end_learn_rate</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">opt_end_learn_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">opt_end_learn_rate</span> <span class="o">=</span> <span class="n">opt_end_learn_rate</span>
 
-        <span class="c1"># Data sampling control:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span> <span class="o">=</span> <span class="n">episode_train_test_cycle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span> <span class="o">=</span> <span class="n">episode_train_test_cycle</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> \
-                <span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> \
-                <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">opt_decay_steps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">opt_decay_steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_max_env_steps</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">opt_decay_steps</span> <span class="o">=</span> <span class="n">opt_decay_steps</span>
 
-        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
-                <span class="s1">&#39;Train/test episode cycle values could not be both zeroes or negative, got: train=</span><span class="si">{}</span><span class="s1">, test=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
-                <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span><span class="p">)</span>
-            <span class="p">)</span>
-            <span class="k">raise</span> <span class="ne">AssertionError</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opt_decay</span> <span class="o">=</span> <span class="n">opt_decay</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opt_epsilon</span> <span class="o">=</span> <span class="n">opt_epsilon</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opt_momentum</span> <span class="o">=</span> <span class="n">opt_momentum</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rollout_length</span> <span class="o">=</span> <span class="n">rollout_length</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="c1"># Data sampling control:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span> <span class="o">=</span> <span class="n">episode_train_test_cycle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span> <span class="o">=</span> <span class="n">episode_train_test_cycle</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> \
+                    <span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> \
+                    <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span> <span class="o">&gt;=</span> <span class="mi">0</span>
 
-        <span class="c1"># Summaries :</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">episode_summary_freq</span> <span class="o">=</span> <span class="n">episode_summary_freq</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">env_render_freq</span> <span class="o">=</span> <span class="n">env_render_freq</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model_summary_freq</span> <span class="o">=</span> <span class="n">model_summary_freq</span>
+            <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                    <span class="s1">&#39;Train/test episode cycle values could not be both zeroes or negative, got: train=</span><span class="si">{}</span><span class="s1">, test=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
+                    <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">AssertionError</span>
 
-        <span class="c1"># If True - use ATARI gym env.:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span> <span class="o">=</span> <span class="n">test_mode</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span> <span class="o">=</span> <span class="mi">0</span>
 
-        <span class="c1"># UNREAL/AUX and Off-policy specific:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">off_aac_lambda</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">rp_lambda</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">pc_lambda</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">vr_lambda</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">gamma_pc</span> <span class="o">=</span> <span class="n">gamma_pc</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">replay_memory_size</span> <span class="o">=</span> <span class="n">replay_memory_size</span>
+            <span class="c1"># Summaries :</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">episode_summary_freq</span> <span class="o">=</span> <span class="n">episode_summary_freq</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env_render_freq</span> <span class="o">=</span> <span class="n">env_render_freq</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_summary_freq</span> <span class="o">=</span> <span class="n">model_summary_freq</span>
 
-        <span class="k">if</span> <span class="n">replay_rollout_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">replay_rollout_length</span> <span class="o">=</span> <span class="n">replay_rollout_length</span>
+            <span class="c1"># If True - use ATARI gym env.:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span> <span class="o">=</span> <span class="n">test_mode</span>
 
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">replay_rollout_length</span> <span class="o">=</span> <span class="n">rollout_length</span> <span class="c1"># by default off-rollout equals on-policy one</span>
+            <span class="c1"># UNREAL/AUX and Off-policy specific:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">off_aac_lambda</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">rp_lambda</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">pc_lambda</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span> <span class="o">=</span> <span class="n">log_uniform</span><span class="p">(</span><span class="n">vr_lambda</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gamma_pc</span> <span class="o">=</span> <span class="n">gamma_pc</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">replay_memory_size</span> <span class="o">=</span> <span class="n">replay_memory_size</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">rp_sequence_size</span> <span class="o">=</span> <span class="n">rp_sequence_size</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">rp_reward_threshold</span> <span class="o">=</span> <span class="n">rp_reward_threshold</span>
-
-        <span class="k">if</span> <span class="n">replay_batch_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">replay_batch_size</span> <span class="o">=</span> <span class="n">replay_batch_size</span>
-
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">replay_batch_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">)</span>  <span class="c1"># by default off-batch equals on-policy one</span>
-
-        <span class="c1"># PPO related:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">clip_epsilon</span> <span class="o">=</span> <span class="n">clip_epsilon</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_epochs</span> <span class="o">=</span> <span class="n">num_epochs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pi_prime_update_period</span> <span class="o">=</span> <span class="n">pi_prime_update_period</span>
-
-        <span class="c1"># On/off switchers for off-policy training and auxiliary tasks:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_off_policy_aac</span> <span class="o">=</span> <span class="n">use_off_policy_aac</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_reward_prediction</span> <span class="o">=</span> <span class="n">use_reward_prediction</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_pixel_control</span> <span class="o">=</span> <span class="n">use_pixel_control</span>
-        <span class="k">if</span> <span class="n">use_off_policy_aac</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">use_value_replay</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># v-replay is redundant in this case</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">use_value_replay</span> <span class="o">=</span> <span class="n">use_value_replay</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span> <span class="o">=</span> <span class="n">use_value_replay</span> <span class="ow">or</span> <span class="n">use_pixel_control</span> <span class="ow">or</span> <span class="n">use_reward_prediction</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_memory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_off_policy_aac</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span> <span class="o">=</span> <span class="n">_use_target_policy</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;learn_rate: </span><span class="si">{:1.6f}</span><span class="s1">, entropy_beta: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span><span class="p">))</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_off_policy_aac</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;off_aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span><span class="p">,))</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;vr_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, pc_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, rp_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
-                          <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span><span class="p">))</span>
-
-
-        <span class="c1">#self.log.notice(</span>
-        <span class="c1">#    &#39;AAC_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},&#39;.</span>
-        <span class="c1">#        format(self.task, self.opt_max_env_steps, self.opt_decay_steps, self.opt_end_learn_rate))</span>
-
-        <span class="n">worker_device</span> <span class="o">=</span> <span class="s2">&quot;/job:worker/task:</span><span class="si">{}</span><span class="s2">/cpu:0&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
-
-        <span class="c1"># Update policy configuration</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">policy_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
-            <span class="p">{</span>
-                <span class="s1">&#39;ob_space&#39;</span><span class="p">:</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
-                <span class="s1">&#39;ac_space&#39;</span><span class="p">:</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">,</span>
-                <span class="s1">&#39;rp_sequence_size&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_sequence_size</span><span class="p">,</span>
-                <span class="s1">&#39;aux_estimate&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span><span class="p">,</span>
-            <span class="p">}</span>
-        <span class="p">)</span>
-        <span class="c1"># Start building graphs:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;started building graphs&#39;</span><span class="p">)</span>
-        <span class="c1"># PS:</span>
-        <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">replica_device_setter</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">worker_device</span><span class="o">=</span><span class="n">worker_device</span><span class="p">)):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;global&#39;</span><span class="p">)</span>
-
-        <span class="c1"># Worker:</span>
-        <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">worker_device</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">local_network</span> <span class="o">=</span> <span class="n">pi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;local&#39;</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">local_network_prime</span> <span class="o">=</span> <span class="n">pi_prime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;local_prime&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">replay_rollout_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">replay_rollout_length</span> <span class="o">=</span> <span class="n">replay_rollout_length</span>
 
             <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">local_network_prime</span> <span class="o">=</span> <span class="n">pi_prime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_dummy_policy</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">replay_rollout_length</span> <span class="o">=</span> <span class="n">rollout_length</span> <span class="c1"># by default off-rollout equals on-policy one</span>
 
-            <span class="c1"># Meant for Batch-norm layers:</span>
-            <span class="n">pi</span><span class="o">.</span><span class="n">update_ops</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">UPDATE_OPS</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s1">&#39;.*local.*&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rp_sequence_size</span> <span class="o">=</span> <span class="n">rp_sequence_size</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rp_reward_threshold</span> <span class="o">=</span> <span class="n">rp_reward_threshold</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;local_network_upd_ops_collection:</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">update_ops</span><span class="p">))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">local_network_var_list_to_save:&#39;</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()))</span>
+            <span class="k">if</span> <span class="n">replay_batch_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">replay_batch_size</span> <span class="o">=</span> <span class="n">replay_batch_size</span>
 
-            <span class="c1">#  Learning rate annealing:</span>
-            <span class="n">learn_rate_decayed</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">polynomial_decay</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">opt_decay_steps</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">opt_end_learn_rate</span><span class="p">,</span>
-                <span class="n">power</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                <span class="n">cycle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="n">clip_epsilon</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clip_epsilon</span> <span class="o">*</span> <span class="n">learn_rate_decayed</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">replay_batch_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">)</span>  <span class="c1"># by default off-batch equals on-policy one</span>
 
-            <span class="c1"># Freeze training if train_phase is False:</span>
-            <span class="n">train_learn_rate</span> <span class="o">=</span> <span class="n">learn_rate_decayed</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">train_phase</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;learn rate ok&#39;</span><span class="p">)</span>
+            <span class="c1"># PPO related:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">clip_epsilon</span> <span class="o">=</span> <span class="n">clip_epsilon</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_epochs</span> <span class="o">=</span> <span class="n">num_epochs</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pi_prime_update_period</span> <span class="o">=</span> <span class="n">pi_prime_update_period</span>
 
-            <span class="c1"># On-policy AAC loss definition:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_act_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span>
-                <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_action_pl&quot;</span>
-            <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_adv_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_advantage_pl&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_r_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_return_pl&quot;</span><span class="p">)</span>
+            <span class="c1"># On/off switchers for off-policy training and auxiliary tasks:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_off_policy_aac</span> <span class="o">=</span> <span class="n">use_off_policy_aac</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_reward_prediction</span> <span class="o">=</span> <span class="n">use_reward_prediction</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_pixel_control</span> <span class="o">=</span> <span class="n">use_pixel_control</span>
+            <span class="k">if</span> <span class="n">use_off_policy_aac</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">use_value_replay</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># v-replay is redundant in this case</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">use_value_replay</span> <span class="o">=</span> <span class="n">use_value_replay</span>
 
-            <span class="n">on_pi_loss</span><span class="p">,</span> <span class="n">on_pi_summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_policy_loss</span><span class="p">(</span>
-                <span class="n">act_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on_pi_act_target</span><span class="p">,</span>
-                <span class="n">adv_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on_pi_adv_target</span><span class="p">,</span>
-                <span class="n">r_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on_pi_r_target</span><span class="p">,</span>
-                <span class="n">pi_logits</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">on_logits</span><span class="p">,</span>
-                <span class="n">pi_vf</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">on_vf</span><span class="p">,</span>
-                <span class="n">pi_prime_logits</span><span class="o">=</span><span class="n">pi_prime</span><span class="o">.</span><span class="n">on_logits</span><span class="p">,</span>
-                <span class="n">entropy_beta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span><span class="p">,</span>
-                <span class="n">epsilon</span><span class="o">=</span><span class="n">clip_epsilon</span><span class="p">,</span>
-                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy&#39;</span><span class="p">,</span>
-                <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
-            <span class="p">)</span>
-            <span class="c1"># Start accumulating total loss:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">on_pi_loss</span>
-            <span class="n">model_summaries</span> <span class="o">=</span> <span class="n">on_pi_summaries</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span> <span class="o">=</span> <span class="n">use_value_replay</span> <span class="ow">or</span> <span class="n">use_pixel_control</span> <span class="ow">or</span> <span class="n">use_reward_prediction</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_memory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_off_policy_aac</span>
 
-            <span class="c1"># Off-policy losses:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">off_pi_act_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span>
-                <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;off_policy_action_pl&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">off_pi_adv_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;off_policy_advantage_pl&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">off_pi_r_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;off_policy_return_pl&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span> <span class="o">=</span> <span class="n">_use_target_policy</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;learn_rate: </span><span class="si">{:1.6f}</span><span class="s1">, entropy_beta: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span><span class="p">))</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_off_policy_aac</span><span class="p">:</span>
-                <span class="c1"># Off-policy AAC loss graph mirrors on-policy:</span>
-                <span class="n">off_pi_loss</span><span class="p">,</span> <span class="n">off_pi_summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_policy_loss</span><span class="p">(</span>
-                    <span class="n">act_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">off_pi_act_target</span><span class="p">,</span>
-                    <span class="n">adv_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">off_pi_adv_target</span><span class="p">,</span>
-                    <span class="n">r_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">off_pi_r_target</span><span class="p">,</span>
-                    <span class="n">pi_logits</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">off_logits</span><span class="p">,</span>
-                    <span class="n">pi_vf</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">off_vf</span><span class="p">,</span>
-                    <span class="n">pi_prime_logits</span><span class="o">=</span><span class="n">pi_prime</span><span class="o">.</span><span class="n">off_logits</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;off_aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span><span class="p">,))</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;vr_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, pc_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, rp_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span>
+                              <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span><span class="p">))</span>
+
+
+            <span class="c1">#self.log.notice(</span>
+            <span class="c1">#    &#39;AAC_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},&#39;.</span>
+            <span class="c1">#        format(self.task, self.opt_max_env_steps, self.opt_decay_steps, self.opt_end_learn_rate))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">worker_device</span> <span class="o">=</span> <span class="s2">&quot;/job:worker/task:</span><span class="si">{}</span><span class="s2">/cpu:0&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+            <span class="c1"># Update policy configuration</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">policy_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;ob_space&#39;</span><span class="p">:</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+                    <span class="s1">&#39;ac_space&#39;</span><span class="p">:</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">,</span>
+                    <span class="s1">&#39;rp_sequence_size&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_sequence_size</span><span class="p">,</span>
+                    <span class="s1">&#39;aux_estimate&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_any_aux_tasks</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+            <span class="c1"># Start building graphs:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;started building graphs&#39;</span><span class="p">)</span>
+            <span class="c1"># PS:</span>
+            <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">replica_device_setter</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">worker_device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_device</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;global&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Worker:</span>
+            <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_device</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">local_network</span> <span class="o">=</span> <span class="n">pi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;local&#39;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">local_network_prime</span> <span class="o">=</span> <span class="n">pi_prime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_policy</span><span class="p">(</span><span class="s1">&#39;local_prime&#39;</span><span class="p">)</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">local_network_prime</span> <span class="o">=</span> <span class="n">pi_prime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_dummy_policy</span><span class="p">()</span>
+
+                <span class="c1"># Meant for Batch-norm layers:</span>
+                <span class="n">pi</span><span class="o">.</span><span class="n">update_ops</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">UPDATE_OPS</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s1">&#39;.*local.*&#39;</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;local_network_upd_ops_collection:</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">update_ops</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">local_network_var_list_to_save:&#39;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()))</span>
+
+                <span class="c1">#  Learning rate annealing:</span>
+                <span class="n">learn_rate_decayed</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">polynomial_decay</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">opt_decay_steps</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">opt_end_learn_rate</span><span class="p">,</span>
+                    <span class="n">power</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="n">cycle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">clip_epsilon</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clip_epsilon</span> <span class="o">*</span> <span class="n">learn_rate_decayed</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+                <span class="c1"># Freeze training if train_phase is False:</span>
+                <span class="n">train_learn_rate</span> <span class="o">=</span> <span class="n">learn_rate_decayed</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">train_phase</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;learn rate ok&#39;</span><span class="p">)</span>
+
+                <span class="c1"># On-policy AAC loss definition:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_act_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_action_pl&quot;</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_adv_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_advantage_pl&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">on_pi_r_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;on_policy_return_pl&quot;</span><span class="p">)</span>
+
+                <span class="n">on_pi_loss</span><span class="p">,</span> <span class="n">on_pi_summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_policy_loss</span><span class="p">(</span>
+                    <span class="n">act_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on_pi_act_target</span><span class="p">,</span>
+                    <span class="n">adv_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on_pi_adv_target</span><span class="p">,</span>
+                    <span class="n">r_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on_pi_r_target</span><span class="p">,</span>
+                    <span class="n">pi_logits</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">on_logits</span><span class="p">,</span>
+                    <span class="n">pi_vf</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">on_vf</span><span class="p">,</span>
+                    <span class="n">pi_prime_logits</span><span class="o">=</span><span class="n">pi_prime</span><span class="o">.</span><span class="n">on_logits</span><span class="p">,</span>
                     <span class="n">entropy_beta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span><span class="p">,</span>
                     <span class="n">epsilon</span><span class="o">=</span><span class="n">clip_epsilon</span><span class="p">,</span>
-                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy&#39;</span><span class="p">,</span>
-                    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span>
-                <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span> <span class="o">*</span> <span class="n">off_pi_loss</span>
-                <span class="n">model_summaries</span> <span class="o">+=</span> <span class="n">off_pi_summaries</span>
-
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_pixel_control</span><span class="p">:</span>
-                <span class="c1"># Pixel control loss:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">pc_action</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;pc_action&quot;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;pc_target&quot;</span><span class="p">)</span>
-
-                <span class="n">pc_loss</span><span class="p">,</span> <span class="n">pc_summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_loss</span><span class="p">(</span>
-                    <span class="n">actions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_action</span><span class="p">,</span>
-                    <span class="n">targets</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">,</span>
-                    <span class="n">pi_pc_q</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">pc_q</span><span class="p">,</span>
-                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy&#39;</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy&#39;</span><span class="p">,</span>
                     <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
                 <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span> <span class="o">*</span> <span class="n">pc_loss</span>
-                <span class="c1"># Add specific summary:</span>
-                <span class="n">model_summaries</span> <span class="o">+=</span> <span class="n">pc_summaries</span>
+                <span class="c1"># Start accumulating total loss:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">on_pi_loss</span>
+                <span class="n">model_summaries</span> <span class="o">=</span> <span class="n">on_pi_summaries</span>
 
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_value_replay</span><span class="p">:</span>
-                <span class="c1"># Value function replay loss:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">vr_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;vr_target&quot;</span><span class="p">)</span>
-                <span class="n">vr_loss</span><span class="p">,</span> <span class="n">vr_summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vr_loss</span><span class="p">(</span>
-                    <span class="n">r_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">vr_target</span><span class="p">,</span>
-                    <span class="n">pi_vf</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">vr_value</span><span class="p">,</span>
-                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy&#39;</span><span class="p">,</span>
-                    <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
-                <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span> <span class="o">*</span> <span class="n">vr_loss</span>
-                <span class="n">model_summaries</span> <span class="o">+=</span> <span class="n">vr_summaries</span>
+                <span class="c1"># Off-policy losses:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">off_pi_act_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;off_policy_action_pl&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">off_pi_adv_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;off_policy_advantage_pl&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">off_pi_r_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;off_policy_return_pl&quot;</span><span class="p">)</span>
 
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_reward_prediction</span><span class="p">:</span>
-                <span class="c1"># Reward prediction loss:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">rp_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;rp_target&quot;</span><span class="p">)</span>
-
-                <span class="n">rp_loss</span><span class="p">,</span> <span class="n">rp_summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_loss</span><span class="p">(</span>
-                    <span class="n">rp_targets</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_target</span><span class="p">,</span>
-                    <span class="n">pi_rp_logits</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">rp_logits</span><span class="p">,</span>
-                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy&#39;</span><span class="p">,</span>
-                    <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
-                <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span> <span class="o">*</span> <span class="n">rp_loss</span>
-                <span class="n">model_summaries</span> <span class="o">+=</span> <span class="n">rp_summaries</span>
-
-            <span class="c1">#grads = tf.gradients(self.loss, pi.var_list)</span>
-
-            <span class="c1"># Clipped gradients:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">clip_by_global_norm</span><span class="p">(</span>
-                <span class="n">tf</span><span class="o">.</span><span class="n">gradients</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">),</span>
-                <span class="mf">40.0</span>
-            <span class="p">)</span>
-            <span class="c1"># Copy weights from the parameter server to the local model</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">sync</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sync_pi</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">v1</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">v2</span><span class="p">)</span> <span class="k">for</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">var_list</span><span class="p">)])</span>
-
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span><span class="p">:</span>
-                <span class="c1"># Copy weights from new policy model to target one:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">sync_pi_prime</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">v1</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">v2</span><span class="p">)</span> <span class="k">for</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pi_prime</span><span class="o">.</span><span class="n">var_list</span><span class="p">,</span> <span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">)])</span>
-
-            <span class="n">grads_and_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">var_list</span><span class="p">))</span>
-
-            <span class="c1"># Since every observation mod. has same batch size - just take first key in a row:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">inc_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">on_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]])[</span><span class="mi">0</span><span class="p">])</span>
-
-            <span class="c1"># Each worker gets a different set of adam optimizer parameters:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">AdamOptimizer</span><span class="p">(</span><span class="n">train_learn_rate</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
-
-            <span class="c1">#self.optimizer = tf.train.RMSPropOptimizer(</span>
-            <span class="c1">#    learning_rate=train_learn_rate,</span>
-            <span class="c1">#    decay=self.opt_decay,</span>
-            <span class="c1">#    momentum=self.opt_momentum,</span>
-            <span class="c1">#    epsilon=self.opt_epsilon,</span>
-            <span class="c1">#)</span>
-
-            <span class="c1">#self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), self.inc_step)</span>
-            <span class="c1">#self.train_op = tf.group(opt.apply_gradients(grads_and_vars), self.inc_step)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">train_op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="n">grads_and_vars</span><span class="p">)</span>
-
-            <span class="c1"># Add model-wide statistics:</span>
-            <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">name_scope</span><span class="p">(</span><span class="s1">&#39;model&#39;</span><span class="p">):</span>
-                <span class="n">model_summaries</span> <span class="o">+=</span> <span class="p">[</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;grad_global_norm&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">)),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;var_global_norm&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_norm</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">)),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;learn_rate&quot;</span><span class="p">,</span> <span class="n">learn_rate_decayed</span><span class="p">),</span>  <span class="c1"># cause actual rate is a jaggy due to testing</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;total_loss&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span>
-                <span class="p">]</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">=</span> <span class="mi">0</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;train op defined&#39;</span><span class="p">)</span>
-
-            <span class="c1"># Model stat. summary:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">model_summary_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">model_summaries</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;model_summary&#39;</span><span class="p">)</span>
-
-            <span class="c1"># Episode-related summaries:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-                <span class="c1"># Summary placeholders</span>
-                <span class="n">render_atari</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
-                <span class="n">total_r</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">),</span>
-                <span class="n">cpu_time</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">),</span>
-                <span class="n">final_value</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">),</span>
-                <span class="n">steps</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="p">),</span>
-            <span class="p">)</span>
-
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
-                <span class="c1"># For Atari:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="s2">&quot;model/state&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_atari&#39;</span><span class="p">])</span>
-
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># BTGym rendering:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
-                    <span class="p">{</span>
-                        <span class="n">mode</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">render_modes</span>
-                    <span class="p">}</span>
-                <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
-                    <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="n">mode</span><span class="p">])</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">render_modes</span><span class="p">]</span>
-                <span class="p">)</span>
-
-            <span class="c1"># Episode stat. summary:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;btgym_stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
-                <span class="p">[</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/total_reward&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r&#39;</span><span class="p">]),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/cpu_time_sec&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;cpu_time&#39;</span><span class="p">]),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/final_value&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;final_value&#39;</span><span class="p">]),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/env_steps&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">])</span>
-                <span class="p">],</span>
-                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode_train_btgym&#39;</span>
-            <span class="p">)</span>
-            <span class="c1"># Test episode stat. summary:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_btgym_stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
-                <span class="p">[</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_test/total_reward&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r&#39;</span><span class="p">]),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_test/final_value&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;final_value&#39;</span><span class="p">]),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_test/env_steps&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">])</span>
-                <span class="p">],</span>
-                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode_test_btgym&#39;</span>
-            <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;atari_stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
-                <span class="p">[</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode/total_reward&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r&#39;</span><span class="p">]),</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode/steps&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">])</span>
-                <span class="p">],</span>
-                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode_atari&#39;</span>
-            <span class="p">)</span>
-
-            <span class="c1"># Replay memory_config:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_memory</span><span class="p">:</span>
-                <span class="n">memory_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-                    <span class="n">class_ref</span><span class="o">=</span><span class="n">Memory</span><span class="p">,</span>
-                    <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
-                        <span class="n">history_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">replay_memory_size</span><span class="p">,</span>
-                        <span class="n">max_sample_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">replay_rollout_length</span><span class="p">,</span>
-                        <span class="n">priority_sample_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_sequence_size</span><span class="p">,</span>
-                        <span class="n">reward_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_reward_threshold</span><span class="p">,</span>
-                        <span class="n">use_priority_sampling</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">use_reward_prediction</span><span class="p">,</span>
-                        <span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
-                        <span class="n">log</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_off_policy_aac</span><span class="p">:</span>
+                    <span class="c1"># Off-policy AAC loss graph mirrors on-policy:</span>
+                    <span class="n">off_pi_loss</span><span class="p">,</span> <span class="n">off_pi_summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_policy_loss</span><span class="p">(</span>
+                        <span class="n">act_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">off_pi_act_target</span><span class="p">,</span>
+                        <span class="n">adv_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">off_pi_adv_target</span><span class="p">,</span>
+                        <span class="n">r_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">off_pi_r_target</span><span class="p">,</span>
+                        <span class="n">pi_logits</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">off_logits</span><span class="p">,</span>
+                        <span class="n">pi_vf</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">off_vf</span><span class="p">,</span>
+                        <span class="n">pi_prime_logits</span><span class="o">=</span><span class="n">pi_prime</span><span class="o">.</span><span class="n">off_logits</span><span class="p">,</span>
+                        <span class="n">entropy_beta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_beta</span><span class="p">,</span>
+                        <span class="n">epsilon</span><span class="o">=</span><span class="n">clip_epsilon</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy&#39;</span><span class="p">,</span>
+                        <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span>
                     <span class="p">)</span>
-                <span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">memory_config</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_lambda</span> <span class="o">*</span> <span class="n">off_pi_loss</span>
+                    <span class="n">model_summaries</span> <span class="o">+=</span> <span class="n">off_pi_summaries</span>
 
-            <span class="c1"># Make runners:</span>
-            <span class="c1"># `rollout_length` represents the number of &quot;local steps&quot;:  the number of time steps</span>
-            <span class="c1"># we run the policy before we get full rollout, run train step and update the parameters.</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">runners</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="n">task</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span>  <span class="c1"># Runners will have [worker_task][env_count] id&#39;s</span>
-            <span class="k">for</span> <span class="n">env</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">runners</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                     <span class="n">RunnerThread</span><span class="p">(</span>
-                        <span class="n">env</span><span class="p">,</span>
-                        <span class="n">pi</span><span class="p">,</span>
-                        <span class="n">task</span><span class="p">,</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">rollout_length</span><span class="p">,</span>  <span class="c1"># ~20</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">episode_summary_freq</span><span class="p">,</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">env_render_freq</span><span class="p">,</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">,</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">,</span>
-                        <span class="n">memory_config</span>
-                     <span class="p">)</span>
-                <span class="p">)</span>
-                <span class="n">task</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="c1"># Make rollouts provider[s]:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">data_getter</span> <span class="o">=</span> <span class="p">[</span><span class="n">make_data_getter</span><span class="p">(</span><span class="n">runner</span><span class="o">.</span><span class="n">queue</span><span class="p">)</span> <span class="k">for</span> <span class="n">runner</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">runners</span><span class="p">]</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_pixel_control</span><span class="p">:</span>
+                    <span class="c1"># Pixel control loss:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">pc_action</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;pc_action&quot;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;pc_target&quot;</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;.init() done&#39;</span><span class="p">)</span>
+                    <span class="n">pc_loss</span><span class="p">,</span> <span class="n">pc_summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_loss</span><span class="p">(</span>
+                        <span class="n">actions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_action</span><span class="p">,</span>
+                        <span class="n">targets</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">,</span>
+                        <span class="n">pi_pc_q</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">pc_q</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy&#39;</span><span class="p">,</span>
+                        <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_lambda</span> <span class="o">*</span> <span class="n">pc_loss</span>
+                    <span class="c1"># Add specific summary:</span>
+                    <span class="n">model_summaries</span> <span class="o">+=</span> <span class="n">pc_summaries</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_value_replay</span><span class="p">:</span>
+                    <span class="c1"># Value function replay loss:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">vr_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;vr_target&quot;</span><span class="p">)</span>
+                    <span class="n">vr_loss</span><span class="p">,</span> <span class="n">vr_summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vr_loss</span><span class="p">(</span>
+                        <span class="n">r_target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">vr_target</span><span class="p">,</span>
+                        <span class="n">pi_vf</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">vr_value</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy&#39;</span><span class="p">,</span>
+                        <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">vr_lambda</span> <span class="o">*</span> <span class="n">vr_loss</span>
+                    <span class="n">model_summaries</span> <span class="o">+=</span> <span class="n">vr_summaries</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_reward_prediction</span><span class="p">:</span>
+                    <span class="c1"># Reward prediction loss:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">rp_target</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;rp_target&quot;</span><span class="p">)</span>
+
+                    <span class="n">rp_loss</span><span class="p">,</span> <span class="n">rp_summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_loss</span><span class="p">(</span>
+                        <span class="n">rp_targets</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_target</span><span class="p">,</span>
+                        <span class="n">pi_rp_logits</span><span class="o">=</span><span class="n">pi</span><span class="o">.</span><span class="n">rp_logits</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_policy&#39;</span><span class="p">,</span>
+                        <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_lambda</span> <span class="o">*</span> <span class="n">rp_loss</span>
+                    <span class="n">model_summaries</span> <span class="o">+=</span> <span class="n">rp_summaries</span>
+
+                <span class="c1">#grads = tf.gradients(self.loss, pi.var_list)</span>
+
+                <span class="c1"># Clipped gradients:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">clip_by_global_norm</span><span class="p">(</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">gradients</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">),</span>
+                    <span class="mf">40.0</span>
+                <span class="p">)</span>
+                <span class="c1"># Copy weights from the parameter server to the local model</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sync</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sync_pi</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">v1</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">v2</span><span class="p">)</span> <span class="k">for</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">var_list</span><span class="p">)])</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span><span class="p">:</span>
+                    <span class="c1"># Copy weights from new policy model to target one:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sync_pi_prime</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">v1</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">v2</span><span class="p">)</span> <span class="k">for</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pi_prime</span><span class="o">.</span><span class="n">var_list</span><span class="p">,</span> <span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">)])</span>
+
+                <span class="n">grads_and_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">var_list</span><span class="p">))</span>
+
+                <span class="c1"># Set global_step incremention equal to observation space  batch size:</span>
+                <span class="n">obs_space_keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">on_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+                <span class="k">assert</span> <span class="s1">&#39;external&#39;</span> <span class="ow">in</span> <span class="n">obs_space_keys</span><span class="p">,</span>\
+                    <span class="s1">&#39;Expected observation space to contain `external` mode, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">obs_space_keys</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">inc_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
+
+                <span class="c1"># Each worker gets a different set of adam optimizer parameters:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">AdamOptimizer</span><span class="p">(</span><span class="n">train_learn_rate</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
+
+                <span class="c1">#self.optimizer = tf.train.RMSPropOptimizer(</span>
+                <span class="c1">#    learning_rate=train_learn_rate,</span>
+                <span class="c1">#    decay=self.opt_decay,</span>
+                <span class="c1">#    momentum=self.opt_momentum,</span>
+                <span class="c1">#    epsilon=self.opt_epsilon,</span>
+                <span class="c1">#)</span>
+
+                <span class="c1">#self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), self.inc_step)</span>
+                <span class="c1">#self.train_op = tf.group(opt.apply_gradients(grads_and_vars), self.inc_step)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="n">grads_and_vars</span><span class="p">)</span>
+
+                <span class="c1"># Add model-wide statistics:</span>
+                <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">name_scope</span><span class="p">(</span><span class="s1">&#39;model&#39;</span><span class="p">):</span>
+                    <span class="n">model_summaries</span> <span class="o">+=</span> <span class="p">[</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;grad_global_norm&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">)),</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;var_global_norm&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_norm</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">)),</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;learn_rate&quot;</span><span class="p">,</span> <span class="n">learn_rate_decayed</span><span class="p">),</span>  <span class="c1"># cause actual rate is a jaggy due to testing</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;total_loss&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span>
+                    <span class="p">]</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">=</span> <span class="mi">0</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;train op defined&#39;</span><span class="p">)</span>
+
+                <span class="c1"># Model stat. summary:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model_summary_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">model_summaries</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;model_summary&#39;</span><span class="p">)</span>
+
+                <span class="c1"># Episode-related summaries:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                    <span class="c1"># Summary placeholders</span>
+                    <span class="n">render_atari</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
+                    <span class="n">total_r</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">),</span>
+                    <span class="n">cpu_time</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">),</span>
+                    <span class="n">final_value</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">),</span>
+                    <span class="n">steps</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="p">),</span>
+                <span class="p">)</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
+                    <span class="c1"># For Atari:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="s2">&quot;model/state&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_atari&#39;</span><span class="p">])</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># BTGym rendering:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                        <span class="p">{</span>
+                            <span class="n">mode</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">render_modes</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;render_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="n">mode</span><span class="p">])</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">render_modes</span><span class="p">]</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># Episode stat. summary:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;btgym_stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/total_reward&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r&#39;</span><span class="p">]),</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/cpu_time_sec&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;cpu_time&#39;</span><span class="p">]),</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/final_value&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;final_value&#39;</span><span class="p">]),</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_train/env_steps&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">])</span>
+                    <span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode_train_btgym&#39;</span>
+                <span class="p">)</span>
+                <span class="c1"># Test episode stat. summary:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;test_btgym_stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_test/total_reward&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r&#39;</span><span class="p">]),</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_test/final_value&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;final_value&#39;</span><span class="p">]),</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode_test/env_steps&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">])</span>
+                    <span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode_test_btgym&#39;</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;atari_stat_op&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode/total_reward&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;total_r&#39;</span><span class="p">]),</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;episode/steps&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">])</span>
+                    <span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode_atari&#39;</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Replay memory_config:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_memory</span><span class="p">:</span>
+                    <span class="n">memory_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                        <span class="n">class_ref</span><span class="o">=</span><span class="n">Memory</span><span class="p">,</span>
+                        <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                            <span class="n">history_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">replay_memory_size</span><span class="p">,</span>
+                            <span class="n">max_sample_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">replay_rollout_length</span><span class="p">,</span>
+                            <span class="n">priority_sample_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_sequence_size</span><span class="p">,</span>
+                            <span class="n">reward_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_reward_threshold</span><span class="p">,</span>
+                            <span class="n">use_priority_sampling</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">use_reward_prediction</span><span class="p">,</span>
+                            <span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
+                            <span class="n">log_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">memory_config</span> <span class="o">=</span> <span class="kc">None</span>
+
+                <span class="c1"># Make runners:</span>
+                <span class="c1"># `rollout_length` represents the number of &quot;local steps&quot;:  the number of time steps</span>
+                <span class="c1"># we run the policy before we get full rollout, run train step and update the parameters.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">runners</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">task</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Runners will have [worker_task][env_count] id&#39;s</span>
+                <span class="k">for</span> <span class="n">env</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">runners</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">RunnerThread</span><span class="p">(</span>
+                            <span class="n">env</span><span class="p">,</span>
+                            <span class="n">pi</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">+</span> <span class="n">task</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">rollout_length</span><span class="p">,</span>  <span class="c1"># ~20</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">episode_summary_freq</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">env_render_freq</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">ep_summary</span><span class="p">,</span>
+                            <span class="n">memory_config</span><span class="p">,</span>
+                            <span class="n">log_level</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                    <span class="n">task</span> <span class="o">+=</span> <span class="mf">0.01</span>
+                <span class="c1"># Make rollouts provider[s]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data_getter</span> <span class="o">=</span> <span class="p">[</span><span class="n">make_data_getter</span><span class="p">(</span><span class="n">runner</span><span class="o">.</span><span class="n">queue</span><span class="p">)</span> <span class="k">for</span> <span class="n">runner</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">runners</span><span class="p">]</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;trainer.init() done&#39;</span><span class="p">)</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Base class __init__() exception occurred.&#39;</span> <span class="o">+</span>\
+                  <span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">Press `Ctrl-C` or jupyter:[Kernel]-&gt;[Interrupt] for clean exit.</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -960,11 +976,18 @@
 <span class="sd">            sess:           tf session object.</span>
 <span class="sd">            kwargs:         not used by default.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Copy weights from global to local:</span>
-        <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Copy weights from global to local:</span>
+            <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync</span><span class="p">)</span>
 
-        <span class="c1"># Start thread_runners:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_start_runners</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">)</span></div>
+            <span class="c1"># Start thread_runners:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_runners</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">)</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;start() exception occurred&#39;</span> <span class="o">+</span> \
+                <span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">Press `Ctrl-C` or jupyter:[Kernel]-&gt;[Interrupt] for clean exit.</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_start_runners</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -1230,75 +1253,186 @@
 <span class="sd">        Args:</span>
 <span class="sd">            sess (tensorflow.Session):   tf session obj.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="c1"># Collect data from child thread runners:</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_data</span><span class="p">()</span>
-
-        <span class="c1"># Copy weights from local policy to local target policy:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">pi_prime_update_period</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi_prime</span><span class="p">)</span>
-
-        <span class="c1"># Test or train: if at least one on-policy rollout from parallel runners is test one -</span>
-        <span class="c1"># set learn rate to zero for entire minibatch. Doh.</span>
+        <span class="c1"># Quick wrap to get direct traceback from this trainer if something goes wrong:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">is_train</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">env</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">env</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;on_policy&#39;</span><span class="p">]])</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+            <span class="c1"># Collect data from child thread runners:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_data</span><span class="p">()</span>
 
-        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-            <span class="n">is_train</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="c1"># Copy weights from local policy to local target policy:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_target_policy</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">pi_prime_update_period</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi_prime</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">is_train</span><span class="p">:</span>
-            <span class="c1"># If there is no any test rollouts  - copy weights from shared to local new_policy:</span>
-            <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi</span><span class="p">)</span>
+            <span class="c1"># Test or train: if at least one on-policy rollout from parallel runners is test one -</span>
+            <span class="c1"># set learn rate to zero for entire minibatch. Doh.</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">is_train</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">env</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">env</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;on_policy&#39;</span><span class="p">]])</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
 
-        <span class="c1"># self.log.debug(&#39;is_train: {}&#39;.format(is_train))</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">is_train</span> <span class="o">=</span> <span class="kc">True</span>
 
-        <span class="n">feed_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_data</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">is_train</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">is_train</span><span class="p">:</span>
+                <span class="c1"># If there is no any test rollouts  - copy weights from shared to local new_policy:</span>
+                <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sync_pi</span><span class="p">)</span>
 
-        <span class="c1"># Say No to redundant summaries:</span>
-        <span class="n">wirte_model_summary</span> <span class="o">=</span>\
-            <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_summary_freq</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="c1"># self.log.debug(&#39;is_train: {}&#39;.format(is_train))</span>
 
-        <span class="c1">#fetches = [self.train_op, self.local_network.debug]  # include policy debug shapes</span>
-        <span class="n">fetches</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">train_op</span><span class="p">]</span>
+            <span class="n">feed_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_data</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">is_train</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">wirte_model_summary</span><span class="p">:</span>
-            <span class="n">fetches_last</span> <span class="o">=</span> <span class="n">fetches</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model_summary_op</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc_step</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">fetches_last</span> <span class="o">=</span> <span class="n">fetches</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">inc_step</span><span class="p">]</span>
+            <span class="c1"># Say No to redundant summaries:</span>
+            <span class="n">wirte_model_summary</span> <span class="o">=</span>\
+                <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_summary_freq</span> <span class="o">==</span> <span class="mi">0</span>
 
-        <span class="c1"># Do a number of SGD train epochs:</span>
-        <span class="c1"># When doing more than one epoch, we actually use only last summary:</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_epochs</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
-            <span class="n">fetched</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">fetches</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="n">feed_dict</span><span class="p">)</span>
+            <span class="c1">#fetches = [self.train_op, self.local_network.debug]  # include policy debug shapes</span>
+            <span class="n">fetches</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">train_op</span><span class="p">]</span>
 
-        <span class="n">fetched</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">fetches_last</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="n">feed_dict</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">wirte_model_summary</span><span class="p">:</span>
+                <span class="n">fetches_last</span> <span class="o">=</span> <span class="n">fetches</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model_summary_op</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc_step</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fetches_last</span> <span class="o">=</span> <span class="n">fetches</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">inc_step</span><span class="p">]</span>
 
-        <span class="k">if</span> <span class="n">wirte_model_summary</span><span class="p">:</span>
-            <span class="n">model_summary</span> <span class="o">=</span> <span class="n">fetched</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+            <span class="c1"># Do a number of SGD train epochs:</span>
+            <span class="c1"># When doing more than one epoch, we actually use only last summary:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_epochs</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">fetched</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">fetches</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="n">feed_dict</span><span class="p">)</span>
 
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">model_summary</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">fetched</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">fetches_last</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="n">feed_dict</span><span class="p">)</span>
 
-        <span class="c1"># Write down summaries:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">process_summary</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">model_summary</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">wirte_model_summary</span><span class="p">:</span>
+                <span class="n">model_summary</span> <span class="o">=</span> <span class="n">fetched</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">+=</span> <span class="mi">1</span></div></div>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model_summary</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="c1"># print debug info:</span>
-        <span class="c1">#for k, v in fetched[1].items():</span>
-        <span class="c1">#    print(&#39;{}: {}&#39;.format(k,v))</span>
-        <span class="c1">#print(&#39;\n&#39;)</span>
+            <span class="c1"># Write down summaries:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process_summary</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">model_summary</span><span class="p">)</span>
 
-        <span class="c1">#for k, v in feed_dict.items():</span>
-        <span class="c1">#    try:</span>
-        <span class="c1">#        print(k, v.shape)</span>
-        <span class="c1">#    except:</span>
-        <span class="c1">#        print(k, type(v))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">local_steps</span> <span class="o">+=</span> <span class="mi">1</span>
 
-        <span class="c1"># # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #</span>
+            <span class="c1"># print debug info:</span>
+            <span class="c1">#for k, v in fetched[1].items():</span>
+            <span class="c1">#    print(&#39;{}: {}&#39;.format(k,v))</span>
+            <span class="c1">#print(&#39;\n&#39;)</span>
+
+            <span class="c1">#for k, v in feed_dict.items():</span>
+            <span class="c1">#    try:</span>
+            <span class="c1">#        print(k, v.shape)</span>
+            <span class="c1">#    except:</span>
+            <span class="c1">#        print(k, type(v))</span>
+
+            <span class="c1"># # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;process() exception occurred&#39;</span> <span class="o">+</span> \
+                <span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">Press `Ctrl-C` or jupyter:[Kernel]-&gt;[Interrupt] for clean exit.</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div></div>
 
 
-<span class="n">Unreal</span> <span class="o">=</span> <span class="n">BaseAAC</span>
+<div class="viewcode-block" id="Unreal"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.Unreal">[docs]</a><span class="k">class</span> <span class="nc">Unreal</span><span class="p">(</span><span class="n">BaseAAC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Unreal: Asynchronous Advantage Actor Critic with auxiliary control tasks.</span>
+
+<span class="sd">    Auxiliary tasks implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:</span>
+<span class="sd">    https://miyosuda.github.io/</span>
+<span class="sd">    https://github.com/miyosuda/unreal</span>
+
+<span class="sd">    Original A3C code comes from OpenAI repository under MIT licence:</span>
+<span class="sd">    https://github.com/openai/universe-starter-agent</span>
+
+<span class="sd">    Papers:</span>
+<span class="sd">    https://arxiv.org/abs/1602.01783</span>
+<span class="sd">    https://arxiv.org/abs/1611.05397</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        See BaseAAC class args for details:</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env:                    environment instance or list of instances</span>
+<span class="sd">            task:                   int, parent worker id</span>
+<span class="sd">            policy_config:          policy estimator class and configuration dictionary</span>
+<span class="sd">            log_level:              int, logbook.level</span>
+<span class="sd">            on_policy_loss:         callable returning tensor holding on_policy training loss graph and summaries</span>
+<span class="sd">            off_policy_loss:        callable returning tensor holding off_policy training loss graph and summaries</span>
+<span class="sd">            vr_loss:                callable returning tensor holding value replay loss graph and summaries</span>
+<span class="sd">            rp_loss:                callable returning tensor holding reward prediction loss graph and summaries</span>
+<span class="sd">            pc_loss:                callable returning tensor holding pixel_control loss graph and summaries</span>
+<span class="sd">            random_seed:            int or None</span>
+<span class="sd">            model_gamma:            scalar, gamma discount factor</span>
+<span class="sd">            model_gae_lambda:       scalar, GAE lambda</span>
+<span class="sd">            model_beta:             entropy regularization beta, scalar or [high_bound, low_bound] for log_uniform.</span>
+<span class="sd">            opt_max_env_steps:      int, total number of environment steps to run training on.</span>
+<span class="sd">            opt_decay_steps:        int, learn ratio decay steps, in number of environment steps.</span>
+<span class="sd">            opt_end_learn_rate:     scalar, final learn rate</span>
+<span class="sd">            opt_learn_rate:         start learn rate, scalar or [high_bound, low_bound] for log_uniform distr.</span>
+<span class="sd">            opt_decay:              scalar, optimizer decay, if apll.</span>
+<span class="sd">            opt_momentum:           scalar, optimizer momentum, if apll.</span>
+<span class="sd">            opt_epsilon:            scalar, optimizer epsilon</span>
+<span class="sd">            rollout_length:         int, on-policy rollout length</span>
+<span class="sd">            time_flat:              bool, flatten rnn time-steps in rollouts while training - see `Notes` below</span>
+<span class="sd">            episode_train_test_cycle:   tuple or list as (train_number, test_number), def=(1,0): enables infinite</span>
+<span class="sd">                                        loop such as: run `train_number` of train data episodes,</span>
+<span class="sd">                                        than `test_number` of test data episodes, repeat. Should be consistent</span>
+<span class="sd">                                        with provided dataset parameters (test data should exist if `test_number &gt; 0`)</span>
+<span class="sd">            episode_summary_freq:   int, write episode summary for every i&#39;th episode</span>
+<span class="sd">            env_render_freq:        int, write environment rendering summary for every i&#39;th train step</span>
+<span class="sd">            model_summary_freq:     int, write model summary for every i&#39;th train step</span>
+<span class="sd">            test_mode:              bool, True: Atari, False: BTGym</span>
+<span class="sd">            replay_memory_size:     int, in number of experiences</span>
+<span class="sd">            replay_batch_size:      int, mini-batch size for off-policy training, def = 1</span>
+<span class="sd">            replay_rollout_length:  int off-policy rollout length by def. equals on_policy_rollout_length</span>
+<span class="sd">            use_off_policy_aac:     bool, use full AAC off-policy loss instead of Value-replay</span>
+<span class="sd">            use_reward_prediction:  bool, use aux. off-policy reward prediction task</span>
+<span class="sd">            use_pixel_control:      bool, use aux. off-policy pixel control task</span>
+<span class="sd">            use_value_replay:       bool, use aux. off-policy value replay task (not used if use_off_policy_aac=True)</span>
+<span class="sd">            rp_lambda:              reward prediction loss weight, scalar or [high, low] for log_uniform distr.</span>
+<span class="sd">            pc_lambda:              pixel control loss weight, scalar or [high, low] for log_uniform distr.</span>
+<span class="sd">            vr_lambda:              value replay loss weight, scalar or [high, low] for log_uniform distr.</span>
+<span class="sd">            off_aac_lambda:         off-policy AAC loss weight, scalar or [high, low] for log_uniform distr.</span>
+<span class="sd">            gamma_pc:               NOT USED</span>
+<span class="sd">            rp_reward_threshold:    scalar, reward prediction classification threshold, above which reward is &#39;non-zero&#39;</span>
+<span class="sd">            rp_sequence_size:       int, reward prediction sample size, in number of experiences</span>
+<span class="sd">            clip_epsilon:           scalar, PPO: surrogate L^clip epsilon</span>
+<span class="sd">            num_epochs:             int, num. of SGD runs for every train step, val. &gt; 1 should be used with caution.</span>
+<span class="sd">            pi_prime_update_period: int, PPO: pi to pi_old update period in number of train steps, def: 1</span>
+<span class="sd">            _use_target_policy:     bool, PPO: use target policy (aka pi_old), delayed by `pi_prime_update_period` delay</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            - On `time_flat` arg:</span>
+
+<span class="sd">                There are two alternatives to run RNN part of policy estimator:</span>
+
+<span class="sd">                a. Feed initial RNN state for every experience frame in rollout</span>
+<span class="sd">                        (those are stored anyway if we want random memory repaly sampling) and do single time-step RNN</span>
+<span class="sd">                        advance for all experiences in a batch; this is when time_flat=True;</span>
+
+<span class="sd">                b. Reshape incoming batch after convolution part of network in time-wise fashion</span>
+<span class="sd">                        for every rollout in a batch i.e. batch_size=number_of_rollouts and</span>
+<span class="sd">                        rnn_timesteps=max_rollout_length. In this case we need to feed initial rnn_states</span>
+<span class="sd">                        for rollouts only. There is some little extra work to pad rollouts to max_time_size</span>
+<span class="sd">                        and feed true rollout lengths to rnn. Thus, when time_flat=False, we unroll RNN in</span>
+<span class="sd">                        specified number of time-steps for every rollout.</span>
+
+<span class="sd">                Both options has pros and cons:</span>
+
+<span class="sd">                Unrolling dynamic RNN is computationally more expensive but gives clearly faster convergence,</span>
+<span class="sd">                    [possibly] due to the fact that RNN states for 2nd, 3rd, ... frames</span>
+<span class="sd">                    of rollouts are computed using updated policy estimator, which is supposed to be</span>
+<span class="sd">                    closer to optimal one. When time_flattened, every time-step uses RNN states computed</span>
+<span class="sd">                    when rollout was collected (i.e. by behavioral policy estimator with older</span>
+<span class="sd">                    parameters).</span>
+
+<span class="sd">                Nevertheless, time_flatting can be interesting</span>
+<span class="sd">                    because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,</span>
+<span class="sd">                    ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Unreal</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">on_policy_loss</span><span class="o">=</span><span class="n">ppo_loss_def</span><span class="p">,</span>
+            <span class="n">off_policy_loss</span><span class="o">=</span><span class="n">ppo_loss_def</span><span class="p">,</span>
+            <span class="n">_use_target_policy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">_log_name</span><span class="o">=</span><span class="s1">&#39;UNREAL&#39;</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="A3C"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.A3C">[docs]</a><span class="k">class</span> <span class="nc">A3C</span><span class="p">(</span><span class="n">BaseAAC</span><span class="p">):</span>
@@ -1344,6 +1478,7 @@
             <span class="n">use_pixel_control</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">use_value_replay</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">_use_target_policy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">_log_name</span><span class="o">=</span><span class="s1">&#39;A3C&#39;</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span>
         <span class="p">)</span></div>
 
@@ -1410,6 +1545,7 @@
             <span class="n">on_policy_loss</span><span class="o">=</span><span class="n">ppo_loss_def</span><span class="p">,</span>
             <span class="n">off_policy_loss</span><span class="o">=</span><span class="n">ppo_loss_def</span><span class="p">,</span>
             <span class="n">_use_target_policy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">_log_name</span><span class="o">=</span><span class="s1">&#39;PPO&#39;</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span>
         <span class="p">)</span></div>
 
