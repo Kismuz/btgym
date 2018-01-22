@@ -4,6 +4,7 @@
 #
 
 from .amaml import *
+from .gaac import *
 
 from .strategy_4 import *
 from .policy_rl2 import AacRL2Policy

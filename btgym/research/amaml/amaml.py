@@ -10,6 +10,8 @@ class MetaA3C_0_0(BaseAAC):
     """
     Develop:
         Meta-learning A3C to be.
+
+        Stage 1: straightforward implementation .
     """
     def __init__(self, cycles_per_trial=1, **kwargs):
         """
@@ -237,7 +239,7 @@ class MetaA3C_0_0(BaseAAC):
 
 class MetaA3C_0_1(MetaA3C_0_0):
     """
-    0_0 +: Local model got updated after every meta-optimization update.
+    0_0 +: enable: local model got updated after every meta-optimization update.
     """
 
     def __init__(self, **kwargs):
