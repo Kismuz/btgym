@@ -24,6 +24,7 @@ class GA3C_0_0(BaseAAC):
             guided_loss_def=guided_aac_loss_def_0_1,
             aac_lambda=0.0,
             guided_lambda=1.0,
+            guided_beta=0.01,
             cycles_per_trial=1,
             **kwargs
     ):
@@ -34,6 +35,7 @@ class GA3C_0_0(BaseAAC):
             cycles_per_trial (int):         outer loop
             aac_lambda:
             guided_lambda:
+            guided_beta:
             kwargs:                         BaseAAC kwargs
         """
         super(GA3C_0_0, self).__init__(_log_name='GuidedAAC_0.0', **kwargs)
@@ -67,7 +69,7 @@ class GA3C_0_0(BaseAAC):
                     guided_loss, guided_summaries = guided_loss_def(
                         pi=self.local_network,
                         mu=self.expert_network,
-                        entropy_beta=self.model_beta
+                        entropy_beta=guided_beta,
                     )
                     # Compose new loss as sum of L_a3c + L_guided and define global parameters update op:
                     self.guided_loss = aac_lambda * self.loss + guided_lambda * guided_loss
