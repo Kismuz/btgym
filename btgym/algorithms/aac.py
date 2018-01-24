@@ -1247,9 +1247,6 @@ class Unreal(BaseAAC):
                     ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).
         """
         super(Unreal, self).__init__(
-            on_policy_loss=ppo_loss_def,
-            off_policy_loss=ppo_loss_def,
-            _use_target_policy=True,
             _log_name='UNREAL',
             **kwargs
         )
