@@ -36,10 +36,10 @@ class Memory(object):
         self.max_sample_size = int(max_sample_size)
         self.priority_sample_size = int(priority_sample_size)
         self.rollout_provider = rollout_provider
+        self.task = task
         self.log_level = log_level
         StreamHandler(sys.stdout).push_application()
         self.log = Logger('ReplayMemory_{}'.format(self.task), level=self.log_level)
-        self.task = task
         self.use_priority_sampling = use_priority_sampling
         # Indices for non-priority frames:
         self._zero_reward_indices = deque()

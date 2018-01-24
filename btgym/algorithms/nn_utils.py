@@ -54,7 +54,7 @@ def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", 
         # initialize weights with random weights
         w_bound = np.sqrt(6. / (fan_in + fan_out))
 
-        w = tf.get_variable("W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
+        w = tf.get_variable("W", filter_shape, dtype, initializer=tf.contrib.layers.xavier_initializer(),
                             collections=collections)
         b = tf.get_variable("b", [1, 1, 1, num_filters], initializer=tf.constant_initializer(0.0),
                             collections=collections)
@@ -86,7 +86,7 @@ def deconv2d(x, output_channels, name, filter_size=(4, 4), stride=(2, 2),
         # initialize weights with random weights
         w_bound = np.sqrt(6. / (fan_in + fan_out))
 
-        w = tf.get_variable("d_W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
+        w = tf.get_variable("d_W", filter_shape, dtype, initializer=tf.contrib.layers.xavier_initializer(),
                             collections=collections)
         b = tf.get_variable("d_b", [1, 1, 1, output_channels], initializer=tf.constant_initializer(0.0),
                             collections=collections)
@@ -122,7 +122,7 @@ def conv1d(x, num_filters, name, filter_size=3, stride=2, pad="SAME", dtype=tf.f
         # initialize weights with random weights
         w_bound = np.sqrt(6. / (fan_in + fan_out))
 
-        w = tf.get_variable("W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
+        w = tf.get_variable("W", filter_shape, dtype, initializer=tf.contrib.layers.xavier_initializer(),
                             collections=collections)
         b = tf.get_variable("b", [1, 1, num_filters], initializer=tf.constant_initializer(0.0),
                             collections=collections)
@@ -143,7 +143,7 @@ def conv2d_dw(x, num_filters, name='conv2d_dw', filter_size=(3, 3), stride=(1, 1
         w_bound = np.sqrt(6. / (fan_in + fan_out))
 
         w = tf.get_variable("W", filter_shape, dtype,
-                            tf.random_uniform_initializer(-w_bound, w_bound), collections=collections)
+                            tf.contrib.layers.xavier_initializer(), collections=collections)
         b = tf.get_variable("b", [1, 1, 1, num_filters * int(x.get_shape()[-1])],
                             initializer=tf.constant_initializer(0.0), collections=collections)
         return tf.nn.depthwise_conv2d(x, w, stride_shape, pad, [1, 1]) + b
@@ -356,7 +356,7 @@ def duelling_pc_network(x,
     Stage3 network for `pixel control' task: from LSTM output to Q-aux. features tensor.
     """
     x = tf.nn.elu(
-        linear(x, np.prod(duell_pc_x_inner_shape), 'pc_dense', normalized_columns_initializer(0.01), reuse=reuse)
+        linear(x, np.prod(duell_pc_x_inner_shape), 'pc_dense', tf.contrib.layers.xavier_initializer(), reuse=reuse)
     )
     x = tf.reshape(x, [-1] + list(duell_pc_x_inner_shape))
     pc_a = deconv2d(x, ac_space, 'pc_advantage', duell_pc_filter_size, duell_pc_stride, reuse=reuse)  # [None, 20, 20, ac_size]
