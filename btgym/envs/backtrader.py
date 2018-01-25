@@ -168,13 +168,13 @@ class BTgymEnv(gym.Env):
                 fixed_stake=10,  # single trade stake is fixed type by def.
             ),
             # Dataset mandatory parameters:
-            dataset = dict(
+            dataset=dict(
                 filename=None,
             ),
-            strategy = dict(
+            strategy =dict(
                 state_shape=dict(),
             ),
-            render = dict(),
+            render=dict(),
         )
         p2 = dict(  # IS HERE FOR REFERENCE ONLY
             # Strategy related parameters:
@@ -203,7 +203,6 @@ class BTgymEnv(gym.Env):
                 # Note: INFO part of environment response is a list of all skipped frame's info's,
                 #       i.e. [info[-9], info[-8], ..., info[0].
         )
-
         # Update self attributes, remove used kwargs:
         for key in dir(self):
             if key in kwargs.keys():
@@ -315,6 +314,7 @@ class BTgymEnv(gym.Env):
                 msg2 = 'Base Strategy class used.'
 
             # Add, using kwargs on top of defaults:
+            #self.log.debug('kwargs for strategy: {}'.format(kwargs))
             strat_idx = self.engine.addstrategy(self.strategy, **kwargs)
 
             msg += ' ' + msg2
@@ -332,7 +332,7 @@ class BTgymEnv(gym.Env):
         # ...Update params -4:
         # Pull strategy defaults to environment params dict :
         for t_key, t_value in self.engine.strats[0][0][0].params._gettuple():
-            self.params['strategy'][t_key] =  t_value
+            self.params['strategy'][t_key] = t_value
 
         # Update it with values from strategy 'passed-to params':
         for key, value in self.engine.strats[0][0][2].items():
