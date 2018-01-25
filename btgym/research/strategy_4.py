@@ -833,7 +833,7 @@ class DevStrat_4_12(DevStrat_4_11):
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
         {
-            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 6, 1)),
+            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 7, 1)),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 5, 1)),
             'metadata': DictSpace(
                 {
@@ -870,6 +870,7 @@ class DevStrat_4_12(DevStrat_4_11):
     )
 
     def set_datalines(self):
+        self.data.sma_8 = btind.SimpleMovingAverage(self.datas[0], period=8)
         self.data.sma_16 = btind.SimpleMovingAverage(self.datas[0], period=16)
         self.data.sma_32 = btind.SimpleMovingAverage(self.datas[0], period=32)
         self.data.sma_64 = btind.SimpleMovingAverage(self.datas[0], period=64)
@@ -910,6 +911,7 @@ class DevStrat_4_12(DevStrat_4_11):
 
         x_sma = np.stack(
             [
+                np.frombuffer(self.data.sma_8.get(size=self.time_dim)),
                 np.frombuffer(self.data.sma_16.get(size=self.time_dim)),
                 np.frombuffer(self.data.sma_32.get(size=self.time_dim)),
                 np.frombuffer(self.data.sma_64.get(size=self.time_dim)),
