@@ -114,6 +114,16 @@ class BTgymBaseStrategy(bt.Strategy):
                     portfolio_actions=('hold', 'buy', 'sell', 'close')
                     skip_frame=1
         """
+        try:
+            self.time_dim = self.p.state_shape['raw_state'].shape[0]
+        except KeyError:
+            pass
+
+        try:
+            self.skip_frame = self.p.skip_frame
+        except KeyError:
+            pass
+        
         self.iteration = 1
         self.inner_embedding = 1
         self.is_done = False
