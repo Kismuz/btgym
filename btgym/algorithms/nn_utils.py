@@ -153,8 +153,8 @@ def conv_2d_network(x,
                     ob_space,
                     ac_space,
                     conv_2d_layer_ref=conv2d,
-                    conv_2d_num_layers=4,
-                    conv_2d_num_filters=32,
+                    #conv_2d_num_layers=4,
+                    conv_2d_num_filters=(32, 32, 32, 32),
                     conv_2d_filter_size=(3, 3),
                     conv_2d_stride=(2, 2),
                     pad="SAME",
@@ -171,13 +171,13 @@ def conv_2d_network(x,
         tensor holding state features;
     """
     with tf.variable_scope(name, reuse=reuse):
-        for i in range(conv_2d_num_layers):
-
+        #for i in range(conv_2d_num_layers):
+        for i, num_filters in enumerate(conv_2d_num_filters):
             x = tf.nn.elu(
                 norm_layer(
                     conv_2d_layer_ref(
                         x,
-                        conv_2d_num_filters,
+                        num_filters,
                         "_layer_{}".format(i + 1),
                         conv_2d_filter_size,
                         conv_2d_stride,

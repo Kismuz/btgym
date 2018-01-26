@@ -48,9 +48,9 @@ class StackedLstmPolicy(BaseAacPolicy):
         # 1D plug-in:
         kwargs.update(
             dict(
-                conv_2d_filter_size=[3, 1],
+                conv_2d_filter_size=[2, 1],
                 conv_2d_stride=[2, 1],
-                conv_2d_num_filters=32,
+                conv_2d_num_filters=[64, 32, 16],
                 pc_estimator_stride=[2, 1],
                 duell_pc_x_inner_shape=(6, 1, 32),  # [6,3,32] if swapping W-C dims
                 duell_pc_filter_size=(4, 1),
