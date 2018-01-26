@@ -1,23 +1,31 @@
 ## <a name="title"></a>Backtrader gym Environment
-**OpenAI Gym environment API for Backtrader backtesting/trading library.**
-****
-Backtrader is open-source algorithmic trading library:  
-GitHub: http://github.com/mementum/backtrader  
-Documentation and community:
-http://www.backtrader.com/
 
-OpenAI Gym is...,
-well, everyone knows Gym:  
-GitHub: http://github.com/openai/gym  
-Documentation and community:
-https://gym.openai.com/
+**OpenAI Gym environment API for Backtrader backtesting library.**
+
+
+```
+...Minimizing the mean square error on future experience.  - Richard S. Sutton
+```
+
+
+_Backtrader_ is open-source algorithmic trading library:  
+GitHub: http://github.com/mementum/backtrader   
+Documentation and community:  
+http://www.backtrader.com/  
+
+_OpenAI Gym_ is...,
+well, everyone knows Gym:   
+GitHub: http://github.com/openai/gym   
+Documentation and community:  
+https://gym.openai.com/  
+
 ****
-### <a name="outline"></a>Outline:
+
+### <a name="outline"></a>Outline
+
 General purpose of this project is to provide gym-integrated framework for
 running reinforcement learning experiments 
 in [close to] real world algorithmic trading environments.
-
-### [See news and update notes below](#news)
 
 ```
 DISCLAIMER:
@@ -30,8 +38,10 @@ Think of it as framework for setting experiments with complex non-stationary sto
 As a research project BTGym in its current stage can hardly deliver easy end-user experience in as sense that 
 setting meaninfull  experiments will require some practical programming experience as well as general knowledge 
 of reinforcement learning theory.
-
 ```
+****
+
+### [News and update notes](#news)
 
 ****
 ### <a name="contents"></a>Contents
@@ -113,7 +123,7 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
   trading calendar etc.
 
 #### <a name="data"></a> Data selection options for backtest agent training:
-**7.01.18: Upd: data shaping approach is under development, expect some changes.**
+_Notice: data shaping approach is under development, expect some changes. [7.01.18]_
 - random sampling:
   historic price change dataset is divided to training, cross-validation and testing subsets.
   Since agent actions do not influence market, it is possible to randomly sample continuous subset
@@ -128,7 +138,8 @@ Consider a discrete-time finite-horizon partially observable Markov decision pro
 
 ****
  
-### <a name="notes"></a> [Notes](#contents)
+### <a name="notes"></a> [Developent notes](#contents)
+_Notice: will be moved inside project wiki [26.01.18]_
 
  1. There is a choice: where to place most of state observation/reward estimation and prepossessing such as
     featurization, normalization, frame skipping and all other -zation: either to hide it inside environment or to do it
