@@ -48,7 +48,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         # 1D plug-in:
         kwargs.update(
             dict(
-                conv_2d_filter_size=[3, 1],
+                conv_2d_filter_size=[2, 1],
                 conv_2d_stride=[2, 1],
                 conv_2d_num_filters=32,
                 pc_estimator_stride=[2, 1],

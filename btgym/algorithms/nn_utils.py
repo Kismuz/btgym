@@ -44,15 +44,6 @@ def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", 
     with tf.variable_scope(name, reuse=reuse):
         stride_shape = [1, stride[0], stride[1], 1]
         filter_shape = [filter_size[0], filter_size[1], int(x.get_shape()[3]), num_filters]
-        # there are "num input feature maps * filter height * filter width"
-        # inputs to each hidden unit
-        fan_in = np.prod(filter_shape[:3])
-        # each unit in the lower layer receives a gradient from:
-        # "num output feature maps * filter height * filter width" /
-        #   pooling size
-        fan_out = np.prod(filter_shape[:2]) * num_filters
-        # initialize weights with random weights
-        w_bound = np.sqrt(6. / (fan_in + fan_out))
 
         w = tf.get_variable("W", filter_shape, dtype, initializer=tf.contrib.layers.xavier_initializer(),
                             collections=collections)

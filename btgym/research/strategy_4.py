@@ -616,7 +616,7 @@ class DevStrat_4_10(DevStrat_4_7):
         debug = {}
         scale = 10.0
         # Potential-based shaping function 1:
-        # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
+        # based on log potential of averaged profit/loss for current opened trade (unrealized p/l):
         unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl']) / 2 + 1 # shift [-1,1] -> [0,1]
         # TODO: make normalizing util func to return in [0,1] by default
         f1 = self.p.gamma * np.log(np.average(unrealised_pnl[1:])) - np.log(np.average(unrealised_pnl[:-1]))
@@ -808,7 +808,7 @@ class DevStrat_4_11(DevStrat_4_10):
 
 class DevStrat_4_12(DevStrat_4_11):
     """
-    4_11 + sma-features 512; h and c swapped
+    4_11 + sma-features 8, 512;
     """
     # Time embedding period:
     time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
@@ -833,8 +833,8 @@ class DevStrat_4_12(DevStrat_4_11):
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
         {
-            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 7, 1)),
-            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 5, 1)),
+            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 7)),
+            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5)),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -884,30 +884,8 @@ class DevStrat_4_12(DevStrat_4_11):
         )
         self.data.dim_sma.plotinfo.plot = False
 
-        # Define data channels:
-        #self.channel_dO = bt.Sum(self.data.open, - self.data.open(-1))
-        #self.channel_dH = bt.Sum(self.data.high, - self.data.high(-1))
-        #self.channel_dL = bt.Sum(self.data.low, - self.data.low(-1))
-
     def get_market_state(self):
-        T = 2e3  # EURUSD
-        T2 = 2e3
-
-        if False:
-            x_p = np.stack(
-                [
-                    #np.frombuffer(self.channel_dO.get(size=self.time_dim)),
-                    #np.frombuffer(self.channel_dH.get(size=self.time_dim)),
-                    #np.frombuffer(self.channel_dL.get(size=self.time_dim)),
-
-                    np.frombuffer(self.data.open.get(size=self.time_dim)),
-                    np.frombuffer(self.data.high.get(size=self.time_dim)),
-                    np.frombuffer(self.data.low.get(size=self.time_dim)),
-                ],
-                axis=-1
-            )
-            x_p = np.gradient(x_p, axis=0)
-            x_p = tanh(x_p * T)
+        T2 = 2e3  # EURUSD
 
         x_sma = np.stack(
             [
@@ -923,16 +901,9 @@ class DevStrat_4_12(DevStrat_4_11):
         )
         # Gradient along features axis:
         x_sma = np.gradient(x_sma, axis=-1) * T2
-
-        # Log-scale:
-        #x_sma = log_transform(x_sma)
+        # In [-1,1]:
         x_sma = tanh(x_sma)
-
-        #x = np.concatenate([x_p, x_sma], axis=-1)
-        x = x_sma
-        #x = x_p
-
-        return x[..., None]
+        return x_sma[:, None, :]
 
     def get_broker_state(self):
         T_b = 1
@@ -947,4 +918,5 @@ class DevStrat_4_12(DevStrat_4_11):
             axis=-1
         )
         x_broker = tanh(np.gradient(x_broker, axis=-1) * T_b)
-        return x_broker[..., None]
+
+        return x_broker[:, None, :]
