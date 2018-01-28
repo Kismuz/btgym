@@ -639,7 +639,7 @@ class BaseAAC(object):
 
         return {key: [stream[key] for stream in data_streams] for key in data_streams[0].keys()}
 
-    def get_sample_config(self):
+    def get_sample_config(self, _new_trial=False):
         """
         Returns environment configuration parameters for next episode to sample.
         By default is simple stateful iterator,
@@ -676,7 +676,7 @@ class BaseAAC(object):
                     'c_3, c_train={}, c_test={}'.
                     format(self.current_train_episode, self.current_test_episode)
                 )
-                return self.get_sample_config()
+                return self.get_sample_config(_new_trial=True)
 
         # Compose btgym.datafeed.base.EnvResetConfig-consistent dict:
         sample_config = dict(
@@ -687,7 +687,7 @@ class BaseAAC(object):
                 b_beta=1.0
             ),
             trial_config=dict(
-                get_new=True,
+                get_new=_new_trial,
                 sample_type=episode_type,
                 b_alpha=1.0,
                 b_beta=1.0

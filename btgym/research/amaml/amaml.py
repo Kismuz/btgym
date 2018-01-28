@@ -596,3 +596,24 @@ class MetaCriticA3C_0_1(MetaCriticA3C_0_0):
                   '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
             self.log.exception(msg)
             raise RuntimeError(msg)
+
+
+class Unreal_expl_0_0(BaseAAC):
+    """
+    Set specified workers as 'exploratory kernel' by forcing to repeatedly train on
+    constrained data distribution for extended time.
+    """
+    def __init__(self, kernel_workers=(1,), kernel_period=500, **kwargs):
+        """
+
+        Args:
+            kernel_workers:     list of workers to set as 'kernels'
+            kernel_period:      number of episodes for kernel worker to spend on same distribution
+            **kwargs:           BaseAAC kwargs
+        """
+        super(Unreal_expl_0_0, self).__init__(**kwargs)
+        # If instance in the list - overrode data sampling parameters:
+        if self.task == np.asarray(kernel_workers).any():
+            self.num_train_episodes = kernel_period
+            self.num_test_episodes = 0
+            self.log.notice('set as exploration kernel with period: {} episodes.'.format(self.num_train_episodes))

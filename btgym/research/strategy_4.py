@@ -920,3 +920,59 @@ class DevStrat_4_12(DevStrat_4_11):
         x_broker = tanh(np.gradient(x_broker, axis=-1) * T_b)
 
         return x_broker[:, None, :]
+
+
+class DevStrat_4_13(DevStrat_4_11):
+    """
+    No tanh squashing; clip in [-10,10] - ext, [-2,2] - int instead.
+    """
+
+    def get_market_state(self):
+        T = 2e3  # EURUSD
+        T2 = 2e3
+
+        if False:
+            x_p = np.stack(
+                [
+                    #np.frombuffer(self.channel_dO.get(size=self.time_dim)),
+                    #np.frombuffer(self.channel_dH.get(size=self.time_dim)),
+                    #np.frombuffer(self.channel_dL.get(size=self.time_dim)),
+
+                    np.frombuffer(self.data.open.get(size=self.time_dim)),
+                    np.frombuffer(self.data.high.get(size=self.time_dim)),
+                    np.frombuffer(self.data.low.get(size=self.time_dim)),
+                ],
+                axis=-1
+            )
+            x_p = np.gradient(x_p, axis=0)
+            x_p = tanh(x_p * T)
+
+        x_sma = np.stack(
+            [
+                np.frombuffer(self.data.sma_16.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_32.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_64.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_128.get(size=self.time_dim)),
+                np.frombuffer(self.data.sma_256.get(size=self.time_dim)),
+            ],
+            axis=-1
+        )
+        # Gradient along features axis:
+        x_sma = np.gradient(x_sma, axis=-1) * T2
+
+        return np.clip(x_sma, -10, 10)[:, None, :]
+
+    def get_broker_state(self):
+        T_b = 1
+        x_broker = np.concatenate(
+            [
+                np.asarray(self.sliding_stat['broker_value'])[..., None],
+                np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
+                np.asarray(self.sliding_stat['realized_pnl'])[..., None],
+                np.asarray(self.sliding_stat['broker_cash'])[..., None],
+                np.asarray(self.sliding_stat['exposure'])[..., None],
+            ],
+            axis=-1
+        )
+        x_broker = np.clip(np.gradient(x_broker, axis=-1) * T_b, -2, 2)
+        return x_broker[:, None, :]

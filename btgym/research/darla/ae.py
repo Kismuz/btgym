@@ -5,9 +5,11 @@ import numpy as np
 
 
 def conv2d_encoder(x,
-                   filters=(64, 32, 16),
-                   filter_size=(2, 1),
-                   stride=(2, 1),
+                   layer_config=(
+                        (64, (2, 1), (2, 1)),
+                        (32, (2, 1), (2, 1)),
+                        (16, (2, 1), (2, 1)),
+                   ),
                    pad='SAME',
                    name='conv2d_encoder',
                    reuse=False):
@@ -16,42 +18,47 @@ def conv2d_encoder(x,
 
     Args:
         x:              input tensor
-        filters:        list, number of conv. kernels in each layer
-        filter_size:    list, conv. kernel size
-        stride:         list, stride size
+        layer_config:   first to last nested layers configuration list: [layer_1_config, layer_2_config,...], where:
+                        layer_i_config = [num_filters(int), filter_size(list), stride(list)]
         pad:            str, padding scheme: 'SAME' or 'VALID'
         name:           str, mame scope
         reuse:          bool
 
     Returns:
-        tensor holding encoded features,
+        list of tensors holding encoded features for every layer outer to inner,
         level-wise list of encoding layers shapes, first ro last.
 
     """
     layer_shapes = [x.get_shape()]
-    for i in range(len(filters)):
+    layer_outputs = []
+    for i, layer_spec in enumerate(layer_config, 1):
         x = tf.nn.elu(
             norm_layer(
                 conv2d(
                     x=x,
-                    num_filters=filters[i],
-                    name=name+'/encoder_layer_{}'.format(i + 1),
-                    filter_size=filter_size,
-                    stride=stride,
+                    num_filters=layer_spec[0],
+                    name=name+'/conv_enc_layer_{}'.format(i ),
+                    filter_size=layer_spec[1],
+                    stride=layer_spec[2],
                     pad=pad,
                     reuse=reuse
                 )
-            )
+            ),
+            name=name + '/encoder_layer_{}'.format(i),
         )
         layer_shapes.append(x.get_shape())
+        layer_outputs.append(x)
 
-    return x, layer_shapes
+    return layer_outputs, layer_shapes
 
 
 def conv2d_decoder(z,
                    layer_shapes,
-                   filters=(64, 32, 16),
-                   filter_size=(2, 1),
+                   layer_config=(
+                        (64, (2, 1), (2, 1)),
+                        (32, (2, 1), (2, 1)),
+                        (16, (2, 1), (2, 1)),
+                   ),
                    pad='SAME',
                    resize_method=tf.image.ResizeMethod.BILINEAR,
                    name='conv2d_decoder',
@@ -62,52 +69,58 @@ def conv2d_decoder(z,
     Args:
         z:                  tensor holding encoded state
         layer_shapes:       level-wise list of matching encoding layers shapes, last to first.
-        filters:            list, number of conv. kernels in each layer
-        filter_size:
-        filter_size:        list, conv. kernel size
+        layer_config:       layers configuration list: [layer_1_config, layer_2_config,...], where:
+                            layer_i_config = [num_filters(int), filter_size(list), stride(list)]
         pad:                str, padding scheme: 'SAME' or 'VALID'
         resize_method:      up-sampling method, one of supported tf.image.ResizeMethod's
         name:               str, mame scope
         reuse:              bool
 
     Returns:
-        tensor holding decoded value
+        list of tensors holding decoded features for every layer inner to outer
 
     """
     x = z
-    for i in range(len(filters)):
+    layer_shapes = list(layer_shapes)
+    layer_shapes.reverse()
+    layer_config = list(layer_config)
+    layer_config.reverse()
+    layer_output = []
+    for i, (layer_spec, layer_shape) in enumerate(zip(layer_config,layer_shapes[1:]), 1):
         x = tf.image.resize_images(
             images=x,
-            size=[int(layer_shapes[-2 - i][1]), int(layer_shapes[-2 - i][2])],
+            size=[int(layer_shape[1]), int(layer_shape[2])],
             method=resize_method,
         )
         x = tf.nn.elu(
             conv2d(
                 x=x,
-                num_filters=filters[-1 - i],
-                name=name + '/decoder_layer_{}'.format(i + 1),
-                filter_size=filter_size,
+                num_filters=layer_spec[0],
+                name=name + '/conv_dec_layer_{}'.format(i),
+                filter_size=layer_spec[1],
                 stride=[1, 1],
                 pad=pad,
                 reuse=reuse
-            )
+            ),
+            name=name + '/decoder_layer_{}'.format(i),
         )
+        layer_output.append(x)
     y_hat = conv2d(
         x=x,
-        num_filters=layer_shapes[0][-1],
+        num_filters=layer_shapes[-1][-1],
         name=name + '/decoded_y_hat',
-        filter_size=filter_size,
+        filter_size=layer_config[-1][1],
         stride=[1, 1],
         pad='SAME',
         reuse=reuse
     )
-    return y_hat
+    layer_output.append(y_hat)
+    return layer_output
 
 
 def conv2d_autoencoder(inputs,
-                       filters=(64, 32, 16),
-                       filter_size=(2, 1),
-                       stride=(2, 1),
+                       layer_config,
+                       resize_method=tf.image.ResizeMethod.BILINEAR,
                        pad='SAME',
                        name='base_conv2d_autoencoder',
                        reuse=False):
@@ -116,37 +129,36 @@ def conv2d_autoencoder(inputs,
 
     Args:
         inputs:         input tensor
-        filters:        list, number of conv. kernels in each layer
-        filter_size:    list, conv. kernel size
-        stride:         list, stride size
+        layer_config:   layers configuration list: [layer_1_config, layer_2_config,...], where:
+                        layer_i_config = [num_filters(int), filter_size(list), stride(list)];
+                        this list represent decoder part of autoencoder bottleneck,
+                        decoder part is inferred symmetrically
         pad:            str, padding scheme: 'SAME' or 'VALID'
         name:           str, mame scope
         reuse:          bool
 
     Returns:
-        tensor holding encoded features,
-        tensor holding input approximation
+        tensor holding encoded features, layer_wise from outer to inner
+        tensor holding decoded geatures, layer-wise from inner to outer
 
     """
-    z, shapes = conv2d_encoder(
+    encoder_layers, shapes = conv2d_encoder(
         x=inputs,
-        filters=filters,
-        filter_size=filter_size,
-        stride=stride,
+        layer_config=layer_config,
         pad=pad,
         name=name,
         reuse=reuse
     )
-    y_hat = conv2d_decoder(
-        z=z,
+    decoder_layers = conv2d_decoder(
+        z=encoder_layers[-1],
+        layer_config=layer_config,
         layer_shapes=shapes,
-        filters=filters,
-        filter_size=filter_size,
         pad=pad,
+        resize_method=resize_method,
         name=name,
         reuse=reuse
     )
-    return z, y_hat
+    return encoder_layers, decoder_layers
 
 
 class KernelMonitor():
@@ -175,7 +187,6 @@ class KernelMonitor():
         # Normalization trick:
         self.vis_grads /= (tf.sqrt(tf.reduce_mean(tf.square(self.vis_grads))) + 1e-5)
 
-    # this function returns the loss and grads given the input picture
     def _iterate(self, sess, signal, kernel_index):
         """
         Returns the loss and grads for specified kernel given the input signal

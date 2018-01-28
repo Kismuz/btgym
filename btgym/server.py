@@ -395,7 +395,7 @@ class BTgymServer(multiprocessing.Process):
         # Mandatory DrawDown and auxillary plotting observers to add to data-master startegy instance:
         # TODO: make plotters optional args
         if self.render.enabled:
-            aux_obsrevers = [bt.observers.DrawDown, NormPnL, Position, Reward]
+            aux_obsrevers = [bt.observers.DrawDown, Reward, Position, NormPnL]
 
         else:
             aux_obsrevers = [bt.observers.DrawDown]
