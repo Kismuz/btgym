@@ -1,5 +1,5 @@
 import tensorflow as tf
-from btgym.algorithms.policy import Aac1dPolicy
+from btgym.algorithms.policy.base import Aac1dPolicy
 
 
 class AacRL2Policy(Aac1dPolicy):

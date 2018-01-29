@@ -7,3 +7,4 @@ from .amaml import *
 from .gaac import *
 from .policy_rl2 import AacRL2Policy
 from .strategy_gen_4 import *
+from .noisynet import NoisyNetUnreal

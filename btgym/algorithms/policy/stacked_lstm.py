@@ -1,6 +1,6 @@
 from tensorflow.contrib.layers import flatten as batch_flatten
 
-from btgym.algorithms import BaseAacPolicy
+from btgym.algorithms.policy.base import BaseAacPolicy
 from btgym.algorithms.nn.networks import *
 from btgym.algorithms.utils import *
 

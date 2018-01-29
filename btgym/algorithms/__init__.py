@@ -24,7 +24,7 @@ from .rollout import Rollout, make_data_getter
 from .memory import Memory
 from .runner import RunnerThread
 from .worker import Worker
-from .policy import BaseAacPolicy, Aac1dPolicy
+from .policy import BaseAacPolicy, Aac1dPolicy, StackedLstmPolicy, AacStackedRL2Policy
 from .aac import BaseAAC, Unreal, A3C, PPO
 from .launcher import Launcher
 
