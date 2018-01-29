@@ -575,7 +575,7 @@
         <span class="c1"># Mandatory DrawDown and auxillary plotting observers to add to data-master startegy instance:</span>
         <span class="c1"># TODO: make plotters optional args</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
-            <span class="n">aux_obsrevers</span> <span class="o">=</span> <span class="p">[</span><span class="n">bt</span><span class="o">.</span><span class="n">observers</span><span class="o">.</span><span class="n">DrawDown</span><span class="p">,</span> <span class="n">NormPnL</span><span class="p">,</span> <span class="n">Position</span><span class="p">,</span> <span class="n">Reward</span><span class="p">]</span>
+            <span class="n">aux_obsrevers</span> <span class="o">=</span> <span class="p">[</span><span class="n">bt</span><span class="o">.</span><span class="n">observers</span><span class="o">.</span><span class="n">DrawDown</span><span class="p">,</span> <span class="n">Reward</span><span class="p">,</span> <span class="n">Position</span><span class="p">,</span> <span class="n">NormPnL</span><span class="p">]</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="n">aux_obsrevers</span> <span class="o">=</span> <span class="p">[</span><span class="n">bt</span><span class="o">.</span><span class="n">observers</span><span class="o">.</span><span class="n">DrawDown</span><span class="p">]</span>

@@ -23,8 +23,8 @@ def log_uniform(lo_hi, size):
     except:
         lo = hi = r
     x = np.random.random(size)
-    log_lo = np.log(lo)
-    log_hi = np.log(hi)
+    log_lo = np.log(lo + 1e-12)
+    log_hi = np.log(hi + 1e-12)
     v = log_lo * (1 - x) + log_hi * x
     if size > 1:
         return np.exp(v)

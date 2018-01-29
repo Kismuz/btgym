@@ -1,10 +1,8 @@
-
-from btgym.algorithms.nn_utils import *
-from btgym.algorithms.utils import *
-import tensorflow as tf
 from tensorflow.contrib.layers import flatten as batch_flatten
 
-from btgym.algorithms import BaseAacPolicy, Aac1dPolicy
+from btgym.algorithms import BaseAacPolicy
+from btgym.algorithms.nn.networks import *
+from btgym.algorithms.utils import *
 
 
 class GuideFFPolicy(BaseAacPolicy):

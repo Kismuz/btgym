@@ -1,9 +1,8 @@
-from btgym.algorithms.nn_utils import *
-from btgym.algorithms.utils import *
-import tensorflow as tf
 from tensorflow.contrib.layers import flatten as batch_flatten
 
 from btgym.algorithms import BaseAacPolicy
+from btgym.algorithms.nn.networks import *
+from btgym.algorithms.utils import *
 
 
 class StackedLstmPolicy(BaseAacPolicy):
@@ -25,9 +24,10 @@ class StackedLstmPolicy(BaseAacPolicy):
                  ob_space,
                  ac_space,
                  rp_sequence_size,
-                 lstm_class=tf.contrib.rnn.LayerNormBasicLSTMCell,
-                 #lstm_class=rnn.BasicLSTMCell,
+                 lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
+                 #lstm_class_ref=rnn.BasicLSTMCell,
                  lstm_layers=(256, 256),
+                 linear_layer_ref=linear,
                  aux_estimate=False,
                  encode_internal_state=False,
                  **kwargs):
@@ -40,17 +40,18 @@ class StackedLstmPolicy(BaseAacPolicy):
             ob_space:           dictionary of observation state shapes
             ac_space:           discrete action space shape (length)
             rp_sequence_size:   reward prediction sample length
-            lstm_class:         tf.nn.lstm class
+            lstm_class_ref:     tf.nn.lstm class to use
             lstm_layers:        tuple of LSTM layers sizes
+            linear_layer_ref:   linear layer class to use
             aux_estimate:       (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary.
             **kwargs            not used
         """
         # 1D plug-in:
         kwargs.update(
             dict(
-                conv_2d_filter_size=[2, 1],
+                conv_2d_filter_size=[3, 1],
                 conv_2d_stride=[2, 1],
-                conv_2d_num_filters=[64, 32, 16],
+                conv_2d_num_filters=[32, 32, 64, 64],
                 pc_estimator_stride=[2, 1],
                 duell_pc_x_inner_shape=(6, 1, 32),  # [6,3,32] if swapping W-C dims
                 duell_pc_filter_size=(4, 1),
@@ -61,7 +62,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.ob_space = ob_space
         self.ac_space = ac_space
         self.rp_sequence_size = rp_sequence_size
-        self.lstm_class = lstm_class
+        self.lstm_class = lstm_class_ref
         self.lstm_layers = lstm_layers
         self.aux_estimate = aux_estimate
         self.callback = {}
@@ -178,7 +179,7 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         # First LSTM layer takes encoded `external` state:
         [on_x_lstm_1_out, self.on_lstm_1_init_state, self.on_lstm_1_state_out, self.on_lstm_1_state_pl_flatten] =\
-            lstm_network(on_aac_x, self.on_time_length, lstm_class, (lstm_layers[0],), name='lstm_1')
+            lstm_network(on_aac_x, self.on_time_length, lstm_class_ref, (lstm_layers[0],), name='lstm_1')
 
         self.debug['on_x_lstm_1_out'] = tf.shape(on_x_lstm_1_out)
         self.debug['self.on_lstm_1_state_out'] = tf.shape(self.on_lstm_1_state_out)
@@ -201,7 +202,12 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.debug['reshaped_on_x_lstm_1_out'] = tf.shape(rsh_on_x_lstm_1_out)
 
         # Aac policy output and action-sampling function:
-        [self.on_logits, _, self.on_sample] = dense_aac_network(rsh_on_x_lstm_1_out, ac_space, name='aac_dense_pi')
+        [self.on_logits, _, self.on_sample] = dense_aac_network(
+            rsh_on_x_lstm_1_out,
+            ac_space,
+            linear_layer_ref=linear_layer_ref,
+            name='aac_dense_pi'
+        )
 
         # Second LSTM layer takes concatenated encoded 'external' state, LSTM_1 output,
         # last_action and `internal_state` (if present) tensors:
@@ -216,7 +222,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.debug['on_stage2_2_input'] = tf.shape(on_aac_x)
 
         [on_x_lstm_2_out, self.on_lstm_2_init_state, self.on_lstm_2_state_out, self.on_lstm_2_state_pl_flatten] = \
-            lstm_network(on_aac_x, self.on_time_length, lstm_class, (lstm_layers[-1],), name='lstm_2')
+            lstm_network(on_aac_x, self.on_time_length, lstm_class_ref, (lstm_layers[-1],), name='lstm_2')
 
         self.debug['on_x_lstm_2_out'] = tf.shape(on_x_lstm_2_out)
         self.debug['self.on_lstm_2_state_out'] = tf.shape(self.on_lstm_2_state_out)
@@ -229,7 +235,12 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.debug['reshaped_on_x_lstm_out'] = tf.shape(on_x_lstm_out)
 
         # Aac value function:
-        [_, self.on_vf, _] = dense_aac_network(on_x_lstm_out, ac_space, name='aac_dense_vfn')
+        [_, self.on_vf, _] = dense_aac_network(
+            on_x_lstm_out,
+            ac_space,
+            linear_layer_ref=linear_layer_ref,
+            name='aac_dense_vfn'
+        )
 
         # Concatenate LSTM placeholders, init. states and context:
         self.on_lstm_init_state = (self.on_lstm_1_init_state, self.on_lstm_2_init_state)
@@ -294,14 +305,20 @@ class StackedLstmPolicy(BaseAacPolicy):
         off_aac_x = tf.concat(off_stage2_1_input, axis=-1)
 
         [off_x_lstm_1_out, _, _, self.off_lstm_1_state_pl_flatten] =\
-            lstm_network(off_aac_x, self.off_time_length, lstm_class, (lstm_layers[0],), name='lstm_1', reuse=True)
+            lstm_network(off_aac_x, self.off_time_length, lstm_class_ref, (lstm_layers[0],), name='lstm_1', reuse=True)
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = off_x_lstm_1_out.get_shape().as_list()
         rsh_off_x_lstm_1_out = tf.reshape(off_x_lstm_1_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
         [self.off_logits, _, _] =\
-            dense_aac_network(rsh_off_x_lstm_1_out, ac_space, name='aac_dense_pi', reuse=True)
+            dense_aac_network(
+                rsh_off_x_lstm_1_out,
+                ac_space,
+                linear_layer_ref=linear_layer_ref,
+                name='aac_dense_pi',
+                reuse=True
+            )
 
         off_stage2_2_input += [off_x_lstm_1_out]
 
@@ -309,14 +326,20 @@ class StackedLstmPolicy(BaseAacPolicy):
         off_aac_x = tf.concat(off_stage2_2_input, axis=-1)
 
         [off_x_lstm_2_out, _, _, self.off_lstm_2_state_pl_flatten] = \
-            lstm_network(off_aac_x, self.off_time_length, lstm_class, (lstm_layers[-1],), name='lstm_2', reuse=True)
+            lstm_network(off_aac_x, self.off_time_length, lstm_class_ref, (lstm_layers[-1],), name='lstm_2', reuse=True)
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = off_x_lstm_2_out.get_shape().as_list()
         off_x_lstm_out = tf.reshape(off_x_lstm_2_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
         # Aac value function:
-        [_, self.off_vf, _] = dense_aac_network(off_x_lstm_out, ac_space, name='aac_dense_vfn', reuse=True)
+        [_, self.off_vf, _] = dense_aac_network(
+            off_x_lstm_out,
+            ac_space,
+            linear_layer_ref=linear_layer_ref,
+            name='aac_dense_vfn',
+            reuse=True
+        )
 
         # Concatenate LSTM states:
         self.off_lstm_state_pl_flatten = self.off_lstm_1_state_pl_flatten + self.off_lstm_2_state_pl_flatten
@@ -340,7 +363,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         pc_x = off_x_lstm_out
 
         # PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:
-        self.pc_q = duelling_pc_network(pc_x, self.ac_space, **kwargs)
+        self.pc_q = duelling_pc_network(pc_x, self.ac_space, linear_layer_ref=linear_layer_ref, **kwargs)
 
         # Aux2:
         # `Value function replay` network.
@@ -375,7 +398,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         rp_x = tf.reshape(rp_x, [self.rp_batch_size, np.prod(rp_x_shape_static[1:]) * (self.rp_sequence_size-1)])
 
         # RP output:
-        self.rp_logits = dense_rp_network(rp_x)
+        self.rp_logits = dense_rp_network(rp_x, linear_layer_ref=linear_layer_ref)
 
         # Batch-norm related (useless, ignore):
         try:

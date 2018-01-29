@@ -8,10 +8,10 @@
 # Async. framework code comes from OpenAI repository under MIT licence:
 # https://github.com/openai/universe-starter-agent
 #
-from btgym.algorithms.nn_utils import *
-from btgym.algorithms.utils import *
 import tensorflow as tf
-from tensorflow.contrib.layers import flatten as batch_flatten
+
+from btgym.algorithms.nn.networks import *
+from btgym.algorithms.utils import *
 from btgym.datafeed.base import EnvResetConfig
 
 

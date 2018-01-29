@@ -105,8 +105,9 @@ class BTgymEnv(gym.Env):
                                                             default btgym.datafeed class.
             dataset=None (btgym.datafeed):                  BTgymDataDomain instance,
                                                             overrides `filename` or any other datafeed-related args.
-            strategy=None (btgym.startegy):                 strategy to use.
-            engine=None (bt.Cerebro):                       bt.Cerebro subclass for server to execute,
+            strategy=None (btgym.startegy):                 strategy to be used by `engine`, any subclass of
+                                                            btgym.strategy.base.BTgymBaseStrateg
+            engine=None (bt.Cerebro):                       environment simulation engine, any bt.Cerebro subclass,
                                                             overrides `strategy` arg.
             network_address=`tcp://127.0.0.1:` (str):       BTGym_server address.
             port=5500 (int):                                network port to use for server - API_shell communication.

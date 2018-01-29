@@ -95,6 +95,7 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#data-flow-structure">Data flow structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework-description">A3C framework description</a></li>
 </ul>
 <ul class="current">
@@ -199,8 +200,9 @@
 default btgym.datafeed class.</li>
 <li><strong>dataset=None</strong> (<em>btgym.datafeed</em>) – BTgymDataDomain instance,
 overrides <cite>filename</cite> or any other datafeed-related args.</li>
-<li><strong>strategy=None</strong> (<em>btgym.startegy</em>) – strategy to use.</li>
-<li><strong>engine=None</strong> (<em>bt.Cerebro</em>) – bt.Cerebro subclass for server to execute,
+<li><strong>strategy=None</strong> (<em>btgym.startegy</em>) – strategy to be used by <cite>engine</cite>, any subclass of
+btgym.strategy.base.BTgymBaseStrateg</li>
+<li><strong>engine=None</strong> (<em>bt.Cerebro</em>) – environment simulation engine, any bt.Cerebro subclass,
 overrides <cite>strategy</cite> arg.</li>
 <li><strong>network_address=`tcp://127.0.0.1:`</strong> (<em>str</em>) – BTGym_server address.</li>
 <li><strong>port=5500</strong> (<em>int</em>) – network port to use for server - API_shell communication.</li>

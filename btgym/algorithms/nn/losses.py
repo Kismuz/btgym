@@ -222,16 +222,27 @@ def rp_loss_def(rp_targets, pi_rp_logits, name='_rp_', verbose=False):
     return loss, summaries
 
 
-def state_min_max_loss_def(ohlc_targets, min_max_state, name='_mml_', verbose=False):
-    with tf.name_scope(name + '/min_max'):
-        hi = tf.reduce_max(ohlc_targets)
-        low = tf.reduce_min(ohlc_targets)
-        loss = tf.reduce_mean(tf.square(hi - min_max_state[:,0]) + tf.square(low - min_max_state[:,1]))
+def ae_loss_def(targets, logits, name='ae_loss', verbose=False):
+    """
+    Mean quadratic autoencoder reconstruction loss definition
+
+    Args:
+        targets:     tensor holding recinstruction target;
+        logits:      tensor holding decoded aa decoder output
+        name:           scope;
+        verbose:        summary level.
+
+    Returns:
+        tensor holding estimated reconstruction loss
+        list of summarues
+    """
+    with tf.name_scope(name + '/state_ae/'):
+        loss = tf.losses.mean_squared_error(targets, logits)
 
         if verbose:
-            summaries = [tf.summary.scalar('state_mm_loss', loss), ]
-
+            summaries = [tf.summary.scalar('reconstruct_loss', loss)]
         else:
             summaries = []
 
-    return loss, summaries
+        return loss, summaries
+

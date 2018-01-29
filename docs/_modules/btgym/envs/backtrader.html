@@ -285,8 +285,9 @@
 <span class="sd">                                                            default btgym.datafeed class.</span>
 <span class="sd">            dataset=None (btgym.datafeed):                  BTgymDataDomain instance,</span>
 <span class="sd">                                                            overrides `filename` or any other datafeed-related args.</span>
-<span class="sd">            strategy=None (btgym.startegy):                 strategy to use.</span>
-<span class="sd">            engine=None (bt.Cerebro):                       bt.Cerebro subclass for server to execute,</span>
+<span class="sd">            strategy=None (btgym.startegy):                 strategy to be used by `engine`, any subclass of</span>
+<span class="sd">                                                            btgym.strategy.base.BTgymBaseStrateg</span>
+<span class="sd">            engine=None (bt.Cerebro):                       environment simulation engine, any bt.Cerebro subclass,</span>
 <span class="sd">                                                            overrides `strategy` arg.</span>
 <span class="sd">            network_address=`tcp://127.0.0.1:` (str):       BTGym_server address.</span>
 <span class="sd">            port=5500 (int):                                network port to use for server - API_shell communication.</span>
@@ -348,13 +349,13 @@
                 <span class="n">fixed_stake</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># single trade stake is fixed type by def.</span>
             <span class="p">),</span>
             <span class="c1"># Dataset mandatory parameters:</span>
-            <span class="n">dataset</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
                 <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="p">),</span>
-            <span class="n">strategy</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">strategy</span> <span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
                 <span class="n">state_shape</span><span class="o">=</span><span class="nb">dict</span><span class="p">(),</span>
             <span class="p">),</span>
-            <span class="n">render</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(),</span>
+            <span class="n">render</span><span class="o">=</span><span class="nb">dict</span><span class="p">(),</span>
         <span class="p">)</span>
         <span class="n">p2</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>  <span class="c1"># IS HERE FOR REFERENCE ONLY</span>
             <span class="c1"># Strategy related parameters:</span>
@@ -383,7 +384,6 @@
                 <span class="c1"># Note: INFO part of environment response is a list of all skipped frame&#39;s info&#39;s,</span>
                 <span class="c1">#       i.e. [info[-9], info[-8], ..., info[0].</span>
         <span class="p">)</span>
-
         <span class="c1"># Update self attributes, remove used kwargs:</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
@@ -495,6 +495,7 @@
                 <span class="n">msg2</span> <span class="o">=</span> <span class="s1">&#39;Base Strategy class used.&#39;</span>
 
             <span class="c1"># Add, using kwargs on top of defaults:</span>
+            <span class="c1">#self.log.debug(&#39;kwargs for strategy: {}&#39;.format(kwargs))</span>
             <span class="n">strat_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">addstrategy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
             <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">msg2</span>
@@ -512,7 +513,7 @@
         <span class="c1"># ...Update params -4:</span>
         <span class="c1"># Pull strategy defaults to environment params dict :</span>
         <span class="k">for</span> <span class="n">t_key</span><span class="p">,</span> <span class="n">t_value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">_gettuple</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="n">t_key</span><span class="p">]</span> <span class="o">=</span>  <span class="n">t_value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="n">t_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">t_value</span>
 
         <span class="c1"># Update it with values from strategy &#39;passed-to params&#39;:</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>

@@ -1,9 +1,9 @@
 
-from btgym.algorithms import BaseAAC
-
-
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
+
+from btgym.algorithms import BaseAAC
+from btgym.algorithms.nn.layers import noisy_linear
 
 
 class MetaA3C_0_0(BaseAAC):
@@ -617,3 +617,15 @@ class Unreal_expl_0_0(BaseAAC):
             self.num_train_episodes = kernel_period
             self.num_test_episodes = 0
             self.log.notice('set as exploration kernel with period: {} episodes.'.format(self.num_train_episodes))
+
+
+class NoisyNetUnreal(BaseAAC):
+    """
+    Noisy Net Unreal implementation.
+    """
+
+    def __init__(self, **kwargs):
+        kwargs['_log_name'] = 'NoisyNetUnreal'
+        #kwargs['model_beta'] = 0.0
+        kwargs['policy_config']['linear_layer_ref'] = noisy_linear
+        super(NoisyNetUnreal, self).__init__(**kwargs)

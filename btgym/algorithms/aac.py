@@ -19,17 +19,17 @@
 
 from __future__ import print_function
 
-from logbook import Logger, StreamHandler
 import sys
 
 import numpy as np
 import tensorflow as tf
+from logbook import Logger, StreamHandler
 
-from btgym.spaces import DictSpace as ObSpace  # now can simply be gym.Dict
 from btgym.algorithms import Memory, make_data_getter, RunnerThread
 from btgym.algorithms.math_utils import log_uniform
-from btgym.algorithms.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def, ppo_loss_def
+from btgym.algorithms.nn.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def, ppo_loss_def
 from btgym.algorithms.utils import feed_dict_rnn_context, feed_dict_from_nested, batch_stack
+from btgym.spaces import DictSpace as ObSpace  # now can simply be gym.Dict
 
 
 class BaseAAC(object):
