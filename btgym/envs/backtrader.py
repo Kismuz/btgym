@@ -190,6 +190,7 @@ class BTgymEnv(gym.Env):
                     shape=(10, 4),
                     low=-100,
                     high=100,
+                    dtype=np.float32
                 )
             ),
             drawdown_call=None,  # episode maximum drawdown threshold, default is 90% of initial value.

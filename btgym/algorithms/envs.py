@@ -39,7 +39,7 @@ class AtariRescale42x42(gym.ObservationWrapper):
         env = gym.make(env_id)
         super(AtariRescale42x42, self).__init__(env)
         self.observation_space = DictSpace(
-            {'external': spaces.Box(0.0, 1.0, [42, 42, 1])}
+            {'external': spaces.Box(0.0, 1.0, [42, 42, 1], dtype=np.float32)}
         )
 
     def _observation(self, observation):

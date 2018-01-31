@@ -124,7 +124,7 @@ class SLAENPolicy(BaseAacPolicy):
             layer_config=conv_2d_layer_config,
             linear_layer_ref=linear_layer_ref,
             max_batch_size=64,
-            name='[auto]encoder_external',
+            name='encoder_external',
             reuse=False
         )
         # VAE reconstruction of on_external_state input:
@@ -263,7 +263,7 @@ class SLAENPolicy(BaseAacPolicy):
             layer_config=conv_2d_layer_config,
             linear_layer_ref=linear_layer_ref,
             max_batch_size=64,
-            name='[auto]encoder_external',
+            name='encoder_external',
             reuse=True
         )
         # AE reconstruction of off_external_state input:
@@ -401,7 +401,7 @@ class SLAENPolicy(BaseAacPolicy):
             layer_config=conv_2d_layer_config,
             linear_layer_ref=linear_layer_ref,
             max_batch_size=64,
-            name='[auto]encoder_external',
+            name='encoder_external',
             reuse=True
         )
         # Flatten batch-wise:
