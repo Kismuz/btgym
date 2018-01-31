@@ -199,17 +199,17 @@
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">print_function</span>
 
-<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span>
 
-<span class="kn">from</span> <span class="nn">btgym.spaces</span> <span class="k">import</span> <span class="n">DictSpace</span> <span class="k">as</span> <span class="n">ObSpace</span>  <span class="c1"># now can simply be gym.Dict</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">Memory</span><span class="p">,</span> <span class="n">make_data_getter</span><span class="p">,</span> <span class="n">RunnerThread</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms.math_utils</span> <span class="k">import</span> <span class="n">log_uniform</span>
-<span class="kn">from</span> <span class="nn">btgym.algorithms.losses</span> <span class="k">import</span> <span class="n">value_fn_loss_def</span><span class="p">,</span> <span class="n">rp_loss_def</span><span class="p">,</span> <span class="n">pc_loss_def</span><span class="p">,</span> <span class="n">aac_loss_def</span><span class="p">,</span> <span class="n">ppo_loss_def</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.nn.losses</span> <span class="k">import</span> <span class="n">value_fn_loss_def</span><span class="p">,</span> <span class="n">rp_loss_def</span><span class="p">,</span> <span class="n">pc_loss_def</span><span class="p">,</span> <span class="n">aac_loss_def</span><span class="p">,</span> <span class="n">ppo_loss_def</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms.utils</span> <span class="k">import</span> <span class="n">feed_dict_rnn_context</span><span class="p">,</span> <span class="n">feed_dict_from_nested</span><span class="p">,</span> <span class="n">batch_stack</span>
+<span class="kn">from</span> <span class="nn">btgym.spaces</span> <span class="k">import</span> <span class="n">DictSpace</span> <span class="k">as</span> <span class="n">ObSpace</span>  <span class="c1"># now can simply be gym.Dict</span>
 
 
 <div class="viewcode-block" id="BaseAAC"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC">[docs]</a><span class="k">class</span> <span class="nc">BaseAAC</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -551,7 +551,7 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()))</span>
 
                 <span class="c1">#  Learning rate annealing:</span>
-                <span class="n">learn_rate_decayed</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">polynomial_decay</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">learn_rate_decayed</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">polynomial_decay</span><span class="p">(</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">opt_decay_steps</span><span class="p">,</span>
@@ -559,10 +559,10 @@
                     <span class="n">power</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                     <span class="n">cycle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="p">)</span>
-                <span class="n">clip_epsilon</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clip_epsilon</span> <span class="o">*</span> <span class="n">learn_rate_decayed</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="n">clip_epsilon</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clip_epsilon</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">learn_rate_decayed</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_learn_rate</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
                 <span class="c1"># Freeze training if train_phase is False:</span>
-                <span class="n">train_learn_rate</span> <span class="o">=</span> <span class="n">learn_rate_decayed</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">train_phase</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+                <span class="n">train_learn_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">learn_rate_decayed</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">train_phase</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;learn rate ok&#39;</span><span class="p">)</span>
 
                 <span class="c1"># On-policy AAC loss definition:</span>
@@ -693,7 +693,8 @@
                     <span class="n">model_summaries</span> <span class="o">+=</span> <span class="p">[</span>
                         <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;grad_global_norm&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">)),</span>
                         <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;var_global_norm&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_norm</span><span class="p">(</span><span class="n">pi</span><span class="o">.</span><span class="n">var_list</span><span class="p">)),</span>
-                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;learn_rate&quot;</span><span class="p">,</span> <span class="n">learn_rate_decayed</span><span class="p">),</span>  <span class="c1"># cause actual rate is a jaggy due to testing</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;learn_rate&quot;</span><span class="p">,</span> <span class="n">train_learn_rate</span><span class="p">),</span>
+                        <span class="c1">#tf.summary.scalar(&quot;learn_rate&quot;, self.learn_rate_decayed),  # cause actual rate is a jaggy due to testing</span>
                         <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;total_loss&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span>
                     <span class="p">]</span>
 
@@ -818,7 +819,7 @@
 
         <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="p">[</span><span class="n">stream</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">stream</span> <span class="ow">in</span> <span class="n">data_streams</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_streams</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
 
-<div class="viewcode-block" id="BaseAAC.get_sample_config"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_sample_config">[docs]</a>    <span class="k">def</span> <span class="nf">get_sample_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseAAC.get_sample_config"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_sample_config">[docs]</a>    <span class="k">def</span> <span class="nf">get_sample_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_new_trial</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns environment configuration parameters for next episode to sample.</span>
 <span class="sd">        By default is simple stateful iterator,</span>
@@ -835,34 +836,27 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_train_episodes</span><span class="p">:</span>
             <span class="n">episode_type</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># train</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span>
-                    <span class="s1">&#39;c_1, c_train=</span><span class="si">{}</span><span class="s1">, c_test=</span><span class="si">{}</span><span class="s1">, type=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
-                        <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span><span class="p">,</span> <span class="n">episode_type</span><span class="p">)</span>
-                <span class="p">)</span>
-
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s1">&#39;c_1, c_train=</span><span class="si">{}</span><span class="s1">, c_test=</span><span class="si">{}</span><span class="s1">, type=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span><span class="p">,</span> <span class="n">episode_type</span><span class="p">)</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_test_episodes</span><span class="p">:</span>
                 <span class="n">episode_type</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># test</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span>
-                        <span class="s1">&#39;c_2, c_train=</span><span class="si">{}</span><span class="s1">, c_test=</span><span class="si">{}</span><span class="s1">, type=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
-                            <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span><span class="p">,</span> <span class="n">episode_type</span><span class="p">)</span>
-                    <span class="p">)</span>
-
-
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="s1">&#39;c_2, c_train=</span><span class="si">{}</span><span class="s1">, c_test=</span><span class="si">{}</span><span class="s1">, type=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                    <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span><span class="p">,</span> <span class="n">episode_type</span><span class="p">)</span>
+                <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># cycle end, reset and start new (rec. depth 1)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span> <span class="o">=</span> <span class="mi">0</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span> <span class="o">=</span> <span class="mi">0</span>
-                <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span>
-                        <span class="s1">&#39;c_3, c_train=</span><span class="si">{}</span><span class="s1">, c_test=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
-                            <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span><span class="p">)</span>
-                    <span class="p">)</span>
-
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample_config</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="s1">&#39;c_3, c_train=</span><span class="si">{}</span><span class="s1">, c_test=</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                    <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_train_episode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_episode</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample_config</span><span class="p">(</span><span class="n">_new_trial</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="c1"># Compose btgym.datafeed.base.EnvResetConfig-consistent dict:</span>
         <span class="n">sample_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
@@ -873,7 +867,7 @@
                 <span class="n">b_beta</span><span class="o">=</span><span class="mf">1.0</span>
             <span class="p">),</span>
             <span class="n">trial_config</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
-                <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">get_new</span><span class="o">=</span><span class="n">_new_trial</span><span class="p">,</span>
                 <span class="n">sample_type</span><span class="o">=</span><span class="n">episode_type</span><span class="p">,</span>
                 <span class="n">b_alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
                 <span class="n">b_beta</span><span class="o">=</span><span class="mf">1.0</span>
@@ -1427,9 +1421,6 @@
 <span class="sd">                    ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">Unreal</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">on_policy_loss</span><span class="o">=</span><span class="n">ppo_loss_def</span><span class="p">,</span>
-            <span class="n">off_policy_loss</span><span class="o">=</span><span class="n">ppo_loss_def</span><span class="p">,</span>
-            <span class="n">_use_target_policy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">_log_name</span><span class="o">=</span><span class="s1">&#39;UNREAL&#39;</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span>
         <span class="p">)</span></div>

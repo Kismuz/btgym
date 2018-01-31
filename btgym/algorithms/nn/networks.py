@@ -159,19 +159,35 @@ def dense_aac_network(x, ac_space, name='dense_aac', linear_layer_ref=linear, re
         action sampling function.
     """
     with tf.variable_scope(name, reuse=reuse):
-        logits = linear_layer_ref(
-            x=x,
-            size=ac_space,
-            name='action',
-            initializer=normalized_columns_initializer(0.01),
-            reuse=reuse)
+        # Center-logits trick :
+        logits = norm_layer(
+            linear_layer_ref(
+                x=x,
+                size=ac_space,
+                name='action',
+                initializer=normalized_columns_initializer(0.01),
+                reuse=reuse
+            ),
+            center=True,
+            scale=False,
+        )
+
+        # logits = linear_layer_ref(
+        #     x=x,
+        #     size=ac_space,
+        #     name='action',
+        #     initializer=normalized_columns_initializer(0.01),
+        #     reuse=reuse
+        # )
+
         vf = tf.reshape(
             linear_layer_ref(
                 x=x,
                 size=1,
                 name="value",
                 initializer=normalized_columns_initializer(1.0),
-                reuse=reuse),
+                reuse=reuse
+            ),
             [-1]
         )
         sample = categorical_sample(logits, ac_space)[0, :]

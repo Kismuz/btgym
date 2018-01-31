@@ -71,6 +71,7 @@ class BTgymBaseStrategy(bt.Strategy):
                 shape=(time_dim, 4),
                 low=0, # will get overridden.
                 high=0,
+                dtype=np.float32,
             )
         ),
         drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.

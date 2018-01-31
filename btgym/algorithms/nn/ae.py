@@ -122,16 +122,18 @@ def conv2d_decoder(z,
         return layer_output
 
 
-def conv2d_autoencoder(inputs,
-                       layer_config,
-                       resize_method=tf.image.ResizeMethod.BILINEAR,
-                       pad='SAME',
-                       linear_layer_ref=linear,
-                       name='base_conv2d_autoencoder',
-                       reuse=False):
+def conv2d_autoencoder(
+        inputs,
+        layer_config,
+        resize_method=tf.image.ResizeMethod.BILINEAR,
+        pad='SAME',
+        linear_layer_ref=linear,
+        name='base_conv2d_autoencoder',
+        reuse=False
+    ):
     """
     Basic convolutional autoencoder.
-    Hidden state is passed throug dense linear layer.
+    Hidden state is passed through dense linear layer.
 
     Args:
         inputs:             input tensor
@@ -139,6 +141,7 @@ def conv2d_autoencoder(inputs,
                             layer_i_config = [num_filters(int), filter_size(list), stride(list)];
                             this list represent decoder part of autoencoder bottleneck,
                             decoder part is inferred symmetrically
+        resize_method:      up-sampling method, one of supported tf.image.ResizeMethod's
         pad:                str, padding scheme: 'SAME' or 'VALID'
         linear_layer_ref:   linear layer class to use
         name:               str, mame scope
@@ -180,9 +183,102 @@ def conv2d_autoencoder(inputs,
         return encoder_layers, z, decoder_layers
 
 
+def var_conv2d_autoencoder(
+        inputs,
+        layer_config,
+        resize_method=tf.image.ResizeMethod.BILINEAR,
+        pad='SAME',
+        linear_layer_ref=linear,
+        name='vae_conv2d',
+        max_batch_size=256,
+        reuse=False
+    ):
+    """
+    Variational autoencoder.
+
+    Papers:
+        https://arxiv.org/pdf/1312.6114.pdf
+        https://arxiv.org/pdf/1606.05908.pdf
+        http://www.matthey.me/pdf/betavae_iclr_2017.pdf
+
+
+    Args:
+        inputs:             input tensor
+        layer_config:       layers configuration list: [layer_1_config, layer_2_config,...], where:
+                            layer_i_config = [num_filters(int), filter_size(list), stride(list)];
+                            this list represent decoder part of autoencoder bottleneck,
+                            decoder part is inferred symmetrically
+        resize_method:      up-sampling method, one of supported tf.image.ResizeMethod's
+        pad:                str, padding scheme: 'SAME' or 'VALID'
+        linear_layer_ref:   linear layer class - not used
+        name:               str, mame scope
+        max_batch_size:     int, dynamic batch size should be no greater than this value
+        reuse:              bool
+
+    Returns:
+        tensor holding encoded features, layer_wise from outer to inner
+        tensor holding batch-wise flattened hidden state vector
+        tensor holding decoded geatures, layer-wise from inner to outer
+        tensor holding estimated KL divergence
+
+    """
+    with tf.variable_scope(name, reuse=reuse):
+
+        # Encode:
+        encoder_layers, shapes = conv2d_encoder(
+            x=inputs,
+            layer_config=layer_config,
+            pad=pad,
+            reuse=reuse
+        )
+        # Flatten hidden state, pass through dense:
+        z_flat = batch_flatten(encoder_layers[-1])
+
+        h, w, c = encoder_layers[-1].get_shape().as_list()[1:]
+
+        half_size_z = h * w * c
+        size_z = 2 * half_size_z
+
+        #z = linear(
+        z = tf.nn.elu(
+            #norm_layer(
+                linear(
+                    x=z_flat,
+                    size=size_z,
+                    name='hidden_dense',
+                    initializer=normalized_columns_initializer(1.0),
+                    reuse=reuse
+                )
+            #)
+        )
+        # Get sample parameters:
+        mu, log_sigma = tf.split(z, [half_size_z, half_size_z], axis=-1)
+
+        # Oversized noise generator:
+        eps = tf.random_normal(shape=[max_batch_size, half_size_z], mean=0., stddev=1.)
+        eps = eps[:tf.shape(z)[0],:]
+
+        # Get sample z ~ Q(z|X):
+        z_sampled = mu + tf.exp(log_sigma / 2) * eps
+
+        # D_KL(Q(z|X) || P(z|X)):
+        d_kl = 0.5 * (tf.exp(log_sigma) + tf.square(mu) - 1. - log_sigma)
+
+        # Reshape back and feed to decoder:
+        decoder_layers = conv2d_decoder(
+            z=tf.reshape(z_sampled, [-1, h, w, c]),
+            layer_config=layer_config,
+            layer_shapes=shapes,
+            pad=pad,
+            resize_method=resize_method,
+            reuse=reuse
+        )
+        return encoder_layers, z_sampled, decoder_layers, d_kl
+
+
 class KernelMonitor():
     """
-    Visualises convolution filters for specific layer in convolution stack.
+    Visualises convolution filters learnt for specific layer.
     Source: https://blog.keras.io/how-convolutional-neural-networks-see-the-world.html
     """
 

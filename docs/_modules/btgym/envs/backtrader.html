@@ -843,7 +843,7 @@
                 <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_reset&#39;</span><span class="p">,</span> <span class="s1">&#39;kwargs&#39;</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">}</span>
             <span class="p">)</span>
             <span class="c1"># Get initial environment response:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 
             <span class="c1"># Check (once) if it is really (o,r,d,i) tuple:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_assert_response</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_response</span><span class="p">)</span>
@@ -887,7 +887,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ChildProcessError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="BTgymEnv._step"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._step">[docs]</a>    <span class="k">def</span> <span class="nf">_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymEnv.step"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Implementation of OpenAI Gym env.step() method.</span>
 <span class="sd">        Makes a step in the environment.</span>
@@ -935,7 +935,7 @@
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span></div>
 
-<div class="viewcode-block" id="BTgymEnv._close"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._close">[docs]</a>    <span class="k">def</span> <span class="nf">_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymEnv.close"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Implementation of OpenAI Gym env.close method.</span>
 <span class="sd">        Puts BTgym server in Control Mode.</span>
@@ -959,7 +959,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span></div>
 
-<div class="viewcode-block" id="BTgymEnv._render"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._render">[docs]</a>    <span class="k">def</span> <span class="nf">_render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;other_mode&#39;</span><span class="p">,</span> <span class="n">close</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymEnv.render"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;other_mode&#39;</span><span class="p">,</span> <span class="n">close</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Implementation of OpenAI Gym env.render method.</span>
 <span class="sd">        Visualises current environment state.</span>
@@ -1001,7 +1001,7 @@
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rendered_rgb</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="BTgymEnv.stop"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymEnv._stop"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._stop">[docs]</a>    <span class="k">def</span> <span class="nf">_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Finishes current episode if any, does nothing otherwise. Leaves server running.</span>
 <span class="sd">        &quot;&quot;&quot;</span>

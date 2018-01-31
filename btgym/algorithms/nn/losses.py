@@ -236,7 +236,7 @@ def ae_loss_def(targets, logits, name='ae_loss', verbose=False):
         tensor holding estimated reconstruction loss
         list of summarues
     """
-    with tf.name_scope(name + '/state_ae/'):
+    with tf.name_scope(name + '/ae'):
         loss = tf.losses.mean_squared_error(targets, logits)
 
         if verbose:
@@ -245,4 +245,43 @@ def ae_loss_def(targets, logits, name='ae_loss', verbose=False):
             summaries = []
 
         return loss, summaries
+
+
+def beta_vae_loss_def(targets, logits, d_kl, alpha =1.0, beta=1.0, name='beta_vae_loss', verbose=False):
+    """
+    Beta-variational autoencoder loss definition
+
+    Papers:
+        http://www.matthey.me/pdf/betavae_iclr_2017.pdf
+        https://drive.google.com/file/d/0Bwy4Nlx78QCCNktVTFFMTUs4N2oxY295VU9qV25MWTBQS2Uw/view
+
+    Args:
+        targets:
+        logits:
+        d_kl:
+        beta:
+        name:
+        verbose:
+
+    Returns:
+        tensor holding estimated loss
+        list of summarues
+
+    """
+    with tf.name_scope(name + '/b_vae'):
+        r_loss = tf.losses.mean_squared_error(targets, logits)
+        vae_loss = tf.reduce_mean(d_kl)
+        loss = alpha * r_loss + beta * vae_loss
+        loss = tf.clip_by_value(loss, 0, 40.0)
+        if verbose:
+            summaries = [
+                tf.summary.scalar('reconstruct_loss', r_loss),
+                tf.summary.scalar('d_kl_loss', vae_loss),
+            ]
+        else:
+            summaries = []
+
+        return loss, summaries
+
+
 

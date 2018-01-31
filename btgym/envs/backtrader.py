@@ -663,7 +663,7 @@ class BTgymEnv(gym.Env):
                 message={'ctrl': '_reset', 'kwargs': kwargs}
             )
             # Get initial environment response:
-            self.env_response = self._step(0)
+            self.env_response = self.step(0)
 
             # Check (once) if it is really (o,r,d,i) tuple:
             self._assert_response(self.env_response)
@@ -707,7 +707,7 @@ class BTgymEnv(gym.Env):
             self.log.exception(msg)
             raise ChildProcessError(msg)
 
-    def _step(self, action):
+    def step(self, action):
         """
         Implementation of OpenAI Gym env.step() method.
         Makes a step in the environment.
@@ -755,7 +755,7 @@ class BTgymEnv(gym.Env):
 
         return self.env_response
 
-    def _close(self):
+    def close(self):
         """
         Implementation of OpenAI Gym env.close method.
         Puts BTgym server in Control Mode.
@@ -779,7 +779,7 @@ class BTgymEnv(gym.Env):
         else:
             return self.server_response
 
-    def _render(self, mode='other_mode', close=False):
+    def render(self, mode='other_mode', close=False):
         """
         Implementation of OpenAI Gym env.render method.
         Visualises current environment state.
@@ -821,7 +821,7 @@ class BTgymEnv(gym.Env):
 
         return self.rendered_rgb[mode]
 
-    def stop(self):
+    def _stop(self):
         """
         Finishes current episode if any, does nothing otherwise. Leaves server running.
         """

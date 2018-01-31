@@ -112,10 +112,10 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">btgym.algorithms package</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-launcher-module">btgym.algorithms.launcher module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.launcher">btgym.algorithms.launcher module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.worker">btgym.algorithms.worker module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-aac-module">btgym.algorithms.aac module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-policy-module">btgym.algorithms.policy module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.aac">btgym.algorithms.aac module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.policy">btgym.algorithms.policy module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-losses-module">btgym.algorithms.losses module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-nn-utils-module">btgym.algorithms.nn_utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.rollout">btgym.algorithms.rollout module</a></li>
@@ -192,8 +192,79 @@
             
   <div class="section" id="btgym-algorithms-package">
 <h1>btgym.algorithms package<a class="headerlink" href="#btgym-algorithms-package" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="btgym-algorithms-launcher-module">
-<h2>btgym.algorithms.launcher module<a class="headerlink" href="#btgym-algorithms-launcher-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-btgym.algorithms.launcher">
+<span id="btgym-algorithms-launcher-module"></span><h2>btgym.algorithms.launcher module<a class="headerlink" href="#module-btgym.algorithms.launcher" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.algorithms.launcher.Launcher">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.launcher.</code><code class="descname">Launcher</code><span class="sig-paren">(</span><em>env_config=None</em>, <em>cluster_config=None</em>, <em>policy_config=None</em>, <em>trainer_config=None</em>, <em>max_env_steps=None</em>, <em>root_random_seed=None</em>, <em>test_mode=False</em>, <em>purge_previous=0</em>, <em>log_level=None</em>, <em>verbose=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configures and starts distributed TF training session with workers
+running sets of separate instances of BTgym/Atari environment.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env_config</strong> (<a class="reference external" href="https://docs.python.org/2/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) – environment class_config_dict, see ‘Note’ below.</li>
+<li><strong>cluster_config</strong> (<a class="reference external" href="https://docs.python.org/2/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) – tf cluster configuration, see ‘Note’ below.</li>
+<li><strong>policy_config</strong> (<a class="reference external" href="https://docs.python.org/2/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) – policy class_config_dict holding corr. policy class args.</li>
+<li><strong>trainer_config</strong> (<a class="reference external" href="https://docs.python.org/2/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) – trainer class_config_dict holding corr. trainer class args.</li>
+<li><strong>max_env_steps</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) – total number of environment steps to run training on.</li>
+<li><strong>root_random_seed</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) – int or None</li>
+<li><strong>test_mode</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#bool" title="(in Python v2.7)"><em>bool</em></a>) – if True - use Atari gym env., BTGym otherwise.</li>
+<li><strong>purge_previous</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) – keep or remove previous log files and saved checkpoints from log_dir:
+{0 - keep, 1 - ask, 2 - remove}.</li>
+<li><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) – verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}.</li>
+<li><strong>log_level</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) – logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},
+overrides <cite>verbose</cite> arg.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<dl class="last docutils">
+<dt>class_config_dict:  dictionary containing at least two keys:</dt>
+<dd><ul class="first last simple">
+<li><cite>class_ref</cite>:    reference to class constructor or function;</li>
+<li><cite>kwargs</cite>:       dictionary of keyword arguments, see corr. environment class args.</li>
+</ul>
+</dd>
+<dt>cluster_config:     dictionary containing at least these keys:</dt>
+<dd><ul class="first last simple">
+<li>‘host’:         cluster host, def: ‘127.0.0.1’</li>
+<li>‘port’:         cluster port, def: 12222</li>
+<li>‘num_workers’:  number of workers to run, def: 1</li>
+<li>‘num_ps’:       number of parameter servers, def: 1</li>
+<li>‘num_envs’:     number of environments to run in parallel for each worker, def: 1</li>
+<li>‘log_dir’:      directory to save model and summaries, def: ‘./tmp/btgym_aac_log’</li>
+</ul>
+</dd>
+</dl>
+</div>
+<dl class="method">
+<dt id="btgym.algorithms.launcher.Launcher.make_cluster_spec">
+<code class="descname">make_cluster_spec</code><span class="sig-paren">(</span><em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher.make_cluster_spec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher.make_cluster_spec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Composes cluster specification dictionary.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.launcher.Launcher.clear_port">
+<code class="descname">clear_port</code><span class="sig-paren">(</span><em>port_list</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher.clear_port"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher.clear_port" title="Permalink to this definition">¶</a></dt>
+<dd><p>Kills process on specified ports list, if any.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.launcher.Launcher.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/launcher.html#Launcher.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.launcher.Launcher.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Launches processes:</p>
+<blockquote>
+<div>distributed workers;
+parameter_server.</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 <div class="section" id="module-btgym.algorithms.worker">
 <span id="btgym-algorithms-worker-module"></span><h2>btgym.algorithms.worker module<a class="headerlink" href="#module-btgym.algorithms.worker" title="Permalink to this headline">¶</a></h2>
@@ -250,11 +321,442 @@ it’s own ThreadRunner process.</dd>
 </dd></dl>
 
 </div>
-<div class="section" id="btgym-algorithms-aac-module">
-<h2>btgym.algorithms.aac module<a class="headerlink" href="#btgym-algorithms-aac-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-btgym.algorithms.aac">
+<span id="btgym-algorithms-aac-module"></span><h2>btgym.algorithms.aac module<a class="headerlink" href="#module-btgym.algorithms.aac" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.algorithms.aac.BaseAAC">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log_level</em>, <em>_log_name='AAC'</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_train_test_cycle=(1</em>, <em>0)</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1.0</em>, <em>pc_lambda=1.0</em>, <em>vr_lambda=1.0</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>_use_target_policy=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base Asynchronous Advantage Actor Critic algorithm framework class with auxiliary control tasks and
+option to run several instances of environment for every worker in vectorized fashion, PAAC-like.
+Can be configured to run with different losses and policies.</p>
+<p>Auxiliary tasks implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+<a class="reference external" href="https://miyosuda.github.io/">https://miyosuda.github.io/</a>
+<a class="reference external" href="https://github.com/miyosuda/unreal">https://github.com/miyosuda/unreal</a></p>
+<p>Original A3C code comes from OpenAI repository under MIT licence:
+<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
+<p>Papers:
+<a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a>
+<a class="reference external" href="https://arxiv.org/abs/1611.05397">https://arxiv.org/abs/1611.05397</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env</strong> – environment instance or list of instances</li>
+<li><strong>task</strong> – int, parent worker id</li>
+<li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
+<li><strong>log_level</strong> – int, logbook.level</li>
+<li><strong>_log_name</strong> – str, class-wide logger name</li>
+<li><strong>on_policy_loss</strong> – callable returning tensor holding on_policy training loss graph and summaries</li>
+<li><strong>off_policy_loss</strong> – callable returning tensor holding off_policy training loss graph and summaries</li>
+<li><strong>vr_loss</strong> – callable returning tensor holding value replay loss graph and summaries</li>
+<li><strong>rp_loss</strong> – callable returning tensor holding reward prediction loss graph and summaries</li>
+<li><strong>pc_loss</strong> – callable returning tensor holding pixel_control loss graph and summaries</li>
+<li><strong>random_seed</strong> – int or None</li>
+<li><strong>model_gamma</strong> – scalar, gamma discount factor</li>
+<li><strong>model_gae_lambda</strong> – scalar, GAE lambda</li>
+<li><strong>model_beta</strong> – entropy regularization beta, scalar or [high_bound, low_bound] for log_uniform.</li>
+<li><strong>opt_max_env_steps</strong> – int, total number of environment steps to run training on.</li>
+<li><strong>opt_decay_steps</strong> – int, learn ratio decay steps, in number of environment steps.</li>
+<li><strong>opt_end_learn_rate</strong> – scalar, final learn rate</li>
+<li><strong>opt_learn_rate</strong> – start learn rate, scalar or [high_bound, low_bound] for log_uniform distr.</li>
+<li><strong>opt_decay</strong> – scalar, optimizer decay, if apll.</li>
+<li><strong>opt_momentum</strong> – scalar, optimizer momentum, if apll.</li>
+<li><strong>opt_epsilon</strong> – scalar, optimizer epsilon</li>
+<li><strong>rollout_length</strong> – int, on-policy rollout length</li>
+<li><strong>time_flat</strong> – bool, flatten rnn time-steps in rollouts while training - see <cite>Notes</cite> below</li>
+<li><strong>episode_train_test_cycle</strong> – tuple or list as (train_number, test_number), def=(1,0): enables infinite
+loop such as: run <cite>train_number</cite> of train data episodes,
+than <cite>test_number</cite> of test data episodes, repeat. Should be consistent
+with provided dataset parameters (test data should exist if <cite>test_number &gt; 0</cite>)</li>
+<li><strong>episode_summary_freq</strong> – int, write episode summary for every i’th episode</li>
+<li><strong>env_render_freq</strong> – int, write environment rendering summary for every i’th train step</li>
+<li><strong>model_summary_freq</strong> – int, write model summary for every i’th train step</li>
+<li><strong>test_mode</strong> – bool, True: Atari, False: BTGym</li>
+<li><strong>replay_memory_size</strong> – int, in number of experiences</li>
+<li><strong>replay_batch_size</strong> – int, mini-batch size for off-policy training, def = 1</li>
+<li><strong>replay_rollout_length</strong> – int off-policy rollout length by def. equals on_policy_rollout_length</li>
+<li><strong>use_off_policy_aac</strong> – bool, use full AAC off-policy loss instead of Value-replay</li>
+<li><strong>use_reward_prediction</strong> – bool, use aux. off-policy reward prediction task</li>
+<li><strong>use_pixel_control</strong> – bool, use aux. off-policy pixel control task</li>
+<li><strong>use_value_replay</strong> – bool, use aux. off-policy value replay task (not used if use_off_policy_aac=True)</li>
+<li><strong>rp_lambda</strong> – reward prediction loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>pc_lambda</strong> – pixel control loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>vr_lambda</strong> – value replay loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>off_aac_lambda</strong> – off-policy AAC loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>gamma_pc</strong> – NOT USED</li>
+<li><strong>rp_reward_threshold</strong> – scalar, reward prediction classification threshold, above which reward is ‘non-zero’</li>
+<li><strong>rp_sequence_size</strong> – int, reward prediction sample size, in number of experiences</li>
+<li><strong>clip_epsilon</strong> – scalar, PPO: surrogate L^clip epsilon</li>
+<li><strong>num_epochs</strong> – int, num. of SGD runs for every train step, val. &gt; 1 should be used with caution.</li>
+<li><strong>pi_prime_update_period</strong> – int, PPO: pi to pi_old update period in number of train steps, def: 1</li>
+<li><strong>_use_target_policy</strong> – bool, PPO: use target policy (aka pi_old), delayed by <cite>pi_prime_update_period</cite> delay</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last">
+<li><p class="first">On <cite>time_flat</cite> arg:</p>
+<blockquote>
+<div><p>There are two alternatives to run RNN part of policy estimator:</p>
+<ol class="loweralpha simple">
+<li><dl class="first docutils">
+<dt>Feed initial RNN state for every experience frame in rollout</dt>
+<dd>(those are stored anyway if we want random memory repaly sampling) and do single time-step RNN
+advance for all experiences in a batch; this is when time_flat=True;</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Reshape incoming batch after convolution part of network in time-wise fashion</dt>
+<dd>for every rollout in a batch i.e. batch_size=number_of_rollouts and
+rnn_timesteps=max_rollout_length. In this case we need to feed initial rnn_states
+for rollouts only. There is some little extra work to pad rollouts to max_time_size
+and feed true rollout lengths to rnn. Thus, when time_flat=False, we unroll RNN in
+specified number of time-steps for every rollout.</dd>
+</dl>
+</li>
+</ol>
+<p>Both options has pros and cons:</p>
+<dl class="docutils">
+<dt>Unrolling dynamic RNN is computationally more expensive but gives clearly faster convergence,</dt>
+<dd><p class="first last">[possibly] due to the fact that RNN states for 2nd, 3rd, … frames
+of rollouts are computed using updated policy estimator, which is supposed to be
+closer to optimal one. When time_flattened, every time-step uses RNN states computed
+when rollout was collected (i.e. by behavioral policy estimator with older
+parameters).</p>
+</dd>
+<dt>Nevertheless, time_flatting can be interesting</dt>
+<dd><p class="first last">because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
+ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).</p>
+</dd>
+</dl>
+</div></blockquote>
+</li>
+</ul>
 </div>
-<div class="section" id="btgym-algorithms-policy-module">
-<h2>btgym.algorithms.policy module<a class="headerlink" href="#btgym-algorithms-policy-module" title="Permalink to this headline">¶</a></h2>
+<dl class="method">
+<dt id="btgym.algorithms.aac.BaseAAC.get_sample_config">
+<code class="descname">get_sample_config</code><span class="sig-paren">(</span><em>_new_trial=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.get_sample_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.get_sample_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns environment configuration parameters for next episode to sample.
+By default is simple stateful iterator,
+works correctly with <cite>DTGymDataset</cite> data class, repeating cycle:</p>
+<blockquote>
+<div><ul class="simple">
+<li>sample <cite>num_train_episodes</cite> from train data,</li>
+<li>sample <cite>num_test_episodes</cite> from test data.</li>
+</ul>
+</div></blockquote>
+<p>Convention: supposed to override dummy method of local policy instance, see inside ._make_policy() method</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">configuration dictionary of type <cite>btgym.datafeed.base.EnvResetConfig</cite></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.aac.BaseAAC.start">
+<code class="descname">start</code><span class="sig-paren">(</span><em>sess</em>, <em>summary_writer</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Executes all initializing operations,
+starts environment runner[s].
+Supposed to be called by parent worker just before training loop starts.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>sess</strong> – tf session object.</li>
+<li><strong>kwargs</strong> – not used by default.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.aac.BaseAAC.process_data">
+<code class="descname">process_data</code><span class="sig-paren">(</span><em>sess</em>, <em>data</em>, <em>is_train</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.process_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.process_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Processes data, composes train step feed dictionary.
+:param sess: tf session obj.
+:param data: data dictionary
+:type data: dict
+:param is_train: is data provided are train or test</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>feed_dict</strong> – train step feed dictionary</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/2/library/stdtypes.html#dict" title="(in Python v2.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.aac.BaseAAC.process_summary">
+<code class="descname">process_summary</code><span class="sig-paren">(</span><em>sess</em>, <em>data</em>, <em>model_data=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.process_summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.process_summary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetches and writes summary data from <cite>data</cite> and <cite>model_data</cite>.
+:param sess: tf summary obj.
+:param data: thread_runner rollouts and metadata
+:type data: dict
+:param model_data: model summary data</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.aac.BaseAAC.process">
+<code class="descname">process</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Grabs an on_policy_rollout [and off_policy rollout[s] from replay memory] that’s been produced
+by the thread runner. If data identified as ‘train data’ - computes gradients and updates the parameters;
+writes summaries if any. The update is then sent to the parameter server.
+If on_policy_rollout identified as ‘test data’ -  no policy update is performed (learn rate is set to zero);
+Note that test data does not get stored in replay memory (thread runner area).
+Writes all available summaries.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sess</strong> (<em>tensorflow.Session</em>) – tf session obj.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.algorithms.aac.Unreal">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">Unreal</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#Unreal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.Unreal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unreal: Asynchronous Advantage Actor Critic with auxiliary control tasks.</p>
+<p>Auxiliary tasks implementation borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:
+<a class="reference external" href="https://miyosuda.github.io/">https://miyosuda.github.io/</a>
+<a class="reference external" href="https://github.com/miyosuda/unreal">https://github.com/miyosuda/unreal</a></p>
+<p>Original A3C code comes from OpenAI repository under MIT licence:
+<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
+<p>Papers:
+<a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a>
+<a class="reference external" href="https://arxiv.org/abs/1611.05397">https://arxiv.org/abs/1611.05397</a></p>
+<p>See BaseAAC class args for details:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env</strong> – environment instance or list of instances</li>
+<li><strong>task</strong> – int, parent worker id</li>
+<li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
+<li><strong>log_level</strong> – int, logbook.level</li>
+<li><strong>on_policy_loss</strong> – callable returning tensor holding on_policy training loss graph and summaries</li>
+<li><strong>off_policy_loss</strong> – callable returning tensor holding off_policy training loss graph and summaries</li>
+<li><strong>vr_loss</strong> – callable returning tensor holding value replay loss graph and summaries</li>
+<li><strong>rp_loss</strong> – callable returning tensor holding reward prediction loss graph and summaries</li>
+<li><strong>pc_loss</strong> – callable returning tensor holding pixel_control loss graph and summaries</li>
+<li><strong>random_seed</strong> – int or None</li>
+<li><strong>model_gamma</strong> – scalar, gamma discount factor</li>
+<li><strong>model_gae_lambda</strong> – scalar, GAE lambda</li>
+<li><strong>model_beta</strong> – entropy regularization beta, scalar or [high_bound, low_bound] for log_uniform.</li>
+<li><strong>opt_max_env_steps</strong> – int, total number of environment steps to run training on.</li>
+<li><strong>opt_decay_steps</strong> – int, learn ratio decay steps, in number of environment steps.</li>
+<li><strong>opt_end_learn_rate</strong> – scalar, final learn rate</li>
+<li><strong>opt_learn_rate</strong> – start learn rate, scalar or [high_bound, low_bound] for log_uniform distr.</li>
+<li><strong>opt_decay</strong> – scalar, optimizer decay, if apll.</li>
+<li><strong>opt_momentum</strong> – scalar, optimizer momentum, if apll.</li>
+<li><strong>opt_epsilon</strong> – scalar, optimizer epsilon</li>
+<li><strong>rollout_length</strong> – int, on-policy rollout length</li>
+<li><strong>time_flat</strong> – bool, flatten rnn time-steps in rollouts while training - see <cite>Notes</cite> below</li>
+<li><strong>episode_train_test_cycle</strong> – tuple or list as (train_number, test_number), def=(1,0): enables infinite
+loop such as: run <cite>train_number</cite> of train data episodes,
+than <cite>test_number</cite> of test data episodes, repeat. Should be consistent
+with provided dataset parameters (test data should exist if <cite>test_number &gt; 0</cite>)</li>
+<li><strong>episode_summary_freq</strong> – int, write episode summary for every i’th episode</li>
+<li><strong>env_render_freq</strong> – int, write environment rendering summary for every i’th train step</li>
+<li><strong>model_summary_freq</strong> – int, write model summary for every i’th train step</li>
+<li><strong>test_mode</strong> – bool, True: Atari, False: BTGym</li>
+<li><strong>replay_memory_size</strong> – int, in number of experiences</li>
+<li><strong>replay_batch_size</strong> – int, mini-batch size for off-policy training, def = 1</li>
+<li><strong>replay_rollout_length</strong> – int off-policy rollout length by def. equals on_policy_rollout_length</li>
+<li><strong>use_off_policy_aac</strong> – bool, use full AAC off-policy loss instead of Value-replay</li>
+<li><strong>use_reward_prediction</strong> – bool, use aux. off-policy reward prediction task</li>
+<li><strong>use_pixel_control</strong> – bool, use aux. off-policy pixel control task</li>
+<li><strong>use_value_replay</strong> – bool, use aux. off-policy value replay task (not used if use_off_policy_aac=True)</li>
+<li><strong>rp_lambda</strong> – reward prediction loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>pc_lambda</strong> – pixel control loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>vr_lambda</strong> – value replay loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>off_aac_lambda</strong> – off-policy AAC loss weight, scalar or [high, low] for log_uniform distr.</li>
+<li><strong>gamma_pc</strong> – NOT USED</li>
+<li><strong>rp_reward_threshold</strong> – scalar, reward prediction classification threshold, above which reward is ‘non-zero’</li>
+<li><strong>rp_sequence_size</strong> – int, reward prediction sample size, in number of experiences</li>
+<li><strong>clip_epsilon</strong> – scalar, PPO: surrogate L^clip epsilon</li>
+<li><strong>num_epochs</strong> – int, num. of SGD runs for every train step, val. &gt; 1 should be used with caution.</li>
+<li><strong>pi_prime_update_period</strong> – int, PPO: pi to pi_old update period in number of train steps, def: 1</li>
+<li><strong>_use_target_policy</strong> – bool, PPO: use target policy (aka pi_old), delayed by <cite>pi_prime_update_period</cite> delay</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last">
+<li><p class="first">On <cite>time_flat</cite> arg:</p>
+<blockquote>
+<div><p>There are two alternatives to run RNN part of policy estimator:</p>
+<ol class="loweralpha simple">
+<li><dl class="first docutils">
+<dt>Feed initial RNN state for every experience frame in rollout</dt>
+<dd>(those are stored anyway if we want random memory repaly sampling) and do single time-step RNN
+advance for all experiences in a batch; this is when time_flat=True;</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Reshape incoming batch after convolution part of network in time-wise fashion</dt>
+<dd>for every rollout in a batch i.e. batch_size=number_of_rollouts and
+rnn_timesteps=max_rollout_length. In this case we need to feed initial rnn_states
+for rollouts only. There is some little extra work to pad rollouts to max_time_size
+and feed true rollout lengths to rnn. Thus, when time_flat=False, we unroll RNN in
+specified number of time-steps for every rollout.</dd>
+</dl>
+</li>
+</ol>
+<p>Both options has pros and cons:</p>
+<dl class="docutils">
+<dt>Unrolling dynamic RNN is computationally more expensive but gives clearly faster convergence,</dt>
+<dd><p class="first last">[possibly] due to the fact that RNN states for 2nd, 3rd, … frames
+of rollouts are computed using updated policy estimator, which is supposed to be
+closer to optimal one. When time_flattened, every time-step uses RNN states computed
+when rollout was collected (i.e. by behavioral policy estimator with older
+parameters).</p>
+</dd>
+<dt>Nevertheless, time_flatting can be interesting</dt>
+<dd><p class="first last">because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
+ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).</p>
+</dd>
+</dl>
+</div></blockquote>
+</li>
+</ul>
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.algorithms.aac.A3C">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">A3C</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#A3C"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.A3C" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vanilla Asynchronous Advantage Actor Critic algorithm.</p>
+<p>Based on original code taken from OpenAI repository under MIT licence:
+<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
+<p>Paper: <a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a></p>
+<p>A3C args. is a subset of BaseAAC arguments, see <cite>BaseAAC</cite> class for descriptions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env</strong> – </li>
+<li><strong>task</strong> – </li>
+<li><strong>policy_config</strong> – </li>
+<li><strong>log</strong> – </li>
+<li><strong>random_seed</strong> – </li>
+<li><strong>model_gamma</strong> – </li>
+<li><strong>model_gae_lambda</strong> – </li>
+<li><strong>model_beta</strong> – </li>
+<li><strong>opt_max_env_steps</strong> – </li>
+<li><strong>opt_decay_steps</strong> – </li>
+<li><strong>opt_end_learn_rate</strong> – </li>
+<li><strong>opt_learn_rate</strong> – </li>
+<li><strong>opt_decay</strong> – </li>
+<li><strong>opt_momentum</strong> – </li>
+<li><strong>opt_epsilon</strong> – </li>
+<li><strong>rollout_length</strong> – </li>
+<li><strong>episode_summary_freq</strong> – </li>
+<li><strong>env_render_freq</strong> – </li>
+<li><strong>model_summary_freq</strong> – </li>
+<li><strong>test_mode</strong> – </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.algorithms.aac.PPO">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">PPO</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#PPO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.PPO" title="Permalink to this definition">¶</a></dt>
+<dd><p>AAC with Proximal Policy Optimization surrogate L^Clip loss,
+optionally augmented with auxiliary control tasks.</p>
+<p>paper:
+<a class="reference external" href="https://arxiv.org/pdf/1707.06347.pdf">https://arxiv.org/pdf/1707.06347.pdf</a></p>
+<p>Based on PPO-SGD code from OpenAI <cite>Baselines</cite> repository under MIT licence:
+<a class="reference external" href="https://github.com/openai/baselines">https://github.com/openai/baselines</a></p>
+<p>Async. framework code comes from OpenAI repository under MIT licence:
+<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
+<blockquote>
+<div>PPO args. is a subset of BaseAAC arguments, see <cite>BaseAAC</cite> class for descriptions.</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env</strong> – </li>
+<li><strong>task</strong> – </li>
+<li><strong>policy_config</strong> – </li>
+<li><strong>log_level</strong> – </li>
+<li><strong>vr_loss</strong> – </li>
+<li><strong>rp_loss</strong> – </li>
+<li><strong>pc_loss</strong> – </li>
+<li><strong>random_seed</strong> – </li>
+<li><strong>model_gamma</strong> – </li>
+<li><strong>model_gae_lambda</strong> – </li>
+<li><strong>model_beta</strong> – </li>
+<li><strong>opt_max_env_steps</strong> – </li>
+<li><strong>opt_decay_steps</strong> – </li>
+<li><strong>opt_end_learn_rate</strong> – </li>
+<li><strong>opt_learn_rate</strong> – </li>
+<li><strong>opt_decay</strong> – </li>
+<li><strong>opt_momentum</strong> – </li>
+<li><strong>opt_epsilon</strong> – </li>
+<li><strong>rollout_length</strong> – </li>
+<li><strong>episode_summary_freq</strong> – </li>
+<li><strong>env_render_freq</strong> – </li>
+<li><strong>model_summary_freq</strong> – </li>
+<li><strong>test_mode</strong> – </li>
+<li><strong>replay_memory_size</strong> – </li>
+<li><strong>replay_rollout_length</strong> – </li>
+<li><strong>use_off_policy_aac</strong> – </li>
+<li><strong>use_reward_prediction</strong> – </li>
+<li><strong>use_pixel_control</strong> – </li>
+<li><strong>use_value_replay</strong> – </li>
+<li><strong>rp_lambda</strong> – </li>
+<li><strong>pc_lambda</strong> – </li>
+<li><strong>vr_lambda</strong> – </li>
+<li><strong>off_aac_lambda</strong> – </li>
+<li><strong>rp_reward_threshold</strong> – </li>
+<li><strong>rp_sequence_size</strong> – </li>
+<li><strong>clip_epsilon</strong> – </li>
+<li><strong>num_epochs</strong> – </li>
+<li><strong>pi_prime_update_period</strong> – </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.algorithms.policy">
+<span id="btgym-algorithms-policy-module"></span><h2>btgym.algorithms.policy module<a class="headerlink" href="#module-btgym.algorithms.policy" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="btgym-algorithms-losses-module">
 <h2>btgym.algorithms.losses module<a class="headerlink" href="#btgym-algorithms-losses-module" title="Permalink to this headline">¶</a></h2>

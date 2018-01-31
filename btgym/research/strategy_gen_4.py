@@ -54,31 +54,35 @@ class DevStrat_4_6(BTgymBaseStrategy):
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
             {
-                'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3)),
-                'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5)),
-                'action': spaces.Box(low=0, high=1, shape=(avg_period, 1, 1)),
-                'reward': spaces.Box(low=-1, high=1, shape=(avg_period, 1, 1)),
+                'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3), dtype=np.float32),
+                'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
+                'action': spaces.Box(low=0, high=1, shape=(avg_period, 1, 1), dtype=np.float32),
+                'reward': spaces.Box(low=-1, high=1, shape=(avg_period, 1, 1), dtype=np.float32),
                 'metadata': DictSpace(
                     {
                         'type': spaces.Box(
                             shape=(),
                             low=0,
-                            high=1
+                            high=1,
+                            dtype=np.uint32
                         ),
                         'trial_num': spaces.Box(
                             shape=(),
                             low=0,
-                            high=10**10
+                            high=10**10,
+                            dtype=np.uint32
                         ),
                         'sample_num': spaces.Box(
                             shape=(),
                             low=0,
-                            high=10**10
+                            high=10**10,
+                            dtype=np.uint32
                         ),
                         'first_row': spaces.Box(
                             shape=(),
                             low=0,
-                            high=10**10
+                            high=10**10,
+                            dtype=np.uint32
                         )
                     }
                 )
@@ -246,32 +250,33 @@ class DevStrat_4_7(DevStrat_4_6):
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
         {
-            'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3)),
-            'internal': spaces.Box(low=-2, high=2, shape=(1, 1, 5)),
-            #'raw_state': spaces.Box(low=-10, high=10, shape=(time_dim, 4)),
-            #'action': spaces.Box(low=0, high=1, shape=(avg_period, 1, 1)),
-            #'reward': spaces.Box(low=-1, high=1, shape=(avg_period, 1, 1)),
+            'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3), dtype=np.float32),
+            'internal': spaces.Box(low=-2, high=2, shape=(1, 1, 5), dtype=np.float32),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
                         shape=(),
                         low=0,
-                        high=1
+                        high=1,
+                        dtype=np.uint32
                     ),
                     'trial_num': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     ),
                     'sample_num': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     ),
                     'first_row': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     )
                 }
             )
@@ -414,29 +419,33 @@ class DevStrat_4_8(DevStrat_4_7):
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
         {
-            'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3)),
-            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5)),
+            'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3), dtype=np.float32),
+            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
                         shape=(),
                         low=0,
-                        high=1
+                        high=1,
+                        dtype=np.uint32
                     ),
                     'trial_num': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     ),
                     'sample_num': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     ),
                     'first_row': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     )
                 }
             )
@@ -506,29 +515,33 @@ class DevStrat_4_9(DevStrat_4_7):
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
         {
-            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 8)),
-            'internal': spaces.Box(low=-2, high=2, shape=(1, 1, 5)),
+            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 8), dtype=np.float32),
+            'internal': spaces.Box(low=-2, high=2, shape=(1, 1, 5), dtype=np.float32),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
                         shape=(),
                         low=0,
-                        high=1
+                        high=1,
+                        dtype=np.uint32
                     ),
                     'trial_num': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     ),
                     'sample_num': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     ),
                     'first_row': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     )
                 }
             )
@@ -693,29 +706,33 @@ class DevStrat_4_11(DevStrat_4_10):
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
         {
-            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 5)),
-            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5)),
+            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 5), dtype=np.float32),
+            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
                         shape=(),
                         low=0,
-                        high=1
+                        high=1,
+                        dtype=np.uint32
                     ),
                     'trial_num': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     ),
                     'sample_num': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     ),
                     'first_row': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     )
                 }
             )
@@ -833,29 +850,33 @@ class DevStrat_4_12(DevStrat_4_11):
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
         {
-            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 7)),
-            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5)),
+            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 6), dtype=np.float32),
+            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
                         shape=(),
                         low=0,
-                        high=1
+                        high=1,
+                        dtype=np.uint32
                     ),
                     'trial_num': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     ),
                     'sample_num': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     ),
                     'first_row': spaces.Box(
                         shape=(),
                         low=0,
-                        high=10 ** 10
+                        high=10 ** 10,
+                        dtype=np.uint32
                     )
                 }
             )
@@ -876,7 +897,7 @@ class DevStrat_4_12(DevStrat_4_11):
         self.data.sma_64 = btind.SimpleMovingAverage(self.datas[0], period=64)
         self.data.sma_128 = btind.SimpleMovingAverage(self.datas[0], period=128)
         self.data.sma_256 = btind.SimpleMovingAverage(self.datas[0], period=256)
-        self.data.sma_512 = btind.SimpleMovingAverage(self.datas[0], period=512)
+        #self.data.sma_512 = btind.SimpleMovingAverage(self.datas[0], period=512)
 
         self.data.dim_sma = btind.SimpleMovingAverage(
             self.datas[0],
@@ -895,7 +916,7 @@ class DevStrat_4_12(DevStrat_4_11):
                 np.frombuffer(self.data.sma_64.get(size=self.time_dim)),
                 np.frombuffer(self.data.sma_128.get(size=self.time_dim)),
                 np.frombuffer(self.data.sma_256.get(size=self.time_dim)),
-                np.frombuffer(self.data.sma_512.get(size=self.time_dim)),
+                #np.frombuffer(self.data.sma_512.get(size=self.time_dim)),
             ],
             axis=-1
         )
