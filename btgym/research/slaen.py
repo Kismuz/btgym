@@ -4,10 +4,10 @@ from btgym.algorithms.policy.base import BaseAacPolicy
 from btgym.algorithms.nn.networks import *
 from btgym.algorithms.utils import *
 from btgym.algorithms.nn.layers import noisy_linear
-from btgym.algorithms.nn.ae import var_conv2d_autoencoder
+from btgym.algorithms.nn.ae import var_conv2d_autoencoder, conv2d_autoencoder
 
 from btgym.algorithms import BaseAAC
-from btgym.algorithms.nn.losses import beta_vae_loss_def
+from btgym.algorithms.nn.losses import beta_vae_loss_def, ae_loss_def
 
 
 class SLAENPolicy(BaseAacPolicy):
@@ -38,7 +38,6 @@ class SLAENPolicy(BaseAacPolicy):
 
     https://arxiv.org/pdf/1611.02779.pdf
 
-
     """
 
     def __init__(self,
@@ -55,6 +54,7 @@ class SLAENPolicy(BaseAacPolicy):
                  lstm_layers=(256, 256),
                  lstm_2_init_period=50,
                  linear_layer_ref=noisy_linear,
+                 encoder_class_ref=conv2d_autoencoder,
                  aux_estimate=False,
                  encode_internal_state=False,
                  **kwargs):
@@ -119,12 +119,12 @@ class SLAENPolicy(BaseAacPolicy):
         # ============= Base on-policy AAC network ===========
 
         # Conv. autoencoder:
-        on_encoded_layers, on_aac_x, on_decoded_layers, on_d_kl = var_conv2d_autoencoder(
+        on_encoded_layers, on_aac_x, on_decoded_layers, on_d_kl = encoder_class_ref(
             inputs=self.on_state_in['external'],
             layer_config=conv_2d_layer_config,
             linear_layer_ref=linear_layer_ref,
             max_batch_size=64,
-            name='vae_external',
+            name='[auto]encoder_external',
             reuse=False
         )
         # VAE reconstruction of on_external_state input:
@@ -258,12 +258,12 @@ class SLAENPolicy(BaseAacPolicy):
         # ========= Off-policy AAC network (shared) ==========
 
         # Conv. autoencoder:
-        off_encoded_layers, off_aac_x, off_decoded_layers, off_d_kl = var_conv2d_autoencoder(
+        off_encoded_layers, off_aac_x, off_decoded_layers, off_d_kl = encoder_class_ref(
             inputs=self.off_state_in['external'],
             layer_config=conv_2d_layer_config,
             linear_layer_ref=linear_layer_ref,
             max_batch_size=64,
-            name='vae_external',
+            name='[auto]encoder_external',
             reuse=True
         )
         # AE reconstruction of off_external_state input:
@@ -396,12 +396,12 @@ class SLAENPolicy(BaseAacPolicy):
         self.rp_batch_size = tf.placeholder(tf.int32, name='rp_batch_size')
 
         # Shared conv. output:
-        rp_encoded_layers, rp_x, rp_decoded_layers, rp_d_kl = var_conv2d_autoencoder(
+        rp_encoded_layers, rp_x, rp_decoded_layers, rp_d_kl = encoder_class_ref(
             self.rp_state_in['external'],
             layer_config=conv_2d_layer_config,
             linear_layer_ref=linear_layer_ref,
             max_batch_size=64,
-            name='vae_external',
+            name='[auto]encoder_external',
             reuse=True
         )
         # Flatten batch-wise:
@@ -491,17 +491,17 @@ class SLAENPolicy(BaseAacPolicy):
 
 class SLAENUnreal(BaseAAC):
 
-    def __init__(self, vae_loss=beta_vae_loss_def, vae_alpha=1.0, vae_beta=1.0, _log_name='SLAENUnreal',**kwargs):
+    def __init__(self, ae_loss=ae_loss_def, ae_alpha=1.0, ae_beta=1.0, _log_name='SLAENUnreal', **kwargs):
         try:
             super(SLAENUnreal, self).__init__(_log_name=_log_name, **kwargs)
             with tf.device(self.worker_device):
                 with tf.variable_scope('local'):
-                    on_vae_loss, on_ae_summary = vae_loss(
+                    on_vae_loss, on_ae_summary = ae_loss(
                         targets=self.local_network.on_state_in['external'],
                         logits=self.local_network.on_state_decoded,
                         d_kl=self.local_network.on_vae_d_kl,
-                        alpha=vae_alpha,
-                        beta=vae_beta,
+                        alpha=ae_alpha,
+                        beta=ae_beta,
                         name='on_policy',
                         verbose=True
                     )
@@ -518,7 +518,7 @@ class SLAENUnreal(BaseAAC):
                     # Merge summary:
                     self.model_summary_op = tf.summary.merge(
                         [self.model_summary_op, on_ae_summary],
-                        name='model_summary_with_b_vae_loss'
+                        name='model_summary_with_ae_loss'
                     )
 
         except:

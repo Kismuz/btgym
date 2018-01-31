@@ -222,14 +222,15 @@ def rp_loss_def(rp_targets, pi_rp_logits, name='_rp_', verbose=False):
     return loss, summaries
 
 
-def ae_loss_def(targets, logits, name='ae_loss', verbose=False):
+def ae_loss_def(targets, logits, alpha=1.0, name='ae_loss', verbose=False, **kwargs):
     """
     Mean quadratic autoencoder reconstruction loss definition
 
     Args:
-        targets:     tensor holding recinstruction target;
-        logits:      tensor holding decoded aa decoder output
-        name:           scope;
+        targets:        tensor holding recinstruction target
+        logits:         t ensor holding decoded aa decoder output
+        alpha:          loss weight constant
+        name:           scope
         verbose:        summary level.
 
     Returns:
@@ -244,10 +245,10 @@ def ae_loss_def(targets, logits, name='ae_loss', verbose=False):
         else:
             summaries = []
 
-        return loss, summaries
+        return alpha * loss, summaries
 
 
-def beta_vae_loss_def(targets, logits, d_kl, alpha =1.0, beta=1.0, name='beta_vae_loss', verbose=False):
+def beta_vae_loss_def(targets, logits, d_kl, alpha=1.0, beta=1.0, name='beta_vae_loss', verbose=False):
     """
     Beta-variational autoencoder loss definition
 
@@ -259,6 +260,7 @@ def beta_vae_loss_def(targets, logits, d_kl, alpha =1.0, beta=1.0, name='beta_va
         targets:
         logits:
         d_kl:
+        alpha:
         beta:
         name:
         verbose:

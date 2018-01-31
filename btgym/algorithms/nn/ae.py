@@ -129,7 +129,8 @@ def conv2d_autoencoder(
         pad='SAME',
         linear_layer_ref=linear,
         name='base_conv2d_autoencoder',
-        reuse=False
+        reuse=False,
+        **kwargs
     ):
     """
     Basic convolutional autoencoder.
@@ -151,6 +152,7 @@ def conv2d_autoencoder(
         tensor holding encoded features, layer_wise from outer to inner
         tensor holding batch-wise flattened hidden state vector
         tensor holding decoded geatures, layer-wise from inner to outer
+        None value
 
     """
     with tf.variable_scope(name, reuse=reuse):
@@ -180,7 +182,7 @@ def conv2d_autoencoder(
             resize_method=resize_method,
             reuse=reuse
         )
-        return encoder_layers, z, decoder_layers
+        return encoder_layers, z, decoder_layers, None
 
 
 def var_conv2d_autoencoder(
