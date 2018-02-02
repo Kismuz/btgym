@@ -227,7 +227,7 @@ def ae_loss_def(targets, logits, alpha=1.0, name='ae_loss', verbose=False, **kwa
     Mean quadratic autoencoder reconstruction loss definition
 
     Args:
-        targets:        tensor holding recinstruction target
+        targets:        tensor holding reconstruction target
         logits:         t ensor holding decoded aa decoder output
         alpha:          loss weight constant
         name:           scope
@@ -274,7 +274,6 @@ def beta_vae_loss_def(targets, logits, d_kl, alpha=1.0, beta=1.0, name='beta_vae
         r_loss = tf.losses.mean_squared_error(targets, logits)
         vae_loss = tf.reduce_mean(d_kl)
         loss = alpha * r_loss + beta * vae_loss
-        loss = tf.clip_by_value(loss, 0, 40.0)
         if verbose:
             summaries = [
                 tf.summary.scalar('reconstruct_loss', r_loss),

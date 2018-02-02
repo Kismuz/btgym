@@ -19,7 +19,7 @@ def conv_2d_network(x,
                     ob_space,
                     ac_space,
                     conv_2d_layer_ref=conv2d,
-                    conv_2d_num_filters=(32, 32, 32, 32),
+                    conv_2d_num_filters=(32, 32, 64, 64),
                     conv_2d_filter_size=(3, 3),
                     conv_2d_stride=(2, 2),
                     pad="SAME",
@@ -159,7 +159,7 @@ def dense_aac_network(x, ac_space, name='dense_aac', linear_layer_ref=linear, re
         action sampling function.
     """
     with tf.variable_scope(name, reuse=reuse):
-        # Center-logits trick :
+        # Center-logits:
         logits = norm_layer(
             linear_layer_ref(
                 x=x,

@@ -166,13 +166,24 @@ def conv2d_autoencoder(
         # Flatten hidden state, pass through dense :
         z = batch_flatten(encoder_layers[-1])
         h, w, c = encoder_layers[-1].get_shape().as_list()[1:]
-        z = linear_layer_ref(
+
+        linear_layer_ref(
             x=z,
             size=h * w * c,
             name='hidden_dense',
             initializer=normalized_columns_initializer(1.0),
             reuse=reuse
         )
+
+        # z = tf.nn.elu(
+        #     linear_layer_ref(
+        #         x=z,
+        #         size=h * w * c,
+        #         name='hidden_dense_2',
+        #         initializer=normalized_columns_initializer(1.0),
+        #         reuse=reuse
+        #     )
+        # )
         # Reshape back and feed to decoder:
         decoder_layers = conv2d_decoder(
             z=tf.reshape(z, [-1, h, w, c]),
@@ -185,7 +196,7 @@ def conv2d_autoencoder(
         return encoder_layers, z, decoder_layers, None
 
 
-def var_conv2d_autoencoder(
+def beta_var_conv2d_autoencoder(
         inputs,
         layer_config,
         resize_method=tf.image.ResizeMethod.BILINEAR,
@@ -238,26 +249,38 @@ def var_conv2d_autoencoder(
 
         h, w, c = encoder_layers[-1].get_shape().as_list()[1:]
 
-        half_size_z = h * w * c
-        size_z = 2 * half_size_z
-
-        #z = linear(
         z = tf.nn.elu(
-            #norm_layer(
-                linear(
-                    x=z_flat,
-                    size=size_z,
-                    name='hidden_dense',
-                    initializer=normalized_columns_initializer(1.0),
-                    reuse=reuse
-                )
-            #)
+            linear(
+                x=z_flat,
+                size=h * w * c,
+                name='enc_dense',
+                initializer=normalized_columns_initializer(1.0),
+                reuse=reuse
+            )
+        )
+        # TODO: revert back to dubled Z-size
+        # half_size_z = h * w * c
+        # size_z = 2 * half_size_z
+
+        size_z = int(h * w * c/2)
+        z = tf.nn.elu(
+            linear(
+                #x=z_flat,
+                x=z,
+                #size=size_z,
+                size=size_z * 2,
+                name='hidden_dense',
+                initializer=normalized_columns_initializer(1.0),
+                reuse=reuse
+            )
         )
         # Get sample parameters:
-        mu, log_sigma = tf.split(z, [half_size_z, half_size_z], axis=-1)
+        #mu, log_sigma = tf.split(z, [half_size_z, half_size_z], axis=-1)
+        mu, log_sigma = tf.split(z, [size_z, size_z], axis=-1)
 
         # Oversized noise generator:
-        eps = tf.random_normal(shape=[max_batch_size, half_size_z], mean=0., stddev=1.)
+        #eps = tf.random_normal(shape=[max_batch_size, half_size_z], mean=0., stddev=1.)
+        eps = tf.random_normal(shape=[max_batch_size, size_z], mean=0., stddev=1.)
         eps = eps[:tf.shape(z)[0],:]
 
         # Get sample z ~ Q(z|X):
@@ -267,8 +290,19 @@ def var_conv2d_autoencoder(
         d_kl = 0.5 * (tf.exp(log_sigma) + tf.square(mu) - 1. - log_sigma)
 
         # Reshape back and feed to decoder:
+
+        z_sampled_dec = tf.nn.elu(
+            linear(
+                x=z_sampled,
+                size=h * w * c,
+                name='dec_dense',
+                initializer=normalized_columns_initializer(1.0),
+                reuse=reuse
+            )
+        )
+
         decoder_layers = conv2d_decoder(
-            z=tf.reshape(z_sampled, [-1, h, w, c]),
+            z=tf.reshape(z_sampled_dec, [-1, h, w, c]),
             layer_config=layer_config,
             layer_shapes=shapes,
             pad=pad,
