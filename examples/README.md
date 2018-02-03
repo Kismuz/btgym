@@ -1,5 +1,8 @@
 ### BTgym examples and how-to's.
 ****
+- **[Observation state preprocessing: scaling](./state_signal_scaling.ipynb)**: Using data-unconditioned methods to feed agent.
+
+****
  - **[New Datafeed API](./data_domain_api_intro.ipynb)**: Brief intro to BTGym data flow design.
 
 Research_code_4_11, 07.01.18:
