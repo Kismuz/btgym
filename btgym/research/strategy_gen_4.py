@@ -91,6 +91,8 @@ class DevStrat_4_6(BTgymBaseStrategy):
         target_call=19,
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
+        state_ext_scale=2e3,  # EURUSD
+        state_int_scale=1.0,  # not used
         metadata={}
     )
 
@@ -124,9 +126,6 @@ class DevStrat_4_6(BTgymBaseStrategy):
         }
 
     def get_market_state(self):
-        T = 2e3  # EURUSD
-        # T = 1e2 # EURUSD, Z-norm
-        # T = 1 # BTCUSD
 
         x = np.stack(
             [
@@ -140,8 +139,9 @@ class DevStrat_4_6(BTgymBaseStrategy):
         # x = log_transform(x)
 
         # Amplify and squash in [-1,1], seems to be best option as of 4.10.17:
-        # T param is supposed to keep most of the signal in 'linear' part of tanh while squashing spikes.
-        x_market = tanh(x * T)
+        # `self.p.state_ext_scale` param is supposed to keep most of the signal
+        # in 'linear' part of tanh while squashing spikes.
+        x_market = tanh(x * self.p.state_ext_scale)
 
         return x_market[:, None, :]
 
@@ -244,7 +244,7 @@ class DevStrat_4_7(DevStrat_4_6):
 
     gamma = 1.0  # fi_gamma, should be MDP gamma decay
 
-    reward_scale = 1  # reward multiplicator
+    reward_scale = 1.0  # reward scaler
 
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
@@ -286,7 +286,9 @@ class DevStrat_4_7(DevStrat_4_6):
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
         gamma=gamma,
-        reward_scale=reward_scale,
+        reward_scale=1.0,
+        state_ext_scale=2e3,  # EURUSD
+        state_int_scale=1.0,  # not used
         metadata={}
     )
 
@@ -301,10 +303,6 @@ class DevStrat_4_7(DevStrat_4_6):
                 self.sliding_stat['realized_pnl'][-1],
                 self.sliding_stat['broker_cash'][-1],
                 self.sliding_stat['exposure'][-1],
-                # self.sliding_stat['episode_step'][-1],
-                # self.sliding_stat['reward'][-1],
-                # self.sliding_stat['action'][-1],
-                # norm_position_duration[-1],
             ]
         )
         return x_broker[None, None, :]
@@ -455,7 +453,9 @@ class DevStrat_4_8(DevStrat_4_7):
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
         gamma=gamma,
-        reward_scale=reward_scale,
+        reward_scale=1.0,
+        state_ext_scale=2e3,  # EURUSD
+        state_int_scale=1.0,  # not used
         metadata={},
     )
 
@@ -551,7 +551,9 @@ class DevStrat_4_9(DevStrat_4_7):
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
         gamma=gamma,
-        reward_scale=reward_scale,
+        reward_scale=1.0,
+        state_ext_scale=1e4,  # EURUSD
+        state_int_scale=1.0,  # not used
         metadata={},
     )
 
@@ -571,8 +573,6 @@ class DevStrat_4_9(DevStrat_4_7):
         self.data.dim_sma.plotinfo.plot = False
 
     def get_market_state(self):
-        T = 1e4  # EURUSD
-        # T = 1 # BTCUSD
 
         x = np.stack(
             [
@@ -588,7 +588,7 @@ class DevStrat_4_9(DevStrat_4_7):
             axis=-1
         )
         # Gradient along features axis:
-        x = np.gradient(x, axis=1) * T
+        x = np.gradient(x, axis=1) * self.p.state_ext_scale
 
         # Log-scale:
         x = log_transform(x)
@@ -698,7 +698,7 @@ class DevStrat_4_11(DevStrat_4_10):
     # Possible agent actions:
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
 
-    gamma = 1.0  # fi_gamma, should be MDP gamma decay, but somehow undiscounted works better <- wtf?!
+    gamma = 0.99  # fi_gamma, should be MDP gamma decay
 
     reward_scale = 1  # reward multiplicator
 
@@ -742,7 +742,9 @@ class DevStrat_4_11(DevStrat_4_10):
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
         gamma=gamma,
-        reward_scale=reward_scale,
+        reward_scale=1.0,
+        state_ext_scale=1e3,  # EURUSD
+        state_int_scale=1.0,
         metadata={},
     )
 
@@ -759,30 +761,7 @@ class DevStrat_4_11(DevStrat_4_10):
         )
         self.data.dim_sma.plotinfo.plot = False
 
-        # Define data channels:
-        #self.channel_dO = bt.Sum(self.data.open, - self.data.open(-1))
-        #self.channel_dH = bt.Sum(self.data.high, - self.data.high(-1))
-        #self.channel_dL = bt.Sum(self.data.low, - self.data.low(-1))
-
     def get_market_state(self):
-        T1 = 2e3  # EURUSD
-        T2 = 10
-
-        if False:
-            x_p = np.stack(
-                [
-                    #np.frombuffer(self.channel_dO.get(size=self.time_dim)),
-                    #np.frombuffer(self.channel_dH.get(size=self.time_dim)),
-                    #np.frombuffer(self.channel_dL.get(size=self.time_dim)),
-
-                    np.frombuffer(self.data.open.get(size=self.time_dim)),
-                    np.frombuffer(self.data.high.get(size=self.time_dim)),
-                    np.frombuffer(self.data.low.get(size=self.time_dim)),
-                ],
-                axis=-1
-            )
-            x_p = np.gradient(x_p, axis=0)
-            x_p = tanh(x_p * T)
 
         x_sma = np.stack(
             [
@@ -795,15 +774,14 @@ class DevStrat_4_11(DevStrat_4_10):
             axis=-1
         )
         # Gradient along features axis:
-        dx = np.gradient(x_sma, axis=-1) * T1
-        #d2x = np.gradient(dx, axis=-1) * T2
+        dx = np.gradient(x_sma, axis=-1) * self.p.state_ext_scale
 
         x = tanh(dx)
 
         return x[:, None, :]
 
     def get_broker_state(self):
-        T_b = 1
+
         x_broker = np.concatenate(
             [
                 np.asarray(self.sliding_stat['broker_value'])[..., None],
@@ -814,7 +792,7 @@ class DevStrat_4_11(DevStrat_4_10):
             ],
             axis=-1
         )
-        x_broker = tanh(np.gradient(x_broker, axis=-1) * T_b)
+        x_broker = tanh(np.gradient(x_broker, axis=-1) * self.p.state_int_scale)
         return x_broker[:, None, :]
 
 
@@ -837,7 +815,7 @@ class DevStrat_4_12(DevStrat_4_11):
     # Possible agent actions:
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
 
-    gamma = 1.0  # fi_gamma, should be MDP gamma decay, but somehow undiscounted works better <- wtf?!
+    gamma = 0.99  # fi_gamma, should be MDP gamma decay
 
     reward_scale = 1  # reward multiplicator
 
@@ -880,8 +858,10 @@ class DevStrat_4_12(DevStrat_4_11):
         target_call=19,
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
+        state_ext_scale=1e3,  # EURUSD
+        state_int_scale=1.0,
         gamma=gamma,
-        reward_scale=reward_scale,
+        reward_scale=1.0,
         metadata={},
     )
 
@@ -901,8 +881,7 @@ class DevStrat_4_12(DevStrat_4_11):
         self.data.dim_sma.plotinfo.plot = False
 
     def get_market_state(self):
-        T1 = 2e3  # EURUSD
-        T2 = 2.0
+
 
         x_sma = np.stack(
             [
@@ -917,14 +896,13 @@ class DevStrat_4_12(DevStrat_4_11):
             axis=-1
         )
         # Gradient along features axis:
-        dx = np.gradient(x_sma, axis=-1) * T1
-        #d2x = np.gradient(dx, axis=-1) * T2
+        dx = np.gradient(x_sma, axis=-1) * self.p.state_ext_scale
         # In [-1,1]:
         x = tanh(dx)
         return x[:, None, :]
 
     def get_broker_state(self):
-        T_b = 1
+
         x_broker = np.concatenate(
             [
                 np.asarray(self.sliding_stat['broker_value'])[..., None],
@@ -935,7 +913,7 @@ class DevStrat_4_12(DevStrat_4_11):
             ],
             axis=-1
         )
-        x_broker = tanh(np.gradient(x_broker, axis=-1) * T_b)
+        x_broker = tanh(np.gradient(x_broker, axis=-1) *self.p.state_int_scale)
 
         return x_broker[:, None, :]
 
