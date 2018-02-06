@@ -243,6 +243,14 @@ _Notice: will be moved inside project wiki [26.01.18]_
  
  
 ### <a name="news"></a>[News and updates:](#title)
+- 6.02.18: Common update to all a3c agents architectures: 
+    - all dense layers are now Noisy-Net ones, 
+      see: [Noisy Networks for Exploration](https://arxiv.org/abs/1706.10295) paper by Fortunato at al.; 
+    - note that entropy regularization is still here, kept in ~0.01 to ensure proper exploration;
+    - policy output distribution is 'centered' using layer normalisation technique;
+    
+        - all of the above results in about 2x training speedup in terms of train iterations;
+
 - 20.01.18: Project [Wiki pages](https://github.com/Kismuz/btgym/wiki) added;
 
 - 12.01.18: Minor fixes to logging, enabled BTgymDataset train/test data split. AAC framework train/test cycle enabled 

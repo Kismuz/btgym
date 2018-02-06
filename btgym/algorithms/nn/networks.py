@@ -11,7 +11,7 @@ from tensorflow.contrib.layers import layer_norm as norm_layer
 from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.algorithms.nn.layers import normalized_columns_initializer, categorical_sample
-from btgym.algorithms.nn.layers import linear, conv2d, deconv2d, conv1d
+from btgym.algorithms.nn.layers import linear, noisy_linear, conv2d, deconv2d, conv1d
 from btgym.algorithms.utils import rnn_placeholders
 
 
@@ -149,7 +149,7 @@ def lstm_network(
     return x_out, lstm_init_state, lstm_state_out, lstm_state_pl_flatten
 
 
-def dense_aac_network(x, ac_space, name='dense_aac', linear_layer_ref=linear, reuse=False):
+def dense_aac_network(x, ac_space, name='dense_aac', linear_layer_ref=noisy_linear, reuse=False):
     """
     Stage3 network: from LSTM flattened output to advantage actor-critic.
 
@@ -195,7 +195,7 @@ def dense_aac_network(x, ac_space, name='dense_aac', linear_layer_ref=linear, re
     return logits, vf, sample
 
 
-def dense_rp_network(x, linear_layer_ref=linear):
+def dense_rp_network(x, linear_layer_ref=noisy_linear):
     """
     Stage3 network: From shared convolutions to reward-prediction task output tensor.
     """
@@ -255,7 +255,7 @@ def duelling_pc_network(x,
                         duell_pc_x_inner_shape=(9, 9, 32),
                         duell_pc_filter_size=(4, 4),
                         duell_pc_stride=(2, 2),
-                        linear_layer_ref=linear,
+                        linear_layer_ref=noisy_linear,
                         reuse=False,
                         **kwargs):
     """

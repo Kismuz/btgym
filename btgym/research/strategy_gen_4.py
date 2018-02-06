@@ -882,7 +882,6 @@ class DevStrat_4_12(DevStrat_4_11):
 
     def get_market_state(self):
 
-
         x_sma = np.stack(
             [
                 np.frombuffer(self.data.sma_8.get(size=self.time_dim)),

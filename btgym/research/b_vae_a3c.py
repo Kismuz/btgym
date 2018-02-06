@@ -1,6 +1,7 @@
 from tensorflow.contrib.layers import flatten as batch_flatten
 
 from btgym.algorithms.policy.base import BaseAacPolicy
+from btgym.algorithms.policy.stacked_lstm import AacStackedRL2Policy
 from btgym.algorithms.nn.networks import *
 from btgym.algorithms.utils import *
 from btgym.algorithms.nn.layers import noisy_linear
@@ -10,7 +11,7 @@ from btgym.algorithms import BaseAAC
 from btgym.algorithms.nn.losses import beta_vae_loss_def, ae_loss_def
 
 
-class bVAENPolicy(BaseAacPolicy):
+class bVAENPolicy(AacStackedRL2Policy):
     """
     Stacked LSTM with auxillary b-Variational AutoEncoder loss support and Noisy-net linear layers policy,
     based on `NAV A3C agent` architecture from
@@ -119,7 +120,7 @@ class bVAENPolicy(BaseAacPolicy):
         # ============= Base on-policy AAC network ===========
 
         # Conv. autoencoder:
-        _, on_aac_x_ext, on_decoded_layers_ext, on_d_kl_ext = encoder_class_ref(
+        _, on_aac_x_ext, on_decoded_layers_ext, self.on_state_decoded_ext, on_d_kl_ext = encoder_class_ref(
             inputs=self.on_state_in['external'],
             layer_config=conv_2d_layer_config,
             linear_layer_ref=linear_layer_ref,
@@ -127,8 +128,7 @@ class bVAENPolicy(BaseAacPolicy):
             name='encoder_external',
             reuse=False
         )
-        # VAE reconstruction of on_external_state input:
-        self.on_state_decoded_ext = on_decoded_layers_ext[-1]
+
         # VAE KL-divergence output:
         self.on_vae_d_kl_ext = on_d_kl_ext
 
@@ -144,7 +144,7 @@ class bVAENPolicy(BaseAacPolicy):
         if 'internal' in list(self.on_state_in.keys()):
             if self.encode_internal_state:
                 # Use convolution encoder:
-                _, on_x_int, on_decoded_layers_int, on_d_kl_int = encoder_class_ref(
+                _, on_x_int, on_decoded_layers_int, self.on_state_decoded_int, on_d_kl_int = encoder_class_ref(
                     inputs=self.on_state_in['internal'],
                     layer_config=conv_2d_layer_config,
                     linear_layer_ref=linear_layer_ref,
@@ -152,8 +152,6 @@ class bVAENPolicy(BaseAacPolicy):
                     name='encoder_internal',
                     reuse=False
                 )
-                # VAE reconstruction of on_internal_state input:
-                self.on_state_decoded_int = on_decoded_layers_int[-1]
                 # VAE KL-divergence output:
                 self.on_vae_d_kl_int = on_d_kl_int
 
@@ -264,7 +262,7 @@ class bVAENPolicy(BaseAacPolicy):
         # ========= Off-policy AAC network (shared) ==========
 
         # Conv. autoencoder:
-        _, off_aac_x, off_decoded_layers_ext, off_d_kl_ext = encoder_class_ref(
+        _, off_aac_x, off_decoded_layers_ext, self.off_state_decoded_ext, off_d_kl_ext = encoder_class_ref(
             inputs=self.off_state_in['external'],
             layer_config=conv_2d_layer_config,
             linear_layer_ref=linear_layer_ref,
@@ -272,8 +270,6 @@ class bVAENPolicy(BaseAacPolicy):
             name='encoder_external',
             reuse=True
         )
-        # AE reconstruction of off_external_state input:
-        self.off_state_decoded_ext = off_decoded_layers_ext[-1]
         # VAE KL-divergence output:
         self.off_vae_d_kl_ext = off_d_kl_ext
 
@@ -289,7 +285,7 @@ class bVAENPolicy(BaseAacPolicy):
         if 'internal' in list(self.off_state_in.keys()):
             if self.encode_internal_state:
                 # Use convolution encoder:
-                _, off_x_int, off_decoded_layers_int, off_d_kl_int = encoder_class_ref(
+                _, off_x_int, off_decoded_layers_int, self.off_state_decoded_int, off_d_kl_int = encoder_class_ref(
                     inputs=self.off_state_in['internal'],
                     layer_config=conv_2d_layer_config,
                     linear_layer_ref=linear_layer_ref,
@@ -297,7 +293,6 @@ class bVAENPolicy(BaseAacPolicy):
                     name='encoder_internal',
                     reuse=True
                 )
-                self.off_state_decoded_int = off_decoded_layers_int[-1]
                 self.off_vae_d_kl_int = off_d_kl_int
 
                 x_int_shape_static = off_x_int.get_shape().as_list()
@@ -405,7 +400,7 @@ class bVAENPolicy(BaseAacPolicy):
         self.rp_batch_size = tf.placeholder(tf.int32, name='rp_batch_size')
 
         # Shared conv. output:
-        rp_encoded_layers, rp_x, rp_decoded_layers, rp_d_kl = encoder_class_ref(
+        rp_encoded_layers, rp_x, rp_decoded_layers, _, rp_d_kl = encoder_class_ref(
             self.rp_state_in['external'],
             layer_config=conv_2d_layer_config,
             linear_layer_ref=linear_layer_ref,
@@ -481,7 +476,11 @@ class bVAENPolicy(BaseAacPolicy):
 
             else:
                 # Asssume same training trial, keep context_2 same as received:
+
                 new_context[-1] = context[-1]
+
+                # UPD: keep both contexts:
+                #new_context = context
                 #print('RL^2 policy context 1, reset')
             # Back to tuple:
             new_context = tuple(new_context)

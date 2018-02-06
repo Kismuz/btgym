@@ -31,6 +31,45 @@ def linear(x, size, name, initializer=None, bias_init=0, reuse=False):
         return tf.matmul(x, w) + b
 
 
+def noisy_linear(x, size, name, bias=True, activation_fn=tf.identity, reuse=False, **kwargs):
+    """
+    Noisy Net linear network layer using Factorised Gaussian noise;
+    Code by Andrew Liao, https://github.com/andrewliao11/NoisyNet-DQN
+
+    Papers:
+        https://arxiv.org/abs/1706.10295
+        https://arxiv.org/abs/1706.01905
+
+    """
+    with tf.variable_scope(name, reuse=reuse):
+        # the function used in eq.7,8
+        def f(x):
+            return tf.multiply(tf.sign(x), tf.pow(tf.abs(x), 0.5))
+        # Initializer of \mu and \sigma
+        mu_init = tf.random_uniform_initializer(minval=-1*1/np.power(x.get_shape().as_list()[1], 0.5),
+                                                    maxval=1*1/np.power(x.get_shape().as_list()[1], 0.5))
+        sigma_init = tf.constant_initializer(0.4/np.power(x.get_shape().as_list()[1], 0.5))
+        # Sample noise from gaussian
+        p = tf.random_normal([x.get_shape().as_list()[1], 1])
+        q = tf.random_normal([1, size])
+        f_p = f(p); f_q = f(q)
+        w_epsilon = f_p*f_q; b_epsilon = tf.squeeze(f_q)
+
+        # w = w_mu + w_sigma*w_epsilon
+        w_mu = tf.get_variable("/w_mu", [x.get_shape()[1], size], initializer=mu_init)
+        w_sigma = tf.get_variable("/w_sigma", [x.get_shape()[1], size], initializer=sigma_init)
+        w = w_mu + tf.multiply(w_sigma, w_epsilon)
+        ret = tf.matmul(x, w)
+        if bias:
+            # b = b_mu + b_sigma*b_epsilon
+            b_mu = tf.get_variable("/b_mu", [size], initializer=mu_init)
+            b_sigma = tf.get_variable("/b_sigma", [size], initializer=sigma_init)
+            b = b_mu + tf.multiply(b_sigma, b_epsilon)
+            return activation_fn(ret + b)
+        else:
+            return activation_fn(ret)
+
+
 def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", dtype=tf.float32,
            collections=None, reuse=False):
     """
@@ -133,42 +172,3 @@ def conv2d_dw(x, num_filters, name='conv2d_dw', filter_size=(3, 3), stride=(1, 1
         b = tf.get_variable("b", [1, 1, 1, num_filters * int(x.get_shape()[-1])],
                             initializer=tf.constant_initializer(0.0), collections=collections)
         return tf.nn.depthwise_conv2d(x, w, stride_shape, pad, [1, 1]) + b
-
-
-def noisy_linear(x, size, name, bias=True, activation_fn=tf.identity, reuse=False, **kwargs):
-    """
-    Noisy Net linear network layer using Factorised Gaussian noise;
-    Code by Andrew Liao, https://github.com/andrewliao11/NoisyNet-DQN
-
-    Papers:
-        https://arxiv.org/abs/1706.10295
-        https://arxiv.org/abs/1706.01905
-
-    """
-    with tf.variable_scope(name, reuse=reuse):
-        # the function used in eq.7,8
-        def f(x):
-            return tf.multiply(tf.sign(x), tf.pow(tf.abs(x), 0.5))
-        # Initializer of \mu and \sigma
-        mu_init = tf.random_uniform_initializer(minval=-1*1/np.power(x.get_shape().as_list()[1], 0.5),
-                                                    maxval=1*1/np.power(x.get_shape().as_list()[1], 0.5))
-        sigma_init = tf.constant_initializer(0.4/np.power(x.get_shape().as_list()[1], 0.5))
-        # Sample noise from gaussian
-        p = tf.random_normal([x.get_shape().as_list()[1], 1])
-        q = tf.random_normal([1, size])
-        f_p = f(p); f_q = f(q)
-        w_epsilon = f_p*f_q; b_epsilon = tf.squeeze(f_q)
-
-        # w = w_mu + w_sigma*w_epsilon
-        w_mu = tf.get_variable("/w_mu", [x.get_shape()[1], size], initializer=mu_init)
-        w_sigma = tf.get_variable("/w_sigma", [x.get_shape()[1], size], initializer=sigma_init)
-        w = w_mu + tf.multiply(w_sigma, w_epsilon)
-        ret = tf.matmul(x, w)
-        if bias:
-            # b = b_mu + b_sigma*b_epsilon
-            b_mu = tf.get_variable("/b_mu", [size], initializer=mu_init)
-            b_sigma = tf.get_variable("/b_sigma", [size], initializer=sigma_init)
-            b = b_mu + tf.multiply(b_sigma, b_epsilon)
-            return activation_fn(ret + b)
-        else:
-            return activation_fn(ret)

@@ -149,9 +149,10 @@ def conv2d_autoencoder(
         reuse:              bool
 
     Returns:
-        tensor holding encoded features, layer_wise from outer to inner
+        list of tensors holding encoded features, layer_wise from outer to inner
         tensor holding batch-wise flattened hidden state vector
-        tensor holding decoded geatures, layer-wise from inner to outer
+        list of tensors holding decoded features, layer-wise from inner to outer
+        tensor holding reconstructed output
         None value
 
     """
@@ -167,23 +168,13 @@ def conv2d_autoencoder(
         z = batch_flatten(encoder_layers[-1])
         h, w, c = encoder_layers[-1].get_shape().as_list()[1:]
 
-        linear_layer_ref(
+        z = linear_layer_ref(
             x=z,
             size=h * w * c,
             name='hidden_dense',
             initializer=normalized_columns_initializer(1.0),
             reuse=reuse
         )
-
-        # z = tf.nn.elu(
-        #     linear_layer_ref(
-        #         x=z,
-        #         size=h * w * c,
-        #         name='hidden_dense_2',
-        #         initializer=normalized_columns_initializer(1.0),
-        #         reuse=reuse
-        #     )
-        # )
         # Reshape back and feed to decoder:
         decoder_layers = conv2d_decoder(
             z=tf.reshape(z, [-1, h, w, c]),
@@ -193,7 +184,92 @@ def conv2d_autoencoder(
             resize_method=resize_method,
             reuse=reuse
         )
-        return encoder_layers, z, decoder_layers, None
+        y_hat = decoder_layers[-1]
+        return encoder_layers, z, decoder_layers, y_hat, None
+
+
+def cw_conv2d_autoencoder(
+        inputs,
+        layer_config,
+        resize_method=tf.image.ResizeMethod.BILINEAR,
+        pad='SAME',
+        linear_layer_ref=linear,
+        name='cw_conv2d_autoencoder',
+        reuse=False,
+        **kwargs
+    ):
+    """
+    Channel-wise convolutional autoencoder.
+    Hidden state is passed through dense linear layer.
+
+    Args:
+        inputs:             input tensor
+        layer_config:       layers configuration list: [layer_1_config, layer_2_config,...], where:
+                            layer_i_config = [num_filters(int), filter_size(list), stride(list)];
+                            this list represent decoder part of autoencoder bottleneck,
+                            decoder part is inferred symmetrically
+        resize_method:      up-sampling method, one of supported tf.image.ResizeMethod's
+        pad:                str, padding scheme: 'SAME' or 'VALID'
+        linear_layer_ref:   linear layer class to use
+        name:               str, mame scope
+        reuse:              bool
+
+    Returns:
+        per-channel list of lists of tensors holding encoded features, layer_wise from outer to inner
+        tensor holding batch-wise flattened hidden state vector
+        per-channel list of lists of tensors holding decoded features, layer-wise from inner to outer
+        tensor holding reconstructed output
+        None value
+
+    """
+    with tf.variable_scope(name, reuse=reuse):
+        ae_bank = []
+        for i in range(inputs.get_shape().as_list()[-1]):
+            # Making list of list of AE's:
+            encoder_layers, z, decoder_layers, y_hat, _ = conv2d_autoencoder(
+                inputs=inputs[..., i][..., None],
+                layer_config=layer_config,
+                resize_method=resize_method,
+                linear_layer_ref=linear_layer_ref,
+                name='ae_channel_{}'.format(i),
+                pad=pad
+            )
+            ae = dict(
+                inputs=inputs[..., i][..., None],
+                encoder_layers=encoder_layers,
+                z=z,
+                decoder_layers=decoder_layers,
+                y_hat=y_hat,
+            )
+
+            ae_bank.append(ae)
+
+        y_hat = []
+        z = []
+        cw_encoder_layers = []
+        cw_decoder_layers = []
+
+        for ae in ae_bank:
+            y_hat.append(ae['y_hat'])
+            z.append(ae['z'])
+            cw_encoder_layers.append(ae['encoder_layers'])
+            cw_decoder_layers.append(ae['decoder_layers'])
+
+        # Flatten hidden state:
+        z = tf.concat(z, axis=-1, name='hidden_state')
+
+        # encoder_layers = []
+        # for layer in zip(*cw_encoder_layers):
+        #     encoder_layers.append(tf.concat(layer, axis=-2))
+        #
+        # decoder_layers = []
+        # for layer in zip(*cw_decoder_layers):
+        #     decoder_layers.append(tf.concat(layer, axis=-2))
+
+        # Reshape back reconstruction:
+        y_hat = tf.concat(y_hat, axis=-1, name='decoded_y_hat')
+
+        return cw_encoder_layers, z, cw_decoder_layers, y_hat, None
 
 
 def beta_var_conv2d_autoencoder(
@@ -229,9 +305,10 @@ def beta_var_conv2d_autoencoder(
         reuse:              bool
 
     Returns:
-        tensor holding encoded features, layer_wise from outer to inner
+        list of tensors holding encoded features, layer_wise from outer to inner
         tensor holding batch-wise flattened hidden state vector
-        tensor holding decoded geatures, layer-wise from inner to outer
+        list of tensors holding decoded features, layer-wise from inner to outer
+        tensor holding reconstructed output
         tensor holding estimated KL divergence
 
     """
@@ -309,7 +386,8 @@ def beta_var_conv2d_autoencoder(
             resize_method=resize_method,
             reuse=reuse
         )
-        return encoder_layers, z_sampled, decoder_layers, d_kl
+        y_hat = decoder_layers[-1]
+        return encoder_layers, z_sampled, decoder_layers, y_hat, d_kl
 
 
 class KernelMonitor():
@@ -325,7 +403,7 @@ class KernelMonitor():
             conv_input:         convolution stack input tensor
             layer_output:       tensor holding output of layer of interest from stack
         """
-        self.idx = tf.placeholder(tf.int32, name='kernel_index')  # can be any integer from 0 to 15
+        self.idx = tf.placeholder(tf.int32, name='kernel_index')
         self.conv_input = conv_input
         self.layer_output = layer_output
         # Build a loss function that maximizes the activation
