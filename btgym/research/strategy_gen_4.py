@@ -702,6 +702,8 @@ class DevStrat_4_11(DevStrat_4_10):
 
     reward_scale = 1  # reward multiplicator
 
+    state_ext_scale = np.linspace(3e3, 1e3, num=5)
+
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
@@ -743,7 +745,7 @@ class DevStrat_4_11(DevStrat_4_10):
         skip_frame=skip_frame,
         gamma=gamma,
         reward_scale=1.0,
-        state_ext_scale=2e3,  # EURUSD
+        state_ext_scale=state_ext_scale,  # EURUSD
         state_int_scale=1.0,
         metadata={},
     )
@@ -819,6 +821,8 @@ class DevStrat_4_12(DevStrat_4_11):
 
     reward_scale = 1  # reward multiplicator
 
+    state_ext_scale = np.linspace(3e3, 1e3, num=6)
+
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
@@ -858,7 +862,7 @@ class DevStrat_4_12(DevStrat_4_11):
         target_call=19,
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
-        state_ext_scale=2e3,  # EURUSD
+        state_ext_scale=state_ext_scale,  # EURUSD
         state_int_scale=1.0,
         gamma=gamma,
         reward_scale=1.0,
