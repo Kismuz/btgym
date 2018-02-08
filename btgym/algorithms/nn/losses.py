@@ -26,7 +26,7 @@ def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_lo
         list of related tensorboard summaries.
     """
     with tf.name_scope(name + '/aac'):
-        neg_pi_log_prob = tf.nn.softmax_cross_entropy_with_logits(
+        neg_pi_log_prob = tf.nn.softmax_cross_entropy_with_logits_v2(
             logits=pi_logits,
             labels=act_target
         )
@@ -76,12 +76,12 @@ def ppo_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_lo
     #adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
     #r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
     with tf.name_scope(name + '/ppo'):
-        pi_log_prob = - tf.nn.softmax_cross_entropy_with_logits(
+        pi_log_prob = - tf.nn.softmax_cross_entropy_with_logits_v2(
             logits=pi_logits,
             labels=act_target
         )
         pi_old_log_prob = tf.stop_gradient(
-            - tf.nn.softmax_cross_entropy_with_logits(
+            - tf.nn.softmax_cross_entropy_with_logits_v2(
                 logits=pi_prime_logits,
                 labels=act_target
             )
@@ -210,7 +210,7 @@ def rp_loss_def(rp_targets, pi_rp_logits, name='_rp_', verbose=False):
     """
     #rp_targets = tf.placeholder(tf.float32, [1, 3], name="rp_target")
     with tf.name_scope(name + '/reward_prediction'):
-        loss = tf.nn.softmax_cross_entropy_with_logits(
+        loss = tf.nn.softmax_cross_entropy_with_logits_v2(
             labels=rp_targets,
             logits=pi_rp_logits
         )[0]

@@ -17,7 +17,7 @@ def normalized_columns_initializer(std=1.0):
 
 
 def categorical_sample(logits, d):
-    value = tf.squeeze(tf.multinomial(logits - tf.reduce_max(logits, [1], keep_dims=True), 1), [1])
+    value = tf.squeeze(tf.multinomial(logits - tf.reduce_max(logits, [1], keepdims=True), 1), [1])
     return tf.one_hot(value, d)
 
 

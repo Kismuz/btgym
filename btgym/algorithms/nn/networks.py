@@ -239,7 +239,7 @@ def pixel_change_2d_estimator(ob_space, pc_estimator_stride=(2, 2), **kwargs):
     else:
         x = tf.expand_dims(x, 0)[:, 1:-1, 1:-1, :]  # True 2D,  fake batch dim and crop H, W dims
 
-    x = tf.reduce_mean(x, axis=-1, keep_dims=True)
+    x = tf.reduce_mean(x, axis=-1, keepdims=True)
 
     x_out = tf.nn.max_pool(
         x,
@@ -277,7 +277,7 @@ def duelling_pc_network(x,
     # Q-value estimate using advantage mean,
     # as (9) in "Dueling Network Architectures..." paper:
     # https://arxiv.org/pdf/1511.06581.pdf
-    pc_a_mean = tf.reduce_mean(pc_a, axis=-1, keep_dims=True)
+    pc_a_mean = tf.reduce_mean(pc_a, axis=-1, keepdims=True)
     pc_q = pc_v + pc_a - pc_a_mean  # [None, 20, 20, ac_size]
 
     return pc_q
