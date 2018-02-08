@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import zscore
 
 import backtrader as bt
 import backtrader.indicators as btind
@@ -900,6 +901,7 @@ class DevStrat_4_12(DevStrat_4_11):
         )
         # Gradient along features axis:
         dx = np.gradient(x_sma, axis=-1) * self.p.state_ext_scale
+
         # In [-1,1]:
         x = tanh(dx)
         return x[:, None, :]
@@ -916,7 +918,7 @@ class DevStrat_4_12(DevStrat_4_11):
             ],
             axis=-1
         )
-        x_broker = tanh(np.gradient(x_broker, axis=-1) *self.p.state_int_scale)
+        x_broker = tanh(np.gradient(x_broker, axis=-1) * self.p.state_int_scale)
 
         return x_broker[:, None, :]
 
