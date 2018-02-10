@@ -101,6 +101,20 @@ class Oracle():
 
         return advice
 
+    def adjust_signals(self, signal):
+        """
+        Add some simple heuristics
+        """
+        for i in range(2, signal.shape[0]):
+            # repeat once:
+            if signal[i] !=0:
+                signal[i-1] = signal[i]
+                # add close signal before:
+                # TODO: if only change direction!!
+                signal[i - 2] = self.action_space[3]
+
+        return signal
+
     def fit(self, episode_data, resampling_factor=1):
         """
         Estimates actions based on data received.
@@ -118,6 +132,7 @@ class Oracle():
         # Vector of advised actions:
         data = self.resample_data(episode_data, resampling_factor)
         signals = self.estimate_actions(data)
+        signals = self.adjust_signals(signals)
 
         # One-hot actions encoding:
         actions_one_hot = np.zeros([signals.shape[0], len(self.action_space)])
@@ -131,12 +146,13 @@ class Oracle():
 
         # ...spread out actions probabilities by convolving with gaussian kernel :
         for channel in range(1, actions_one_hot.shape[-1]):
-            actions_distr[:, channel] = np.convolve(actions_one_hot[:, channel], self.kernel, mode='same')
+            actions_distr[:, channel] = np.convolve(actions_one_hot[:, channel], self.kernel, mode='same') + 0.1
 
         # Normalize:
         actions_distr /= actions_distr.sum(axis=-1)[..., None]
 
         return actions_distr
+        #return actions_one_hot
 
     def resample_data(self, episode_data, factor=1):
         """

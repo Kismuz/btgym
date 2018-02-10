@@ -79,7 +79,7 @@ class GuidedStrategy_0_0(DevStrat_4_12):
         reward_scale=1.0,
         metadata={},
         # Expert parameters:
-        expert=
+        expert_config=
         {
             'time_threshold': 5,  # minimum peak estimation radius in number of environment steps
             'pips_threshold': 5,  # minimum peak estimation value in number of quota points
@@ -91,7 +91,7 @@ class GuidedStrategy_0_0(DevStrat_4_12):
 
     def __init__(self, **kwargs):
         super(GuidedStrategy_0_0, self).__init__(**kwargs)
-        self.expert = Oracle(action_space=np.arange(len(self.p.portfolio_actions)), **self.p.expert)
+        self.expert = Oracle(action_space=np.arange(len(self.p.portfolio_actions)), **self.p.expert_config)
         self.expert_actions = None
         self.current_expert_action = None
 
@@ -145,7 +145,7 @@ class ExpertObserver(bt.observer.Observer):
         buy=dict(marker='^', markersize=4.0, color='cyan', fillstyle='full'),
         sell=dict(marker='v', markersize=4.0, color='magenta', fillstyle='full'),
         hold=dict(marker='.', markersize=1.0, color='gray', fillstyle='full'),
-        close=dict(marker='*', markersize=4.0, color='lime', fillstyle='full')
+        close=dict(marker='o', markersize=4.0, color='blue', fillstyle='full')
     )
 
     def next(self):
