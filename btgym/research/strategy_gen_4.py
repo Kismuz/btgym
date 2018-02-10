@@ -877,11 +877,10 @@ class DevStrat_4_12(DevStrat_4_11):
         self.data.sma_64 = btind.SimpleMovingAverage(self.datas[0], period=64)
         self.data.sma_128 = btind.SimpleMovingAverage(self.datas[0], period=128)
         self.data.sma_256 = btind.SimpleMovingAverage(self.datas[0], period=256)
-        #self.data.sma_512 = btind.SimpleMovingAverage(self.datas[0], period=512)
 
         self.data.dim_sma = btind.SimpleMovingAverage(
             self.datas[0],
-            period=(512 + self.time_dim)
+            period=(256 + self.time_dim)
         )
         self.data.dim_sma.plotinfo.plot = False
 

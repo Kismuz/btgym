@@ -125,7 +125,8 @@ class BTgymBaseStrategy(bt.Strategy):
         except KeyError:
             pass
         
-        self.iteration = 1
+        self.iteration = 0
+        self.env_iteration = 0
         self.inner_embedding = 1
         self.is_done = False
         self.is_done_enabled = False
@@ -540,6 +541,8 @@ class BTgymBaseStrategy(bt.Strategy):
         elif self.action == 'close':
             self.order = self.close()
             self.broker_message = 'New CLOSE created; ' + self.broker_message
+
+        #print('next_call, iteration:', self.iteration)
 
         # Somewhere after this point, server-side _BTgymAnalyzer() is exchanging information with environment wrapper,
         # obtaining <self.action> , composing and sending <state,reward,done,info> etc... never mind.

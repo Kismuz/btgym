@@ -96,6 +96,9 @@ class _BTgymAnalyzer(bt.Analyzer):
         # Only if it's time to communicate or episode has come to end:
         if self.strategy.iteration % self.strategy.p.skip_frame == 0 or is_done:
 
+            #print('Analyzer_strat_iteration:', self.strategy.iteration)
+            #print('Analyzer_env_iteration:', self.strategy.env_iteration)
+
             # Gather response:
             raw_state = self.strategy._get_raw_state()
             state = self.strategy.get_state()
@@ -151,6 +154,7 @@ class _BTgymAnalyzer(bt.Analyzer):
 
             # Reset info:
             self.info_list = []
+            self.strategy.env_iteration += 1
 
         # If done, initiate fallback to Control Mode:
         if is_done:
