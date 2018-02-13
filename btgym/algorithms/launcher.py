@@ -22,14 +22,8 @@
 #
 
 
-
-import sys
-sys.path.insert(0,'..')
-
 import os
 from logbook import Logger, StreamHandler, WARNING, NOTICE, INFO, DEBUG
-import sys
-#import logging
 import time
 import psutil
 import glob
@@ -42,6 +36,8 @@ from .worker import Worker
 from .aac import A3C
 from .policy import BaseAacPolicy
 
+import sys
+sys.path.insert(0,'..')
 
 
 class Launcher():

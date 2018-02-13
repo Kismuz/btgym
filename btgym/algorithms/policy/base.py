@@ -228,7 +228,7 @@ class BaseAacPolicy(object):
             action_reward:  concatenated last action-reward value
 
         Returns:
-            Action [one-hot], V-fn value, output RNN state
+            Action [one-hot], actions logits, V-fn value, output RNN state
         """
         sess = tf.get_default_session()
         feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
@@ -245,7 +245,7 @@ class BaseAacPolicy(object):
         #for k in feeder.keys():
         #    print('key: {}, type: <{}>'.format(k, type(feeder[k])))
         #print('ops:', [self.on_sample, self.on_vf, self.on_lstm_state_out])
-        return sess.run([self.on_sample, self.on_vf, self.on_lstm_state_out], feeder)
+        return sess.run([self.on_sample, self.on_logits, self.on_vf, self.on_lstm_state_out], feeder)
 
     def get_value(self, observation, lstm_state, action_reward):
         """

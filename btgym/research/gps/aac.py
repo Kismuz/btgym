@@ -11,7 +11,8 @@ class GuidedAAC(BaseAAC):
     def __init__(
             self,
             expert_loss=guided_aac_loss_def_0_0,
-            guided_lambda=0.1,
+            aac_lambda=1.0,
+            guided_lambda=1.0,
             _log_name='GuidedA3C',
             **kwargs
     ):
@@ -19,6 +20,7 @@ class GuidedAAC(BaseAAC):
 
         Args:
             expert_loss:        callable returning tensor holding on_policy imitation loss graph and summaries
+            aac_lambda:         float, main on_policy a3c loss lambda
             guided_lambda:      float, imitation loss lambda
             _log_name:          str, class-wide logger name, internal do not use
             **kwargs:           see BaseAAC kwargs
@@ -33,10 +35,10 @@ class GuidedAAC(BaseAAC):
                         name='on_policy',
                         verbose=True
                     )
-                    self.loss = self.loss + guided_lambda * guided_loss_ext
+                    self.loss = aac_lambda * self.loss + guided_lambda * guided_loss_ext
                     extended_summary = [guided_summary_ext, tf.summary.scalar("recalc_total_loss", self.loss)]
 
-                    self.log.notice('guided_lambda: {}'.format(guided_lambda))
+                    self.log.notice('aac_lambda: {}, guided_lambda: {}'.format(aac_lambda, guided_lambda))
 
                     # Override train op def:
                     self.grads, _ = tf.clip_by_global_norm(

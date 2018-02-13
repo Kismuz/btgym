@@ -16,7 +16,7 @@ import multiprocessing
 
 import cv2
 import tensorflow as tf
-tf.logging.set_verbosity(tf.logging.ERROR) # suppress tf.train.MonitoredTrainingSession deprecation warning
+tf.logging.set_verbosity(tf.logging.INFO) # suppress tf.train.MonitoredTrainingSession deprecation warning
 # TODO: switch to tf.train.MonitoredTrainingSession
 
 
@@ -38,6 +38,7 @@ class _FastSaver(tf.train.Saver):
                                      latest_filename,
                                      meta_graph_suffix,
                                      False)
+
 
 class Worker(multiprocessing.Process):
     """

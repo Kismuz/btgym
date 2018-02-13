@@ -1071,8 +1071,8 @@ So, replay memory is also here, as well as some service functions (collecting su
 </dd></dl>
 
 <dl class="function">
-<dt id="btgym.algorithms.runner.env_runner">
-<code class="descclassname">btgym.algorithms.runner.</code><code class="descname">env_runner</code><span class="sig-paren">(</span><em>sess</em>, <em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>summary_writer</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>atari_test</em>, <em>ep_summary</em>, <em>memory_config</em>, <em>log</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#env_runner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.env_runner" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.algorithms.runner.BaseEnvRunnerFn">
+<code class="descclassname">btgym.algorithms.runner.</code><code class="descname">BaseEnvRunnerFn</code><span class="sig-paren">(</span><em>sess</em>, <em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>summary_writer</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>atari_test</em>, <em>ep_summary</em>, <em>memory_config</em>, <em>log</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#BaseEnvRunnerFn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.BaseEnvRunnerFn" title="Permalink to this definition">¶</a></dt>
 <dd><p>The logic of the thread runner.
 In brief, it constantly keeps on running
 the policy, and as long as the rollout exceeds a certain length, the thread

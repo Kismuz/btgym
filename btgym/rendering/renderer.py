@@ -54,6 +54,7 @@ class BTgymRendering():
         plt_backend='Agg',  # Not used.
     )
     enabled = True
+    ready = False
 
     def __init__(self, render_modes, **kwargs):
         """
@@ -110,15 +111,17 @@ class BTgymRendering():
         Call me before use!
         [Supposed to be done inside already running server process]
         """
-        from multiprocessing import Pipe
-        self.out_pipe, self.in_pipe = Pipe()
+        if not self.ready:
+            from multiprocessing import Pipe
+            self.out_pipe, self.in_pipe = Pipe()
 
-        if self.plt is None:
-            import matplotlib
-            matplotlib.use(self.plt_backend, force=True)
-            import matplotlib.pyplot as plt
+            if self.plt is None:
+                import matplotlib
+                matplotlib.use(self.plt_backend, force=True)
+                import matplotlib.pyplot as plt
 
-        self.plt = plt
+            self.plt = plt
+            self.ready = True
 
     def to_string(self, dictionary, excluded=[]):
         """
@@ -286,6 +289,7 @@ class BTgymRendering():
                                                             box_text=box_text,
                                                             ylabel='Price',
                                                             xlabel=self.render_xlabel,
+                                                            line_labels=['Open', 'High', 'Low', 'Close'],
                                                             )
             if send_img:
                 return self.rgb_dict
@@ -304,11 +308,36 @@ class BTgymRendering():
 
             return return_dict
 
-    def draw_plot(self, data, figsize=(10,6), title='', box_text='', xlabel='X', ylabel='Y'):
+    def draw_plot(self, data, figsize=(10,6), title='', box_text='', xlabel='X', ylabel='Y', line_labels=None):
         """
         Visualises environment state as 2d line plot.
         Retrurns image as rgb_array.
+
+        Args:
+            data:           np.array of shape [num_values, num_lines]
+            figsize:        figure size (in.)
+            title:
+            box_text:
+            xlabel:
+            ylabel:
+            line_labels:    iterable holding line legends as str
+
+        Returns:
+                rgb image as np.array of size [with, height, 3]
         """
+        if line_labels is None:
+            # If got no labels - make it numbers:
+            if len(data.shape) > 1:
+                line_labels = ['line_{}'.format(i) for i in data.shape[-1]]
+            else:
+                line_labels = ['line_0']
+                data = data[:, None]
+        else:
+            assert len(line_labels) == data.shape[-1], \
+                'Expected `line_labels` kwarg consist of {} names, fot: {}'. format(data.shape[-1], line_labels)
+
+
+
         fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
         #ax = fig.add_subplot(111)
 
@@ -334,7 +363,9 @@ class BTgymRendering():
         # Add Info box:
         self.plt.text(0, data.min(), box_text, **self.render_boxtext)
 
-        self.plt.plot(data)
+        for line, label in enumerate(line_labels):
+            self.plt.plot(data[:, line], label=label)
+        self.plt.legend()
         self.plt.tight_layout()
 
         fig.canvas.draw()
@@ -348,7 +379,7 @@ class BTgymRendering():
 
         return rgb_array.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
-    def draw_image(self, data, figsize=(12,6), title='', box_text='', xlabel='X', ylabel='Y'):
+    def draw_image(self, data, figsize=(12,6), title='', box_text='', xlabel='X', ylabel='Y', line_labels=None):
         """
         Visualises environment state as image.
         Returns rgb_array.

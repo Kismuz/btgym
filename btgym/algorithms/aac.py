@@ -25,7 +25,9 @@ import numpy as np
 import tensorflow as tf
 from logbook import Logger, StreamHandler
 
-from btgym.algorithms import Memory, make_data_getter, RunnerThread
+from btgym.algorithms.memory import Memory
+from btgym.algorithms.rollout import make_data_getter
+from btgym.algorithms.runner import BaseEnvRunnerFn, RunnerThread
 from btgym.algorithms.math_utils import log_uniform
 from btgym.algorithms.nn.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def, ppo_loss_def
 from btgym.algorithms.utils import feed_dict_rnn_context, feed_dict_from_nested, batch_stack
@@ -60,6 +62,7 @@ class BaseAAC(object):
                  vr_loss=value_fn_loss_def,
                  rp_loss=rp_loss_def,
                  pc_loss=pc_loss_def,
+                 runner_fn_ref=BaseEnvRunnerFn,
                  random_seed=None,
                  model_gamma=0.99,  # decay
                  model_gae_lambda=1.00,  # GAE lambda
@@ -96,6 +99,7 @@ class BaseAAC(object):
                  num_epochs=1,
                  pi_prime_update_period=1,
                  _use_target_policy=False,  # target policy tracking behavioral one with delay
+                 _aux_render_modes=None,
                  **kwargs):
         """
 
@@ -104,12 +108,13 @@ class BaseAAC(object):
             task:                   int, parent worker id
             policy_config:          policy estimator class and configuration dictionary
             log_level:              int, logbook.level
-            _log_name:              str, class-wide logger name
+            _log_name:              str, class-wide logger name, internal
             on_policy_loss:         callable returning tensor holding on_policy training loss graph and summaries
             off_policy_loss:        callable returning tensor holding off_policy training loss graph and summaries
             vr_loss:                callable returning tensor holding value replay loss graph and summaries
             rp_loss:                callable returning tensor holding reward prediction loss graph and summaries
             pc_loss:                callable returning tensor holding pixel_control loss graph and summaries
+            runner_fn_ref:          callable defining environment runner execution logic
             random_seed:            int or None
             model_gamma:            scalar, gamma discount factor
             model_gae_lambda:       scalar, GAE lambda
@@ -149,6 +154,7 @@ class BaseAAC(object):
             num_epochs:             int, num. of SGD runs for every train step, val. > 1 should be used with caution.
             pi_prime_update_period: int, PPO: pi to pi_old update period in number of train steps, def: 1
             _use_target_policy:     bool, PPO: use target policy (aka pi_old), delayed by `pi_prime_update_period` delay
+            _aux_render_modes:       additional visualisationas to include in per-episode rendering summary
 
         Note:
             - On `time_flat` arg:
@@ -215,7 +221,7 @@ class BaseAAC(object):
                     'expected environment observation space of type {}, got: {}'.\
                     format(ObSpace, type(ref_env.observation_space))
                 )
-                raise  AssertionError
+                raise AssertionError
 
             self.policy_class = policy_config['class_ref']
             self.policy_kwargs = policy_config['kwargs']
@@ -226,6 +232,9 @@ class BaseAAC(object):
             self.vr_loss = vr_loss
             self.rp_loss = rp_loss
             self.pc_loss = pc_loss
+
+            # Environmnet runner runtime function:
+            self.runner_fn_ref = runner_fn_ref
 
             # AAC specific:
             self.model_gamma = model_gamma  # decay
@@ -330,6 +339,10 @@ class BaseAAC(object):
                 self.log.notice('vr_lambda: {:1.6f}, pc_lambda: {:1.6f}, rp_lambda: {:1.6f}'.
                               format(self.vr_lambda, self.pc_lambda, self.rp_lambda))
 
+            if _aux_render_modes is not None:
+                self.aux_render_modes = list(_aux_render_modes)
+            else:
+                self.aux_render_modes = []
 
             #self.log.notice(
             #    'AAC_{}: max_steps: {}, decay_steps: {}, end_rate: {:1.6f},'.
@@ -514,7 +527,7 @@ class BaseAAC(object):
                         tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
                         tf.summary.scalar("var_global_norm", tf.global_norm(pi.var_list)),
                         tf.summary.scalar("learn_rate", train_learn_rate),
-                        #tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to testing
+                        #tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
                         tf.summary.scalar("total_loss", self.loss),
                     ]
 
@@ -544,11 +557,13 @@ class BaseAAC(object):
                     # BTGym rendering:
                     self.ep_summary.update(
                         {
-                            mode: tf.placeholder(tf.uint8, [None, None, None, 3]) for mode in self.env_list[0].render_modes
+                            mode: tf.placeholder(tf.uint8, [None, None, None, None], name=mode + '_pl')
+                            for mode in self.env_list[0].render_modes + self.aux_render_modes
                         }
                     )
                     self.ep_summary['render_op'] = tf.summary.merge(
-                        [tf.summary.image(mode, self.ep_summary[mode]) for mode in self.env_list[0].render_modes]
+                        [tf.summary.image(mode, self.ep_summary[mode])
+                         for mode in self.env_list[0].render_modes + self.aux_render_modes]
                     )
 
                 # Episode stat. summary:
@@ -603,16 +618,17 @@ class BaseAAC(object):
                 for env in self.env_list:
                     self.runners.append(
                         RunnerThread(
-                            env,
-                            pi,
-                            self.task + task,
-                            self.rollout_length,  # ~20
-                            self.episode_summary_freq,
-                            self.env_render_freq,
-                            self.test_mode,
-                            self.ep_summary,
-                            memory_config,
-                            log_level,
+                            env=env,
+                            policy=pi,
+                            runner_fn_ref=self.runner_fn_ref,
+                            task=self.task + task,
+                            rollout_length=self.rollout_length,  # ~20
+                            episode_summary_freq=self.episode_summary_freq,
+                            env_render_freq=self.env_render_freq,
+                            test=self.test_mode,
+                            ep_summary=self.ep_summary,
+                            memory_config=memory_config,
+                            log_level=log_level,
                         )
                     )
                     task += 0.01

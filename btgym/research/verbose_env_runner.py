@@ -1,139 +1,29 @@
-# Async. framework code comes from OpenAI repository under MIT licence:
-# https://github.com/openai/universe-starter-agent
-#
-
-from logbook import Logger, StreamHandler, WARNING
-import sys
 
 import numpy as np
-import six.moves.queue as queue
-import threading
 
-from btgym.algorithms import Rollout
+from btgym.algorithms.rollout import Rollout
 from btgym.algorithms.memory import _DummyMemory
+from btgym.algorithms.math_utils import softmax
 
-
-class RunnerThread(threading.Thread):
+def VerboseEnvRunnerFn(
+        sess,
+        env,
+        policy,
+        task,
+        rollout_length,
+        summary_writer,
+        episode_summary_freq,
+        env_render_freq,
+        atari_test,
+        ep_summary,
+        memory_config,
+        log,
+        aux_summaries=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+):
     """
-    Async. framework code comes from OpenAI repository under MIT licence:
-    https://github.com/openai/universe-starter-agent
+    More verbose function for runtime logic of the thread runner.
+    Extends per-episode summaries.
 
-    Despite the fact BTgym is not real-time environment [yet], thread-runner approach is still here. From
-    original `universe-starter-agent`:
-    `...One of the key distinctions between a normal environment and a universe environment
-    is that a universe environment is _real time_.  This means that there should be a thread
-    that would constantly interact with the environment and tell it what to do.  This thread is here.`
-
-    Another idea is to see ThreadRunner as all-in-one data provider, thus shaping data distribution
-    fed to estimator from single place.
-    So, replay memory is also here, as well as some service functions (collecting summary data).
-    """
-    def __init__(self,
-                 env,
-                 policy,
-                 task,
-                 rollout_length,
-                 episode_summary_freq,
-                 env_render_freq,
-                 test,
-                 ep_summary,
-                 memory_config=None,
-                 log_level=WARNING,):
-        """
-
-        Args:
-            env:                    environment instance
-            policy:                 policy instance
-            task:                   int
-            rollout_length:         int
-            episode_summary_freq:   int
-            env_render_freq:        int
-            test:                   Atari or BTGyn
-            ep_summary:             tf.summary
-            memory_config:          replay memory configuration dictionary
-            log_level:              int, logbook.level
-        """
-        threading.Thread.__init__(self)
-        self.queue = queue.Queue(5)
-        self.rollout_length = rollout_length
-        self.env = env
-        self.last_features = None
-        self.policy = policy
-        self.daemon = True
-        self.sess = None
-        self.summary_writer = None
-        self.episode_summary_freq = episode_summary_freq
-        self.env_render_freq = env_render_freq
-        self.task = task
-        self.test = test
-        self.ep_summary = ep_summary
-        self.memory_config = memory_config
-        self.log_level = log_level
-        StreamHandler(sys.stdout).push_application()
-        self.log = Logger('ThreadRunner_{}'.format(self.task), level=self.log_level)
-
-    def start_runner(self, sess, summary_writer):
-        try:
-            self.sess = sess
-            self.summary_writer = summary_writer
-            self.start()
-
-        except:
-            msg = 'start() exception occurred.\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
-            self.log.exception(msg)
-            raise RuntimeError
-
-    def run(self):
-        """Just keep running."""
-        try:
-            with self.sess.as_default():
-                self._run()
-
-        except:
-            msg = 'RunTime exception occurred.\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
-            self.log.exception(msg)
-            raise RuntimeError
-
-    def _run(self):
-        rollout_provider = env_runner(
-            self.sess,
-            self.env,
-            self.policy,
-            self.task,
-            self.rollout_length,
-            self.summary_writer,
-            self.episode_summary_freq,
-            self.env_render_freq,
-            self.test,
-            self.ep_summary,
-            self.memory_config,
-            self.log
-        )
-        while True:
-            # the timeout variable exists because apparently, if one worker dies, the other workers
-            # won't die with it, unless the timeout is set to some large number.  This is an empirical
-            # observation.
-
-            self.queue.put(next(rollout_provider), timeout=600.0)
-
-
-def env_runner(sess,
-               env,
-               policy,
-               task,
-               rollout_length,
-               summary_writer,
-               episode_summary_freq,
-               env_render_freq,
-               atari_test,
-               ep_summary,
-               memory_config,
-               log):
-    """
-    The logic of the thread runner.
-    In brief, it constantly keeps on running
-    the policy, and as long as the rollout exceeds a certain length, the thread
-    runner appends all the collected data to the queue.
 
     Args:
         env:                    environment instance
@@ -146,6 +36,7 @@ def env_runner(sess,
         ep_summary:             dict of tf.summary op and placeholders
         memory_config:          replay memory configuration dictionary
         log:                    logbook logger
+        aux_summaries:          list of str, additional summaries to compute
 
     Yelds:
         collected data as dictionary of on_policy, off_policy rollouts and episode statistics.
@@ -173,15 +64,32 @@ def env_runner(sess,
     total_steps = []
     total_steps_atari = []
 
+    # Aux accumulators:
+    ep_a_logits = []
+    ep_value = []
+    ep_context = []
+
     ep_stat = None
     test_ep_stat = None
     render_stat = None
+
+    norm_image = lambda x: np.round((x - x.min()) / np.ptp(x) * 255)
+
+    if env.data_master is True:
+        # Hacky but we need env.renderer methods ready
+        env.renderer.initialize_pyplot()
+
+
 
     while True:
         terminal_end = False
         rollout = Rollout()
 
-        action, value_, context = policy.act(last_state, last_context, last_action_reward)
+        action, logits, value_, context = policy.act(last_state, last_context, last_action_reward)
+
+        ep_a_logits.append(logits)
+        ep_value.append(value_)
+        ep_context.append(context)
 
         #log.debug('*: A: {}, V: {}, step: {} '.format(action, value_, length))
 
@@ -214,9 +122,15 @@ def env_runner(sess,
         for roll_step in range(1, rollout_length):
             if not terminal:
                 # Continue adding experiences to rollout:
-                action, value_, context = policy.act(last_state, last_context, last_action_reward)
+                action, logits, value_, context = policy.act(last_state, last_context, last_action_reward)
 
                 #log.debug('A: {}, V: {}, step: {} '.format(action, value_, length))
+
+                ep_a_logits.append(logits)
+                ep_value.append(value_)
+                ep_context.append(context)
+
+                #log.notice('context: {}'.format(context))
 
                 # Argmax to convert from one-hot:
                 state, reward, terminal, info = env.step(action.argmax())
@@ -312,6 +226,45 @@ def env_runner(sess,
                         render_stat = {
                             mode: env.render(mode)[None,:] for mode in env.render_modes
                         }
+                        # Update renderings with aux:
+
+                        # log.notice('ep_logits shape: {}'.format(np.asarray(ep_a_logits).shape))
+                        # log.notice('ep_value shape: {}'.format(np.asarray(ep_value).shape))
+
+                        # Unpack LSTM states:
+                        rnn_1, rnn_2 = zip(*ep_context)
+                        rnn_1 = [state[0] for state in rnn_1]
+                        rnn_2 = [state[0] for state in rnn_2]
+                        c1, h1 = zip(*rnn_1)
+                        c2, h2 = zip(*rnn_2)
+
+                        aux_images = {
+                            'action_prob':  env.renderer.draw_plot(
+                                # data=softmax(np.asarray(ep_a_logits)[:, 0, :] - np.asarray(ep_a_logits).max()),
+                                data=softmax(np.asarray(ep_a_logits)[:, 0, :]),
+                                title='Episode actions probabilities',
+                                figsize=(12, 4),
+                                box_text='',
+                                xlabel='Backward env. steps',
+                                ylabel='R+',
+                                line_labels=['Hold', 'Buy', 'Sell', 'Close']
+                            )[None, ...],
+                            'value_fn': env.renderer.draw_plot(
+                                data=np.asarray(ep_value),
+                                title='Episode Value function',
+                                figsize=(12, 4),
+                                xlabel='Backward env. steps',
+                                ylabel='R',
+                                line_labels = ['Value']
+                            )[None, ...],
+                            #'lstm_1_c': norm_image(np.asarray(c1).T[None, :, 0, :, None]),
+                            'lstm_1_h': norm_image(np.asarray(h1).T[None, :, 0, :, None]),
+                            #'lstm_2_c': norm_image(np.asarray(c2).T[None, :, 0, :, None]),
+                            'lstm_2_h': norm_image(np.asarray(h2).T[None, :, 0, :, None])
+                        }
+
+                        render_stat.update(aux_images)
+
                     else:
                         # Atari:
                         render_stat = dict(render_atari=state['external'][None,:] * 255)
@@ -325,6 +278,11 @@ def env_runner(sess,
                 last_action[0] = 1
                 last_reward = 0.0
                 last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
+
+                # reset per-episode accumulators:
+                ep_a_logits = []
+                ep_value = []
+                ep_context = []
 
                 # Increment global and local episode counts:
                 sess.run(policy.inc_episode)
@@ -358,29 +316,6 @@ def env_runner(sess,
 
         if not is_test:
             memory.add(last_experience)
-
-        #print('last_experience {}'.format(last_experience['position']))
-        #for k, v in last_experience.items():
-        #    try:
-        #        print(k, 'shape: ', v.shape)
-        #    except:
-        #        try:
-        #            print(k, 'type: ', type(v), 'len: ', len(v))
-        #        except:
-        #            print(k, 'type: ', type(v), 'value: ', v)
-
-        #print('rollout_step: {}, last_exp/frame_pos: {}\nr: {}, v: {}, v_next: {}, t: {}'.
-        #    format(
-        #        length,
-        #        last_experience['position'],
-        #        last_experience['reward'],
-        #        last_experience['value'],
-        #        last_experience['value_next'],
-        #        last_experience['terminal']
-        #    )
-        #)
-        #print('rollout size: {}, last r: {}'.format(len(rollout.position), rollout.r[-1]))
-        #print('last value_next: ', last_experience['value_next'], ', rollout flushed.')
 
         # Once we have enough experience and memory can be sampled, yield it,
         # and have the ThreadRunner place it on a queue:

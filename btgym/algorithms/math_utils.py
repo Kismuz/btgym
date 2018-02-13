@@ -49,3 +49,20 @@ def kl_divergence(logits_1, logits_2):
     z1 = tf.reduce_sum(ea1, axis=-1, keepdims=True)
     p0 = ea0 / z0
     return tf.reduce_sum(p0 * (a0 - tf.log(z0) - a1 + tf.log(z1)), axis=-1)
+
+
+def softmax(x):
+    if len(x.shape) > 1:
+        tmp = np.max(x, axis = 1)
+        x -= tmp.reshape((x.shape[0], 1))
+        x = np.exp(x)
+        tmp = np.sum(x, axis = 1)
+        x /= tmp.reshape((x.shape[0], 1))
+    else:
+        tmp = np.max(x)
+        x -= tmp
+        x = np.exp(x)
+        tmp = np.sum(x)
+        x /= tmp
+
+    return x

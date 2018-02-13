@@ -7,7 +7,7 @@ import sys
 
 import numpy as np
 from collections import deque
-from btgym.algorithms import Rollout
+from btgym.algorithms.rollout import Rollout
 
 
 class Memory(object):

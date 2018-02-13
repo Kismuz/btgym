@@ -16,9 +16,19 @@ def normalized_columns_initializer(std=1.0):
     return _initializer
 
 
+# def categorical_sample(logits, d):
+#     value = tf.squeeze(tf.multinomial(logits - tf.reduce_max(logits, [1], keepdims=True), 1), [1])
+#     return tf.one_hot(value, d)
+
 def categorical_sample(logits, d):
-    value = tf.squeeze(tf.multinomial(logits - tf.reduce_max(logits, [1], keepdims=True), 1), [1])
-    return tf.one_hot(value, d)
+    value = tf.squeeze(tf.multinomial(logits, 1), [1])
+    one_hot = tf.one_hot(value, d, name='sample_one_hot')
+    return one_hot
+
+# def categorical_sample(logits, d):  # DET!
+#     value = tf.argmax(logits, axis=-1)
+#     one_hot = tf.one_hot(value, d, name='sample_one_hot')
+#     return one_hot
 
 
 def linear(x, size, name, initializer=None, bias_init=0, reuse=False):
