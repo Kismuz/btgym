@@ -243,8 +243,8 @@ _Notice: will be moved inside project wiki [26.01.18]_
  
  
 ### <a name="news"></a>[News and updates:](#title)
-- 17.02.18: First results on applying guided policy search (GPS) to btgym setup can be seen 
-           [here](./examples/guided_policy_search.ipynb).  
+- 17.02.18: First results on applying guided policy search ideas (GPS) to btgym setup can be seen 
+           [here](./examples/guided_a3c.ipynb).  
     - tensorboard summaries are updated with additional renderings: 
       actions distribution, value function and LSTM_state; presented in the same notebook.
 

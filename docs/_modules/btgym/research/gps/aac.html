@@ -182,21 +182,34 @@
 
 <span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">BaseAAC</span>
 <span class="kn">from</span> <span class="nn">.loss</span> <span class="k">import</span> <span class="n">guided_aac_loss_def_0_0</span><span class="p">,</span> <span class="n">guided_aac_loss_def_0_1</span><span class="p">,</span> <span class="n">guided_aac_loss_def_0_3</span>
+<span class="kn">from</span> <span class="nn">btgym.research.verbose_env_runner</span> <span class="k">import</span> <span class="n">VerboseEnvRunnerFn</span>
 
 
 <div class="viewcode-block" id="GuidedAAC"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.aac.GuidedAAC">[docs]</a><span class="k">class</span> <span class="nc">GuidedAAC</span><span class="p">(</span><span class="n">BaseAAC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Actor-critic framework augmented with expert actions imitation loss:</span>
 <span class="sd">    L_gps = aac_lambda * L_a3c + guided_lambda * L_im.</span>
+
+<span class="sd">    This implementation is loosely refereed as &#39;guided policy search&#39; after algorithm described in paper</span>
+<span class="sd">    by S. Levine and P. Abbeel `Learning Neural Network Policies with Guided PolicySearch under Unknown Dynamics`</span>
+
+<span class="sd">    https://people.eecs.berkeley.edu/~svlevine/papers/mfcgps.pdf</span>
+
+<span class="sd">    in a sense that exploits idea of fitting &#39;local&#39; (here - single episode) oracle for environment with</span>
+<span class="sd">    generally unknown dynamics and use actions demonstrated by it to optimize trajectory distribution for training agent.</span>
+
 <span class="sd">    Note that this particular implementation of expert does not provides</span>
 <span class="sd">    complete action-state space trajectory for agent to follow.</span>
-<span class="sd">    Instead it estimates `advised` distribution over actions conditioned on exteranl state observations only.</span>
+<span class="sd">    Instead it estimates `advised` categorical distribution over actions conditioned on `external` (i.e. price dynamics)</span>
+<span class="sd">    state observations only.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
             <span class="n">expert_loss</span><span class="o">=</span><span class="n">guided_aac_loss_def_0_3</span><span class="p">,</span>
             <span class="n">aac_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
             <span class="n">guided_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="n">runner_fn_ref</span><span class="o">=</span><span class="n">VerboseEnvRunnerFn</span><span class="p">,</span>
+            <span class="n">_aux_render_modes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;action_prob&#39;</span><span class="p">,</span> <span class="s1">&#39;value_fn&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_1_h&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_2_h&#39;</span><span class="p">),</span>
             <span class="n">_log_name</span><span class="o">=</span><span class="s1">&#39;GuidedA3C&#39;</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
@@ -210,7 +223,12 @@
 <span class="sd">            **kwargs:           see BaseAAC kwargs</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="nb">super</span><span class="p">(</span><span class="n">GuidedAAC</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">_log_name</span><span class="o">=</span><span class="n">_log_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">GuidedAAC</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+                <span class="n">runner_fn_ref</span><span class="o">=</span><span class="n">runner_fn_ref</span><span class="p">,</span>
+                <span class="n">_aux_render_modes</span><span class="o">=</span><span class="n">_aux_render_modes</span><span class="p">,</span>
+                <span class="n">_log_name</span><span class="o">=</span><span class="n">_log_name</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span>
+            <span class="p">)</span>
             <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_device</span><span class="p">):</span>
                 <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="s1">&#39;local&#39;</span><span class="p">):</span>
                     <span class="n">guided_loss_ext</span><span class="p">,</span> <span class="n">guided_summary_ext</span> <span class="o">=</span> <span class="n">expert_loss</span><span class="p">(</span>

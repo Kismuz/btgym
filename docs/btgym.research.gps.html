@@ -196,12 +196,18 @@
 <span id="btgym-research-gps-aac-module"></span><h1>btgym.research.gps.aac module<a class="headerlink" href="#module-btgym.research.gps.aac" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="btgym.research.gps.aac.GuidedAAC">
-<em class="property">class </em><code class="descclassname">btgym.research.gps.aac.</code><code class="descname">GuidedAAC</code><span class="sig-paren">(</span><em>expert_loss=&lt;function guided_aac_loss_def_0_3&gt;</em>, <em>aac_lambda=1.0</em>, <em>guided_lambda=1.0</em>, <em>_log_name='GuidedA3C'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/aac.html#GuidedAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.aac.GuidedAAC" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.research.gps.aac.</code><code class="descname">GuidedAAC</code><span class="sig-paren">(</span><em>expert_loss=&lt;function guided_aac_loss_def_0_3&gt;</em>, <em>aac_lambda=1.0</em>, <em>guided_lambda=1.0</em>, <em>runner_fn_ref=&lt;function VerboseEnvRunnerFn&gt;</em>, <em>_aux_render_modes=('action_prob'</em>, <em>'value_fn'</em>, <em>'lstm_1_h'</em>, <em>'lstm_2_h')</em>, <em>_log_name='GuidedA3C'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/aac.html#GuidedAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.aac.GuidedAAC" title="Permalink to this definition">¶</a></dt>
 <dd><p>Actor-critic framework augmented with expert actions imitation loss:
-L_gps = aac_lambda * L_a3c + guided_lambda * L_im.
-Note that this particular implementation of expert does not provides
+L_gps = aac_lambda * L_a3c + guided_lambda * L_im.</p>
+<p>This implementation is loosely refereed as ‘guided policy search’ after algorithm described in paper
+by S. Levine and P. Abbeel <cite>Learning Neural Network Policies with Guided PolicySearch under Unknown Dynamics</cite></p>
+<p><a class="reference external" href="https://people.eecs.berkeley.edu/~svlevine/papers/mfcgps.pdf">https://people.eecs.berkeley.edu/~svlevine/papers/mfcgps.pdf</a></p>
+<p>in a sense that exploits idea of fitting ‘local’ (here - single episode) oracle for environment with
+generally unknown dynamics and use actions demonstrated by it to optimize trajectory distribution for training agent.</p>
+<p>Note that this particular implementation of expert does not provides
 complete action-state space trajectory for agent to follow.
-Instead it estimates <cite>advised</cite> distribution over actions conditioned on exteranl state observations only.</p>
+Instead it estimates <cite>advised</cite> categorical distribution over actions conditioned on <cite>external</cite> (i.e. price dynamics)
+state observations only.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
