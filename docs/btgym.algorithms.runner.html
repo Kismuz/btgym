@@ -1,0 +1,354 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.algorithms.runner.base module &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="index.html"/>
+        <link rel="up" title="btgym.algorithms package" href="btgym.algorithms.html"/>
+        <link rel="next" title="btgym.research package" href="btgym.research.html"/>
+        <link rel="prev" title="btgym.algorithms.policy.base module" href="btgym.algorithms.policy.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="btgym.algorithms.html">btgym.algorithms package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#btgym-algorithms-nn-subpackage">btgym.algorithms.nn subpackage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#btgym-algorithms-policy-subpackage">btgym.algorithms.policy subpackage</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="btgym.algorithms.html#btgym-algorithms-runner-subpackage">btgym.algorithms.runner subpackage</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">btgym.algorithms.runner.base module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-btgym.algorithms.runner.threadrunner">btgym.algorithms.runner.threadrunner module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.launcher">btgym.algorithms.launcher module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.worker">btgym.algorithms.worker module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.aac">btgym.algorithms.aac module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.rollout">btgym.algorithms.rollout module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.memory">btgym.algorithms.memory module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.envs">btgym.algorithms.envs module</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="btgym.algorithms.html">btgym.algorithms package</a> &raquo;</li>
+        
+      <li>btgym.algorithms.runner.base module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/btgym.algorithms.runner.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-btgym.algorithms.runner.base">
+<span id="btgym-algorithms-runner-base-module"></span><h1>btgym.algorithms.runner.base module<a class="headerlink" href="#module-btgym.algorithms.runner.base" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="btgym.algorithms.runner.base.BaseEnvRunnerFn">
+<code class="descclassname">btgym.algorithms.runner.base.</code><code class="descname">BaseEnvRunnerFn</code><span class="sig-paren">(</span><em>sess</em>, <em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>summary_writer</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>atari_test</em>, <em>ep_summary</em>, <em>memory_config</em>, <em>log</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner/base.html#BaseEnvRunnerFn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.base.BaseEnvRunnerFn" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default function defining runtime logic of the thread runner.
+In brief, it constantly keeps on running
+the policy, and as long as the rollout exceeds a certain length, the thread
+runner appends all the collected data to the queue.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env</strong> – environment instance</li>
+<li><strong>policy</strong> – policy instance</li>
+<li><strong>task</strong> – int</li>
+<li><strong>rollout_length</strong> – int</li>
+<li><strong>episode_summary_freq</strong> – int</li>
+<li><strong>env_render_freq</strong> – int</li>
+<li><strong>atari_test</strong> – bool, Atari or BTGyn</li>
+<li><strong>ep_summary</strong> – dict of tf.summary op and placeholders</li>
+<li><strong>memory_config</strong> – replay memory configuration dictionary</li>
+<li><strong>log</strong> – logbook logger</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="docutils">
+<dt>Yelds:</dt>
+<dd>collected data as dictionary of on_policy, off_policy rollouts and episode statistics.</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.algorithms.runner.threadrunner">
+<span id="btgym-algorithms-runner-threadrunner-module"></span><h1>btgym.algorithms.runner.threadrunner module<a class="headerlink" href="#module-btgym.algorithms.runner.threadrunner" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="btgym.algorithms.runner.threadrunner.RunnerThread">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.runner.threadrunner.</code><code class="descname">RunnerThread</code><span class="sig-paren">(</span><em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>test</em>, <em>ep_summary</em>, <em>runner_fn_ref=&lt;function BaseEnvRunnerFn&gt;</em>, <em>memory_config=None</em>, <em>log_level=13</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner/threadrunner.html#RunnerThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.threadrunner.RunnerThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Async. framework code comes from OpenAI repository under MIT licence:
+<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
+<p>Despite the fact BTgym is not real-time environment [yet], thread-runner approach is still here. From
+original <cite>universe-starter-agent</cite>:
+<cite>…One of the key distinctions between a normal environment and a universe environment
+is that a universe environment is _real time_.  This means that there should be a thread
+that would constantly interact with the environment and tell it what to do.  This thread is here.</cite></p>
+<p>Another idea is to see ThreadRunner as all-in-one data provider, thus shaping data distribution
+fed to estimator from single place.
+So, replay memory is also here, as well as some service functions (collecting summary data).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>env</strong> – environment instance</li>
+<li><strong>policy</strong> – policy instance</li>
+<li><strong>task</strong> – int</li>
+<li><strong>rollout_length</strong> – int</li>
+<li><strong>episode_summary_freq</strong> – int</li>
+<li><strong>env_render_freq</strong> – int</li>
+<li><strong>test</strong> – Atari or BTGyn</li>
+<li><strong>ep_summary</strong> – tf.summary</li>
+<li><strong>runner_fn_ref</strong> – callable defining runner execution logic</li>
+<li><strong>memory_config</strong> – replay memory configuration dictionary</li>
+<li><strong>log_level</strong> – int, logbook.level</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="btgym.algorithms.runner.threadrunner.RunnerThread.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner/threadrunner.html#RunnerThread.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.threadrunner.RunnerThread.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Just keep running.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="btgym.research.html" class="btn btn-neutral float-right" title="btgym.research package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="btgym.algorithms.policy.html" class="btn btn-neutral" title="btgym.algorithms.policy.base module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

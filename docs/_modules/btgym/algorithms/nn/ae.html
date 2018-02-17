@@ -1,0 +1,703 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.algorithms.nn.ae &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../../search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="../../../../index.html"/>
+        <link rel="up" title="Module code" href="../../../index.html"/> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+      <li>btgym.algorithms.nn.ae</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for btgym.algorithms.nn.ae</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">tensorflow.contrib.layers</span> <span class="k">import</span> <span class="n">flatten</span> <span class="k">as</span> <span class="n">batch_flatten</span>
+<span class="kn">from</span> <span class="nn">tensorflow.contrib.layers</span> <span class="k">import</span> <span class="n">layer_norm</span> <span class="k">as</span> <span class="n">norm_layer</span>
+
+<span class="kn">from</span> <span class="nn">btgym.algorithms.nn.layers</span> <span class="k">import</span> <span class="n">normalized_columns_initializer</span><span class="p">,</span> <span class="n">linear</span><span class="p">,</span> <span class="n">conv2d</span>
+
+
+<div class="viewcode-block" id="conv2d_encoder"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.ae.conv2d_encoder">[docs]</a><span class="k">def</span> <span class="nf">conv2d_encoder</span><span class="p">(</span><span class="n">x</span><span class="p">,</span>
+                   <span class="n">layer_config</span><span class="o">=</span><span class="p">(</span>
+                        <span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+                        <span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+                        <span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+                   <span class="p">),</span>
+                   <span class="n">pad</span><span class="o">=</span><span class="s1">&#39;SAME&#39;</span><span class="p">,</span>
+                   <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoder&#39;</span><span class="p">,</span>
+                   <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines convolutional encoder.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x:              input tensor</span>
+<span class="sd">        layer_config:   first to last nested layers configuration list: [layer_1_config, layer_2_config,...], where:</span>
+<span class="sd">                        layer_i_config = [num_filters(int), filter_size(list), stride(list)]</span>
+<span class="sd">        pad:            str, padding scheme: &#39;SAME&#39; or &#39;VALID&#39;</span>
+<span class="sd">        name:           str, mame scope</span>
+<span class="sd">        reuse:          bool</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list of tensors holding encoded features for every layer outer to inner,</span>
+<span class="sd">        level-wise list of encoding layers shapes, first ro last.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+        <span class="n">layer_shapes</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()]</span>
+        <span class="n">layer_outputs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer_spec</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layer_config</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
+                <span class="n">norm_layer</span><span class="p">(</span>
+                    <span class="n">conv2d</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+                        <span class="n">num_filters</span><span class="o">=</span><span class="n">layer_spec</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;/conv_kernels_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="p">),</span>
+                        <span class="n">filter_size</span><span class="o">=</span><span class="n">layer_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">stride</span><span class="o">=</span><span class="n">layer_spec</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                        <span class="n">pad</span><span class="o">=</span><span class="n">pad</span><span class="p">,</span>
+                        <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+                    <span class="p">)</span>
+                <span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoder_layer_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="n">layer_shapes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">())</span>
+            <span class="n">layer_outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">layer_outputs</span><span class="p">,</span> <span class="n">layer_shapes</span></div>
+
+
+<div class="viewcode-block" id="conv2d_decoder"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.ae.conv2d_decoder">[docs]</a><span class="k">def</span> <span class="nf">conv2d_decoder</span><span class="p">(</span><span class="n">z</span><span class="p">,</span>
+                   <span class="n">layer_shapes</span><span class="p">,</span>
+                   <span class="n">layer_config</span><span class="o">=</span><span class="p">(</span>
+                        <span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+                        <span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+                        <span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+                   <span class="p">),</span>
+                   <span class="n">pad</span><span class="o">=</span><span class="s1">&#39;SAME&#39;</span><span class="p">,</span>
+                   <span class="n">resize_method</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">ResizeMethod</span><span class="o">.</span><span class="n">BILINEAR</span><span class="p">,</span>
+                   <span class="n">name</span><span class="o">=</span><span class="s1">&#39;decoder&#39;</span><span class="p">,</span>
+                   <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines convolutional decoder.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        z:                  tensor holding encoded state</span>
+<span class="sd">        layer_shapes:       level-wise list of matching encoding layers shapes, last to first.</span>
+<span class="sd">        layer_config:       layers configuration list: [layer_1_config, layer_2_config,...], where:</span>
+<span class="sd">                            layer_i_config = [num_filters(int), filter_size(list), stride(list)]</span>
+<span class="sd">        pad:                str, padding scheme: &#39;SAME&#39; or &#39;VALID&#39;</span>
+<span class="sd">        resize_method:      up-sampling method, one of supported tf.image.ResizeMethod&#39;s</span>
+<span class="sd">        name:               str, mame scope</span>
+<span class="sd">        reuse:              bool</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list of tensors holding decoded features for every layer inner to outer</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">z</span>
+        <span class="n">layer_shapes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">layer_shapes</span><span class="p">)</span>
+        <span class="n">layer_shapes</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+        <span class="n">layer_config</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">layer_config</span><span class="p">)</span>
+        <span class="n">layer_config</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+        <span class="n">layer_output</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">layer_spec</span><span class="p">,</span> <span class="n">layer_shape</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">layer_config</span><span class="p">,</span><span class="n">layer_shapes</span><span class="p">[</span><span class="mi">1</span><span class="p">:]),</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">resize_images</span><span class="p">(</span>
+                <span class="n">images</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+                <span class="n">size</span><span class="o">=</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">layer_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">layer_shape</span><span class="p">[</span><span class="mi">2</span><span class="p">])],</span>
+                <span class="n">method</span><span class="o">=</span><span class="n">resize_method</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
+                <span class="n">conv2d</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+                    <span class="n">num_filters</span><span class="o">=</span><span class="n">layer_spec</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;conv_kernels_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+                    <span class="n">filter_size</span><span class="o">=</span><span class="n">layer_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">stride</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                    <span class="n">pad</span><span class="o">=</span><span class="n">pad</span><span class="p">,</span>
+                    <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+                <span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;decoder_layer_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="n">layer_output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">y_hat</span> <span class="o">=</span> <span class="n">conv2d</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+            <span class="n">num_filters</span><span class="o">=</span><span class="n">layer_shapes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;decoded_y_hat&#39;</span><span class="p">,</span>
+            <span class="n">filter_size</span><span class="o">=</span><span class="n">layer_config</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">stride</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+            <span class="n">pad</span><span class="o">=</span><span class="s1">&#39;SAME&#39;</span><span class="p">,</span>
+            <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+        <span class="p">)</span>
+        <span class="n">layer_output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y_hat</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">layer_output</span></div>
+
+
+<div class="viewcode-block" id="conv2d_autoencoder"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.ae.conv2d_autoencoder">[docs]</a><span class="k">def</span> <span class="nf">conv2d_autoencoder</span><span class="p">(</span>
+        <span class="n">inputs</span><span class="p">,</span>
+        <span class="n">layer_config</span><span class="p">,</span>
+        <span class="n">resize_method</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">ResizeMethod</span><span class="o">.</span><span class="n">BILINEAR</span><span class="p">,</span>
+        <span class="n">pad</span><span class="o">=</span><span class="s1">&#39;SAME&#39;</span><span class="p">,</span>
+        <span class="n">linear_layer_ref</span><span class="o">=</span><span class="n">linear</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;base_conv2d_autoencoder&#39;</span><span class="p">,</span>
+        <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Basic convolutional autoencoder.</span>
+<span class="sd">    Hidden state is passed through dense linear layer.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        inputs:             input tensor</span>
+<span class="sd">        layer_config:       layers configuration list: [layer_1_config, layer_2_config,...], where:</span>
+<span class="sd">                            layer_i_config = [num_filters(int), filter_size(list), stride(list)];</span>
+<span class="sd">                            this list represent decoder part of autoencoder bottleneck,</span>
+<span class="sd">                            decoder part is inferred symmetrically</span>
+<span class="sd">        resize_method:      up-sampling method, one of supported tf.image.ResizeMethod&#39;s</span>
+<span class="sd">        pad:                str, padding scheme: &#39;SAME&#39; or &#39;VALID&#39;</span>
+<span class="sd">        linear_layer_ref:   linear layer class to use</span>
+<span class="sd">        name:               str, mame scope</span>
+<span class="sd">        reuse:              bool</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list of tensors holding encoded features, layer_wise from outer to inner</span>
+<span class="sd">        tensor holding batch-wise flattened hidden state vector</span>
+<span class="sd">        list of tensors holding decoded features, layer-wise from inner to outer</span>
+<span class="sd">        tensor holding reconstructed output</span>
+<span class="sd">        None value</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+        <span class="c1"># Encode:</span>
+        <span class="n">encoder_layers</span><span class="p">,</span> <span class="n">shapes</span> <span class="o">=</span> <span class="n">conv2d_encoder</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span>
+            <span class="n">layer_config</span><span class="o">=</span><span class="n">layer_config</span><span class="p">,</span>
+            <span class="n">pad</span><span class="o">=</span><span class="n">pad</span><span class="p">,</span>
+            <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+        <span class="p">)</span>
+        <span class="c1"># Flatten hidden state, pass through dense :</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">batch_flatten</span><span class="p">(</span><span class="n">encoder_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">encoder_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="n">z</span> <span class="o">=</span> <span class="n">linear_layer_ref</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">z</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="n">h</span> <span class="o">*</span> <span class="n">w</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;hidden_dense&#39;</span><span class="p">,</span>
+            <span class="n">initializer</span><span class="o">=</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span>
+            <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+        <span class="p">)</span>
+        <span class="c1"># Reshape back and feed to decoder:</span>
+        <span class="n">decoder_layers</span> <span class="o">=</span> <span class="n">conv2d_decoder</span><span class="p">(</span>
+            <span class="n">z</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">c</span><span class="p">]),</span>
+            <span class="n">layer_config</span><span class="o">=</span><span class="n">layer_config</span><span class="p">,</span>
+            <span class="n">layer_shapes</span><span class="o">=</span><span class="n">shapes</span><span class="p">,</span>
+            <span class="n">pad</span><span class="o">=</span><span class="n">pad</span><span class="p">,</span>
+            <span class="n">resize_method</span><span class="o">=</span><span class="n">resize_method</span><span class="p">,</span>
+            <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+        <span class="p">)</span>
+        <span class="n">y_hat</span> <span class="o">=</span> <span class="n">decoder_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">encoder_layers</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">decoder_layers</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">,</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="cw_conv2d_autoencoder"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.ae.cw_conv2d_autoencoder">[docs]</a><span class="k">def</span> <span class="nf">cw_conv2d_autoencoder</span><span class="p">(</span>
+        <span class="n">inputs</span><span class="p">,</span>
+        <span class="n">layer_config</span><span class="p">,</span>
+        <span class="n">resize_method</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">ResizeMethod</span><span class="o">.</span><span class="n">BILINEAR</span><span class="p">,</span>
+        <span class="n">pad</span><span class="o">=</span><span class="s1">&#39;SAME&#39;</span><span class="p">,</span>
+        <span class="n">linear_layer_ref</span><span class="o">=</span><span class="n">linear</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;cw_conv2d_autoencoder&#39;</span><span class="p">,</span>
+        <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Channel-wise convolutional autoencoder.</span>
+<span class="sd">    Hidden state is passed through dense linear layer.</span>
+<span class="sd">    Pain-slow, do not use.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        inputs:             input tensor</span>
+<span class="sd">        layer_config:       layers configuration list: [layer_1_config, layer_2_config,...], where:</span>
+<span class="sd">                            layer_i_config = [num_filters(int), filter_size(list), stride(list)];</span>
+<span class="sd">                            this list represent decoder part of autoencoder bottleneck,</span>
+<span class="sd">                            decoder part is inferred symmetrically</span>
+<span class="sd">        resize_method:      up-sampling method, one of supported tf.image.ResizeMethod&#39;s</span>
+<span class="sd">        pad:                str, padding scheme: &#39;SAME&#39; or &#39;VALID&#39;</span>
+<span class="sd">        linear_layer_ref:   linear layer class to use</span>
+<span class="sd">        name:               str, mame scope</span>
+<span class="sd">        reuse:              bool</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        per-channel list of lists of tensors holding encoded features, layer_wise from outer to inner</span>
+<span class="sd">        tensor holding batch-wise flattened hidden state vector</span>
+<span class="sd">        per-channel list of lists of tensors holding decoded features, layer-wise from inner to outer</span>
+<span class="sd">        tensor holding reconstructed output</span>
+<span class="sd">        None value</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+        <span class="n">ae_bank</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="c1"># Making list of list of AE&#39;s:</span>
+            <span class="n">encoder_layers</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">decoder_layers</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">conv2d_autoencoder</span><span class="p">(</span>
+                <span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">i</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">layer_config</span><span class="o">=</span><span class="n">layer_config</span><span class="p">,</span>
+                <span class="n">resize_method</span><span class="o">=</span><span class="n">resize_method</span><span class="p">,</span>
+                <span class="n">linear_layer_ref</span><span class="o">=</span><span class="n">linear_layer_ref</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;ae_channel_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+                <span class="n">pad</span><span class="o">=</span><span class="n">pad</span>
+            <span class="p">)</span>
+            <span class="n">ae</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">i</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">encoder_layers</span><span class="o">=</span><span class="n">encoder_layers</span><span class="p">,</span>
+                <span class="n">z</span><span class="o">=</span><span class="n">z</span><span class="p">,</span>
+                <span class="n">decoder_layers</span><span class="o">=</span><span class="n">decoder_layers</span><span class="p">,</span>
+                <span class="n">y_hat</span><span class="o">=</span><span class="n">y_hat</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">ae_bank</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ae</span><span class="p">)</span>
+
+        <span class="n">y_hat</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">cw_encoder_layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">cw_decoder_layers</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">ae</span> <span class="ow">in</span> <span class="n">ae_bank</span><span class="p">:</span>
+            <span class="n">y_hat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ae</span><span class="p">[</span><span class="s1">&#39;y_hat&#39;</span><span class="p">])</span>
+            <span class="n">z</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ae</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">])</span>
+            <span class="n">cw_encoder_layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ae</span><span class="p">[</span><span class="s1">&#39;encoder_layers&#39;</span><span class="p">])</span>
+            <span class="n">cw_decoder_layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ae</span><span class="p">[</span><span class="s1">&#39;decoder_layers&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Flatten hidden state:</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;hidden_state&#39;</span><span class="p">)</span>
+
+        <span class="c1"># encoder_layers = []</span>
+        <span class="c1"># for layer in zip(*cw_encoder_layers):</span>
+        <span class="c1">#     encoder_layers.append(tf.concat(layer, axis=-2))</span>
+        <span class="c1">#</span>
+        <span class="c1"># decoder_layers = []</span>
+        <span class="c1"># for layer in zip(*cw_decoder_layers):</span>
+        <span class="c1">#     decoder_layers.append(tf.concat(layer, axis=-2))</span>
+
+        <span class="c1"># Reshape back reconstruction:</span>
+        <span class="n">y_hat</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">y_hat</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;decoded_y_hat&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">cw_encoder_layers</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">cw_decoder_layers</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">,</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="beta_var_conv2d_autoencoder"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.ae.beta_var_conv2d_autoencoder">[docs]</a><span class="k">def</span> <span class="nf">beta_var_conv2d_autoencoder</span><span class="p">(</span>
+        <span class="n">inputs</span><span class="p">,</span>
+        <span class="n">layer_config</span><span class="p">,</span>
+        <span class="n">resize_method</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">ResizeMethod</span><span class="o">.</span><span class="n">BILINEAR</span><span class="p">,</span>
+        <span class="n">pad</span><span class="o">=</span><span class="s1">&#39;SAME&#39;</span><span class="p">,</span>
+        <span class="n">linear_layer_ref</span><span class="o">=</span><span class="n">linear</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;vae_conv2d&#39;</span><span class="p">,</span>
+        <span class="n">max_batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+        <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Variational autoencoder.</span>
+
+<span class="sd">    Papers:</span>
+<span class="sd">        https://arxiv.org/pdf/1312.6114.pdf</span>
+<span class="sd">        https://arxiv.org/pdf/1606.05908.pdf</span>
+<span class="sd">        http://www.matthey.me/pdf/betavae_iclr_2017.pdf</span>
+
+
+<span class="sd">    Args:</span>
+<span class="sd">        inputs:             input tensor</span>
+<span class="sd">        layer_config:       layers configuration list: [layer_1_config, layer_2_config,...], where:</span>
+<span class="sd">                            layer_i_config = [num_filters(int), filter_size(list), stride(list)];</span>
+<span class="sd">                            this list represent decoder part of autoencoder bottleneck,</span>
+<span class="sd">                            decoder part is inferred symmetrically</span>
+<span class="sd">        resize_method:      up-sampling method, one of supported tf.image.ResizeMethod&#39;s</span>
+<span class="sd">        pad:                str, padding scheme: &#39;SAME&#39; or &#39;VALID&#39;</span>
+<span class="sd">        linear_layer_ref:   linear layer class - not used</span>
+<span class="sd">        name:               str, mame scope</span>
+<span class="sd">        max_batch_size:     int, dynamic batch size should be no greater than this value</span>
+<span class="sd">        reuse:              bool</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list of tensors holding encoded features, layer_wise from outer to inner</span>
+<span class="sd">        tensor holding batch-wise flattened hidden state vector</span>
+<span class="sd">        list of tensors holding decoded features, layer-wise from inner to outer</span>
+<span class="sd">        tensor holding reconstructed output</span>
+<span class="sd">        tensor holding estimated KL divergence</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+
+        <span class="c1"># Encode:</span>
+        <span class="n">encoder_layers</span><span class="p">,</span> <span class="n">shapes</span> <span class="o">=</span> <span class="n">conv2d_encoder</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span>
+            <span class="n">layer_config</span><span class="o">=</span><span class="n">layer_config</span><span class="p">,</span>
+            <span class="n">pad</span><span class="o">=</span><span class="n">pad</span><span class="p">,</span>
+            <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+        <span class="p">)</span>
+        <span class="c1"># Flatten hidden state, pass through dense:</span>
+        <span class="n">z_flat</span> <span class="o">=</span> <span class="n">batch_flatten</span><span class="p">(</span><span class="n">encoder_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">encoder_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="n">z</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
+            <span class="n">linear</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">z_flat</span><span class="p">,</span>
+                <span class="n">size</span><span class="o">=</span><span class="n">h</span> <span class="o">*</span> <span class="n">w</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;enc_dense&#39;</span><span class="p">,</span>
+                <span class="n">initializer</span><span class="o">=</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span>
+                <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="c1"># TODO: revert back to dubled Z-size</span>
+        <span class="c1"># half_size_z = h * w * c</span>
+        <span class="c1"># size_z = 2 * half_size_z</span>
+
+        <span class="n">size_z</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">h</span> <span class="o">*</span> <span class="n">w</span> <span class="o">*</span> <span class="n">c</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
+            <span class="n">linear</span><span class="p">(</span>
+                <span class="c1">#x=z_flat,</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">z</span><span class="p">,</span>
+                <span class="c1">#size=size_z,</span>
+                <span class="n">size</span><span class="o">=</span><span class="n">size_z</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;hidden_dense&#39;</span><span class="p">,</span>
+                <span class="n">initializer</span><span class="o">=</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span>
+                <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="c1"># Get sample parameters:</span>
+        <span class="c1">#mu, log_sigma = tf.split(z, [half_size_z, half_size_z], axis=-1)</span>
+        <span class="n">mu</span><span class="p">,</span> <span class="n">log_sigma</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="p">[</span><span class="n">size_z</span><span class="p">,</span> <span class="n">size_z</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Oversized noise generator:</span>
+        <span class="c1">#eps = tf.random_normal(shape=[max_batch_size, half_size_z], mean=0., stddev=1.)</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random_normal</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="n">max_batch_size</span><span class="p">,</span> <span class="n">size_z</span><span class="p">],</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="mf">1.</span><span class="p">)</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="n">eps</span><span class="p">[:</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">z</span><span class="p">)[</span><span class="mi">0</span><span class="p">],:]</span>
+
+        <span class="c1"># Get sample z ~ Q(z|X):</span>
+        <span class="n">z_sampled</span> <span class="o">=</span> <span class="n">mu</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_sigma</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">eps</span>
+
+        <span class="c1"># D_KL(Q(z|X) || P(z|X)):</span>
+        <span class="n">d_kl</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_sigma</span><span class="p">)</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.</span> <span class="o">-</span> <span class="n">log_sigma</span><span class="p">)</span>
+
+        <span class="c1"># Reshape back and feed to decoder:</span>
+
+        <span class="n">z_sampled_dec</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
+            <span class="n">linear</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">z_sampled</span><span class="p">,</span>
+                <span class="n">size</span><span class="o">=</span><span class="n">h</span> <span class="o">*</span> <span class="n">w</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;dec_dense&#39;</span><span class="p">,</span>
+                <span class="n">initializer</span><span class="o">=</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span>
+                <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">decoder_layers</span> <span class="o">=</span> <span class="n">conv2d_decoder</span><span class="p">(</span>
+            <span class="n">z</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">z_sampled_dec</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">c</span><span class="p">]),</span>
+            <span class="n">layer_config</span><span class="o">=</span><span class="n">layer_config</span><span class="p">,</span>
+            <span class="n">layer_shapes</span><span class="o">=</span><span class="n">shapes</span><span class="p">,</span>
+            <span class="n">pad</span><span class="o">=</span><span class="n">pad</span><span class="p">,</span>
+            <span class="n">resize_method</span><span class="o">=</span><span class="n">resize_method</span><span class="p">,</span>
+            <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+        <span class="p">)</span>
+        <span class="n">y_hat</span> <span class="o">=</span> <span class="n">decoder_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">encoder_layers</span><span class="p">,</span> <span class="n">z_sampled</span><span class="p">,</span> <span class="n">decoder_layers</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">,</span> <span class="n">d_kl</span></div>
+
+
+<div class="viewcode-block" id="KernelMonitor"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.ae.KernelMonitor">[docs]</a><span class="k">class</span> <span class="nc">KernelMonitor</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Visualises convolution filters learnt for specific layer.</span>
+<span class="sd">    Source: https://blog.keras.io/how-convolutional-neural-networks-see-the-world.html</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conv_input</span><span class="p">,</span> <span class="n">layer_output</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            conv_input:         convolution stack input tensor</span>
+<span class="sd">            layer_output:       tensor holding output of layer of interest from stack</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;kernel_index&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_input</span> <span class="o">=</span> <span class="n">conv_input</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layer_output</span> <span class="o">=</span> <span class="n">layer_output</span>
+        <span class="c1"># Build a loss function that maximizes the activation</span>
+        <span class="c1"># of the n-th filter of the layer considered:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vis_loss</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layer_output</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">])</span>
+
+        <span class="c1"># Gradient of the input picture wrt this loss:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vis_grads</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gradients</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vis_loss</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_input</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Normalization trick:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vis_grads</span> <span class="o">/=</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vis_grads</span><span class="p">)))</span> <span class="o">+</span> <span class="mf">1e-5</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_iterate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">signal</span><span class="p">,</span> <span class="n">kernel_index</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the loss and grads for specified kernel given the input signal</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sess:           tf.Session object</span>
+<span class="sd">            signal:         input signal to convolution stack</span>
+<span class="sd">            kernel_index:   filter number in layer considered</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            loss and gradients values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">vis_loss</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vis_grads</span><span class="p">],</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_input</span><span class="p">:</span> <span class="n">signal</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">:</span> <span class="n">kernel_index</span><span class="p">})</span>
+
+<div class="viewcode-block" id="KernelMonitor.fit"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.ae.KernelMonitor.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">kernel_index</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">num_steps</span><span class="o">=</span><span class="mi">40</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Learns input signal that maximizes the activation of given kernel.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sess:               tf.Session object</span>
+<span class="sd">            kernel_index:       filter number of interest</span>
+<span class="sd">            step:               gradient ascent step size</span>
+<span class="sd">            num_steps:          number of steps to fit</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            learnt signal as np.array</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Start from some noise:</span>
+        <span class="n">signal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">([</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_input</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="mi">1</span><span class="p">:])</span>
+
+        <span class="c1"># Run gradient ascent:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_steps</span><span class="p">):</span>
+            <span class="n">loss_value</span><span class="p">,</span> <span class="n">grads_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iterate</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">signal</span><span class="p">,</span> <span class="n">kernel_index</span><span class="p">)</span>
+            <span class="n">signal</span> <span class="o">+=</span> <span class="n">grads_value</span> <span class="o">*</span> <span class="n">step</span>
+
+        <span class="k">return</span> <span class="n">signal</span></div></div>
+
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../../',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

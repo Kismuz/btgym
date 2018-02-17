@@ -1,0 +1,408 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.research.gps.strategy &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../../search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="../../../../index.html"/>
+        <link rel="up" title="Module code" href="../../../index.html"/> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+      <li>btgym.research.gps.strategy</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for btgym.research.gps.strategy</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">import</span> <span class="nn">backtrader</span> <span class="k">as</span> <span class="nn">bt</span>
+<span class="kn">from</span> <span class="nn">btgym.research.strategy_gen_4</span> <span class="k">import</span> <span class="n">DevStrat_4_12</span>
+<span class="kn">from</span> <span class="nn">btgym.research.gps.oracle</span> <span class="k">import</span> <span class="n">Oracle</span>
+
+<span class="kn">from</span> <span class="nn">gym</span> <span class="k">import</span> <span class="n">spaces</span>
+<span class="kn">from</span> <span class="nn">btgym</span> <span class="k">import</span> <span class="n">DictSpace</span>
+
+
+<div class="viewcode-block" id="GuidedStrategy_0_0"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.strategy.GuidedStrategy_0_0">[docs]</a><span class="k">class</span> <span class="nc">GuidedStrategy_0_0</span><span class="p">(</span><span class="n">DevStrat_4_12</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Augments observation state with expert actions predictions estimated by accessing entire episode data (=cheating).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Time embedding period:</span>
+    <span class="n">time_dim</span> <span class="o">=</span> <span class="mi">30</span>  <span class="c1"># NOTE: changed this --&gt; change Policy  UNREAL for aux. pix control task upsampling params</span>
+
+    <span class="c1"># Number of environment steps to skip before returning next response,</span>
+    <span class="c1"># e.g. if set to 10 -- agent will interact with environment every 10th step;</span>
+    <span class="c1"># every other step agent action is assumed to be &#39;hold&#39;:</span>
+    <span class="n">skip_frame</span> <span class="o">=</span> <span class="mi">10</span>
+
+    <span class="c1"># Number of timesteps reward estimation statistics are averaged over, should be:</span>
+    <span class="c1"># skip_frame_period &lt;= avg_period &lt;= time_embedding_period:</span>
+    <span class="n">avg_period</span> <span class="o">=</span> <span class="mi">20</span>
+
+    <span class="c1"># Possible agent actions:</span>
+    <span class="n">portfolio_actions</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;buy&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">)</span>
+
+    <span class="n">gamma</span> <span class="o">=</span> <span class="mf">0.99</span>  <span class="c1"># fi_gamma, should be MDP gamma decay</span>
+
+    <span class="n">reward_scale</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># reward multiplicator</span>
+
+    <span class="n">state_ext_scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">3e3</span><span class="p">,</span> <span class="mf">1e3</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+
+    <span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="c1"># Note: fake `Width` dimension to use 2d conv etc.:</span>
+        <span class="n">state_shape</span><span class="o">=</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">100</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">time_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">avg_period</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="s1">&#39;expert&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">portfolio_actions</span><span class="p">),),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="n">DictSpace</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                        <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                        <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">high</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span>
+                    <span class="p">),</span>
+                    <span class="s1">&#39;trial_num&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                        <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                        <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">high</span><span class="o">=</span><span class="mi">10</span> <span class="o">**</span> <span class="mi">10</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span>
+                    <span class="p">),</span>
+                    <span class="s1">&#39;sample_num&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                        <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                        <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">high</span><span class="o">=</span><span class="mi">10</span> <span class="o">**</span> <span class="mi">10</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span>
+                    <span class="p">),</span>
+                    <span class="s1">&#39;first_row&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                        <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                        <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">high</span><span class="o">=</span><span class="mi">10</span> <span class="o">**</span> <span class="mi">10</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span>
+                    <span class="p">)</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+        <span class="p">},</span>
+        <span class="n">drawdown_call</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">target_call</span><span class="o">=</span><span class="mi">19</span><span class="p">,</span>
+        <span class="n">portfolio_actions</span><span class="o">=</span><span class="n">portfolio_actions</span><span class="p">,</span>
+        <span class="n">skip_frame</span><span class="o">=</span><span class="n">skip_frame</span><span class="p">,</span>
+        <span class="n">state_ext_scale</span><span class="o">=</span><span class="n">state_ext_scale</span><span class="p">,</span>  <span class="c1"># EURUSD</span>
+        <span class="n">state_int_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">gamma</span><span class="o">=</span><span class="n">gamma</span><span class="p">,</span>
+        <span class="n">reward_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{},</span>
+        <span class="c1"># Expert parameters:</span>
+        <span class="n">expert_config</span><span class="o">=</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;time_threshold&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>  <span class="c1"># minimum peak estimation radius in number of environment steps</span>
+            <span class="s1">&#39;pips_threshold&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>  <span class="c1"># minimum peak estimation value in number of quota points</span>
+            <span class="s1">&#39;pips_scale&#39;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">,</span>   <span class="c1"># value of single quota point relative to price value</span>
+            <span class="s1">&#39;kernel_size&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>     <span class="c1"># gaussian_over_action tails size in number of env. steps</span>
+            <span class="s1">&#39;kernel_stddev&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>   <span class="c1"># gaussian_over_action standard deviation</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">GuidedStrategy_0_0</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expert</span> <span class="o">=</span> <span class="n">Oracle</span><span class="p">(</span><span class="n">action_space</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">portfolio_actions</span><span class="p">)),</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">expert_config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expert_actions</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_expert_action</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="GuidedStrategy_0_0.nextstart"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.strategy.GuidedStrategy_0_0.nextstart">[docs]</a>    <span class="k">def</span> <span class="nf">nextstart</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Overrides base method augmenting it with estimating expert actions before actual episode starts.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># This value shows how much episode records we need to spend</span>
+        <span class="c1"># to estimate first environment observation:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">close</span><span class="o">.</span><span class="n">buflen</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Inner time embedding: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span><span class="p">))</span>
+
+        <span class="c1"># Now when we know exact maximum possible episode length -</span>
+        <span class="c1">#  can extract relevant episode data and make expert predictions:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datas</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">dataname</span><span class="o">.</span><span class="n">as_matrix</span><span class="p">()[</span><span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span><span class="p">:,</span> <span class="p">:]</span>
+
+        <span class="c1"># Note: need to form sort of environment &#39;custom candels&#39; by taking min and max price values over every</span>
+        <span class="c1"># skip_frame period; this is done inside Oracle class;</span>
+        <span class="c1"># TODO: shift actions forward to eliminate one-point prediction lag?</span>
+        <span class="c1"># expert_actions is a matrix representing discrete distribution over actions probabilities</span>
+        <span class="c1"># of size [max_env_steps, action_space_size]:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expert_actions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expert</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">episode_data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">resampling_factor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">get_expert_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_expert_action</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expert_actions</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">env_iteration</span><span class="p">]</span>
+
+        <span class="c1">#print(&#39;Strat_iteration:&#39;, self.iteration)</span>
+        <span class="c1">#print(&#39;Env_iteration:&#39;, self.env_iteration)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_expert_action</span>
+
+    <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Update inner state statistic and compose state:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_sliding_stat</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_market_state</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_broker_state</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;expert&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_expert_state</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span></div>
+
+
+<div class="viewcode-block" id="ExpertObserver"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.strategy.ExpertObserver">[docs]</a><span class="k">class</span> <span class="nc">ExpertObserver</span><span class="p">(</span><span class="n">bt</span><span class="o">.</span><span class="n">observer</span><span class="o">.</span><span class="n">Observer</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Keeps track of expert-advised actions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;buy&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">,</span> <span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">)</span>
+    <span class="n">plotinfo</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">subplot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">plotname</span><span class="o">=</span><span class="s1">&#39;Expert Actions&#39;</span><span class="p">,</span> <span class="n">plotymargin</span><span class="o">=.</span><span class="mi">8</span><span class="p">)</span>
+    <span class="n">plotlines</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">buy</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">marker</span><span class="o">=</span><span class="s1">&#39;^&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;cyan&#39;</span><span class="p">,</span> <span class="n">fillstyle</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">),</span>
+        <span class="n">sell</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">marker</span><span class="o">=</span><span class="s1">&#39;v&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;magenta&#39;</span><span class="p">,</span> <span class="n">fillstyle</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">),</span>
+        <span class="n">hold</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">marker</span><span class="o">=</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">fillstyle</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">),</span>
+        <span class="n">close</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">fillstyle</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="n">action</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_owner</span><span class="o">.</span><span class="n">current_expert_action</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">hold</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">buy</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">sell</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">close</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../../',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

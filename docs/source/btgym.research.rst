@@ -2,17 +2,26 @@ btgym\.research package
 =======================
 
 
-btgym\.research\.strategy_4 module
-----------------------------------
+btgym\.research\.gps subpackage
+--------------------------------
+.. toctree::
+    :maxdepth: 2
 
-.. automodule:: btgym.research.strategy_4
+    btgym.research.gps
+
+
+btgym\.research\.strategy_gen_4 module
+--------------------------------------
+
+.. automodule:: btgym.research.strategy_gen_4
     :members:
     :private-members:
 
 
-btgym\.research\.policy_stacked_lstm
+btgym\.research\.verbose_env_runner
 ------------------------------------
 
-.. automodule:: btgym.research.policy_stacked_lstm
+.. automodule:: btgym.research.verbose_env_runner
     :members:
     :private-members:
+

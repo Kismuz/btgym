@@ -26,11 +26,12 @@ class Oracle():
                                 to consider comparator(n, n+x) to be True
             pips_scale:         actual single pip value wrt signal value
             kernel_size:        gaussian convolution kernel size (used to compute distribution over actions)
-            kernel_stddev:      gaussian kernel standart deviation
+            kernel_stddev:      gaussian kernel standard deviation
         """
         self.action_space = action_space
         self.time_threshold = time_threshold
         self.value_threshold = pips_threshold * pips_scale
+        self.kernel_size = kernel_size
         self.kernel = signal.gaussian(kernel_size, std=kernel_stddev)
         self.data = None
 
@@ -62,7 +63,7 @@ class Oracle():
 
     def estimate_actions(self, episode_data):
         """
-        Estimates hold/buy/sell signals based on data received.
+        Estimates hold/buy/sell signals based on local peaks filtered by time horizon and signal amplitude.
 
         Args:
             episode_data:   1D np.array of unscaled [but possibly resampled] price values in OHL[CV] format
@@ -70,7 +71,7 @@ class Oracle():
         Returns:
             1D vector of signals of same length as episode_data
         """
-        # Find local maxima and minima indices:
+        # Find local maxima and minima indices within time horizon:
         max_ind = signal.argrelmax(episode_data, order=self.time_threshold)
         min_ind = signal.argrelmin(episode_data, order=self.time_threshold)
         indices = np.append(max_ind, min_ind)
@@ -103,21 +104,24 @@ class Oracle():
 
     def adjust_signals(self, signal):
         """
-        Add some simple heuristics
+        Add simple heuristics (based on examining learnt policy actions distribution):
+        - repeat same buy or sell signal `kernel_size - 1` times.
         """
-        for i in range(2, signal.shape[0]):
-            # repeat once:
-            if signal[i] !=0:
-                signal[i-1] = signal[i]
-                # add close signal before:
-                # TODO: if only change direction!!
-                signal[i - 2] = self.action_space[3]
+        i = 0
+        while i < signal.shape[0]:
+            j = 1
+            if signal[i] != 0:
+                # if got buy, sell or close  - repeat several times
+                while i + j < signal.shape[0] and j < self.kernel_size - 1:
+                    signal[i + j] = signal[i]
+                    j += 1
+            i = i + j
 
         return signal
 
     def fit(self, episode_data, resampling_factor=1):
         """
-        Estimates actions based on data received.
+        Estimates `advised` actions probabilities distribution based on data received.
 
         Args:
             episode_data:           1D np.array of unscaled price values in OHL[CV] format
@@ -152,7 +156,6 @@ class Oracle():
         actions_distr /= actions_distr.sum(axis=-1)[..., None]
 
         return actions_distr
-        #return actions_one_hot
 
     def resample_data(self, episode_data, factor=1):
         """

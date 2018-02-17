@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; BTGym 0.0.6 documentation</title>
+  <title>Index &mdash; BTGym 0.0.7 documentation</title>
   
 
   
@@ -36,7 +36,7 @@
         <link rel="index" title="Index"
               href="#"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="BTGym 0.0.6 documentation" href="index.html"/> 
+    <link rel="top" title="BTGym 0.0.7 documentation" href="index.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                0.0.6
+                0.0.7
               </div>
             
           
@@ -188,14 +188,17 @@
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
  | <a href="#I"><strong>I</strong></a>
+ | <a href="#K"><strong>K</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#N"><strong>N</strong></a>
+ | <a href="#O"><strong>O</strong></a>
  | <a href="#P"><strong>P</strong></a>
  | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
  | <a href="#U"><strong>U</strong></a>
+ | <a href="#V"><strong>V</strong></a>
  | <a href="#W"><strong>W</strong></a>
  
 </div>
@@ -246,21 +249,33 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.aac.A3C">A3C (class in btgym.algorithms.aac)</a>
 </li>
+      <li><a href="btgym.algorithms.policy.html#btgym.algorithms.policy.base.Aac1dPolicy">Aac1dPolicy (class in btgym.algorithms.policy.base)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.losses.aac_loss_def">aac_loss_def() (in module btgym.algorithms.nn.losses)</a>
+</li>
+      <li><a href="btgym.algorithms.policy.html#btgym.algorithms.policy.stacked_lstm.AacStackedRL2Policy">AacStackedRL2Policy (class in btgym.algorithms.policy.stacked_lstm)</a>
+</li>
+      <li><a href="btgym.algorithms.policy.html#btgym.algorithms.policy.base.BaseAacPolicy.act">act() (btgym.algorithms.policy.base.BaseAacPolicy method)</a>
+</li>
       <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.action_norm">action_norm() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
       <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.action_one_hot">action_one_hot() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.memory.Memory.add">add() (btgym.algorithms.memory.Memory method)</a>
 
       <ul>
         <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.Rollout.add">(btgym.algorithms.rollout.Rollout method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.Rollout.add_memory_sample">add_memory_sample() (btgym.algorithms.rollout.Rollout method)</a>
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.memory.Memory.add_rollout">add_rollout() (btgym.algorithms.memory.Memory method)</a>
+</li>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.oracle.Oracle.adjust_signals">adjust_signals() (btgym.research.gps.oracle.Oracle method)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.losses.ae_loss_def">ae_loss_def() (in module btgym.algorithms.nn.losses)</a>
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.envs.AtariRescale42x42">AtariRescale42x42 (class in btgym.algorithms.envs)</a>
 </li>
@@ -272,6 +287,14 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC">BaseAAC (class in btgym.algorithms.aac)</a>
 </li>
+      <li><a href="btgym.algorithms.policy.html#btgym.algorithms.policy.base.BaseAacPolicy">BaseAacPolicy (class in btgym.algorithms.policy.base)</a>
+</li>
+      <li><a href="btgym.algorithms.runner.html#btgym.algorithms.runner.base.BaseEnvRunnerFn">BaseEnvRunnerFn() (in module btgym.algorithms.runner.base)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.losses.beta_vae_loss_def">beta_vae_loss_def() (in module btgym.algorithms.nn.losses)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.ae.beta_var_conv2d_autoencoder">beta_var_conv2d_autoencoder() (in module btgym.algorithms.nn.ae)</a>
+</li>
       <li><a href="btgym.algorithms.html#module-btgym.algorithms.aac">btgym.algorithms.aac (module)</a>
 </li>
       <li><a href="btgym.algorithms.html#module-btgym.algorithms.envs">btgym.algorithms.envs (module)</a>
@@ -280,11 +303,23 @@
 </li>
       <li><a href="btgym.algorithms.html#module-btgym.algorithms.memory">btgym.algorithms.memory (module)</a>
 </li>
-      <li><a href="btgym.algorithms.html#module-btgym.algorithms.policy">btgym.algorithms.policy (module)</a>
+      <li><a href="btgym.algorithms.nn.html#module-btgym.algorithms.nn.ae">btgym.algorithms.nn.ae (module)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#module-btgym.algorithms.nn.layers">btgym.algorithms.nn.layers (module)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#module-btgym.algorithms.nn.losses">btgym.algorithms.nn.losses (module)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#module-btgym.algorithms.nn.networks">btgym.algorithms.nn.networks (module)</a>
+</li>
+      <li><a href="btgym.algorithms.policy.html#module-btgym.algorithms.policy.base">btgym.algorithms.policy.base (module)</a>
+</li>
+      <li><a href="btgym.algorithms.policy.html#module-btgym.algorithms.policy.stacked_lstm">btgym.algorithms.policy.stacked_lstm (module)</a>
 </li>
       <li><a href="btgym.algorithms.html#module-btgym.algorithms.rollout">btgym.algorithms.rollout (module)</a>
 </li>
-      <li><a href="btgym.algorithms.html#module-btgym.algorithms.runner">btgym.algorithms.runner (module)</a>
+      <li><a href="btgym.algorithms.runner.html#module-btgym.algorithms.runner.base">btgym.algorithms.runner.base (module)</a>
+</li>
+      <li><a href="btgym.algorithms.runner.html#module-btgym.algorithms.runner.threadrunner">btgym.algorithms.runner.threadrunner (module)</a>
 </li>
       <li><a href="btgym.algorithms.html#module-btgym.algorithms.worker">btgym.algorithms.worker (module)</a>
 </li>
@@ -304,12 +339,26 @@
 </li>
       <li><a href="btgym.rendering.html#module-btgym.rendering.plotter">btgym.rendering.plotter (module)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.rendering.html#module-btgym.rendering.renderer">btgym.rendering.renderer (module)</a>
+</li>
+      <li><a href="btgym.research.gps.html#module-btgym.research.gps.aac">btgym.research.gps.aac (module)</a>
+</li>
+      <li><a href="btgym.research.gps.html#module-btgym.research.gps.loss">btgym.research.gps.loss (module)</a>
+</li>
+      <li><a href="btgym.research.gps.html#module-btgym.research.gps.oracle">btgym.research.gps.oracle (module)</a>
+</li>
+      <li><a href="btgym.research.gps.html#module-btgym.research.gps.policy">btgym.research.gps.policy (module)</a>
+</li>
+      <li><a href="btgym.research.gps.html#module-btgym.research.gps.strategy">btgym.research.gps.strategy (module)</a>
+</li>
+      <li><a href="btgym.research.html#module-btgym.research.strategy_gen_4">btgym.research.strategy_gen_4 (module)</a>
+</li>
+      <li><a href="btgym.research.html#module-btgym.research.verbose_env_runner">btgym.research.verbose_env_runner (module)</a>
 </li>
       <li><a href="btgym.html#module-btgym.server">btgym.server (module)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.html#module-btgym.spaces">btgym.spaces (module)</a>
 </li>
       <li><a href="btgym.strategy.html#module-btgym.strategy.base">btgym.strategy.base (module)</a>
@@ -356,9 +405,27 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.launcher.Launcher.clear_port">clear_port() (btgym.algorithms.launcher.Launcher method)</a>
 </li>
+      <li><a href="btgym.envs.html#btgym.envs.backtrader.BTgymEnv.close">close() (btgym.envs.backtrader.BTgymEnv method)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.layers.conv1d">conv1d() (in module btgym.algorithms.nn.layers)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.layers.conv2d">conv2d() (in module btgym.algorithms.nn.layers)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.ae.conv2d_autoencoder">conv2d_autoencoder() (in module btgym.algorithms.nn.ae)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="btgym.envs.html#btgym.envs.backtrader.BTgymEnv.close">close() (btgym.envs.backtrader.BTgymEnv method)</a>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.ae.conv2d_decoder">conv2d_decoder() (in module btgym.algorithms.nn.ae)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.layers.conv2d_dw">conv2d_dw() (in module btgym.algorithms.nn.layers)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.ae.conv2d_encoder">conv2d_encoder() (in module btgym.algorithms.nn.ae)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.networks.conv_1d_network">conv_1d_network() (in module btgym.algorithms.nn.networks)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.networks.conv_2d_network">conv_2d_network() (in module btgym.algorithms.nn.networks)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.ae.cw_conv2d_autoencoder">cw_conv2d_autoencoder() (in module btgym.algorithms.nn.ae)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -368,12 +435,32 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.datafeed.html#btgym.datafeed.base.DataSampleConfig">DataSampleConfig (in module btgym.datafeed.base)</a>
 </li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.layers.deconv2d">deconv2d() (in module btgym.algorithms.nn.layers)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.networks.dense_aac_network">dense_aac_network() (in module btgym.algorithms.nn.networks)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.networks.dense_rp_network">dense_rp_network() (in module btgym.algorithms.nn.networks)</a>
+</li>
       <li><a href="btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.describe">describe() (btgym.datafeed.base.BTgymBaseData method)</a>
 </li>
-      <li><a href="btgym.html#btgym.spaces.DictSpace">DictSpace (class in btgym.spaces)</a>
+      <li><a href="btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_10">DevStrat_4_10 (class in btgym.research.strategy_gen_4)</a>
+</li>
+      <li><a href="btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_11">DevStrat_4_11 (class in btgym.research.strategy_gen_4)</a>
+</li>
+      <li><a href="btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_12">DevStrat_4_12 (class in btgym.research.strategy_gen_4)</a>
+</li>
+      <li><a href="btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_6">DevStrat_4_6 (class in btgym.research.strategy_gen_4)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_7">DevStrat_4_7 (class in btgym.research.strategy_gen_4)</a>
+</li>
+      <li><a href="btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_8">DevStrat_4_8 (class in btgym.research.strategy_gen_4)</a>
+</li>
+      <li><a href="btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_9">DevStrat_4_9 (class in btgym.research.strategy_gen_4)</a>
+</li>
+      <li><a href="btgym.html#btgym.spaces.DictSpace">DictSpace (class in btgym.spaces)</a>
+</li>
       <li><a href="btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.draw_episode">draw_episode() (btgym.rendering.renderer.BTgymRendering method)</a>
 </li>
       <li><a href="btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.draw_image">draw_image() (btgym.rendering.renderer.BTgymRendering method)</a>
@@ -382,19 +469,23 @@
 </li>
       <li><a href="btgym.rendering.html#btgym.rendering.plotter.DrawCerebro">DrawCerebro (class in btgym.rendering.plotter)</a>
 </li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.networks.duelling_pc_network">duelling_pc_network() (in module btgym.algorithms.nn.networks)</a>
+</li>
   </ul></td>
 </tr></table>
 
 <h2 id="E">E</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="btgym.algorithms.html#btgym.algorithms.runner.BaseEnvRunnerFn">BaseEnvRunnerFn() (in module btgym.algorithms.runner)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.datafeed.html#btgym.datafeed.base.EnvResetConfig">EnvResetConfig (in module btgym.datafeed.base)</a>
 </li>
       <li><a href="btgym.datafeed.html#btgym.datafeed.derivative.BTgymRandomDataDomain.episode_class_ref">episode_class_ref (btgym.datafeed.derivative.BTgymRandomDataDomain attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.oracle.Oracle.estimate_actions">estimate_actions() (btgym.research.gps.oracle.Oracle method)</a>
+</li>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.strategy.ExpertObserver">ExpertObserver (class in btgym.research.gps.strategy)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -404,6 +495,16 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.memory.Memory.fill">fill() (btgym.algorithms.memory.Memory method)</a>
 </li>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.oracle.Oracle.filter_by_margine">filter_by_margine() (btgym.research.gps.oracle.Oracle method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.ae.KernelMonitor.fit">fit() (btgym.algorithms.nn.ae.KernelMonitor method)</a>
+
+      <ul>
+        <li><a href="btgym.research.gps.html#btgym.research.gps.oracle.Oracle.fit">(btgym.research.gps.oracle.Oracle method)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -420,17 +521,51 @@
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.Rollout.get_frame">get_frame() (btgym.algorithms.rollout.Rollout method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_info">get_info() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
-      <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_reward">get_reward() (btgym.strategy.base.BTgymBaseStrategy method)</a>
+      <li><a href="btgym.algorithms.policy.html#btgym.algorithms.policy.base.BaseAacPolicy.get_initial_features">get_initial_features() (btgym.algorithms.policy.base.BaseAacPolicy method)</a>
+
+      <ul>
+        <li><a href="btgym.algorithms.policy.html#btgym.algorithms.policy.stacked_lstm.AacStackedRL2Policy.get_initial_features">(btgym.algorithms.policy.stacked_lstm.AacStackedRL2Policy method)</a>
 </li>
+      </ul></li>
+      <li><a href="btgym.algorithms.policy.html#btgym.algorithms.policy.base.BaseAacPolicy.get_pc_target">get_pc_target() (btgym.algorithms.policy.base.BaseAacPolicy method)</a>
+</li>
+      <li><a href="btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_10.get_reward">get_reward() (btgym.research.strategy_gen_4.DevStrat_4_10 method)</a>
+
+      <ul>
+        <li><a href="btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_6.get_reward">(btgym.research.strategy_gen_4.DevStrat_4_6 method)</a>
+</li>
+        <li><a href="btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_7.get_reward">(btgym.research.strategy_gen_4.DevStrat_4_7 method)</a>
+</li>
+        <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_reward">(btgym.strategy.base.BTgymBaseStrategy method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.get_sample_config">get_sample_config() (btgym.algorithms.aac.BaseAAC method)</a>
+
+      <ul>
+        <li><a href="btgym.algorithms.policy.html#btgym.algorithms.policy.base.BaseAacPolicy.get_sample_config">(btgym.algorithms.policy.base.BaseAacPolicy method)</a>
 </li>
+      </ul></li>
       <li><a href="btgym.envs.html#btgym.envs.backtrader.BTgymEnv.get_stat">get_stat() (btgym.envs.backtrader.BTgymEnv method)</a>
 </li>
       <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_state">get_state() (btgym.strategy.base.BTgymBaseStrategy method)</a>
+</li>
+      <li><a href="btgym.algorithms.policy.html#btgym.algorithms.policy.base.BaseAacPolicy.get_value">get_value() (btgym.algorithms.policy.base.BaseAacPolicy method)</a>
+</li>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.loss.guided_aac_loss_def_0_0">guided_aac_loss_def_0_0() (in module btgym.research.gps.loss)</a>
+</li>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.loss.guided_aac_loss_def_0_1">guided_aac_loss_def_0_1() (in module btgym.research.gps.loss)</a>
+</li>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.loss.guided_aac_loss_def_0_3">guided_aac_loss_def_0_3() (in module btgym.research.gps.loss)</a>
+</li>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.aac.GuidedAAC">GuidedAAC (class in btgym.research.gps.aac)</a>
+</li>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.policy.GuidedPolicy_0_0">GuidedPolicy_0_0 (class in btgym.research.gps.policy)</a>
+</li>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.strategy.GuidedStrategy_0_0">GuidedStrategy_0_0 (class in btgym.research.gps.strategy)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -443,10 +578,24 @@
   </ul></td>
 </tr></table>
 
+<h2 id="K">K</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.ae.KernelMonitor">KernelMonitor (class in btgym.algorithms.nn.ae)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.algorithms.html#btgym.algorithms.launcher.Launcher">Launcher (class in btgym.algorithms.launcher)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.layers.linear">linear() (in module btgym.algorithms.nn.layers)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.networks.lstm_network">lstm_network() (in module btgym.algorithms.nn.networks)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -470,11 +619,23 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.next">next() (btgym.strategy.base.BTgymBaseStrategy method)</a>
 </li>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.strategy.GuidedStrategy_0_0.nextstart">nextstart() (btgym.research.gps.strategy.GuidedStrategy_0_0 method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.layers.noisy_linear">noisy_linear() (in module btgym.algorithms.nn.layers)</a>
+</li>
       <li><a href="btgym.strategy.html#btgym.strategy.observers.NormPnL">NormPnL (class in btgym.strategy.observers)</a>
 </li>
       <li><a href="btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.notify_order">notify_order() (btgym.strategy.base.BTgymBaseStrategy method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="O">O</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.oracle.Oracle">Oracle (class in btgym.research.gps.oracle)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -484,6 +645,10 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.parse_response">parse_response() (btgym.rendering.renderer.BTgymRendering method)</a>
 </li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.losses.pc_loss_def">pc_loss_def() (in module btgym.algorithms.nn.losses)</a>
+</li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.networks.pixel_change_2d_estimator">pixel_change_2d_estimator() (in module btgym.algorithms.nn.networks)</a>
+</li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.Rollout.pop_frame">pop_frame() (btgym.algorithms.rollout.Rollout method)</a>
 </li>
       <li><a href="btgym.strategy.html#btgym.strategy.observers.Position">Position (class in btgym.strategy.observers)</a>
@@ -492,6 +657,8 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.losses.ppo_loss_def">ppo_loss_def() (in module btgym.algorithms.nn.losses)</a>
+</li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.process">process() (btgym.algorithms.aac.BaseAAC method)</a>
 
       <ul>
@@ -520,6 +687,8 @@
         <li><a href="btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.render">(btgym.rendering.renderer.BTgymRendering method)</a>
 </li>
       </ul></li>
+      <li><a href="btgym.research.gps.html#btgym.research.gps.oracle.Oracle.resample_data">resample_data() (btgym.research.gps.oracle.Oracle method)</a>
+</li>
       <li><a href="btgym.datafeed.html#btgym.datafeed.base.BTgymBaseData.reset">reset() (btgym.datafeed.base.BTgymBaseData method)</a>
 
       <ul>
@@ -538,10 +707,12 @@
 </li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.rollout.Rollout">Rollout (class in btgym.algorithms.rollout)</a>
 </li>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.losses.rp_loss_def">rp_loss_def() (in module btgym.algorithms.nn.losses)</a>
+</li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.launcher.Launcher.run">run() (btgym.algorithms.launcher.Launcher method)</a>
 
       <ul>
-        <li><a href="btgym.algorithms.html#btgym.algorithms.runner.RunnerThread.run">(btgym.algorithms.runner.RunnerThread method)</a>
+        <li><a href="btgym.algorithms.runner.html#btgym.algorithms.runner.threadrunner.RunnerThread.run">(btgym.algorithms.runner.threadrunner.RunnerThread method)</a>
 </li>
         <li><a href="btgym.algorithms.html#btgym.algorithms.worker.Worker.run">(btgym.algorithms.worker.Worker method)</a>
 </li>
@@ -552,7 +723,7 @@
         <li><a href="btgym.html#btgym.server.BTgymServer.run">(btgym.server.BTgymServer method)</a>
 </li>
       </ul></li>
-      <li><a href="btgym.algorithms.html#btgym.algorithms.runner.RunnerThread">RunnerThread (class in btgym.algorithms.runner)</a>
+      <li><a href="btgym.algorithms.runner.html#btgym.algorithms.runner.threadrunner.RunnerThread">RunnerThread (class in btgym.algorithms.runner.threadrunner)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -574,6 +745,8 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.algorithms.policy.html#btgym.algorithms.policy.stacked_lstm.StackedLstmPolicy">StackedLstmPolicy (class in btgym.algorithms.policy.stacked_lstm)</a>
+</li>
       <li><a href="btgym.algorithms.html#btgym.algorithms.aac.BaseAAC.start">start() (btgym.algorithms.aac.BaseAAC method)</a>
 
       <ul>
@@ -629,6 +802,18 @@
   </ul></td>
 </tr></table>
 
+<h2 id="V">V</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.algorithms.nn.html#btgym.algorithms.nn.losses.value_fn_loss_def">value_fn_loss_def() (in module btgym.algorithms.nn.losses)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="btgym.research.html#btgym.research.verbose_env_runner.VerboseEnvRunnerFn">VerboseEnvRunnerFn() (in module btgym.research.verbose_env_runner)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="W">W</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -659,7 +844,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, Andrew Muzikin.
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
 
     </p>
   </div>
@@ -681,7 +866,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.0.6',
+            VERSION:'0.0.7',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

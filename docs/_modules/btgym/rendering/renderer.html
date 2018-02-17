@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>btgym.rendering.renderer &mdash; BTGym 0.0.6 documentation</title>
+  <title>btgym.rendering.renderer &mdash; BTGym 0.0.7 documentation</title>
   
 
   
@@ -35,7 +35,7 @@
         <link rel="index" title="Index"
               href="../../../genindex.html"/>
         <link rel="search" title="Search" href="../../../search.html"/>
-    <link rel="top" title="BTGym 0.0.6 documentation" href="../../../index.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="../../../index.html"/>
         <link rel="up" title="Module code" href="../../index.html"/> 
 
   
@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                0.0.6
+                0.0.7
               </div>
             
           
@@ -234,6 +234,7 @@
         <span class="n">plt_backend</span><span class="o">=</span><span class="s1">&#39;Agg&#39;</span><span class="p">,</span>  <span class="c1"># Not used.</span>
     <span class="p">)</span>
     <span class="n">enabled</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">ready</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">render_modes</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -290,15 +291,17 @@
 <span class="sd">        Call me before use!</span>
 <span class="sd">        [Supposed to be done inside already running server process]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="k">import</span> <span class="n">Pipe</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">out_pipe</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_pipe</span> <span class="o">=</span> <span class="n">Pipe</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">ready</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="k">import</span> <span class="n">Pipe</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">out_pipe</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_pipe</span> <span class="o">=</span> <span class="n">Pipe</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="kn">import</span> <span class="nn">matplotlib</span>
-            <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plt_backend</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="kn">import</span> <span class="nn">matplotlib</span>
+                <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plt_backend</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span> <span class="o">=</span> <span class="n">plt</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">plt</span> <span class="o">=</span> <span class="n">plt</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ready</span> <span class="o">=</span> <span class="kc">True</span></div>
 
 <div class="viewcode-block" id="BTgymRendering.to_string"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.to_string">[docs]</a>    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="n">excluded</span><span class="o">=</span><span class="p">[]):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -466,6 +469,7 @@
                                                             <span class="n">box_text</span><span class="o">=</span><span class="n">box_text</span><span class="p">,</span>
                                                             <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;Price&#39;</span><span class="p">,</span>
                                                             <span class="n">xlabel</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_xlabel</span><span class="p">,</span>
+                                                            <span class="n">line_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Open&#39;</span><span class="p">,</span> <span class="s1">&#39;High&#39;</span><span class="p">,</span> <span class="s1">&#39;Low&#39;</span><span class="p">,</span> <span class="s1">&#39;Close&#39;</span><span class="p">],</span>
                                                             <span class="p">)</span>
             <span class="k">if</span> <span class="n">send_img</span><span class="p">:</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rgb_dict</span>
@@ -484,11 +488,36 @@
 
             <span class="k">return</span> <span class="n">return_dict</span></div>
 
-<div class="viewcode-block" id="BTgymRendering.draw_plot"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.draw_plot">[docs]</a>    <span class="k">def</span> <span class="nf">draw_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">box_text</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s1">&#39;X&#39;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;Y&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymRendering.draw_plot"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.draw_plot">[docs]</a>    <span class="k">def</span> <span class="nf">draw_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">box_text</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s1">&#39;X&#39;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;Y&#39;</span><span class="p">,</span> <span class="n">line_labels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Visualises environment state as 2d line plot.</span>
 <span class="sd">        Retrurns image as rgb_array.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data:           np.array of shape [num_values, num_lines]</span>
+<span class="sd">            figsize:        figure size (in.)</span>
+<span class="sd">            title:</span>
+<span class="sd">            box_text:</span>
+<span class="sd">            xlabel:</span>
+<span class="sd">            ylabel:</span>
+<span class="sd">            line_labels:    iterable holding line legends as str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">                rgb image as np.array of size [with, height, 3]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">line_labels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># If got no labels - make it numbers:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">line_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;line_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">line_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;line_0&#39;</span><span class="p">]</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">line_labels</span><span class="p">)</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> \
+                <span class="s1">&#39;Expected `line_labels` kwarg consist of </span><span class="si">{}</span><span class="s1"> names, fot: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span> <span class="nb">format</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">line_labels</span><span class="p">)</span>
+
+
+
         <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_dpi</span><span class="p">,</span> <span class="p">)</span>
         <span class="c1">#ax = fig.add_subplot(111)</span>
 
@@ -514,7 +543,9 @@
         <span class="c1"># Add Info box:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">box_text</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">render_boxtext</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">line_labels</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="n">line</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 
         <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
@@ -528,7 +559,7 @@
 
         <span class="k">return</span> <span class="n">rgb_array</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">get_width_height</span><span class="p">()[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">3</span><span class="p">,))</span></div>
 
-<div class="viewcode-block" id="BTgymRendering.draw_image"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.draw_image">[docs]</a>    <span class="k">def</span> <span class="nf">draw_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">box_text</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s1">&#39;X&#39;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;Y&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymRendering.draw_image"><a class="viewcode-back" href="../../../btgym.rendering.html#btgym.rendering.renderer.BTgymRendering.draw_image">[docs]</a>    <span class="k">def</span> <span class="nf">draw_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">box_text</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s1">&#39;X&#39;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;Y&#39;</span><span class="p">,</span> <span class="n">line_labels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Visualises environment state as image.</span>
 <span class="sd">        Returns rgb_array.</span>
@@ -641,7 +672,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, Andrew Muzikin.
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
 
     </p>
   </div>
@@ -663,7 +694,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../../',
-            VERSION:'0.0.6',
+            VERSION:'0.0.7',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

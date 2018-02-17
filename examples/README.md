@@ -1,5 +1,8 @@
 ### BTgym examples and how-to's.
 ****
+- **[Guided policy search](./guided_policy_search.ipynb)**: Speeding up training with expert actions.
+
+****
 - **[Observation state preprocessing: scaling](./state_signal_scaling.ipynb)**: Using data-unconditioned methods to feed agent.
 
 ****

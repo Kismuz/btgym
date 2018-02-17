@@ -5,7 +5,7 @@ from btgym.algorithms.nn.layers import noisy_linear
 
 class GuidedPolicy_0_0(AacStackedRL2Policy):
     """
-    Guided policy.
+    Guided policy: simple configuration wrapper around Stacked LSTM architecture.
     """
 
     def __init__(

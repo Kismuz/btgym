@@ -22,7 +22,8 @@ def VerboseEnvRunnerFn(
 ):
     """
     More verbose function for runtime logic of the thread runner.
-    Extends per-episode summaries.
+    Extends per-episode summaries with visualiation of: actions porbabilities distribution, value function,
+    hidden LSTM state. In it's default configuration supposed to be used with stacked_LSTM architecture.
 
 
     Args:
@@ -39,7 +40,7 @@ def VerboseEnvRunnerFn(
         aux_summaries:          list of str, additional summaries to compute
 
     Yelds:
-        collected data as dictionary of on_policy, off_policy rollouts and episode statistics.
+        collected data as dictionary of on_policy, off_policy rollouts, episode statistics and summaries.
     """
     if memory_config is not None:
         memory = memory_config['class_ref'](**memory_config['kwargs'])

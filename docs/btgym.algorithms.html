@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>btgym.algorithms package &mdash; BTGym 0.0.6 documentation</title>
+  <title>btgym.algorithms package &mdash; BTGym 0.0.7 documentation</title>
   
 
   
@@ -35,8 +35,8 @@
         <link rel="index" title="Index"
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="BTGym 0.0.6 documentation" href="index.html"/>
-        <link rel="next" title="btgym.research package" href="btgym.research.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="index.html"/>
+        <link rel="next" title="btgym.algorithms.nn.losses module" href="btgym.algorithms.nn.html"/>
         <link rel="prev" title="btgym.datafeed package" href="btgym.datafeed.html"/> 
 
   
@@ -66,7 +66,7 @@
             
             
               <div class="version">
-                0.0.6
+                0.0.7
               </div>
             
           
@@ -112,16 +112,29 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">btgym.algorithms package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-nn-subpackage">btgym.algorithms.nn subpackage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="btgym.algorithms.nn.html">btgym.algorithms.nn.losses module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="btgym.algorithms.nn.html#module-btgym.algorithms.nn.networks">btgym.algorithms.nn.networks module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="btgym.algorithms.nn.html#module-btgym.algorithms.nn.layers">btgym.algorithms.nn.layers module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="btgym.algorithms.nn.html#module-btgym.algorithms.nn.ae">btgym.algorithms.nn.ae module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-policy-subpackage">btgym.algorithms.policy subpackage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="btgym.algorithms.policy.html">btgym.algorithms.policy.base module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="btgym.algorithms.policy.html#module-btgym.algorithms.policy.stacked_lstm">btgym.algorithms.policy.stacked_lstm module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-runner-subpackage">btgym.algorithms.runner subpackage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="btgym.algorithms.runner.html">btgym.algorithms.runner.base module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="btgym.algorithms.runner.html#module-btgym.algorithms.runner.threadrunner">btgym.algorithms.runner.threadrunner module</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.launcher">btgym.algorithms.launcher module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.worker">btgym.algorithms.worker module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.aac">btgym.algorithms.aac module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.policy">btgym.algorithms.policy module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-losses-module">btgym.algorithms.losses module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-nn-utils-module">btgym.algorithms.nn_utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.rollout">btgym.algorithms.rollout module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.memory">btgym.algorithms.memory module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.envs">btgym.algorithms.envs module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.runner">btgym.algorithms.runner module</a></li>
 </ul>
 </li>
 </ul>
@@ -192,6 +205,35 @@
             
   <div class="section" id="btgym-algorithms-package">
 <h1>btgym.algorithms package<a class="headerlink" href="#btgym-algorithms-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="btgym-algorithms-nn-subpackage">
+<h2>btgym.algorithms.nn subpackage<a class="headerlink" href="#btgym-algorithms-nn-subpackage" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.nn.html">btgym.algorithms.nn.losses module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.nn.html#module-btgym.algorithms.nn.networks">btgym.algorithms.nn.networks module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.nn.html#module-btgym.algorithms.nn.layers">btgym.algorithms.nn.layers module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.nn.html#module-btgym.algorithms.nn.ae">btgym.algorithms.nn.ae module</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="btgym-algorithms-policy-subpackage">
+<h2>btgym.algorithms.policy subpackage<a class="headerlink" href="#btgym-algorithms-policy-subpackage" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.policy.html">btgym.algorithms.policy.base module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.policy.html#module-btgym.algorithms.policy.stacked_lstm">btgym.algorithms.policy.stacked_lstm module</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="btgym-algorithms-runner-subpackage">
+<h2>btgym.algorithms.runner subpackage<a class="headerlink" href="#btgym-algorithms-runner-subpackage" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.runner.html">btgym.algorithms.runner.base module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.runner.html#module-btgym.algorithms.runner.threadrunner">btgym.algorithms.runner.threadrunner module</a></li>
+</ul>
+</div>
+</div>
 <div class="section" id="module-btgym.algorithms.launcher">
 <span id="btgym-algorithms-launcher-module"></span><h2>btgym.algorithms.launcher module<a class="headerlink" href="#module-btgym.algorithms.launcher" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
@@ -325,7 +367,7 @@ it’s own ThreadRunner process.</dd>
 <span id="btgym-algorithms-aac-module"></span><h2>btgym.algorithms.aac module<a class="headerlink" href="#module-btgym.algorithms.aac" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.aac.BaseAAC">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log_level</em>, <em>_log_name='AAC'</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_train_test_cycle=(1</em>, <em>0)</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1.0</em>, <em>pc_lambda=1.0</em>, <em>vr_lambda=1.0</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>_use_target_policy=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log_level</em>, <em>_log_name='AAC'</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>runner_fn_ref=&lt;function BaseEnvRunnerFn&gt;</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_train_test_cycle=(1</em>, <em>0)</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1.0</em>, <em>pc_lambda=1.0</em>, <em>vr_lambda=1.0</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>_use_target_policy=False</em>, <em>_aux_render_modes=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base Asynchronous Advantage Actor Critic algorithm framework class with auxiliary control tasks and
 option to run several instances of environment for every worker in vectorized fashion, PAAC-like.
 Can be configured to run with different losses and policies.</p>
@@ -346,12 +388,13 @@ Can be configured to run with different losses and policies.</p>
 <li><strong>task</strong> – int, parent worker id</li>
 <li><strong>policy_config</strong> – policy estimator class and configuration dictionary</li>
 <li><strong>log_level</strong> – int, logbook.level</li>
-<li><strong>_log_name</strong> – str, class-wide logger name</li>
+<li><strong>_log_name</strong> – str, class-wide logger name, internal</li>
 <li><strong>on_policy_loss</strong> – callable returning tensor holding on_policy training loss graph and summaries</li>
 <li><strong>off_policy_loss</strong> – callable returning tensor holding off_policy training loss graph and summaries</li>
 <li><strong>vr_loss</strong> – callable returning tensor holding value replay loss graph and summaries</li>
 <li><strong>rp_loss</strong> – callable returning tensor holding reward prediction loss graph and summaries</li>
 <li><strong>pc_loss</strong> – callable returning tensor holding pixel_control loss graph and summaries</li>
+<li><strong>runner_fn_ref</strong> – callable defining environment runner execution logic</li>
 <li><strong>random_seed</strong> – int or None</li>
 <li><strong>model_gamma</strong> – scalar, gamma discount factor</li>
 <li><strong>model_gae_lambda</strong> – scalar, GAE lambda</li>
@@ -391,6 +434,7 @@ with provided dataset parameters (test data should exist if <cite>test_number &g
 <li><strong>num_epochs</strong> – int, num. of SGD runs for every train step, val. &gt; 1 should be used with caution.</li>
 <li><strong>pi_prime_update_period</strong> – int, PPO: pi to pi_old update period in number of train steps, def: 1</li>
 <li><strong>_use_target_policy</strong> – bool, PPO: use target policy (aka pi_old), delayed by <cite>pi_prime_update_period</cite> delay</li>
+<li><strong>_aux_render_modes</strong> – additional visualisationas to include in per-episode rendering summary, internal</li>
 </ul>
 </td>
 </tr>
@@ -755,15 +799,6 @@ optionally augmented with auxiliary control tasks.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-btgym.algorithms.policy">
-<span id="btgym-algorithms-policy-module"></span><h2>btgym.algorithms.policy module<a class="headerlink" href="#module-btgym.algorithms.policy" title="Permalink to this headline">¶</a></h2>
-</div>
-<div class="section" id="btgym-algorithms-losses-module">
-<h2>btgym.algorithms.losses module<a class="headerlink" href="#btgym-algorithms-losses-module" title="Permalink to this headline">¶</a></h2>
-</div>
-<div class="section" id="btgym-algorithms-nn-utils-module">
-<h2>btgym.algorithms.nn_utils module<a class="headerlink" href="#btgym-algorithms-nn-utils-module" title="Permalink to this headline">¶</a></h2>
-</div>
 <div class="section" id="module-btgym.algorithms.rollout">
 <span id="btgym-algorithms-rollout-module"></span><h2>btgym.algorithms.rollout module<a class="headerlink" href="#module-btgym.algorithms.rollout" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
@@ -1027,83 +1062,6 @@ normalized in [0,1] grayscale 42x42 visual output.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-btgym.algorithms.runner">
-<span id="btgym-algorithms-runner-module"></span><h2>btgym.algorithms.runner module<a class="headerlink" href="#module-btgym.algorithms.runner" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="btgym.algorithms.runner.RunnerThread">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.runner.</code><code class="descname">RunnerThread</code><span class="sig-paren">(</span><em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>test</em>, <em>ep_summary</em>, <em>memory_config=None</em>, <em>log_level=13</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#RunnerThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.RunnerThread" title="Permalink to this definition">¶</a></dt>
-<dd><p>Async. framework code comes from OpenAI repository under MIT licence:
-<a class="reference external" href="https://github.com/openai/universe-starter-agent">https://github.com/openai/universe-starter-agent</a></p>
-<p>Despite the fact BTgym is not real-time environment [yet], thread-runner approach is still here. From
-original <cite>universe-starter-agent</cite>:
-<cite>…One of the key distinctions between a normal environment and a universe environment
-is that a universe environment is _real time_.  This means that there should be a thread
-that would constantly interact with the environment and tell it what to do.  This thread is here.</cite></p>
-<p>Another idea is to see ThreadRunner as all-in-one data provider, thus shaping data distribution
-fed to estimator from single place.
-So, replay memory is also here, as well as some service functions (collecting summary data).</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env</strong> – environment instance</li>
-<li><strong>policy</strong> – policy instance</li>
-<li><strong>task</strong> – int</li>
-<li><strong>rollout_length</strong> – int</li>
-<li><strong>episode_summary_freq</strong> – int</li>
-<li><strong>env_render_freq</strong> – int</li>
-<li><strong>test</strong> – Atari or BTGyn</li>
-<li><strong>ep_summary</strong> – tf.summary</li>
-<li><strong>memory_config</strong> – replay memory configuration dictionary</li>
-<li><strong>log_level</strong> – int, logbook.level</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="btgym.algorithms.runner.RunnerThread.run">
-<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#RunnerThread.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.RunnerThread.run" title="Permalink to this definition">¶</a></dt>
-<dd><p>Just keep running.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="function">
-<dt id="btgym.algorithms.runner.BaseEnvRunnerFn">
-<code class="descclassname">btgym.algorithms.runner.</code><code class="descname">BaseEnvRunnerFn</code><span class="sig-paren">(</span><em>sess</em>, <em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>summary_writer</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>atari_test</em>, <em>ep_summary</em>, <em>memory_config</em>, <em>log</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner.html#BaseEnvRunnerFn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.BaseEnvRunnerFn" title="Permalink to this definition">¶</a></dt>
-<dd><p>The logic of the thread runner.
-In brief, it constantly keeps on running
-the policy, and as long as the rollout exceeds a certain length, the thread
-runner appends all the collected data to the queue.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env</strong> – environment instance</li>
-<li><strong>policy</strong> – policy instance</li>
-<li><strong>task</strong> – int</li>
-<li><strong>rollout_length</strong> – int</li>
-<li><strong>episode_summary_freq</strong> – int</li>
-<li><strong>env_render_freq</strong> – int</li>
-<li><strong>atari_test</strong> – bool, Atari or BTGyn</li>
-<li><strong>ep_summary</strong> – dict of tf.summary op and placeholders</li>
-<li><strong>memory_config</strong> – replay memory configuration dictionary</li>
-<li><strong>log</strong> – logbook logger</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="docutils">
-<dt>Yelds:</dt>
-<dd>collected data as dictionary of on_policy, off_policy rollouts and episode statistics.</dd>
-</dl>
-</dd></dl>
-
-</div>
 </div>
 
 
@@ -1116,7 +1074,7 @@ runner appends all the collected data to the queue.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="btgym.research.html" class="btn btn-neutral float-right" title="btgym.research package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="btgym.algorithms.nn.html" class="btn btn-neutral float-right" title="btgym.algorithms.nn.losses module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="btgym.datafeed.html" class="btn btn-neutral" title="btgym.datafeed package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -1128,7 +1086,7 @@ runner appends all the collected data to the queue.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, Andrew Muzikin.
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
 
     </p>
   </div>
@@ -1150,7 +1108,7 @@ runner appends all the collected data to the queue.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.0.6',
+            VERSION:'0.0.7',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

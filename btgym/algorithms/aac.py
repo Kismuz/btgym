@@ -154,7 +154,7 @@ class BaseAAC(object):
             num_epochs:             int, num. of SGD runs for every train step, val. > 1 should be used with caution.
             pi_prime_update_period: int, PPO: pi to pi_old update period in number of train steps, def: 1
             _use_target_policy:     bool, PPO: use target policy (aka pi_old), delayed by `pi_prime_update_period` delay
-            _aux_render_modes:       additional visualisationas to include in per-episode rendering summary
+            _aux_render_modes:      additional visualisationas to include in per-episode rendering summary, internal
 
         Note:
             - On `time_flat` arg:

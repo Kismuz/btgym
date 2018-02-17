@@ -67,7 +67,7 @@ def conv2d_decoder(z,
                    name='decoder',
                    reuse=False):
     """
-    Builds convolutional decoder.
+    Defines convolutional decoder.
 
     Args:
         z:                  tensor holding encoded state
@@ -201,6 +201,7 @@ def cw_conv2d_autoencoder(
     """
     Channel-wise convolutional autoencoder.
     Hidden state is passed through dense linear layer.
+    Pain-slow, do not use.
 
     Args:
         inputs:             input tensor

@@ -1,0 +1,515 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.research.gps.aac module &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="index.html"/>
+        <link rel="up" title="btgym.research package" href="btgym.research.html"/>
+        <link rel="prev" title="btgym.research package" href="btgym.research.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="btgym.research.html">btgym.research package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="btgym.research.html#btgym-research-gps-subpackage">btgym.research.gps subpackage</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">btgym.research.gps.aac module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-btgym.research.gps.policy">btgym.research.gps.policy module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-btgym.research.gps.loss">btgym.research.gps.loss module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-btgym.research.gps.strategy">btgym.research.gps.strategy module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-btgym.research.gps.oracle">btgym.research.gps.oracle module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.research.html#module-btgym.research.strategy_gen_4">btgym.research.strategy_gen_4 module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.research.html#module-btgym.research.verbose_env_runner">btgym.research.verbose_env_runner</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="btgym.research.html">btgym.research package</a> &raquo;</li>
+        
+      <li>btgym.research.gps.aac module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/btgym.research.gps.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-btgym.research.gps.aac">
+<span id="btgym-research-gps-aac-module"></span><h1>btgym.research.gps.aac module<a class="headerlink" href="#module-btgym.research.gps.aac" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="btgym.research.gps.aac.GuidedAAC">
+<em class="property">class </em><code class="descclassname">btgym.research.gps.aac.</code><code class="descname">GuidedAAC</code><span class="sig-paren">(</span><em>expert_loss=&lt;function guided_aac_loss_def_0_3&gt;</em>, <em>aac_lambda=1.0</em>, <em>guided_lambda=1.0</em>, <em>_log_name='GuidedA3C'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/aac.html#GuidedAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.aac.GuidedAAC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Actor-critic framework augmented with expert actions imitation loss:
+L_gps = aac_lambda * L_a3c + guided_lambda * L_im.
+Note that this particular implementation of expert does not provides
+complete action-state space trajectory for agent to follow.
+Instead it estimates <cite>advised</cite> distribution over actions conditioned on exteranl state observations only.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>expert_loss</strong> – callable returning tensor holding on_policy imitation loss graph and summaries</li>
+<li><strong>aac_lambda</strong> – float, main on_policy a3c loss lambda</li>
+<li><strong>guided_lambda</strong> – float, imitation loss lambda</li>
+<li><strong>_log_name</strong> – str, class-wide logger name; internal, do not use</li>
+<li><strong>**kwargs</strong> – see BaseAAC kwargs</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.research.gps.policy">
+<span id="btgym-research-gps-policy-module"></span><h1>btgym.research.gps.policy module<a class="headerlink" href="#module-btgym.research.gps.policy" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="btgym.research.gps.policy.GuidedPolicy_0_0">
+<em class="property">class </em><code class="descclassname">btgym.research.gps.policy.</code><code class="descname">GuidedPolicy_0_0</code><span class="sig-paren">(</span><em>conv_2d_layer_config=((32</em>, <em>(3</em>, <em>1)</em>, <em>(2</em>, <em>1))</em>, <em>(32</em>, <em>(3</em>, <em>1)</em>, <em>(2</em>, <em>1))</em>, <em>(64</em>, <em>(3</em>, <em>1)</em>, <em>(2</em>, <em>1))</em>, <em>(64</em>, <em>(3</em>, <em>1)</em>, <em>(2</em>, <em>1)))</em>, <em>lstm_class_ref=&lt;class 'tensorflow.contrib.rnn.python.ops.rnn_cell.LayerNormBasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>256)</em>, <em>lstm_2_init_period=50</em>, <em>linear_layer_ref=&lt;function noisy_linear&gt;</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/policy.html#GuidedPolicy_0_0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.policy.GuidedPolicy_0_0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Guided policy: simple configuration wrapper around Stacked LSTM architecture.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.research.gps.loss">
+<span id="btgym-research-gps-loss-module"></span><h1>btgym.research.gps.loss module<a class="headerlink" href="#module-btgym.research.gps.loss" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="btgym.research.gps.loss.guided_aac_loss_def_0_0">
+<code class="descclassname">btgym.research.gps.loss.</code><code class="descname">guided_aac_loss_def_0_0</code><span class="sig-paren">(</span><em>pi_actions</em>, <em>expert_actions</em>, <em>name='on_policy/aac'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/loss.html#guided_aac_loss_def_0_0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.loss.guided_aac_loss_def_0_0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cross-entropy imitation loss on expert actions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>pi_actions</strong> – tensor holding policy actions logits</li>
+<li><strong>expert_actions</strong> – tensor holding expert actions probability distribution</li>
+<li><strong>name</strong> – loss op name scope</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated imitation loss;
+list of related tensorboard summaries.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.research.gps.loss.guided_aac_loss_def_0_1">
+<code class="descclassname">btgym.research.gps.loss.</code><code class="descname">guided_aac_loss_def_0_1</code><span class="sig-paren">(</span><em>pi_actions</em>, <em>expert_actions</em>, <em>name='on_policy/aac'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/loss.html#guided_aac_loss_def_0_1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.loss.guided_aac_loss_def_0_1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cross-entropy imitation loss on {<cite>buy</cite>, <cite>sell</cite>} subset of expert actions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>pi_actions</strong> – tensor holding policy actions logits</li>
+<li><strong>expert_actions</strong> – tensor holding expert actions probability distribution</li>
+<li><strong>name</strong> – loss op name scope</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated imitation loss;
+list of related tensorboard summaries.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.research.gps.loss.guided_aac_loss_def_0_3">
+<code class="descclassname">btgym.research.gps.loss.</code><code class="descname">guided_aac_loss_def_0_3</code><span class="sig-paren">(</span><em>pi_actions</em>, <em>expert_actions</em>, <em>name='on_policy/aac'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/loss.html#guided_aac_loss_def_0_3"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.loss.guided_aac_loss_def_0_3" title="Permalink to this definition">¶</a></dt>
+<dd><p>MSE imitation loss on {<cite>buy</cite>, <cite>sell</cite>} subset of expert actions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>pi_actions</strong> – tensor holding policy actions logits</li>
+<li><strong>expert_actions</strong> – tensor holding expert actions probability distribution</li>
+<li><strong>name</strong> – loss op name scope</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated imitation loss;
+list of related tensorboard summaries.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.research.gps.strategy">
+<span id="btgym-research-gps-strategy-module"></span><h1>btgym.research.gps.strategy module<a class="headerlink" href="#module-btgym.research.gps.strategy" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="btgym.research.gps.strategy.GuidedStrategy_0_0">
+<em class="property">class </em><code class="descclassname">btgym.research.gps.strategy.</code><code class="descname">GuidedStrategy_0_0</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/strategy.html#GuidedStrategy_0_0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.strategy.GuidedStrategy_0_0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Augments observation state with expert actions predictions estimated by accessing entire episode data (=cheating).</p>
+<dl class="method">
+<dt id="btgym.research.gps.strategy.GuidedStrategy_0_0.nextstart">
+<code class="descname">nextstart</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/strategy.html#GuidedStrategy_0_0.nextstart"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.strategy.GuidedStrategy_0_0.nextstart" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overrides base method augmenting it with estimating expert actions before actual episode starts.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.research.gps.strategy.ExpertObserver">
+<em class="property">class </em><code class="descclassname">btgym.research.gps.strategy.</code><code class="descname">ExpertObserver</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/strategy.html#ExpertObserver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.strategy.ExpertObserver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Keeps track of expert-advised actions.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.research.gps.oracle">
+<span id="btgym-research-gps-oracle-module"></span><h1>btgym.research.gps.oracle module<a class="headerlink" href="#module-btgym.research.gps.oracle" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="btgym.research.gps.oracle.Oracle">
+<em class="property">class </em><code class="descclassname">btgym.research.gps.oracle.</code><code class="descname">Oracle</code><span class="sig-paren">(</span><em>action_space=(0</em>, <em>1</em>, <em>2</em>, <em>3)</em>, <em>time_threshold=5</em>, <em>pips_threshold=10</em>, <em>pips_scale=0.0001</em>, <em>kernel_size=5</em>, <em>kernel_stddev=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Irresponsible financial adviser.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>action_space</strong> – actions to advice: 0 - hold, 1- buy, 2 - sell, 3 - close</li>
+<li><strong>time_threshold</strong> – how many points (in number of ENVIRONMENT timesteps) on each side to use
+for the comparison to consider comparator(n, n+x) to be True</li>
+<li><strong>pips_threshold</strong> – int, minimal peaks difference in pips
+to consider comparator(n, n+x) to be True</li>
+<li><strong>pips_scale</strong> – actual single pip value wrt signal value</li>
+<li><strong>kernel_size</strong> – gaussian convolution kernel size (used to compute distribution over actions)</li>
+<li><strong>kernel_stddev</strong> – gaussian kernel standard deviation</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="btgym.research.gps.oracle.Oracle.filter_by_margine">
+<code class="descname">filter_by_margine</code><span class="sig-paren">(</span><em>lst</em>, <em>threshold</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle.filter_by_margine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle.filter_by_margine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filters out peaks by their ‘value’ difference withing tolerance given.
+Filtering is done from first to last index by removing every succeeding element of list from now on
+if its value difference with value in hand is less than given threshold.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>lst</strong> – list of tuples; each tuple is (value, index)</li>
+<li><strong>threshold</strong> – value filtering threshold</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">filtered out list of tuples</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.research.gps.oracle.Oracle.estimate_actions">
+<code class="descname">estimate_actions</code><span class="sig-paren">(</span><em>episode_data</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle.estimate_actions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle.estimate_actions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates hold/buy/sell signals based on local peaks filtered by time horizon and signal amplitude.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>episode_data</strong> – 1D np.array of unscaled [but possibly resampled] price values in OHL[CV] format</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">1D vector of signals of same length as episode_data</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.research.gps.oracle.Oracle.adjust_signals">
+<code class="descname">adjust_signals</code><span class="sig-paren">(</span><em>signal</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle.adjust_signals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle.adjust_signals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add simple heuristics (based on examining learnt policy actions distribution):
+- repeat same buy or sell signal <cite>kernel_size - 1</cite> times.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.research.gps.oracle.Oracle.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>episode_data</em>, <em>resampling_factor=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates <cite>advised</cite> actions probabilities distribution based on data received.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>episode_data</strong> – 1D np.array of unscaled price values in OHL[CV] format</li>
+<li><strong>resampling_factor</strong> – factor by which to resample given data
+by taking min/max values inside every resampled bar</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Np.array of size [resampled_data_size, actions_space_size] of probabilities of advised actions, where
+resampled_data_size = int(len(episode_data) / resampling_factor) + 1/0</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.research.gps.oracle.Oracle.resample_data">
+<code class="descname">resample_data</code><span class="sig-paren">(</span><em>episode_data</em>, <em>factor=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle.resample_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle.resample_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resamples raw observations according to given skip_frame value
+and estimates mean value of newly formed bars.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>episode_data</strong> – np.array of shape [episode_length, values]</li>
+<li><strong>factor</strong> – scalar</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">np.array of median Hi/Lo observations of size [int(episode_length/skip_frame) + 1, 1]</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="btgym.research.html" class="btn btn-neutral" title="btgym.research package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

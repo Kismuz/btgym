@@ -243,6 +243,11 @@ _Notice: will be moved inside project wiki [26.01.18]_
  
  
 ### <a name="news"></a>[News and updates:](#title)
+- 17.02.18: First results on applying guided policy search (GPS) to btgym setup can be seen 
+           [here](./examples/guided_policy_search.ipynb).  
+    - tensorboard summaries are updated with additional renderings: 
+      actions distribution, value function and LSTM_state; presented in the same notebook.
+
 - 6.02.18: Common update to all a3c agents architectures: 
     - all dense layers are now Noisy-Net ones, 
       see: [Noisy Networks for Exploration](https://arxiv.org/abs/1706.10295) paper by Fortunato at al.; 

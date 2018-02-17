@@ -1,0 +1,446 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.research.gps.oracle &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../../search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="../../../../index.html"/>
+        <link rel="up" title="Module code" href="../../../index.html"/> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+      <li>btgym.research.gps.oracle</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for btgym.research.gps.oracle</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">signal</span>
+
+
+<div class="viewcode-block" id="Oracle"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.oracle.Oracle">[docs]</a><span class="k">class</span> <span class="nc">Oracle</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Irresponsible financial adviser.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">action_space</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="n">time_threshold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+            <span class="n">pips_threshold</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+            <span class="n">pips_scale</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span>
+            <span class="n">kernel_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+            <span class="n">kernel_stddev</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action_space:       actions to advice: 0 - hold, 1- buy, 2 - sell, 3 - close</span>
+<span class="sd">            time_threshold:     how many points (in number of ENVIRONMENT timesteps) on each side to use</span>
+<span class="sd">                                for the comparison to consider comparator(n, n+x) to be True</span>
+<span class="sd">            pips_threshold:     int, minimal peaks difference in pips</span>
+<span class="sd">                                to consider comparator(n, n+x) to be True</span>
+<span class="sd">            pips_scale:         actual single pip value wrt signal value</span>
+<span class="sd">            kernel_size:        gaussian convolution kernel size (used to compute distribution over actions)</span>
+<span class="sd">            kernel_stddev:      gaussian kernel standard deviation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span> <span class="o">=</span> <span class="n">action_space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time_threshold</span> <span class="o">=</span> <span class="n">time_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value_threshold</span> <span class="o">=</span> <span class="n">pips_threshold</span> <span class="o">*</span> <span class="n">pips_scale</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span> <span class="o">=</span> <span class="n">kernel_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">gaussian</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="n">kernel_stddev</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="Oracle.filter_by_margine"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.oracle.Oracle.filter_by_margine">[docs]</a>    <span class="k">def</span> <span class="nf">filter_by_margine</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lst</span><span class="p">,</span> <span class="n">threshold</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Filters out peaks by their &#39;value&#39; difference withing tolerance given.</span>
+<span class="sd">        Filtering is done from first to last index by removing every succeeding element of list from now on</span>
+<span class="sd">        if its value difference with value in hand is less than given threshold.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            lst:        list of tuples; each tuple is (value, index)</span>
+<span class="sd">            threshold:  value filtering threshold</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            filtered out list of tuples</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lst</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">lst</span>
+        <span class="n">repeated</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">lst</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">lst</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">threshold</span>
+        <span class="k">if</span> <span class="n">repeated</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lst</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">filtered_tail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter_by_margine</span><span class="p">([</span><span class="n">lst</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+</span> <span class="n">lst</span><span class="p">[</span><span class="mi">2</span><span class="p">:],</span> <span class="n">threshold</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">filtered_tail</span> <span class="o">=</span> <span class="p">[</span><span class="n">lst</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">filtered_tail</span> <span class="o">=</span> <span class="p">[</span><span class="n">lst</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter_by_margine</span><span class="p">(</span><span class="n">lst</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">threshold</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">filtered_tail</span></div>
+
+<div class="viewcode-block" id="Oracle.estimate_actions"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.oracle.Oracle.estimate_actions">[docs]</a>    <span class="k">def</span> <span class="nf">estimate_actions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">episode_data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates hold/buy/sell signals based on local peaks filtered by time horizon and signal amplitude.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            episode_data:   1D np.array of unscaled [but possibly resampled] price values in OHL[CV] format</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            1D vector of signals of same length as episode_data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Find local maxima and minima indices within time horizon:</span>
+        <span class="n">max_ind</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">argrelmax</span><span class="p">(</span><span class="n">episode_data</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_threshold</span><span class="p">)</span>
+        <span class="n">min_ind</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">argrelmin</span><span class="p">(</span><span class="n">episode_data</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_threshold</span><span class="p">)</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">max_ind</span><span class="p">,</span> <span class="n">min_ind</span><span class="p">)</span>
+        <span class="c1"># Append first and last points:</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">episode_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
+
+        <span class="n">indices_and_values</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+            <span class="n">indices_and_values</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">episode_data</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">i</span><span class="p">])</span>
+
+        <span class="c1"># Filter by value:</span>
+        <span class="n">indices_and_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter_by_margine</span><span class="p">(</span><span class="n">indices_and_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_threshold</span><span class="p">)</span>
+
+        <span class="c1">#print(&#39;filtered_indices_and_values:&#39;, indices_and_values)</span>
+
+        <span class="c1"># Estimate advised actions (no &#39;close&#39; btw):</span>
+        <span class="c1"># Assume all &#39;hold&#39;:</span>
+        <span class="n">advice</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">episode_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">num</span><span class="p">,</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">indices_and_values</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="n">indices_and_values</span><span class="p">[</span><span class="n">num</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="n">advice</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">advice</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">advice</span></div>
+
+<div class="viewcode-block" id="Oracle.adjust_signals"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.oracle.Oracle.adjust_signals">[docs]</a>    <span class="k">def</span> <span class="nf">adjust_signals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">signal</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add simple heuristics (based on examining learnt policy actions distribution):</span>
+<span class="sd">        - repeat same buy or sell signal `kernel_size - 1` times.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">signal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">signal</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># if got buy, sell or close  - repeat several times</span>
+                <span class="k">while</span> <span class="n">i</span> <span class="o">+</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">signal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">signal</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">signal</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                    <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="n">j</span>
+
+        <span class="k">return</span> <span class="n">signal</span></div>
+
+<div class="viewcode-block" id="Oracle.fit"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.oracle.Oracle.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">episode_data</span><span class="p">,</span> <span class="n">resampling_factor</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates `advised` actions probabilities distribution based on data received.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            episode_data:           1D np.array of unscaled price values in OHL[CV] format</span>
+<span class="sd">            resampling_factor:      factor by which to resample given data</span>
+<span class="sd">                                    by taking min/max values inside every resampled bar</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">             Np.array of size [resampled_data_size, actions_space_size] of probabilities of advised actions, where</span>
+<span class="sd">             resampled_data_size = int(len(episode_data) / resampling_factor) + 1/0</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Vector of advised actions:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resample_data</span><span class="p">(</span><span class="n">episode_data</span><span class="p">,</span> <span class="n">resampling_factor</span><span class="p">)</span>
+        <span class="n">signals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimate_actions</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">signals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adjust_signals</span><span class="p">(</span><span class="n">signals</span><span class="p">)</span>
+
+        <span class="c1"># One-hot actions encoding:</span>
+        <span class="n">actions_one_hot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">signals</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="p">)])</span>
+        <span class="n">actions_one_hot</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">signals</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">signals</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># Want a bit relaxed discrete distribution over actions instead of one hot (heuristic):</span>
+        <span class="n">actions_distr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">actions_one_hot</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+        <span class="c1"># For all actions except &#39;hold&#39; (due to heuristic skewness):</span>
+        <span class="n">actions_distr</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">actions_one_hot</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># ...spread out actions probabilities by convolving with gaussian kernel :</span>
+        <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">actions_one_hot</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="n">actions_distr</span><span class="p">[:,</span> <span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">actions_one_hot</span><span class="p">[:,</span> <span class="n">channel</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;same&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.1</span>
+
+        <span class="c1"># Normalize:</span>
+        <span class="n">actions_distr</span> <span class="o">/=</span> <span class="n">actions_distr</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">actions_distr</span></div>
+
+<div class="viewcode-block" id="Oracle.resample_data"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.oracle.Oracle.resample_data">[docs]</a>    <span class="k">def</span> <span class="nf">resample_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">episode_data</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resamples raw observations according to given skip_frame value</span>
+<span class="sd">        and estimates mean value of newly formed bars.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            episode_data:   np.array of shape [episode_length, values]</span>
+<span class="sd">            factor:     scalar</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.array of median Hi/Lo observations of size [int(episode_length/skip_frame) + 1, 1]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Define resampled size and [possibly] extend</span>
+        <span class="c1"># to complete last bar by padding with values from very last column:</span>
+        <span class="n">resampled_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">episode_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">factor</span><span class="p">)</span>
+        <span class="c1">#print(&#39;episode_data.shape:&#39;, episode_data.shape)</span>
+
+        <span class="k">if</span> <span class="n">episode_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">factor</span> <span class="o">&gt;</span> <span class="n">resampled_size</span><span class="p">:</span>
+            <span class="n">resampled_size</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">pad_size</span> <span class="o">=</span> <span class="n">resampled_size</span> <span class="o">*</span> <span class="n">factor</span> <span class="o">-</span> <span class="n">episode_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="c1">#print(&#39;pad_size:&#39;, pad_size)</span>
+            <span class="n">episode_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">episode_data</span><span class="p">,</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">pad_size</span><span class="p">,</span> <span class="n">episode_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span> <span class="o">+</span> <span class="n">episode_data</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:][</span><span class="kc">None</span><span class="p">,:],</span>
+                <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+            <span class="p">)</span>
+        <span class="c1">#print(&#39;new_episode_data.shape:&#39;, episode_data.shape)</span>
+
+        <span class="c1"># Define HI and Low inside every new bar:</span>
+        <span class="n">v_high</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">episode_data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="n">resampled_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">v_low</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">episode_data</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="n">resampled_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># ...and yse Hi/Low mean along time_embedding:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">v_high</span><span class="p">,</span> <span class="n">v_low</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">data</span></div></div>
+
+
+
+
+
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../../',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

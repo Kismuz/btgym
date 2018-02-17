@@ -1,0 +1,531 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.algorithms.nn.networks &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../../search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="../../../../index.html"/>
+        <link rel="up" title="Module code" href="../../../index.html"/> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+      <li>btgym.algorithms.nn.networks</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for btgym.algorithms.nn.networks</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Original code comes from OpenAI repository under MIT licence:</span>
+<span class="c1">#</span>
+<span class="c1"># https://github.com/openai/universe-starter-agent</span>
+<span class="c1"># https://github.com/openai/baselines</span>
+<span class="c1">#</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow.contrib.rnn</span> <span class="k">as</span> <span class="nn">rnn</span>
+<span class="kn">from</span> <span class="nn">tensorflow.contrib.layers</span> <span class="k">import</span> <span class="n">layer_norm</span> <span class="k">as</span> <span class="n">norm_layer</span>
+<span class="kn">from</span> <span class="nn">tensorflow.python.util.nest</span> <span class="k">import</span> <span class="n">flatten</span> <span class="k">as</span> <span class="n">flatten_nested</span>
+
+<span class="kn">from</span> <span class="nn">btgym.algorithms.nn.layers</span> <span class="k">import</span> <span class="n">normalized_columns_initializer</span><span class="p">,</span> <span class="n">categorical_sample</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.nn.layers</span> <span class="k">import</span> <span class="n">linear</span><span class="p">,</span> <span class="n">noisy_linear</span><span class="p">,</span> <span class="n">conv2d</span><span class="p">,</span> <span class="n">deconv2d</span><span class="p">,</span> <span class="n">conv1d</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.utils</span> <span class="k">import</span> <span class="n">rnn_placeholders</span>
+
+
+<div class="viewcode-block" id="conv_2d_network"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.networks.conv_2d_network">[docs]</a><span class="k">def</span> <span class="nf">conv_2d_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span>
+                    <span class="n">ob_space</span><span class="p">,</span>
+                    <span class="n">ac_space</span><span class="p">,</span>
+                    <span class="n">conv_2d_layer_ref</span><span class="o">=</span><span class="n">conv2d</span><span class="p">,</span>
+                    <span class="n">conv_2d_num_filters</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span>
+                    <span class="n">conv_2d_filter_size</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+                    <span class="n">conv_2d_stride</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                    <span class="n">pad</span><span class="o">=</span><span class="s2">&quot;SAME&quot;</span><span class="p">,</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;conv2d&#39;</span><span class="p">,</span>
+                    <span class="n">collections</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Stage1 network: from preprocessed 2D input to estimated features.</span>
+<span class="sd">    Encapsulates convolutions + layer normalisation + nonlinearity. Can be shared.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tensor holding state features;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+        <span class="c1">#for i in range(conv_2d_num_layers):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">num_filters</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">conv_2d_num_filters</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
+                <span class="n">norm_layer</span><span class="p">(</span>
+                    <span class="n">conv_2d_layer_ref</span><span class="p">(</span>
+                        <span class="n">x</span><span class="p">,</span>
+                        <span class="n">num_filters</span><span class="p">,</span>
+                        <span class="s2">&quot;_layer_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                        <span class="n">conv_2d_filter_size</span><span class="p">,</span>
+                        <span class="n">conv_2d_stride</span><span class="p">,</span>
+                        <span class="n">pad</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="p">,</span>
+                        <span class="n">collections</span><span class="p">,</span>
+                        <span class="n">reuse</span>
+                    <span class="p">),</span>
+                    <span class="n">scope</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;_layer_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="c1"># A3c/BaseAAC original paper design:</span>
+        <span class="c1">#x = tf.nn.elu(conv2d(x, 16, &#39;conv2d_1&#39;, [8, 8], [4, 4], pad, dtype, collections, reuse))</span>
+        <span class="c1">#x = tf.nn.elu(conv2d(x, 32, &#39;conv2d_2&#39;, [4, 4], [2, 2], pad, dtype, collections, reuse))</span>
+        <span class="c1">#x = tf.nn.elu(</span>
+        <span class="c1">#   linear(batch_flatten(x), 256, &#39;conv_2d_dense&#39;, normalized_columns_initializer(0.01), reuse=reuse)</span>
+        <span class="c1">#)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="conv_1d_network"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.networks.conv_1d_network">[docs]</a><span class="k">def</span> <span class="nf">conv_1d_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span>
+                    <span class="n">ob_space</span><span class="p">,</span>
+                    <span class="n">ac_space</span><span class="p">,</span>
+                    <span class="n">conv_1d_num_layers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                    <span class="n">conv_1d_num_filters</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+                    <span class="n">conv_1d_filter_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                    <span class="n">conv_1d_stride</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="n">pad</span><span class="o">=</span><span class="s2">&quot;SAME&quot;</span><span class="p">,</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                    <span class="n">collections</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Stage1 network: from preprocessed 1D input to estimated features.</span>
+<span class="sd">    Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tensor holding state features;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">conv_1d_num_layers</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
+            <span class="n">conv1d</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">,</span>
+                <span class="n">conv_1d_num_filters</span><span class="p">,</span>
+                <span class="s2">&quot;conv1d_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="n">conv_1d_filter_size</span><span class="p">,</span>
+                <span class="n">conv_1d_stride</span><span class="p">,</span>
+                <span class="n">pad</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="p">,</span>
+                <span class="n">collections</span><span class="p">,</span>
+                <span class="n">reuse</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="lstm_network"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.networks.lstm_network">[docs]</a><span class="k">def</span> <span class="nf">lstm_network</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span>
+        <span class="n">lstm_sequence_length</span><span class="p">,</span>
+        <span class="n">lstm_class</span><span class="o">=</span><span class="n">rnn</span><span class="o">.</span><span class="n">BasicLSTMCell</span><span class="p">,</span>
+        <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,),</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;lstm&#39;</span><span class="p">,</span>
+        <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Stage2 network: from features to flattened LSTM output.</span>
+<span class="sd">    Defines [multi-layered] dynamic [possibly shared] LSTM network.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">         batch-wise flattened output tensor;</span>
+<span class="sd">         lstm initial state tensor;</span>
+<span class="sd">         lstm state output tensor;</span>
+<span class="sd">         lstm flattened feed placeholders as tuple.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+        <span class="c1"># Flatten, add action/reward and expand with fake [time] batch? dim to feed LSTM bank:</span>
+        <span class="c1">#x = tf.concat([x, a_r] ,axis=-1)</span>
+        <span class="c1">#x = tf.concat([batch_flatten(x), a_r], axis=-1)</span>
+        <span class="c1">#x = tf.expand_dims(x, [0])</span>
+
+        <span class="c1"># Define LSTM layers:</span>
+        <span class="n">lstm</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">lstm_layers</span><span class="p">:</span>
+            <span class="n">lstm</span> <span class="o">+=</span> <span class="p">[</span><span class="n">lstm_class</span><span class="p">(</span><span class="n">size</span><span class="p">)]</span> <span class="c1">#, state_is_tuple=True)]</span>
+
+        <span class="n">lstm</span> <span class="o">=</span> <span class="n">rnn</span><span class="o">.</span><span class="n">MultiRNNCell</span><span class="p">(</span><span class="n">lstm</span><span class="p">,</span> <span class="n">state_is_tuple</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># Get time_dimension as [1]-shaped tensor:</span>
+        <span class="n">step_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">)[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="n">lstm_init_state</span> <span class="o">=</span> <span class="n">lstm</span><span class="o">.</span><span class="n">zero_state</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="n">lstm_state_pl</span> <span class="o">=</span> <span class="n">rnn_placeholders</span><span class="p">(</span><span class="n">lstm</span><span class="o">.</span><span class="n">zero_state</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+        <span class="n">lstm_state_pl_flatten</span> <span class="o">=</span> <span class="n">flatten_nested</span><span class="p">(</span><span class="n">lstm_state_pl</span><span class="p">)</span>
+
+        <span class="n">lstm_outputs</span><span class="p">,</span> <span class="n">lstm_state_out</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">dynamic_rnn</span><span class="p">(</span>
+            <span class="n">lstm</span><span class="p">,</span>
+            <span class="n">x</span><span class="p">,</span>
+            <span class="n">initial_state</span><span class="o">=</span><span class="n">lstm_state_pl</span><span class="p">,</span>
+            <span class="n">sequence_length</span><span class="o">=</span><span class="n">lstm_sequence_length</span><span class="p">,</span>
+            <span class="n">time_major</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="c1">#x_out = tf.reshape(lstm_outputs, [-1, lstm_layers[-1]])</span>
+        <span class="n">x_out</span> <span class="o">=</span> <span class="n">lstm_outputs</span>
+    <span class="k">return</span> <span class="n">x_out</span><span class="p">,</span> <span class="n">lstm_init_state</span><span class="p">,</span> <span class="n">lstm_state_out</span><span class="p">,</span> <span class="n">lstm_state_pl_flatten</span></div>
+
+
+<div class="viewcode-block" id="dense_aac_network"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.networks.dense_aac_network">[docs]</a><span class="k">def</span> <span class="nf">dense_aac_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;dense_aac&#39;</span><span class="p">,</span> <span class="n">linear_layer_ref</span><span class="o">=</span><span class="n">noisy_linear</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Stage3 network: from LSTM flattened output to advantage actor-critic.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        logits tensor</span>
+<span class="sd">        value function tensor</span>
+<span class="sd">        action sampling function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+        <span class="c1"># Center-logits:</span>
+        <span class="n">logits</span> <span class="o">=</span> <span class="n">norm_layer</span><span class="p">(</span>
+            <span class="n">linear_layer_ref</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+                <span class="n">size</span><span class="o">=</span><span class="n">ac_space</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;action&#39;</span><span class="p">,</span>
+                <span class="n">initializer</span><span class="o">=</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">),</span>
+                <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+            <span class="p">),</span>
+            <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">scale</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># logits = linear_layer_ref(</span>
+        <span class="c1">#     x=x,</span>
+        <span class="c1">#     size=ac_space,</span>
+        <span class="c1">#     name=&#39;action&#39;,</span>
+        <span class="c1">#     initializer=normalized_columns_initializer(0.01),</span>
+        <span class="c1">#     reuse=reuse</span>
+        <span class="c1"># )</span>
+
+        <span class="n">vf</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="n">linear_layer_ref</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+                <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">,</span>
+                <span class="n">initializer</span><span class="o">=</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span>
+                <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+            <span class="p">),</span>
+            <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="n">categorical_sample</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="k">return</span> <span class="n">logits</span><span class="p">,</span> <span class="n">vf</span><span class="p">,</span> <span class="n">sample</span></div>
+
+
+<div class="viewcode-block" id="dense_rp_network"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.networks.dense_rp_network">[docs]</a><span class="k">def</span> <span class="nf">dense_rp_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">linear_layer_ref</span><span class="o">=</span><span class="n">noisy_linear</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Stage3 network: From shared convolutions to reward-prediction task output tensor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># print(&#39;x_shape:&#39;, x.get_shape())</span>
+    <span class="c1">#x = tf.reshape(x, [1, -1]) # flatten to pretend we got batch of size 1</span>
+
+    <span class="c1"># Fully connected x128 followed by 3-way classifier [with softmax], as in paper:</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
+        <span class="n">linear_layer_ref</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rp_dense&#39;</span><span class="p">,</span>
+            <span class="n">initializer</span><span class="o">=</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">logits</span> <span class="o">=</span> <span class="n">linear_layer_ref</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+        <span class="n">size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rp_classifier&#39;</span><span class="p">,</span>
+        <span class="n">initializer</span><span class="o">=</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="c1"># Note:  softmax is actually not here but inside loss operation (see losses.py)</span>
+    <span class="k">return</span> <span class="n">logits</span></div>
+
+
+<div class="viewcode-block" id="pixel_change_2d_estimator"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.networks.pixel_change_2d_estimator">[docs]</a><span class="k">def</span> <span class="nf">pixel_change_2d_estimator</span><span class="p">(</span><span class="n">ob_space</span><span class="p">,</span> <span class="n">pc_estimator_stride</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines tf operation for estimating `pixel change` as subsampled absolute difference of two states.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        crops input array by one pix from either side; --&gt; 1D signal to be shaped as [signal_length, 3]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">input_state</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">ob_space</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pc_change_est_state_in&#39;</span><span class="p">)</span>
+    <span class="n">input_last_state</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">ob_space</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pc_change_est_last_state_in&#39;</span><span class="p">)</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">input_state</span><span class="p">,</span> <span class="n">input_last_state</span><span class="p">))</span> <span class="c1"># TODO: tf.square?</span>
+
+    <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>  <span class="c1"># Assume 1D signal, fake batch dim and crop H dim only</span>
+        <span class="c1">#x = tf.transpose(x, perm=[0, 1, 3, 2])  # Swap channels and height for</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># True 2D,  fake batch dim and crop H, W dims</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">x_out</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">max_pool</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span>
+        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">pc_estimator_stride</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pc_estimator_stride</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">pc_estimator_stride</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pc_estimator_stride</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">],</span>
+        <span class="s1">&#39;SAME&#39;</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">input_state</span><span class="p">,</span> <span class="n">input_last_state</span><span class="p">,</span> <span class="n">x_out</span></div>
+
+
+<div class="viewcode-block" id="duelling_pc_network"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.networks.duelling_pc_network">[docs]</a><span class="k">def</span> <span class="nf">duelling_pc_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span>
+                        <span class="n">ac_space</span><span class="p">,</span>
+                        <span class="n">duell_pc_x_inner_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+                        <span class="n">duell_pc_filter_size</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+                        <span class="n">duell_pc_stride</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                        <span class="n">linear_layer_ref</span><span class="o">=</span><span class="n">noisy_linear</span><span class="p">,</span>
+                        <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Stage3 network for `pixel control&#39; task: from LSTM output to Q-aux. features tensor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
+        <span class="n">linear_layer_ref</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">duell_pc_x_inner_shape</span><span class="p">),</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pc_dense&#39;</span><span class="p">,</span>
+            <span class="n">initializer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">xavier_initializer</span><span class="p">(),</span>
+            <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">duell_pc_x_inner_shape</span><span class="p">))</span>
+    <span class="n">pc_a</span> <span class="o">=</span> <span class="n">deconv2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="s1">&#39;pc_advantage&#39;</span><span class="p">,</span> <span class="n">duell_pc_filter_size</span><span class="p">,</span> <span class="n">duell_pc_stride</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">)</span>  <span class="c1"># [None, 20, 20, ac_size]</span>
+    <span class="n">pc_v</span> <span class="o">=</span> <span class="n">deconv2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;pc_value_fn&#39;</span><span class="p">,</span> <span class="n">duell_pc_filter_size</span><span class="p">,</span> <span class="n">duell_pc_stride</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">)</span>  <span class="c1"># [None, 20, 20, 1]</span>
+
+    <span class="c1"># Q-value estimate using advantage mean,</span>
+    <span class="c1"># as (9) in &quot;Dueling Network Architectures...&quot; paper:</span>
+    <span class="c1"># https://arxiv.org/pdf/1511.06581.pdf</span>
+    <span class="n">pc_a_mean</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">pc_a</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">pc_q</span> <span class="o">=</span> <span class="n">pc_v</span> <span class="o">+</span> <span class="n">pc_a</span> <span class="o">-</span> <span class="n">pc_a_mean</span>  <span class="c1"># [None, 20, 20, ac_size]</span>
+
+    <span class="k">return</span> <span class="n">pc_q</span></div>
+
+
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../../',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

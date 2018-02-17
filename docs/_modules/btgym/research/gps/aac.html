@@ -1,0 +1,309 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.research.gps.aac &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../../search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="../../../../index.html"/>
+        <link rel="up" title="Module code" href="../../../index.html"/> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+      <li>btgym.research.gps.aac</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for btgym.research.gps.aac</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">BaseAAC</span>
+<span class="kn">from</span> <span class="nn">.loss</span> <span class="k">import</span> <span class="n">guided_aac_loss_def_0_0</span><span class="p">,</span> <span class="n">guided_aac_loss_def_0_1</span><span class="p">,</span> <span class="n">guided_aac_loss_def_0_3</span>
+
+
+<div class="viewcode-block" id="GuidedAAC"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.aac.GuidedAAC">[docs]</a><span class="k">class</span> <span class="nc">GuidedAAC</span><span class="p">(</span><span class="n">BaseAAC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Actor-critic framework augmented with expert actions imitation loss:</span>
+<span class="sd">    L_gps = aac_lambda * L_a3c + guided_lambda * L_im.</span>
+<span class="sd">    Note that this particular implementation of expert does not provides</span>
+<span class="sd">    complete action-state space trajectory for agent to follow.</span>
+<span class="sd">    Instead it estimates `advised` distribution over actions conditioned on exteranl state observations only.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">expert_loss</span><span class="o">=</span><span class="n">guided_aac_loss_def_0_3</span><span class="p">,</span>
+            <span class="n">aac_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="n">guided_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="n">_log_name</span><span class="o">=</span><span class="s1">&#39;GuidedA3C&#39;</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            expert_loss:        callable returning tensor holding on_policy imitation loss graph and summaries</span>
+<span class="sd">            aac_lambda:         float, main on_policy a3c loss lambda</span>
+<span class="sd">            guided_lambda:      float, imitation loss lambda</span>
+<span class="sd">            _log_name:          str, class-wide logger name; internal, do not use</span>
+<span class="sd">            **kwargs:           see BaseAAC kwargs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">GuidedAAC</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">_log_name</span><span class="o">=</span><span class="n">_log_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_device</span><span class="p">):</span>
+                <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="s1">&#39;local&#39;</span><span class="p">):</span>
+                    <span class="n">guided_loss_ext</span><span class="p">,</span> <span class="n">guided_summary_ext</span> <span class="o">=</span> <span class="n">expert_loss</span><span class="p">(</span>
+                        <span class="n">pi_actions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">local_network</span><span class="o">.</span><span class="n">on_logits</span><span class="p">,</span>
+                        <span class="n">expert_actions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">local_network</span><span class="o">.</span><span class="n">expert_actions</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy&#39;</span><span class="p">,</span>
+                        <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">aac_lambda</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">+</span> <span class="n">guided_lambda</span> <span class="o">*</span> <span class="n">guided_loss_ext</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, guided_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">aac_lambda</span><span class="p">,</span> <span class="n">guided_lambda</span><span class="p">))</span>
+
+                    <span class="c1"># Override train op def:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">clip_by_global_norm</span><span class="p">(</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">gradients</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_network</span><span class="o">.</span><span class="n">var_list</span><span class="p">),</span>
+                        <span class="mf">40.0</span>
+                    <span class="p">)</span>
+                    <span class="n">grads_and_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grads</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">var_list</span><span class="p">))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">train_op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="n">grads_and_vars</span><span class="p">)</span>
+
+                <span class="c1"># Merge summary:</span>
+                <span class="n">extended_summary</span> <span class="o">=</span> <span class="p">[</span><span class="n">guided_summary_ext</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;gps_total_loss&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">)]</span>
+                <span class="n">extended_summary</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_summary_op</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model_summary_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">extended_summary</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;gps_extended_summary&#39;</span><span class="p">)</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Child 0.0 class __init()__ exception occurred&#39;</span> <span class="o">+</span> \
+                  <span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">Press `Ctrl-C` or jupyter:[Kernel]-&gt;[Interrupt] for clean exit.</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../../',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

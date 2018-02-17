@@ -1,6 +1,31 @@
 btgym\.algorithms package
 =========================
 
+
+btgym\.algorithms\.nn subpackage
+--------------------------------
+.. toctree::
+    :maxdepth: 2
+
+    btgym.algorithms.nn
+
+
+btgym\.algorithms\.policy subpackage
+------------------------------------
+.. toctree::
+    :maxdepth: 2
+
+    btgym.algorithms.policy
+
+
+btgym\.algorithms\.runner subpackage
+------------------------------------
+.. toctree::
+    :maxdepth: 2
+
+    btgym.algorithms.runner
+
+
 btgym\.algorithms\.launcher module
 ----------------------------------
 
@@ -19,28 +44,6 @@ btgym\.algorithms\.aac module
 -----------------------------
 
 .. automodule:: btgym.algorithms.aac
-    :members:
-
-
-btgym\.algorithms\.policy module
---------------------------------
-
-.. automodule:: btgym.algorithms.policy
-    :members:
-
-
-btgym\.algorithms\.losses module
---------------------------------
-
-.. automodule:: btgym.algorithms.losses
-    :members:
-
-
-
-btgym\.algorithms\.nn\_utils module
-------------------------------------
-
-.. automodule:: btgym.algorithms.nn_utils
     :members:
 
 
@@ -66,8 +69,6 @@ btgym\.algorithms\.envs module
     :members:
 
 
-btgym\.algorithms\.runner module
---------------------------------
 
-.. automodule:: btgym.algorithms.runner
-    :members:
+
+

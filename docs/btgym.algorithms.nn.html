@@ -1,0 +1,819 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.algorithms.nn.losses module &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="index.html"/>
+        <link rel="up" title="btgym.algorithms package" href="btgym.algorithms.html"/>
+        <link rel="next" title="btgym.algorithms.policy.base module" href="btgym.algorithms.policy.html"/>
+        <link rel="prev" title="btgym.algorithms package" href="btgym.algorithms.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="btgym.algorithms.html">btgym.algorithms package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="btgym.algorithms.html#btgym-algorithms-nn-subpackage">btgym.algorithms.nn subpackage</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">btgym.algorithms.nn.losses module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-btgym.algorithms.nn.networks">btgym.algorithms.nn.networks module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-btgym.algorithms.nn.layers">btgym.algorithms.nn.layers module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-btgym.algorithms.nn.ae">btgym.algorithms.nn.ae module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#btgym-algorithms-policy-subpackage">btgym.algorithms.policy subpackage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#btgym-algorithms-runner-subpackage">btgym.algorithms.runner subpackage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.launcher">btgym.algorithms.launcher module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.worker">btgym.algorithms.worker module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.aac">btgym.algorithms.aac module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.rollout">btgym.algorithms.rollout module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.memory">btgym.algorithms.memory module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.algorithms.html#module-btgym.algorithms.envs">btgym.algorithms.envs module</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="btgym.algorithms.html">btgym.algorithms package</a> &raquo;</li>
+        
+      <li>btgym.algorithms.nn.losses module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/btgym.algorithms.nn.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-btgym.algorithms.nn.losses">
+<span id="btgym-algorithms-nn-losses-module"></span><h1>btgym.algorithms.nn.losses module<a class="headerlink" href="#module-btgym.algorithms.nn.losses" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="btgym.algorithms.nn.losses.aac_loss_def">
+<code class="descclassname">btgym.algorithms.nn.losses.</code><code class="descname">aac_loss_def</code><span class="sig-paren">(</span><em>act_target</em>, <em>adv_target</em>, <em>r_target</em>, <em>pi_logits</em>, <em>pi_vf</em>, <em>pi_prime_logits</em>, <em>entropy_beta</em>, <em>epsilon</em>, <em>name='_aac_'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/losses.html#aac_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.losses.aac_loss_def" title="Permalink to this definition">¶</a></dt>
+<dd><p>Advantage Actor Critic loss definition.
+Paper: <a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>act_target</strong> – tensor holding policy actions targets;</li>
+<li><strong>adv_target</strong> – tensor holding policy estimated advantages targets;</li>
+<li><strong>r_target</strong> – tensor holding policy empirical returns targets;</li>
+<li><strong>pi_logits</strong> – policy logits output tensor;</li>
+<li><strong>pi_prime_logits</strong> – not used;</li>
+<li><strong>pi_vf</strong> – policy value function output tensor;</li>
+<li><strong>entropy_beta</strong> – entropy regularization constant;</li>
+<li><strong>epsilon</strong> – not used;</li>
+<li><strong>name</strong> – scope;</li>
+<li><strong>verbose</strong> – summary level.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated AAC loss;
+list of related tensorboard summaries.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.losses.ppo_loss_def">
+<code class="descclassname">btgym.algorithms.nn.losses.</code><code class="descname">ppo_loss_def</code><span class="sig-paren">(</span><em>act_target</em>, <em>adv_target</em>, <em>r_target</em>, <em>pi_logits</em>, <em>pi_vf</em>, <em>pi_prime_logits</em>, <em>entropy_beta</em>, <em>epsilon</em>, <em>name='_ppo_'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/losses.html#ppo_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.losses.ppo_loss_def" title="Permalink to this definition">¶</a></dt>
+<dd><p>PPO clipped surrogate loss definition, as (7) in <a class="reference external" href="https://arxiv.org/pdf/1707.06347.pdf">https://arxiv.org/pdf/1707.06347.pdf</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>act_target</strong> – tensor holding policy actions targets;</li>
+<li><strong>adv_target</strong> – tensor holding policy estimated advantages targets;</li>
+<li><strong>r_target</strong> – tensor holding policy empirical returns targets;</li>
+<li><strong>pi_logits</strong> – policy logits output tensor;</li>
+<li><strong>pi_vf</strong> – policy value function output tensor;</li>
+<li><strong>pi_prime_logits</strong> – old_policy logits output tensor;</li>
+<li><strong>entropy_beta</strong> – entropy regularization constant</li>
+<li><strong>epsilon</strong> – L^Clip epsilon tensor;</li>
+<li><strong>name</strong> – scope;</li>
+<li><strong>verbose</strong> – summary level.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated PPO L^Clip loss;
+list of related tensorboard summaries.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.losses.value_fn_loss_def">
+<code class="descclassname">btgym.algorithms.nn.losses.</code><code class="descname">value_fn_loss_def</code><span class="sig-paren">(</span><em>r_target</em>, <em>pi_vf</em>, <em>name='_vr_'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/losses.html#value_fn_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.losses.value_fn_loss_def" title="Permalink to this definition">¶</a></dt>
+<dd><p>Value function loss.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>r_target</strong> – tensor holding policy empirical returns targets;</li>
+<li><strong>pi_vf</strong> – policy value function output tensor;</li>
+<li><strong>name</strong> – scope;</li>
+<li><strong>verbose</strong> – summary level.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated value fn. loss;
+list of related tensorboard summaries.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.losses.pc_loss_def">
+<code class="descclassname">btgym.algorithms.nn.losses.</code><code class="descname">pc_loss_def</code><span class="sig-paren">(</span><em>actions</em>, <em>targets</em>, <em>pi_pc_q</em>, <em>name='_pc_'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/losses.html#pc_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.losses.pc_loss_def" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pixel control auxiliary task loss definition.</p>
+<p>Paper: <a class="reference external" href="https://arxiv.org/abs/1611.05397">https://arxiv.org/abs/1611.05397</a></p>
+<p>Borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:</p>
+<p><a class="reference external" href="https://miyosuda.github.io/">https://miyosuda.github.io/</a></p>
+<p><a class="reference external" href="https://github.com/miyosuda/unreal">https://github.com/miyosuda/unreal</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>actions</strong> – tensor holding policy actions;</li>
+<li><strong>targets</strong> – tensor holding estimated pixel-change targets;</li>
+<li><strong>pi_pc_q</strong> – policy Q-value features output tensor;</li>
+<li><strong>name</strong> – scope;</li>
+<li><strong>verbose</strong> – summary level.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated pc loss;
+list of related tensorboard summaries.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.losses.rp_loss_def">
+<code class="descclassname">btgym.algorithms.nn.losses.</code><code class="descname">rp_loss_def</code><span class="sig-paren">(</span><em>rp_targets</em>, <em>pi_rp_logits</em>, <em>name='_rp_'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/losses.html#rp_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.losses.rp_loss_def" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reward prediction auxillary task loss definition.</p>
+<p>Paper: <a class="reference external" href="https://arxiv.org/abs/1611.05397">https://arxiv.org/abs/1611.05397</a></p>
+<p>Borrows heavily from Kosuke Miyoshi code, under Apache License 2.0:</p>
+<p><a class="reference external" href="https://miyosuda.github.io/">https://miyosuda.github.io/</a></p>
+<p><a class="reference external" href="https://github.com/miyosuda/unreal">https://github.com/miyosuda/unreal</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>targets</strong> – tensor holding reward prediction target;</li>
+<li><strong>pi_rp_logits</strong> – policy reward predictions tensor;</li>
+<li><strong>name</strong> – scope;</li>
+<li><strong>verbose</strong> – summary level.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated rp loss;
+list of related tensorboard summaries.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.losses.ae_loss_def">
+<code class="descclassname">btgym.algorithms.nn.losses.</code><code class="descname">ae_loss_def</code><span class="sig-paren">(</span><em>targets</em>, <em>logits</em>, <em>alpha=1.0</em>, <em>name='ae_loss'</em>, <em>verbose=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/losses.html#ae_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.losses.ae_loss_def" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mean quadratic autoencoder reconstruction loss definition</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>targets</strong> – tensor holding reconstruction target</li>
+<li><strong>logits</strong> – t ensor holding decoded aa decoder output</li>
+<li><strong>alpha</strong> – loss weight constant</li>
+<li><strong>name</strong> – scope</li>
+<li><strong>verbose</strong> – summary level.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated reconstruction loss
+list of summarues</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.losses.beta_vae_loss_def">
+<code class="descclassname">btgym.algorithms.nn.losses.</code><code class="descname">beta_vae_loss_def</code><span class="sig-paren">(</span><em>targets</em>, <em>logits</em>, <em>d_kl</em>, <em>alpha=1.0</em>, <em>beta=1.0</em>, <em>name='beta_vae_loss'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/losses.html#beta_vae_loss_def"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.losses.beta_vae_loss_def" title="Permalink to this definition">¶</a></dt>
+<dd><p>Beta-variational autoencoder loss definition</p>
+<dl class="docutils">
+<dt>Papers:</dt>
+<dd><a class="reference external" href="http://www.matthey.me/pdf/betavae_iclr_2017.pdf">http://www.matthey.me/pdf/betavae_iclr_2017.pdf</a>
+<a class="reference external" href="https://drive.google.com/file/d/0Bwy4Nlx78QCCNktVTFFMTUs4N2oxY295VU9qV25MWTBQS2Uw/view">https://drive.google.com/file/d/0Bwy4Nlx78QCCNktVTFFMTUs4N2oxY295VU9qV25MWTBQS2Uw/view</a></dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>targets</strong> – </li>
+<li><strong>logits</strong> – </li>
+<li><strong>d_kl</strong> – </li>
+<li><strong>alpha</strong> – </li>
+<li><strong>beta</strong> – </li>
+<li><strong>name</strong> – </li>
+<li><strong>verbose</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">tensor holding estimated loss
+list of summarues</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.algorithms.nn.networks">
+<span id="btgym-algorithms-nn-networks-module"></span><h1>btgym.algorithms.nn.networks module<a class="headerlink" href="#module-btgym.algorithms.nn.networks" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="btgym.algorithms.nn.networks.conv_2d_network">
+<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">conv_2d_network</code><span class="sig-paren">(</span><em>x</em>, <em>ob_space</em>, <em>ac_space</em>, <em>conv_2d_layer_ref=&lt;function conv2d&gt;</em>, <em>conv_2d_num_filters=(32</em>, <em>32</em>, <em>64</em>, <em>64)</em>, <em>conv_2d_filter_size=(3</em>, <em>3)</em>, <em>conv_2d_stride=(2</em>, <em>2)</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>name='conv2d'</em>, <em>collections=None</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#conv_2d_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.conv_2d_network" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stage1 network: from preprocessed 2D input to estimated features.
+Encapsulates convolutions + layer normalisation + nonlinearity. Can be shared.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">tensor holding state features;</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.networks.conv_1d_network">
+<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">conv_1d_network</code><span class="sig-paren">(</span><em>x</em>, <em>ob_space</em>, <em>ac_space</em>, <em>conv_1d_num_layers=4</em>, <em>conv_1d_num_filters=32</em>, <em>conv_1d_filter_size=3</em>, <em>conv_1d_stride=2</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>collections=None</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#conv_1d_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.conv_1d_network" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stage1 network: from preprocessed 1D input to estimated features.
+Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">tensor holding state features;</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.networks.lstm_network">
+<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">lstm_network</code><span class="sig-paren">(</span><em>x</em>, <em>lstm_sequence_length</em>, <em>lstm_class=&lt;class 'tensorflow.python.ops.rnn_cell_impl.BasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>)</em>, <em>name='lstm'</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#lstm_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.lstm_network" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stage2 network: from features to flattened LSTM output.
+Defines [multi-layered] dynamic [possibly shared] LSTM network.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">batch-wise flattened output tensor;
+lstm initial state tensor;
+lstm state output tensor;
+lstm flattened feed placeholders as tuple.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.networks.dense_aac_network">
+<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">dense_aac_network</code><span class="sig-paren">(</span><em>x</em>, <em>ac_space</em>, <em>name='dense_aac'</em>, <em>linear_layer_ref=&lt;function noisy_linear&gt;</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#dense_aac_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.dense_aac_network" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stage3 network: from LSTM flattened output to advantage actor-critic.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">logits tensor
+value function tensor
+action sampling function.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.networks.dense_rp_network">
+<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">dense_rp_network</code><span class="sig-paren">(</span><em>x</em>, <em>linear_layer_ref=&lt;function noisy_linear&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#dense_rp_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.dense_rp_network" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stage3 network: From shared convolutions to reward-prediction task output tensor.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.networks.pixel_change_2d_estimator">
+<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">pixel_change_2d_estimator</code><span class="sig-paren">(</span><em>ob_space</em>, <em>pc_estimator_stride=(2</em>, <em>2)</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#pixel_change_2d_estimator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.pixel_change_2d_estimator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines tf operation for estimating <cite>pixel change</cite> as subsampled absolute difference of two states.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">crops input array by one pix from either side; –&gt; 1D signal to be shaped as [signal_length, 3]</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.networks.duelling_pc_network">
+<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">duelling_pc_network</code><span class="sig-paren">(</span><em>x</em>, <em>ac_space</em>, <em>duell_pc_x_inner_shape=(9</em>, <em>9</em>, <em>32)</em>, <em>duell_pc_filter_size=(4</em>, <em>4)</em>, <em>duell_pc_stride=(2</em>, <em>2)</em>, <em>linear_layer_ref=&lt;function noisy_linear&gt;</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#duelling_pc_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.duelling_pc_network" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stage3 network for <a href="#id1"><span class="problematic" id="id2">`</span></a>pixel control’ task: from LSTM output to Q-aux. features tensor.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.algorithms.nn.layers">
+<span id="btgym-algorithms-nn-layers-module"></span><h1>btgym.algorithms.nn.layers module<a class="headerlink" href="#module-btgym.algorithms.nn.layers" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="btgym.algorithms.nn.layers.linear">
+<code class="descclassname">btgym.algorithms.nn.layers.</code><code class="descname">linear</code><span class="sig-paren">(</span><em>x</em>, <em>size</em>, <em>name</em>, <em>initializer=None</em>, <em>bias_init=0</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/layers.html#linear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.layers.linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Linear network layer.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.layers.noisy_linear">
+<code class="descclassname">btgym.algorithms.nn.layers.</code><code class="descname">noisy_linear</code><span class="sig-paren">(</span><em>x</em>, <em>size</em>, <em>name</em>, <em>bias=True</em>, <em>activation_fn=&lt;function identity&gt;</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/layers.html#noisy_linear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.layers.noisy_linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Noisy Net linear network layer using Factorised Gaussian noise;
+Code by Andrew Liao, <a class="reference external" href="https://github.com/andrewliao11/NoisyNet-DQN">https://github.com/andrewliao11/NoisyNet-DQN</a></p>
+<dl class="docutils">
+<dt>Papers:</dt>
+<dd><a class="reference external" href="https://arxiv.org/abs/1706.10295">https://arxiv.org/abs/1706.10295</a>
+<a class="reference external" href="https://arxiv.org/abs/1706.01905">https://arxiv.org/abs/1706.01905</a></dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.layers.conv2d">
+<code class="descclassname">btgym.algorithms.nn.layers.</code><code class="descname">conv2d</code><span class="sig-paren">(</span><em>x</em>, <em>num_filters</em>, <em>name</em>, <em>filter_size=(3</em>, <em>3)</em>, <em>stride=(1</em>, <em>1)</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>collections=None</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/layers.html#conv2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.layers.conv2d" title="Permalink to this definition">¶</a></dt>
+<dd><p>2D convolution layer.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.layers.deconv2d">
+<code class="descclassname">btgym.algorithms.nn.layers.</code><code class="descname">deconv2d</code><span class="sig-paren">(</span><em>x</em>, <em>output_channels</em>, <em>name</em>, <em>filter_size=(4</em>, <em>4)</em>, <em>stride=(2</em>, <em>2)</em>, <em>dtype=tf.float32</em>, <em>collections=None</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/layers.html#deconv2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.layers.deconv2d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deconvolution layer, paper:
+<a class="reference external" href="http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf">http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf</a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.layers.conv1d">
+<code class="descclassname">btgym.algorithms.nn.layers.</code><code class="descname">conv1d</code><span class="sig-paren">(</span><em>x</em>, <em>num_filters</em>, <em>name</em>, <em>filter_size=3</em>, <em>stride=2</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>collections=None</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/layers.html#conv1d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.layers.conv1d" title="Permalink to this definition">¶</a></dt>
+<dd><p>1D convolution layer.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.layers.conv2d_dw">
+<code class="descclassname">btgym.algorithms.nn.layers.</code><code class="descname">conv2d_dw</code><span class="sig-paren">(</span><em>x</em>, <em>num_filters</em>, <em>name='conv2d_dw'</em>, <em>filter_size=(3</em>, <em>3)</em>, <em>stride=(1</em>, <em>1)</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>collections=None</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/layers.html#conv2d_dw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.layers.conv2d_dw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Depthwise 2D convolution layer. Slow, do not use.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.algorithms.nn.ae">
+<span id="btgym-algorithms-nn-ae-module"></span><h1>btgym.algorithms.nn.ae module<a class="headerlink" href="#module-btgym.algorithms.nn.ae" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="btgym.algorithms.nn.ae.conv2d_encoder">
+<code class="descclassname">btgym.algorithms.nn.ae.</code><code class="descname">conv2d_encoder</code><span class="sig-paren">(</span><em>x</em>, <em>layer_config=((32</em>, <em>(3</em>, <em>1)</em>, <em>(2</em>, <em>1))</em>, <em>(32</em>, <em>(3</em>, <em>1)</em>, <em>(2</em>, <em>1))</em>, <em>(32</em>, <em>(3</em>, <em>1)</em>, <em>(2</em>, <em>1)))</em>, <em>pad='SAME'</em>, <em>name='encoder'</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/ae.html#conv2d_encoder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.ae.conv2d_encoder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines convolutional encoder.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>x</strong> – input tensor</li>
+<li><strong>layer_config</strong> – first to last nested layers configuration list: [layer_1_config, layer_2_config,…], where:
+layer_i_config = [num_filters(int), filter_size(list), stride(list)]</li>
+<li><strong>pad</strong> – str, padding scheme: ‘SAME’ or ‘VALID’</li>
+<li><strong>name</strong> – str, mame scope</li>
+<li><strong>reuse</strong> – bool</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">list of tensors holding encoded features for every layer outer to inner,
+level-wise list of encoding layers shapes, first ro last.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.ae.conv2d_decoder">
+<code class="descclassname">btgym.algorithms.nn.ae.</code><code class="descname">conv2d_decoder</code><span class="sig-paren">(</span><em>z</em>, <em>layer_shapes</em>, <em>layer_config=((32</em>, <em>(3</em>, <em>1)</em>, <em>(2</em>, <em>1))</em>, <em>(32</em>, <em>(3</em>, <em>1)</em>, <em>(2</em>, <em>1))</em>, <em>(32</em>, <em>(3</em>, <em>1)</em>, <em>(2</em>, <em>1)))</em>, <em>pad='SAME'</em>, <em>resize_method=0</em>, <em>name='decoder'</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/ae.html#conv2d_decoder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.ae.conv2d_decoder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines convolutional decoder.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>z</strong> – tensor holding encoded state</li>
+<li><strong>layer_shapes</strong> – level-wise list of matching encoding layers shapes, last to first.</li>
+<li><strong>layer_config</strong> – layers configuration list: [layer_1_config, layer_2_config,…], where:
+layer_i_config = [num_filters(int), filter_size(list), stride(list)]</li>
+<li><strong>pad</strong> – str, padding scheme: ‘SAME’ or ‘VALID’</li>
+<li><strong>resize_method</strong> – up-sampling method, one of supported tf.image.ResizeMethod’s</li>
+<li><strong>name</strong> – str, mame scope</li>
+<li><strong>reuse</strong> – bool</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">list of tensors holding decoded features for every layer inner to outer</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.ae.conv2d_autoencoder">
+<code class="descclassname">btgym.algorithms.nn.ae.</code><code class="descname">conv2d_autoencoder</code><span class="sig-paren">(</span><em>inputs</em>, <em>layer_config</em>, <em>resize_method=0</em>, <em>pad='SAME'</em>, <em>linear_layer_ref=&lt;function linear&gt;</em>, <em>name='base_conv2d_autoencoder'</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/ae.html#conv2d_autoencoder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.ae.conv2d_autoencoder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Basic convolutional autoencoder.
+Hidden state is passed through dense linear layer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>inputs</strong> – input tensor</li>
+<li><strong>layer_config</strong> – layers configuration list: [layer_1_config, layer_2_config,…], where:
+layer_i_config = [num_filters(int), filter_size(list), stride(list)];
+this list represent decoder part of autoencoder bottleneck,
+decoder part is inferred symmetrically</li>
+<li><strong>resize_method</strong> – up-sampling method, one of supported tf.image.ResizeMethod’s</li>
+<li><strong>pad</strong> – str, padding scheme: ‘SAME’ or ‘VALID’</li>
+<li><strong>linear_layer_ref</strong> – linear layer class to use</li>
+<li><strong>name</strong> – str, mame scope</li>
+<li><strong>reuse</strong> – bool</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">list of tensors holding encoded features, layer_wise from outer to inner
+tensor holding batch-wise flattened hidden state vector
+list of tensors holding decoded features, layer-wise from inner to outer
+tensor holding reconstructed output
+None value</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.ae.cw_conv2d_autoencoder">
+<code class="descclassname">btgym.algorithms.nn.ae.</code><code class="descname">cw_conv2d_autoencoder</code><span class="sig-paren">(</span><em>inputs</em>, <em>layer_config</em>, <em>resize_method=0</em>, <em>pad='SAME'</em>, <em>linear_layer_ref=&lt;function linear&gt;</em>, <em>name='cw_conv2d_autoencoder'</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/ae.html#cw_conv2d_autoencoder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.ae.cw_conv2d_autoencoder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Channel-wise convolutional autoencoder.
+Hidden state is passed through dense linear layer.
+Pain-slow, do not use.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>inputs</strong> – input tensor</li>
+<li><strong>layer_config</strong> – layers configuration list: [layer_1_config, layer_2_config,…], where:
+layer_i_config = [num_filters(int), filter_size(list), stride(list)];
+this list represent decoder part of autoencoder bottleneck,
+decoder part is inferred symmetrically</li>
+<li><strong>resize_method</strong> – up-sampling method, one of supported tf.image.ResizeMethod’s</li>
+<li><strong>pad</strong> – str, padding scheme: ‘SAME’ or ‘VALID’</li>
+<li><strong>linear_layer_ref</strong> – linear layer class to use</li>
+<li><strong>name</strong> – str, mame scope</li>
+<li><strong>reuse</strong> – bool</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">per-channel list of lists of tensors holding encoded features, layer_wise from outer to inner
+tensor holding batch-wise flattened hidden state vector
+per-channel list of lists of tensors holding decoded features, layer-wise from inner to outer
+tensor holding reconstructed output
+None value</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="btgym.algorithms.nn.ae.beta_var_conv2d_autoencoder">
+<code class="descclassname">btgym.algorithms.nn.ae.</code><code class="descname">beta_var_conv2d_autoencoder</code><span class="sig-paren">(</span><em>inputs</em>, <em>layer_config</em>, <em>resize_method=0</em>, <em>pad='SAME'</em>, <em>linear_layer_ref=&lt;function linear&gt;</em>, <em>name='vae_conv2d'</em>, <em>max_batch_size=256</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/ae.html#beta_var_conv2d_autoencoder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.ae.beta_var_conv2d_autoencoder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Variational autoencoder.</p>
+<dl class="docutils">
+<dt>Papers:</dt>
+<dd><a class="reference external" href="https://arxiv.org/pdf/1312.6114.pdf">https://arxiv.org/pdf/1312.6114.pdf</a>
+<a class="reference external" href="https://arxiv.org/pdf/1606.05908.pdf">https://arxiv.org/pdf/1606.05908.pdf</a>
+<a class="reference external" href="http://www.matthey.me/pdf/betavae_iclr_2017.pdf">http://www.matthey.me/pdf/betavae_iclr_2017.pdf</a></dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>inputs</strong> – input tensor</li>
+<li><strong>layer_config</strong> – layers configuration list: [layer_1_config, layer_2_config,…], where:
+layer_i_config = [num_filters(int), filter_size(list), stride(list)];
+this list represent decoder part of autoencoder bottleneck,
+decoder part is inferred symmetrically</li>
+<li><strong>resize_method</strong> – up-sampling method, one of supported tf.image.ResizeMethod’s</li>
+<li><strong>pad</strong> – str, padding scheme: ‘SAME’ or ‘VALID’</li>
+<li><strong>linear_layer_ref</strong> – linear layer class - not used</li>
+<li><strong>name</strong> – str, mame scope</li>
+<li><strong>max_batch_size</strong> – int, dynamic batch size should be no greater than this value</li>
+<li><strong>reuse</strong> – bool</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">list of tensors holding encoded features, layer_wise from outer to inner
+tensor holding batch-wise flattened hidden state vector
+list of tensors holding decoded features, layer-wise from inner to outer
+tensor holding reconstructed output
+tensor holding estimated KL divergence</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.algorithms.nn.ae.KernelMonitor">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.nn.ae.</code><code class="descname">KernelMonitor</code><span class="sig-paren">(</span><em>conv_input</em>, <em>layer_output</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/ae.html#KernelMonitor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.ae.KernelMonitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visualises convolution filters learnt for specific layer.
+Source: <a class="reference external" href="https://blog.keras.io/how-convolutional-neural-networks-see-the-world.html">https://blog.keras.io/how-convolutional-neural-networks-see-the-world.html</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>conv_input</strong> – convolution stack input tensor</li>
+<li><strong>layer_output</strong> – tensor holding output of layer of interest from stack</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="btgym.algorithms.nn.ae.KernelMonitor.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>sess</em>, <em>kernel_index</em>, <em>step=0.001</em>, <em>num_steps=40</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/ae.html#KernelMonitor.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.ae.KernelMonitor.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Learns input signal that maximizes the activation of given kernel.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sess</strong> – tf.Session object</li>
+<li><strong>kernel_index</strong> – filter number of interest</li>
+<li><strong>step</strong> – gradient ascent step size</li>
+<li><strong>num_steps</strong> – number of steps to fit</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">learnt signal as np.array</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="btgym.algorithms.policy.html" class="btn btn-neutral float-right" title="btgym.algorithms.policy.base module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="btgym.algorithms.html" class="btn btn-neutral" title="btgym.algorithms package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,535 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.algorithms.runner.base &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../../search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="../../../../index.html"/>
+        <link rel="up" title="btgym.algorithms.runner" href="../runner.html"/> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../runner.html">btgym.algorithms.runner</a> &raquo;</li>
+        
+      <li>btgym.algorithms.runner.base</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for btgym.algorithms.runner.base</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">btgym.algorithms.rollout</span> <span class="k">import</span> <span class="n">Rollout</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.memory</span> <span class="k">import</span> <span class="n">_DummyMemory</span>
+
+<div class="viewcode-block" id="BaseEnvRunnerFn"><a class="viewcode-back" href="../../../../btgym.algorithms.runner.html#btgym.algorithms.runner.base.BaseEnvRunnerFn">[docs]</a><span class="k">def</span> <span class="nf">BaseEnvRunnerFn</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span>
+                    <span class="n">env</span><span class="p">,</span>
+                    <span class="n">policy</span><span class="p">,</span>
+                    <span class="n">task</span><span class="p">,</span>
+                    <span class="n">rollout_length</span><span class="p">,</span>
+                    <span class="n">summary_writer</span><span class="p">,</span>
+                    <span class="n">episode_summary_freq</span><span class="p">,</span>
+                    <span class="n">env_render_freq</span><span class="p">,</span>
+                    <span class="n">atari_test</span><span class="p">,</span>
+                    <span class="n">ep_summary</span><span class="p">,</span>
+                    <span class="n">memory_config</span><span class="p">,</span>
+                    <span class="n">log</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Default function defining runtime logic of the thread runner.</span>
+<span class="sd">    In brief, it constantly keeps on running</span>
+<span class="sd">    the policy, and as long as the rollout exceeds a certain length, the thread</span>
+<span class="sd">    runner appends all the collected data to the queue.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        env:                    environment instance</span>
+<span class="sd">        policy:                 policy instance</span>
+<span class="sd">        task:                   int</span>
+<span class="sd">        rollout_length:         int</span>
+<span class="sd">        episode_summary_freq:   int</span>
+<span class="sd">        env_render_freq:        int</span>
+<span class="sd">        atari_test:             bool, Atari or BTGyn</span>
+<span class="sd">        ep_summary:             dict of tf.summary op and placeholders</span>
+<span class="sd">        memory_config:          replay memory configuration dictionary</span>
+<span class="sd">        log:                    logbook logger</span>
+
+<span class="sd">    Yelds:</span>
+<span class="sd">        collected data as dictionary of on_policy, off_policy rollouts and episode statistics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">memory_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">memory</span> <span class="o">=</span> <span class="n">memory_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">](</span><span class="o">**</span><span class="n">memory_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">])</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">memory</span> <span class="o">=</span> <span class="n">_DummyMemory</span><span class="p">()</span>
+    <span class="c1"># Pass sample config to environment:</span>
+    <span class="n">last_state</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="o">**</span><span class="n">policy</span><span class="o">.</span><span class="n">get_sample_config</span><span class="p">())</span>
+    <span class="n">last_context</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">get_initial_features</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">last_state</span><span class="p">)</span>
+    <span class="n">length</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">local_episode</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">reward_sum</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">last_action</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">last_action</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">last_reward</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">last_action_reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">last_action</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">last_reward</span><span class="p">])],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Summary averages accumulators:</span>
+    <span class="n">total_r</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">cpu_time</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">final_value</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">total_steps</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">total_steps_atari</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">ep_stat</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">test_ep_stat</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">render_stat</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">terminal_end</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">rollout</span> <span class="o">=</span> <span class="n">Rollout</span><span class="p">()</span>
+
+        <span class="n">action</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">value_</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="n">last_state</span><span class="p">,</span> <span class="n">last_context</span><span class="p">,</span> <span class="n">last_action_reward</span><span class="p">)</span>
+
+        <span class="c1">#log.debug(&#39;*: A: {}, V: {}, step: {} &#39;.format(action, value_, length))</span>
+
+        <span class="c1"># argmax to convert from one-hot:</span>
+        <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">terminal</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">argmax</span><span class="p">())</span>
+
+        <span class="c1"># Partially collect first experience of rollout:</span>
+        <span class="n">last_experience</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;episode&#39;</span><span class="p">:</span> <span class="n">local_episode</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">:</span> <span class="n">length</span><span class="p">},</span>
+            <span class="s1">&#39;state&#39;</span><span class="p">:</span> <span class="n">last_state</span><span class="p">,</span>
+            <span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="n">action</span><span class="p">,</span>
+            <span class="s1">&#39;reward&#39;</span><span class="p">:</span> <span class="n">reward</span><span class="p">,</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">value_</span><span class="p">,</span>
+            <span class="s1">&#39;terminal&#39;</span><span class="p">:</span> <span class="n">terminal</span><span class="p">,</span>
+            <span class="s1">&#39;context&#39;</span><span class="p">:</span> <span class="n">last_context</span><span class="p">,</span>
+            <span class="s1">&#39;last_action_reward&#39;</span><span class="p">:</span> <span class="n">last_action_reward</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="c1"># Execute user-defined callbacks to policy, if any:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">policy</span><span class="o">.</span><span class="n">callback</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">last_experience</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">callback</span><span class="p">(</span><span class="o">**</span><span class="nb">locals</span><span class="p">())</span>
+
+        <span class="n">length</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">reward_sum</span> <span class="o">+=</span> <span class="n">reward</span>
+        <span class="n">last_state</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="n">last_context</span> <span class="o">=</span> <span class="n">context</span>
+        <span class="n">last_action</span> <span class="o">=</span> <span class="n">action</span>
+        <span class="n">last_reward</span> <span class="o">=</span> <span class="n">reward</span>
+        <span class="n">last_action_reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">last_action</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">last_reward</span><span class="p">])],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">roll_step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">rollout_length</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">terminal</span><span class="p">:</span>
+                <span class="c1"># Continue adding experiences to rollout:</span>
+                <span class="n">action</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">value_</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="n">last_state</span><span class="p">,</span> <span class="n">last_context</span><span class="p">,</span> <span class="n">last_action_reward</span><span class="p">)</span>
+
+                <span class="c1">#log.debug(&#39;A: {}, V: {}, step: {} &#39;.format(action, value_, length))</span>
+
+                <span class="c1"># Argmax to convert from one-hot:</span>
+                <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">terminal</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">argmax</span><span class="p">())</span>
+
+                <span class="c1"># Partially collect next experience:</span>
+                <span class="n">experience</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;episode&#39;</span><span class="p">:</span> <span class="n">local_episode</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">:</span> <span class="n">length</span><span class="p">},</span>
+                    <span class="s1">&#39;state&#39;</span><span class="p">:</span> <span class="n">last_state</span><span class="p">,</span>
+                    <span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="n">action</span><span class="p">,</span>
+                    <span class="s1">&#39;reward&#39;</span><span class="p">:</span> <span class="n">reward</span><span class="p">,</span>
+                    <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">value_</span><span class="p">,</span>
+                    <span class="s1">&#39;terminal&#39;</span><span class="p">:</span> <span class="n">terminal</span><span class="p">,</span>
+                    <span class="s1">&#39;context&#39;</span><span class="p">:</span> <span class="n">last_context</span><span class="p">,</span>
+                    <span class="s1">&#39;last_action_reward&#39;</span><span class="p">:</span> <span class="n">last_action_reward</span><span class="p">,</span>
+                    <span class="c1">#&#39;pixel_change&#39;: 0 #policy.get_pc_target(state, last_state),</span>
+                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">policy</span><span class="o">.</span><span class="n">callback</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">experience</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">callback</span><span class="p">(</span><span class="o">**</span><span class="nb">locals</span><span class="p">())</span>
+
+                <span class="c1"># Bootstrap to complete and push previous experience:</span>
+                <span class="n">last_experience</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value_</span>
+                <span class="n">rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">last_experience</span><span class="p">)</span>
+                <span class="n">memory</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">last_experience</span><span class="p">)</span>
+
+                <span class="c1"># Housekeeping:</span>
+                <span class="n">length</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">reward_sum</span> <span class="o">+=</span> <span class="n">reward</span>
+                <span class="n">last_state</span> <span class="o">=</span> <span class="n">state</span>
+                <span class="n">last_context</span> <span class="o">=</span> <span class="n">context</span>
+                <span class="n">last_action</span> <span class="o">=</span> <span class="n">action</span>
+                <span class="n">last_reward</span> <span class="o">=</span> <span class="n">reward</span>
+                <span class="n">last_action_reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">last_action</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">last_reward</span><span class="p">])],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">last_experience</span> <span class="o">=</span> <span class="n">experience</span>
+
+            <span class="k">if</span> <span class="n">terminal</span><span class="p">:</span>
+                <span class="c1"># Finished episode within last taken step:</span>
+                <span class="n">terminal_end</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="c1"># All environment-specific summaries are here due to fact</span>
+                <span class="c1"># only runner allowed to interact with environment:</span>
+                <span class="c1"># Accumulate values for averaging:</span>
+                <span class="n">total_r</span> <span class="o">+=</span> <span class="p">[</span><span class="n">reward_sum</span><span class="p">]</span>
+                <span class="n">total_steps_atari</span> <span class="o">+=</span> <span class="p">[</span><span class="n">length</span><span class="p">]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">atari_test</span><span class="p">:</span>
+                    <span class="n">episode_stat</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get_stat</span><span class="p">()</span>  <span class="c1"># get episode statistic</span>
+                    <span class="n">last_i</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># pull most recent info</span>
+                    <span class="n">cpu_time</span> <span class="o">+=</span> <span class="p">[</span><span class="n">episode_stat</span><span class="p">[</span><span class="s1">&#39;runtime&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()]</span>
+                    <span class="n">final_value</span> <span class="o">+=</span> <span class="p">[</span><span class="n">last_i</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">]]</span>
+                    <span class="n">total_steps</span> <span class="o">+=</span> <span class="p">[</span><span class="n">episode_stat</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]]</span>
+
+                <span class="c1"># Episode statistics:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Was it test episode ( `type` in metadata is not zero)?</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">atari_test</span> <span class="ow">and</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]:</span>
+                        <span class="n">is_test_episode</span> <span class="o">=</span> <span class="kc">True</span>
+
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">is_test_episode</span> <span class="o">=</span> <span class="kc">False</span>
+
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="n">is_test_episode</span> <span class="o">=</span> <span class="kc">False</span>
+
+                <span class="k">if</span> <span class="n">is_test_episode</span><span class="p">:</span>
+                    <span class="n">test_ep_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                        <span class="n">total_r</span><span class="o">=</span><span class="n">total_r</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">final_value</span><span class="o">=</span><span class="n">final_value</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">steps</span><span class="o">=</span><span class="n">total_steps</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">local_episode</span> <span class="o">%</span> <span class="n">episode_summary_freq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">atari_test</span><span class="p">:</span>
+                            <span class="c1"># BTgym:</span>
+                            <span class="n">ep_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                                <span class="n">total_r</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_r</span><span class="p">),</span>
+                                <span class="n">cpu_time</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">cpu_time</span><span class="p">),</span>
+                                <span class="n">final_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">final_value</span><span class="p">),</span>
+                                <span class="n">steps</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_steps</span><span class="p">)</span>
+                            <span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="c1"># Atari:</span>
+                            <span class="n">ep_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                                <span class="n">total_r</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_r</span><span class="p">),</span>
+                                <span class="n">steps</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">total_steps_atari</span><span class="p">)</span>
+                            <span class="p">)</span>
+                        <span class="n">total_r</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="n">cpu_time</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="n">final_value</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="n">total_steps</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="n">total_steps_atari</span> <span class="o">=</span> <span class="p">[]</span>
+
+                <span class="k">if</span> <span class="n">task</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">local_episode</span> <span class="o">%</span> <span class="n">env_render_freq</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">:</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">atari_test</span><span class="p">:</span>
+                        <span class="c1"># Render environment (chief worker only, and not in atari atari_test mode):</span>
+                        <span class="n">render_stat</span> <span class="o">=</span> <span class="p">{</span>
+                            <span class="n">mode</span><span class="p">:</span> <span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">mode</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:]</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="n">env</span><span class="o">.</span><span class="n">render_modes</span>
+                        <span class="p">}</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># Atari:</span>
+                        <span class="n">render_stat</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">render_atari</span><span class="o">=</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">][</span><span class="kc">None</span><span class="p">,:]</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span>
+
+                <span class="c1"># New episode:</span>
+                <span class="n">last_state</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="o">**</span><span class="n">policy</span><span class="o">.</span><span class="n">get_sample_config</span><span class="p">())</span>
+                <span class="n">last_context</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">get_initial_features</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">last_state</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">last_context</span><span class="p">)</span>
+                <span class="n">length</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">reward_sum</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">last_action</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+                <span class="n">last_action</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="n">last_reward</span> <span class="o">=</span> <span class="mf">0.0</span>
+                <span class="n">last_action_reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">last_action</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">last_reward</span><span class="p">])],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+                <span class="c1"># Increment global and local episode counts:</span>
+                <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">policy</span><span class="o">.</span><span class="n">inc_episode</span><span class="p">)</span>
+                <span class="n">local_episode</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">break</span>
+
+        <span class="c1"># After rolling `rollout_length` or less (if got `terminal`)</span>
+        <span class="c1"># complete final experience of the rollout:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">terminal_end</span><span class="p">:</span>
+            <span class="c1"># Bootstrap:</span>
+            <span class="n">last_experience</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">policy</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">last_state</span><span class="p">,</span> <span class="n">last_context</span><span class="p">,</span> <span class="n">last_action_reward</span><span class="p">)]</span>
+            <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">last_experience</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mf">0.0</span><span class="p">])</span>
+
+        <span class="n">rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">last_experience</span><span class="p">)</span>
+
+        <span class="c1"># Only training rollouts are added to replay memory:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Was it test (`type` in metadata is not zero)?</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">atari_test</span> <span class="ow">and</span> <span class="n">last_experience</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]:</span>
+                <span class="n">is_test</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">is_test</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">is_test</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_test</span><span class="p">:</span>
+            <span class="n">memory</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">last_experience</span><span class="p">)</span>
+
+        <span class="c1">#print(&#39;last_experience {}&#39;.format(last_experience[&#39;position&#39;]))</span>
+        <span class="c1">#for k, v in last_experience.items():</span>
+        <span class="c1">#    try:</span>
+        <span class="c1">#        print(k, &#39;shape: &#39;, v.shape)</span>
+        <span class="c1">#    except:</span>
+        <span class="c1">#        try:</span>
+        <span class="c1">#            print(k, &#39;type: &#39;, type(v), &#39;len: &#39;, len(v))</span>
+        <span class="c1">#        except:</span>
+        <span class="c1">#            print(k, &#39;type: &#39;, type(v), &#39;value: &#39;, v)</span>
+
+        <span class="c1">#print(&#39;rollout_step: {}, last_exp/frame_pos: {}\nr: {}, v: {}, v_next: {}, t: {}&#39;.</span>
+        <span class="c1">#    format(</span>
+        <span class="c1">#        length,</span>
+        <span class="c1">#        last_experience[&#39;position&#39;],</span>
+        <span class="c1">#        last_experience[&#39;reward&#39;],</span>
+        <span class="c1">#        last_experience[&#39;value&#39;],</span>
+        <span class="c1">#        last_experience[&#39;value_next&#39;],</span>
+        <span class="c1">#        last_experience[&#39;terminal&#39;]</span>
+        <span class="c1">#    )</span>
+        <span class="c1">#)</span>
+        <span class="c1">#print(&#39;rollout size: {}, last r: {}&#39;.format(len(rollout.position), rollout.r[-1]))</span>
+        <span class="c1">#print(&#39;last value_next: &#39;, last_experience[&#39;value_next&#39;], &#39;, rollout flushed.&#39;)</span>
+
+        <span class="c1"># Once we have enough experience and memory can be sampled, yield it,</span>
+        <span class="c1"># and have the ThreadRunner place it on a queue:</span>
+        <span class="k">if</span> <span class="n">memory</span><span class="o">.</span><span class="n">is_full</span><span class="p">():</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">on_policy</span><span class="o">=</span><span class="n">rollout</span><span class="p">,</span>
+                <span class="n">off_policy</span><span class="o">=</span><span class="n">memory</span><span class="o">.</span><span class="n">sample_uniform</span><span class="p">(</span><span class="n">sequence_size</span><span class="o">=</span><span class="n">rollout_length</span><span class="p">),</span>
+                <span class="n">off_policy_rp</span><span class="o">=</span><span class="n">memory</span><span class="o">.</span><span class="n">sample_priority</span><span class="p">(</span><span class="n">exact_size</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+                <span class="n">ep_summary</span><span class="o">=</span><span class="n">ep_stat</span><span class="p">,</span>
+                <span class="n">test_ep_summary</span><span class="o">=</span><span class="n">test_ep_stat</span><span class="p">,</span>
+                <span class="n">render_summary</span><span class="o">=</span><span class="n">render_stat</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">yield</span> <span class="n">data</span>
+
+            <span class="n">ep_stat</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">test_ep_stat</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">render_stat</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../../',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
