@@ -201,13 +201,33 @@
 L_gps = aac_lambda * L_a3c + guided_lambda * L_im.</p>
 <p>This implementation is loosely refereed as ‘guided policy search’ after algorithm described in paper
 by S. Levine and P. Abbeel <cite>Learning Neural Network Policies with Guided PolicySearch under Unknown Dynamics</cite></p>
-<p><a class="reference external" href="https://people.eecs.berkeley.edu/~svlevine/papers/mfcgps.pdf">https://people.eecs.berkeley.edu/~svlevine/papers/mfcgps.pdf</a></p>
 <p>in a sense that exploits idea of fitting ‘local’ (here - single episode) oracle for environment with
 generally unknown dynamics and use actions demonstrated by it to optimize trajectory distribution for training agent.</p>
 <p>Note that this particular implementation of expert does not provides
 complete action-state space trajectory for agent to follow.
 Instead it estimates <cite>advised</cite> categorical distribution over actions conditioned on <cite>external</cite> (i.e. price dynamics)
 state observations only.</p>
+<dl class="docutils">
+<dt>Papers:</dt>
+<dd><ul class="first last simple">
+<li><dl class="first docutils">
+<dt>Levine et al., ‘Learning Neural Network Policies with Guided PolicySearch under Unknown Dynamics’</dt>
+<dd><a class="reference external" href="https://people.eecs.berkeley.edu/~svlevine/papers/mfcgps.pdf">https://people.eecs.berkeley.edu/~svlevine/papers/mfcgps.pdf</a></dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Brys et al., ‘Reinforcement Learning from Demonstration through Shaping’</dt>
+<dd><a class="reference external" href="https://www.ijcai.org/Proceedings/15/Papers/472.pdf">https://www.ijcai.org/Proceedings/15/Papers/472.pdf</a></dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Wiewiora et al., ‘Principled Methods for Advising Reinforcement Learning Agents’</dt>
+<dd><a class="reference external" href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.14.6412&amp;rep=rep1&amp;type=pdf">http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.14.6412&amp;rep=rep1&amp;type=pdf</a></dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />

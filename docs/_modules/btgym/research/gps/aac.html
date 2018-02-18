@@ -193,8 +193,6 @@
 <span class="sd">    This implementation is loosely refereed as &#39;guided policy search&#39; after algorithm described in paper</span>
 <span class="sd">    by S. Levine and P. Abbeel `Learning Neural Network Policies with Guided PolicySearch under Unknown Dynamics`</span>
 
-<span class="sd">    https://people.eecs.berkeley.edu/~svlevine/papers/mfcgps.pdf</span>
-
 <span class="sd">    in a sense that exploits idea of fitting &#39;local&#39; (here - single episode) oracle for environment with</span>
 <span class="sd">    generally unknown dynamics and use actions demonstrated by it to optimize trajectory distribution for training agent.</span>
 
@@ -202,6 +200,17 @@
 <span class="sd">    complete action-state space trajectory for agent to follow.</span>
 <span class="sd">    Instead it estimates `advised` categorical distribution over actions conditioned on `external` (i.e. price dynamics)</span>
 <span class="sd">    state observations only.</span>
+
+<span class="sd">    Papers:</span>
+<span class="sd">        - Levine et al., &#39;Learning Neural Network Policies with Guided PolicySearch under Unknown Dynamics&#39;</span>
+<span class="sd">            https://people.eecs.berkeley.edu/~svlevine/papers/mfcgps.pdf</span>
+
+<span class="sd">        - Brys et al., &#39;Reinforcement Learning from Demonstration through Shaping&#39;</span>
+<span class="sd">            https://www.ijcai.org/Proceedings/15/Papers/472.pdf</span>
+
+<span class="sd">        - Wiewiora et al., &#39;Principled Methods for Advising Reinforcement Learning Agents&#39;</span>
+<span class="sd">            http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.14.6412&amp;rep=rep1&amp;type=pdf</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
