@@ -235,11 +235,12 @@ _Notice: will be moved inside project wiki [26.01.18]_
  - [x] A3C implementation for BTgym;
  - [x] UNREAL implementation for BTgym;
  - [x] PPO implementation for BTgym;
- - [ ] RL^2 / MAML / DARLA adaptations;
- - [ ] learning from demonstrations;
+ - [ ] RL^2 / MAML / DARLA adaptations - INP ROGRESS;
+ - [x] learning from demonstrations; -  partially done
  - [ ] risk-sensitive agents implementation;
  - [x] sequential and sliding time-window sampling;
  - [ ] multiply instruments trading;
+ - [ ] docker image;
  
  
 ### <a name="news"></a>[News and updates:](#title)
