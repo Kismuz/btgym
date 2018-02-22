@@ -1101,42 +1101,43 @@ class BaseAAC(object):
                 is_train = True
 
             if is_train:
-                # If there is no any test rollouts  - copy weights from shared to local new_policy:
-                sess.run(self.sync_pi)
+                # If there is no any test rollouts  - do a train step:
+                sess.run(self.sync_pi)  # only sync at train time
 
-            # self.log.debug('is_train: {}'.format(is_train))
+                feed_dict = self.process_data(sess, data, is_train)
 
-            feed_dict = self.process_data(sess, data, is_train)
+                # Say `No` to redundant summaries:
+                wirte_model_summary =\
+                    self.local_steps % self.model_summary_freq == 0
 
-            # Say No to redundant summaries:
-            wirte_model_summary =\
-                self.local_steps % self.model_summary_freq == 0
+                #fetches = [self.train_op, self.local_network.debug]  # include policy debug shapes
+                fetches = [self.train_op]
 
-            #fetches = [self.train_op, self.local_network.debug]  # include policy debug shapes
-            fetches = [self.train_op]
+                if wirte_model_summary:
+                    fetches_last = fetches + [self.model_summary_op, self.inc_step]
+                else:
+                    fetches_last = fetches + [self.inc_step]
 
-            if wirte_model_summary:
-                fetches_last = fetches + [self.model_summary_op, self.inc_step]
-            else:
-                fetches_last = fetches + [self.inc_step]
+                # Do a number of SGD train epochs:
+                # When doing more than one epoch, we actually use only last summary:
+                for i in range(self.num_epochs - 1):
+                    fetched = sess.run(fetches, feed_dict=feed_dict)
 
-            # Do a number of SGD train epochs:
-            # When doing more than one epoch, we actually use only last summary:
-            for i in range(self.num_epochs - 1):
-                fetched = sess.run(fetches, feed_dict=feed_dict)
+                fetched = sess.run(fetches_last, feed_dict=feed_dict)
 
-            fetched = sess.run(fetches_last, feed_dict=feed_dict)
+                if wirte_model_summary:
+                    model_summary = fetched[-2]
 
-            if wirte_model_summary:
-                model_summary = fetched[-2]
+                else:
+                    model_summary = None
+
+                self.local_steps += 1  # only update on train steps
 
             else:
                 model_summary = None
 
             # Write down summaries:
             self.process_summary(sess, data, model_summary)
-
-            self.local_steps += 1
 
             # print debug info:
             #for k, v in fetched[1].items():
@@ -1256,10 +1257,13 @@ class Unreal(BaseAAC):
                     because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
                     ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).
         """
-        super(Unreal, self).__init__(
-            _log_name='UNREAL',
-            **kwargs
-        )
+        try:
+            super(Unreal, self).__init__(_log_name='UNREAL', **kwargs)
+        except:
+            msg = 'Child class Unreal __init()__ exception occurred' + \
+                  '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
+            self.log.exception(msg)
+            raise RuntimeError(msg)
 
 
 class A3C(BaseAAC):

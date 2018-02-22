@@ -5,7 +5,8 @@ from btgym.algorithms.rollout import Rollout
 from btgym.algorithms.memory import _DummyMemory
 from btgym.algorithms.math_utils import softmax
 
-def VerboseEnvRunnerFn(
+
+def MetaEnvRunnerFn(
         sess,
         env,
         policy,
@@ -21,10 +22,7 @@ def VerboseEnvRunnerFn(
         aux_summaries=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
 ):
     """
-    More verbose function for runtime logic of the thread runner.
-    Extends per-episode summaries with visualiation of: actions porbabilities distribution, value function,
-    hidden LSTM state. In it's default configuration supposed to be used with stacked_LSTM architecture.
-
+    Meta-learning loop runtime logic of the thread runner.
 
     Args:
         env:                    environment instance
@@ -47,15 +45,13 @@ def VerboseEnvRunnerFn(
 
     else:
         memory = _DummyMemory()
-    # Pass sample config to environment:
+    # Pass sample config to environment (.get_sample_config() is actually aac framework method):
     last_state = env.reset(**policy.get_sample_config())
-    last_context = policy.get_initial_features(state=last_state)
+    last_action, last_reward, last_value, last_context = policy.get_initial_features(state=last_state)
     length = 0
     local_episode = 0
     reward_sum = 0
-    last_action = np.zeros(env.action_space.n)
-    last_action[0] = 1
-    last_reward = 0.0
+    # TODO: generalize to last_policy_output:
     last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
 
     # Summary averages accumulators:
@@ -84,10 +80,10 @@ def VerboseEnvRunnerFn(
         terminal_end = False
         rollout = Rollout()
 
-        action, logits, value_, context = policy.act(last_state, last_context, last_action_reward)
+        action, logits, value, context = policy.act(last_state, last_context, last_action_reward)
 
         ep_a_logits.append(logits)
-        ep_value.append(value_)
+        ep_value.append(value)
         ep_context.append(context)
 
         #log.debug('*: A: {}, V: {}, step: {} '.format(action, value_, length))
@@ -101,7 +97,7 @@ def VerboseEnvRunnerFn(
             'state': last_state,
             'action': action,
             'reward': reward,
-            'value': value_,
+            'value': value,
             'terminal': terminal,
             'context': last_context,
             'last_action_reward': last_action_reward,
@@ -121,12 +117,12 @@ def VerboseEnvRunnerFn(
         for roll_step in range(1, rollout_length):
             if not terminal:
                 # Continue adding experiences to rollout:
-                action, logits, value_, context = policy.act(last_state, last_context, last_action_reward)
+                action, logits, value, context = policy.act(last_state, last_context, last_action_reward)
 
                 #log.debug('A: {}, V: {}, step: {} '.format(action, value_, length))
 
                 ep_a_logits.append(logits)
-                ep_value.append(value_)
+                ep_value.append(value)
                 ep_context.append(context)
 
                 #log.notice('context: {}'.format(context))
@@ -140,7 +136,7 @@ def VerboseEnvRunnerFn(
                     'state': last_state,
                     'action': action,
                     'reward': reward,
-                    'value': value_,
+                    'value': value,
                     'terminal': terminal,
                     'context': last_context,
                     'last_action_reward': last_action_reward,
@@ -150,7 +146,7 @@ def VerboseEnvRunnerFn(
                     experience[key] = callback(**locals())
 
                 # Bootstrap to complete and push previous experience:
-                last_experience['r'] = value_
+                last_experience['r'] = value
                 rollout.add(last_experience)
                 memory.add(last_experience)
 
@@ -270,12 +266,13 @@ def VerboseEnvRunnerFn(
 
                 # New episode:
                 last_state = env.reset(**policy.get_sample_config())
-                last_context = policy.get_initial_features(state=last_state, context=last_context)
+                last_action, last_reward, last_value, last_context = policy.get_initial_features(
+                    state=last_state,
+                    context=last_context
+                )
                 length = 0
                 reward_sum = 0
-                last_action = np.zeros(env.action_space.n)
-                last_action[0] = 1
-                last_reward = 0.0
+
                 last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
 
                 # reset per-episode accumulators:

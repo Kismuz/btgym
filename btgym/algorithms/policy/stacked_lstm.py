@@ -489,7 +489,6 @@ class AacStackedRL2Policy(StackedLstmPolicy):
             # Keep trial number:
             self.current_trial_num = state['metadata']['trial_num']
 
-
         except KeyError:
             raise KeyError(
                 'RL^2 policy: expected observation state dict. to have keys [`metadata`]:[`trial_num`,`type`]; got: {}'.

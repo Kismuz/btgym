@@ -84,7 +84,7 @@ class GuidedAAC(BaseAAC):
                 self.model_summary_op = tf.summary.merge(extended_summary, name='gps_extended_summary')
 
         except:
-            msg = 'Child 0.0 class __init()__ exception occurred' + \
+            msg = 'GuidedAAC.__init()__ exception occurred' + \
                   '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
             self.log.exception(msg)
             raise RuntimeError(msg)
