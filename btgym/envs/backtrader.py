@@ -619,22 +619,22 @@ class BTgymEnv(gym.Env):
             observation space state
 
         Notes:
-            Current kwarg accepted is::
+            Current kwargs accepted is::
 
-                data_control = dict(
-                    episode=dict(
-                        get_new=True,
-                        sample_type=0,
-                        b_alpha=1,
-                        b_beta=1
-                    ),
-                    trial=dict(
-                        get_new=True,
-                        sample_type=0,
-                        b_alpha=1,
-                        b_beta=1
-                    )
+
+                episode_config=dict(
+                    get_new=True,
+                    sample_type=0,
+                    b_alpha=1,
+                    b_beta=1
+                ),
+                trial_config=dict(
+                    get_new=True,
+                    sample_type=0,
+                    b_alpha=1,
+                    b_beta=1
                 )
+
         """
         # Data Server check:
         if self.data_master:
@@ -923,8 +923,9 @@ class BTgymEnv(gym.Env):
         """
         Restarts data_server.
         """
-        self._stop_data_server()
-        self._start_data_server()
+        if self.data_master:
+            self._stop_data_server()
+            self._start_data_server()
 
     def _get_dataset_info(self):
         """

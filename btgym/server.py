@@ -50,6 +50,11 @@ class _BTgymAnalyzer(bt.Analyzer):
         self.log = self.strategy.env._log
         self.socket = self.strategy.env._socket
         self.render = self.strategy.env._render
+
+        # Pass data serving methods:
+        self.get_current_trial = self.strategy.env._get_data
+        self.get_dataset_info = self.strategy.env._get_info
+
         self.message = None
         self.step_to_render = None # Due to reset(), this will get populated before first render() call.
 
@@ -122,11 +127,24 @@ class _BTgymAnalyzer(bt.Analyzer):
                         )
                     )
                 # Episode termination requested:
-                if self.message['ctrl'] == '_done':
+                elif self.message['ctrl'] == '_done':
                     is_done = True  # redundant
                     self.socket.send_pyobj('_DONE SIGNAL RECEIVED')
                     self.early_stop()
                     return None
+
+                elif self.message['ctrl'] == '_get_data':
+                    self.socket.send_pyobj(self.get_current_trial())
+
+                elif self.message['ctrl'] == '_get_info':
+                    self.socket.send_pyobj(self.get_dataset_info())
+
+                # Unknown key:
+                else:
+                    message = {'ctrl': 'send control keys: <_reset>, <_getstat>, ' +
+                                       '<_render>, <_stop>, or valid agent action'}
+                    self.log.debug('Analyzer received unexpected key: {}; Sent: {}'.format(self.message, str(message)))
+                    self.socket.send_pyobj(message)
 
                 # Halt again:
                 self.message = self.socket.recv_pyobj()
@@ -235,6 +253,10 @@ class BTgymServer(multiprocessing.Process):
         self.connect_timeout = connect_timeout # server connection timeout in seconds.
         self.connect_timeout_step = 0.01
 
+        self.trial_sample = None
+        self.trial_stat = None
+        self.dataset_stat = None
+
     @staticmethod
     def _comm_with_timeout(socket, message):
         """
@@ -278,7 +300,24 @@ class BTgymServer(multiprocessing.Process):
 
         return response
 
-    def get_data(self, **reset_kwargs):
+    def get_dataset_stat(self):
+        data_server_response = self._comm_with_timeout(
+            socket=self.data_socket,
+            message={'ctrl': '_get_info'}
+        )
+        if data_server_response['status'] in 'ok':
+            self.log.debug('Data_server @{} responded with dataset statistic in about {} seconds.'.
+                           format(self.data_network_address, data_server_response['time']))
+
+            return data_server_response['message']
+
+        else:
+            msg = 'BtgymServer_sampling_attempt: data_server @{} unreachable with status: <{}>.'. \
+                format(self.data_network_address, data_server_response['status'])
+            self.log.error(msg)
+            raise ConnectionError(msg)
+
+    def get_trial(self, **reset_kwargs):
         """
 
         Args:
@@ -295,12 +334,12 @@ class BTgymServer(multiprocessing.Process):
                 message={'ctrl': '_get_data', 'kwargs': reset_kwargs}
             )
             if data_server_response['status'] in 'ok':
-                self.log.debug('Data_server responded with data in about {} seconds.'.
-                               format(data_server_response['time']))
+                self.log.debug('Data_server @{} responded with data in about {} seconds.'.
+                               format(self.data_network_address, data_server_response['time']))
 
             else:
-                msg = 'BtgymServer_sampling_attempt: data_server unreachable with status: <{}>.'. \
-                    format(data_server_response['status'])
+                msg = 'BtgymServer_sampling_attempt: data_server @{} unreachable with status: <{}>.'. \
+                    format(self.data_network_address, data_server_response['status'])
                 self.log.error(msg)
                 raise ConnectionError(msg)
 
@@ -330,8 +369,31 @@ class BTgymServer(multiprocessing.Process):
         trial_stat = trial_sample.describe()
         trial_sample.reset()
         dataset_stat = data_server_response['message']['stat']
+        origin = data_server_response['message']['origin']
 
-        return trial_sample, trial_stat, dataset_stat
+        return trial_sample, trial_stat, dataset_stat, origin
+
+    def get_trial_message(self):
+        """
+        Prepares  message containing current trial instance, mimicking data_server message protocol.
+        Intended for serving requests from data_slave environment.
+
+        Returns:
+            dict containing trial instance, d_set statistic and origin key; dict containing 'cntrl' response if master
+            d_set is not ready;
+        """
+        if self.trial_sample is not None:
+            message = {
+                'sample': self.trial_sample,
+                'stat': self.dataset_stat,
+                'origin': 'master_environmnet',
+            }
+
+        else:
+            message = {'ctrl': 'Dataset not ready, hold on...'}
+            self.log.debug('Sent to slave: ' + str(message))
+
+        return message
 
     def run(self):
         """
@@ -352,9 +414,6 @@ class BTgymServer(multiprocessing.Process):
         cerebro = None
         episode_result = dict()
         episode_sample = None
-        trial_sample = None
-        trial_stat = None
-        dataset_stat = None
 
         # How long to wait for data_master to reset data:
         self.wait_for_data_reset = 300  # seconds
@@ -396,7 +455,7 @@ class BTgymServer(multiprocessing.Process):
         # Init renderer:
         self.render.initialize_pyplot()
 
-        # Mandatory DrawDown and auxillary plotting observers to add to data-master startegy instance:
+        # Mandatory DrawDown and auxillary plotting observers to add to data-master strategy instance:
         # TODO: make plotters optional args
         if self.render.enabled:
             aux_obsrevers = [bt.observers.DrawDown, Reward, Position, NormPnL]
@@ -442,6 +501,18 @@ class BTgymServer(multiprocessing.Process):
                         self.socket.send_pyobj(self.render.render(service_input['mode'],))
                         self.log.debug('Episode rendering for [{}] sent.'.format(service_input['mode']))
 
+                    # Serve data-dependent environment with trial instance:
+                    elif service_input['ctrl'] == '_get_data':
+                        message = 'Sending trial data to slave'
+                        self.log.debug(message)
+                        self.socket.send_pyobj(self.get_trial_message())
+
+                    # Serve data-dependent environment with dataset statisitc:
+                    elif service_input['ctrl'] == '_get_info':
+                        message = 'Sending dataset statistic to slave'
+                        self.log.debug(message)
+                        self.socket.send_pyobj(self.get_dataset_stat())
+
                     else:  # ignore any other input
                         # NOTE: response string must include 'ctrl' key
                         # for env.reset(), env.get_stat(), env.close() correct operation.
@@ -460,6 +531,10 @@ class BTgymServer(multiprocessing.Process):
             cerebro._socket = self.socket
             cerebro._log = self.log
             cerebro._render = self.render
+
+            # Pass methods for serving capabilities:
+            cerebro._get_data = self.get_trial_message
+            cerebro._get_info = self.get_dataset_stat
 
             # Add auxillary observers, if not already:
             for aux in aux_obsrevers:
@@ -491,25 +566,29 @@ class BTgymServer(multiprocessing.Process):
             # Get new Trial from data_server if requested,
             # despite bult-in new/reuse data object sampling option, perform checks here to avoid
             # redundant traffic:
-            if sample_config['trial_config']['get_new'] or trial_sample is None:
+            if sample_config['trial_config']['get_new'] or self.trial_sample is None:
                 self.log.debug(
                     'Requesting new Trial sample with args: {}'.format(sample_config['trial_config'])
                 )
-                trial_sample, trial_stat, dataset_stat = self.get_data(**sample_config['trial_config'])
-                trial_sample.set_logger(self.log_level, self.task)
-                self.log.debug('Got new Trial: <{}>'.format(trial_sample.filename))
+                self.trial_sample, self.trial_stat, self.dataset_stat, origin =\
+                    self.get_trial(**sample_config['trial_config'])
+
+                if origin in 'data_server':
+                    self.trial_sample.set_logger(self.log_level, self.task)
+
+                self.log.debug('Got new Trial: <{}>'.format(self.trial_sample.filename))
 
             else:
-                self.log.debug('Reusing Trial <{}>'.format(trial_sample.filename))
+                self.log.debug('Reusing Trial <{}>'.format(self.trial_sample.filename))
 
             # Get episode:
-            self.log.debug('Requesting episode from <{}>'.format(trial_sample.filename))
-            episode_sample = trial_sample.sample(**sample_config['episode_config'])
+            self.log.debug('Requesting episode from <{}>'.format(self.trial_sample.filename))
+            episode_sample = self.trial_sample.sample(**sample_config['episode_config'])
 
             # Get episode data statistic and pass it to strategy params:
-            cerebro.strats[0][0][2]['trial_stat'] = trial_stat
-            cerebro.strats[0][0][2]['trial_metadata'] = trial_sample.metadata
-            cerebro.strats[0][0][2]['dataset_stat'] = dataset_stat
+            cerebro.strats[0][0][2]['trial_stat'] = self.trial_stat
+            cerebro.strats[0][0][2]['trial_metadata'] = self.trial_sample.metadata
+            cerebro.strats[0][0][2]['dataset_stat'] = self.dataset_stat
             cerebro.strats[0][0][2]['episode_stat'] = episode_sample.describe()
             cerebro.strats[0][0][2]['metadata'] = episode_sample.metadata
 

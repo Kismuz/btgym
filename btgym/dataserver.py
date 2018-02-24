@@ -193,7 +193,13 @@ class BTgymDataFeedServer(multiprocessing.Process):
                         sample = self.get_data(sample_config=service_input['kwargs'])
                         message = 'Sending sample_#{}.'.format(self.local_step)
                         self.log.debug(message)
-                        socket.send_pyobj({'sample': sample, 'stat': self.dataset_stat})
+                        socket.send_pyobj(
+                            {
+                                'sample': sample,
+                                'stat': self.dataset_stat,
+                                'origin': 'data_server',
+                            }
+                        )
                         get_new = True
 
                     else:
@@ -221,6 +227,6 @@ class BTgymDataFeedServer(multiprocessing.Process):
                     socket.send_pyobj(message)  # pairs any other input
 
             else:
-                message = {'ctrl': 'No <ctrl> key received, got:\n{}'.format(msg)}
+                message = {'ctrl': 'No <ctrl> key received, got:\n{}'.format(service_input)}
                 self.log.debug(str(message))
                 socket.send_pyobj(message) # pairs input
