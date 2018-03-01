@@ -73,6 +73,12 @@ class DevStrat_4_6(BTgymBaseStrategy):
                             high=10**10,
                             dtype=np.uint32
                         ),
+                        'trial_type': spaces.Box(
+                            shape=(),
+                            low=0,
+                            high=1,
+                            dtype=np.uint32
+                        ),
                         'sample_num': spaces.Box(
                             shape=(),
                             low=0,
@@ -122,6 +128,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
         self.state['metadata'] = {
             'type': np.asarray(self.p.metadata['type']),
             'trial_num': np.asarray(self.p.metadata['parent_sample_num']),
+            'trial_type': np.asarray(self.p.metadata['parent_sample_type']),
             'sample_num': np.asarray(self.p.metadata['sample_num']),
             'first_row': np.asarray(self.p.metadata['first_row'])
         }
@@ -265,6 +272,12 @@ class DevStrat_4_7(DevStrat_4_6):
                         shape=(),
                         low=0,
                         high=10 ** 10,
+                        dtype=np.uint32
+                    ),
+                    'trial_type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1,
                         dtype=np.uint32
                     ),
                     'sample_num': spaces.Box(
@@ -434,6 +447,12 @@ class DevStrat_4_8(DevStrat_4_7):
                         high=10 ** 10,
                         dtype=np.uint32
                     ),
+                    'trial_type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1,
+                        dtype=np.uint32
+                    ),
                     'sample_num': spaces.Box(
                         shape=(),
                         low=0,
@@ -530,6 +549,12 @@ class DevStrat_4_9(DevStrat_4_7):
                         shape=(),
                         low=0,
                         high=10 ** 10,
+                        dtype=np.uint32
+                    ),
+                    'trial_type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1,
                         dtype=np.uint32
                     ),
                     'sample_num': spaces.Box(
@@ -725,6 +750,12 @@ class DevStrat_4_11(DevStrat_4_10):
                         high=10 ** 10,
                         dtype=np.uint32
                     ),
+                    'trial_type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1,
+                        dtype=np.uint32
+                    ),
                     'sample_num': spaces.Box(
                         shape=(),
                         low=0,
@@ -842,6 +873,12 @@ class DevStrat_4_12(DevStrat_4_11):
                         shape=(),
                         low=0,
                         high=10 ** 10,
+                        dtype=np.uint32
+                    ),
+                    'trial_type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1,
                         dtype=np.uint32
                     ),
                     'sample_num': spaces.Box(

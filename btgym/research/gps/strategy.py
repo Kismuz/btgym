@@ -54,6 +54,12 @@ class GuidedStrategy_0_0(DevStrat_4_12):
                         high=10 ** 10,
                         dtype=np.uint32
                     ),
+                    'trial_type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1,
+                        dtype=np.uint32
+                    ),
                     'sample_num': spaces.Box(
                         shape=(),
                         low=0,

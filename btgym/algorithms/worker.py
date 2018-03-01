@@ -142,12 +142,13 @@ class Worker(multiprocessing.Process):
 
             self.log.debug('making environments:')
             # Making as many environments as many entries in env_config `port` list:
-            # TODO: Hacky-II: only one example of parallel [all] environments can be data-master and renderer
+            # TODO: Hacky-II: only one example over all parallel environments can be data-master and renderer
             # TODO: measure data_server lags, maybe launch several instances
             self.env_list = []
             env_kwargs = self.env_kwargs.copy()
             env_kwargs['log_level'] = self.log_level
             port_list = env_kwargs.pop('port')
+            data_port_list = env_kwargs.pop('data_port')
             data_master = env_kwargs.pop('data_master')
             render_enabled = env_kwargs.pop('render_enabled')
 
@@ -157,7 +158,7 @@ class Worker(multiprocessing.Process):
             else:
                 task_id = 0
 
-            for port in port_list:
+            for port, data_port in zip(port_list, data_port_list):
                 if not self.test_mode:
                     # Assume BTgym env. class:
                     self.log.debug('env at port_{} is data_master: {}'.format(port, data_master))
@@ -165,6 +166,7 @@ class Worker(multiprocessing.Process):
                         self.env_list.append(
                             self.env_class(
                                 port=port,
+                                data_port=data_port,
                                 data_master=data_master,
                                 render_enabled=render_enabled,
                                 task= self.task + task_id,
@@ -173,7 +175,8 @@ class Worker(multiprocessing.Process):
                         )
                         data_master = False
                         render_enabled = False
-                        self.log.info('set BTGym environment {} at port_{}.'.format(self.task + task_id, port))
+                        self.log.info('set BTGym environment {} @ port:{}, data_port:{}'.
+                                      format(self.task + task_id, port, data_port))
                         task_id += 0.01
 
                     except:
@@ -191,8 +194,6 @@ class Worker(multiprocessing.Process):
                     except:
                         self.log.exception('failed to make Gym/Atari environment')
                         raise RuntimeError
-
-
 
             # Define trainer:
             trainer = self.trainer_class(

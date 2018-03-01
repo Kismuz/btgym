@@ -334,7 +334,7 @@ class BTgymServer(multiprocessing.Process):
                 message={'ctrl': '_get_data', 'kwargs': reset_kwargs}
             )
             if data_server_response['status'] in 'ok':
-                self.log.debug('Data_server @{} responded with data in about {} seconds.'.
+                self.log.debug('Data_server @{} responded in ~{:1.6f} seconds.'.
                                format(self.data_network_address, data_server_response['time']))
 
             else:

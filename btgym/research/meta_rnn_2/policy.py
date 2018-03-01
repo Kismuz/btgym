@@ -50,14 +50,14 @@ class AacStackedMetaPolicy(GuidedPolicy_0_0):
         try:
             sess = tf.get_default_session()
             new_context = list(sess.run(self.on_lstm_init_state))
-            if state['metadata']['trial_num'] == self.current_trial_num or state['metadata']['type'] \
-                    and context is not None:
-                # Asssume same training trial or test episode pass, critic context intact to new episode:
-                new_context[-1] = context[-1]
-                #print('Meta_policy Actor context reset')
-            else:
-                #print('Meta_policy Actor and Critic context reset')
-                pass
+            if context is not None:
+                if state['metadata']['trial_num'] == self.current_trial_num or state['metadata']['type']:
+                    # Asssume same training trial or test episode pass, critic context intact to new episode:
+                    new_context[-1] = context[-1]
+                    #print('Meta_policy Actor context reset')
+                else:
+                    #print('Meta_policy Actor and Critic context reset')
+                    pass
             # Back to tuple:
             new_context = tuple(new_context)
             # Keep trial number:

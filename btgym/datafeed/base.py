@@ -519,6 +519,7 @@ class BTgymBaseData:
             self.sample_instance.metadata['type'] = sample_type
             self.sample_instance.metadata['sample_num'] = self.sample_num
             self.sample_instance.metadata['parent_sample_num'] = copy.deepcopy(self.metadata['sample_num'])
+            self.sample_instance.metadata['parent_sample_type'] = copy.deepcopy(self.metadata['type'])
             self.sample_num += 1
 
         else:

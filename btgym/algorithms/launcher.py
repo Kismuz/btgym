@@ -153,7 +153,7 @@ class Launcher():
         self.log.info('Random seed: {}'.format(self.root_random_seed))
 
         # Seeding for workers:
-        workers_rnd_seeds = list(
+        self.workers_rnd_seeds = list(
             np.random.randint(0, 2**30, self.cluster_config['num_workers'] + self.cluster_config['num_ps'])
         )
 
@@ -185,8 +185,22 @@ class Launcher():
         self.cluster_spec = self.make_cluster_spec(self.cluster_config)
 
         # Configure workers:
-        self.workers_config_list = []
-        env_ports = np.arange(self.cluster_config['num_envs'])
+        self.workers_config_list = self.make_workers_spec()
+
+        # Ensure data_server port is clear:
+        self.clear_port(self.env_config['kwargs']['data_port'])
+
+        self.log.debug('Launcher ready.')
+
+    def make_workers_spec(self):
+        """
+        Creates list of workers specifications.
+        Returns:
+            list of dict
+        """
+        workers_config_list = []
+        env_ports = np.arange(self.cluster_config['num_envs'], dtype=np.int32)
+        env_data_ports = np.zeros(self.cluster_config['num_envs'], dtype=np.int32)
         worker_port = self.env_config['kwargs']['port']  # start value for BTGym comm. port
 
         # TODO: Hacky, cause dataset is threadlocked; do: pass dataset as class_ref + kwargs_dict:
@@ -213,6 +227,7 @@ class Launcher():
 
                     # Add list of connection ports for every parallel env for each worker:
                     env_config['kwargs']['port'] = list(worker_port + env_ports)
+                    env_config['kwargs']['data_port'] = list(env_config['kwargs']['data_port'] + env_data_ports)
                     worker_port += self.cluster_config['num_envs']
                 worker_config.update(
                     {
@@ -226,15 +241,14 @@ class Launcher():
                         'log_dir': self.cluster_config['log_dir'],
                         'max_env_steps': self.max_env_steps,
                         'log_level': self.log_level,
-                        'random_seed': workers_rnd_seeds.pop()
+                        'random_seed': self.workers_rnd_seeds.pop()
                     }
                 )
                 self.clear_port(env_config['kwargs']['port'])
-                self.workers_config_list.append(worker_config)
+                workers_config_list.append(worker_config)
                 task_index += 1
 
-        self.clear_port(self.env_config['kwargs']['data_port'])
-        self.log.debug('Launcher ready.')
+        return workers_config_list
 
     def make_cluster_spec(self, config):
         """
