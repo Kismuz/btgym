@@ -158,7 +158,7 @@ class MetaA3C_0_0(BaseAAC):
         """
         try:
             # Collect data from child thread runners:
-            data = self._get_data()
+            data = self.get_data()
 
             # Test or train: if at least one on-policy rollout from parallel runners is test one -
             # set learn rate to zero for entire minibatch. Doh.
@@ -250,7 +250,7 @@ class MetaA3C_0_1(MetaA3C_0_0):
         """
         try:
             # Collect data from child thread runners:
-            data = self._get_data()
+            data = self.get_data()
 
             # Test or train: if at least one on-policy rollout from parallel runners is test one -
             # set learn rate to zero for entire minibatch. Doh.
@@ -489,7 +489,7 @@ class MetaCriticA3C_0_0(BaseAAC):
         """
         try:
             # Collect data from child thread runners:
-            data = self._get_data()
+            data = self.get_data()
 
             # Test or train: if at least one on-policy rollout from parallel runners is test one -
             # set learn rate to zero for entire minibatch. Doh.

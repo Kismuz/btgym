@@ -359,11 +359,19 @@ class BaseAAC(object):
                     'aux_estimate': self.use_any_aux_tasks,
                 }
             )
+            self.sync = None
+            self.sync_pi = None
+            self.sync_pi_prime = None
+            self.summary_writer = None
+            self.local_steps = 0
+
             # Start building graphs:
-            self.log.debug('started building graphs')
+            self.log.debug('started building graphs...')
             # PS:
             with tf.device(tf.train.replica_device_setter(1, worker_device=self.worker_device)):
                 self.network = self._make_policy('global')
+                if self.use_target_policy:
+                    self.network_prome = self._make_policy('global_prime')
 
             # Worker:
             with tf.device(self.worker_device):
@@ -395,7 +403,7 @@ class BaseAAC(object):
                 clip_epsilon = tf.cast(self.clip_epsilon * self.learn_rate_decayed / self.opt_learn_rate, tf.float32)
 
                 # Freeze training if train_phase is False:
-                train_learn_rate = self.learn_rate_decayed * tf.cast(pi.train_phase, tf.float64)
+                self.train_learn_rate = self.learn_rate_decayed * tf.cast(pi.train_phase, tf.float64)
                 self.log.debug('learn rate ok')
 
                 # On-policy AAC loss definition:
@@ -485,157 +493,19 @@ class BaseAAC(object):
                     self.loss = self.loss + self.rp_lambda * rp_loss
                     model_summaries += rp_summaries
 
-                #grads = tf.gradients(self.loss, pi.var_list)
+                # Define train, sync ops:
+                self.train_op = self._make_train_op()
 
-                # Clipped gradients:
-                self.grads, _ = tf.clip_by_global_norm(
-                    tf.gradients(self.loss, pi.var_list),
-                    40.0
-                )
-                # Copy weights from the parameter server to the local model
-                self.sync = self.sync_pi = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
+                # Model stat. summary, episode summary:
+                self.model_summary_op, self.ep_summary = self._combine_summaries(model_summaries)
 
-                if self.use_target_policy:
-                    # Copy weights from new policy model to target one:
-                    self.sync_pi_prime = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi_prime.var_list, pi.var_list)])
+                # Make thread-runner processes:
+                self.runners = self._make_runners()
 
-                grads_and_vars = list(zip(self.grads, self.network.var_list))
-
-                # Set global_step incremention equal to observation space  batch size:
-                obs_space_keys = list(pi.on_state_in.keys())
-                assert 'external' in obs_space_keys,\
-                    'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
-                self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in['external'])[0])
-
-                # Each worker gets a different set of adam optimizer parameters:
-                self.optimizer = tf.train.AdamOptimizer(train_learn_rate, epsilon=1e-5)
-
-                #self.optimizer = tf.train.RMSPropOptimizer(
-                #    learning_rate=train_learn_rate,
-                #    decay=self.opt_decay,
-                #    momentum=self.opt_momentum,
-                #    epsilon=self.opt_epsilon,
-                #)
-
-                #self.train_op = tf.group(*pi.update_ops, opt.apply_gradients(grads_and_vars), self.inc_step)
-                #self.train_op = tf.group(opt.apply_gradients(grads_and_vars), self.inc_step)
-                self.train_op = self.optimizer.apply_gradients(grads_and_vars)
-
-                # Add model-wide statistics:
-                with tf.name_scope('model'):
-                    model_summaries += [
-                        tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
-                        tf.summary.scalar("var_global_norm", tf.global_norm(pi.var_list)),
-                        tf.summary.scalar("learn_rate", train_learn_rate),
-                        #tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
-                        tf.summary.scalar("total_loss", self.loss),
-                    ]
-
-                self.summary_writer = None
-                self.local_steps = 0
-
-                self.log.debug('train op defined')
-
-                # Model stat. summary:
-                self.model_summary_op = tf.summary.merge(model_summaries, name='model_summary')
-
-                # Episode-related summaries:
-                self.ep_summary = dict(
-                    # Summary placeholders
-                    render_atari=tf.placeholder(tf.uint8, [None, None, None, 1]),
-                    total_r=tf.placeholder(tf.float32, ),
-                    cpu_time=tf.placeholder(tf.float32, ),
-                    final_value=tf.placeholder(tf.float32, ),
-                    steps=tf.placeholder(tf.int32, ),
-                )
-
-                if self.test_mode:
-                    # For Atari:
-                    self.ep_summary['render_op'] = tf.summary.image("model/state", self.ep_summary['render_atari'])
-
-                else:
-                    # BTGym rendering:
-                    self.ep_summary.update(
-                        {
-                            mode: tf.placeholder(tf.uint8, [None, None, None, None], name=mode + '_pl')
-                            for mode in self.env_list[0].render_modes + self.aux_render_modes
-                        }
-                    )
-                    self.ep_summary['render_op'] = tf.summary.merge(
-                        [tf.summary.image(mode, self.ep_summary[mode])
-                         for mode in self.env_list[0].render_modes + self.aux_render_modes]
-                    )
-
-                # Episode stat. summary:
-                self.ep_summary['btgym_stat_op'] = tf.summary.merge(
-                    [
-                        tf.summary.scalar('episode_train/total_reward', self.ep_summary['total_r']),
-                        tf.summary.scalar('episode_train/cpu_time_sec', self.ep_summary['cpu_time']),
-                        tf.summary.scalar('episode_train/final_value', self.ep_summary['final_value']),
-                        tf.summary.scalar('episode_train/env_steps', self.ep_summary['steps'])
-                    ],
-                    name='episode_train_btgym'
-                )
-                # Test episode stat. summary:
-                self.ep_summary['test_btgym_stat_op'] = tf.summary.merge(
-                    [
-                        tf.summary.scalar('episode_test/total_reward', self.ep_summary['total_r']),
-                        tf.summary.scalar('episode_test/final_value', self.ep_summary['final_value']),
-                        tf.summary.scalar('episode_test/env_steps', self.ep_summary['steps'])
-                    ],
-                    name='episode_test_btgym'
-                )
-                self.ep_summary['atari_stat_op'] = tf.summary.merge(
-                    [
-                        tf.summary.scalar('episode/total_reward', self.ep_summary['total_r']),
-                        tf.summary.scalar('episode/steps', self.ep_summary['steps'])
-                    ],
-                    name='episode_atari'
-                )
-
-                # Replay memory_config:
-                if self.use_memory:
-                    memory_config = dict(
-                        class_ref=Memory,
-                        kwargs=dict(
-                            history_size=self.replay_memory_size,
-                            max_sample_size=self.replay_rollout_length,
-                            priority_sample_size=self.rp_sequence_size,
-                            reward_threshold=self.rp_reward_threshold,
-                            use_priority_sampling=self.use_reward_prediction,
-                            task=self.task,
-                            log_level=self.log_level,
-                        )
-                    )
-                else:
-                    memory_config = None
-
-                # Make runners:
-                # `rollout_length` represents the number of "local steps":  the number of time steps
-                # we run the policy before we get full rollout, run train step and update the parameters.
-                self.runners = []
-                task = 0  # Runners will have [worker_task][env_count] id's
-                for env in self.env_list:
-                    self.runners.append(
-                        RunnerThread(
-                            env=env,
-                            policy=pi,
-                            runner_fn_ref=self.runner_fn_ref,
-                            task=self.task + task,
-                            rollout_length=self.rollout_length,  # ~20
-                            episode_summary_freq=self.episode_summary_freq,
-                            env_render_freq=self.env_render_freq,
-                            test=self.test_mode,
-                            ep_summary=self.ep_summary,
-                            memory_config=memory_config,
-                            log_level=log_level,
-                        )
-                    )
-                    task += 0.01
                 # Make rollouts provider[s]:
                 self.data_getter = [make_data_getter(runner.queue) for runner in self.runners]
 
-                self.log.debug('trainer.init() done')
+                self.log.debug('trainer.__init__() ok')
 
         except:
             msg = 'Base class __init__() exception occurred.' +\
@@ -643,14 +513,263 @@ class BaseAAC(object):
             self.log.exception(msg)
             raise RuntimeError(msg)
 
-    def _get_data(self):
+    def _make_train_op(self):
         """
-        Collect rollouts from every environmnet.
+        Defines training op graph and supplementary sync operations.
+
+        Returns:
+            tensor holding training op graph;
+        """
+        # Clipped gradients:
+        self.grads, _ = tf.clip_by_global_norm(
+            tf.gradients(self.loss, self.local_network.var_list),
+            40.0
+        )
+        # Copy weights from the parameter server to the local model
+        self.sync = self.sync_pi = tf.group(
+            *[v1.assign(v2) for v1, v2 in zip(self.local_network.var_list, self.network.var_list)]
+        )
+        if self.use_target_policy:
+            # Copy weights from new policy model to target one:
+            self.sync_pi_prime = tf.group(
+                *[v1.assign(v2) for v1, v2 in zip(self.local_network_prime.var_list, self.local_network.var_list)]
+            )
+        grads_and_vars = list(zip(self.grads, self.network.var_list))
+
+        # Set global_step increment equal to observation space batch size:
+        obs_space_keys = list(self.local_network.on_state_in.keys())
+
+        assert 'external' in obs_space_keys, \
+            'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
+        self.inc_step = self.global_step.assign_add(tf.shape(self.local_network.on_state_in['external'])[0])
+
+        # Each worker gets a different set of adam optimizer parameters:
+        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
+
+        # self.optimizer = tf.train.RMSPropOptimizer(
+        #    learning_rate=train_learn_rate,
+        #    decay=self.opt_decay,
+        #    momentum=self.opt_momentum,
+        #    epsilon=self.opt_epsilon,
+        # )
+
+        train_op = self.optimizer.apply_gradients(grads_and_vars)
+        self.log.debug('train_op defined')
+        return train_op
+
+    def _combine_summaries(self, model_summaries):
+        """
+        Defines model-wide and episode-related summaries
+
+        Returns:
+            model_summary op
+            episode_summary op
+        """
+        # Model-wide statistics:
+        with tf.name_scope('model'):
+            model_summaries += [
+                tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
+                tf.summary.scalar("var_global_norm", tf.global_norm(self.local_network.var_list)),
+                tf.summary.scalar("learn_rate", self.train_learn_rate),
+                # tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
+                tf.summary.scalar("total_loss", self.loss),
+            ]
+        # Model stat. summary:
+        model_summary = tf.summary.merge(model_summaries, name='model_summary')
+
+        # Episode-related summaries:
+        ep_summary = dict(
+            # Summary placeholders
+            render_atari=tf.placeholder(tf.uint8, [None, None, None, 1]),
+            total_r=tf.placeholder(tf.float32, ),
+            cpu_time=tf.placeholder(tf.float32, ),
+            final_value=tf.placeholder(tf.float32, ),
+            steps=tf.placeholder(tf.int32, ),
+        )
+        if self.test_mode:
+            # For Atari:
+            ep_summary['render_op'] = tf.summary.image("model/state", ep_summary['render_atari'])
+
+        else:
+            # BTGym rendering:
+            ep_summary.update(
+                {
+                    mode: tf.placeholder(tf.uint8, [None, None, None, None], name=mode + '_pl')
+                    for mode in self.env_list[0].render_modes + self.aux_render_modes
+                }
+            )
+            ep_summary['render_op'] = tf.summary.merge(
+                [tf.summary.image(mode, ep_summary[mode])
+                 for mode in self.env_list[0].render_modes + self.aux_render_modes]
+            )
+        # Episode stat. summary:
+        ep_summary['btgym_stat_op'] = tf.summary.merge(
+            [
+                tf.summary.scalar('episode_train/total_reward', ep_summary['total_r']),
+                tf.summary.scalar('episode_train/cpu_time_sec', ep_summary['cpu_time']),
+                tf.summary.scalar('episode_train/final_value', ep_summary['final_value']),
+                tf.summary.scalar('episode_train/env_steps', ep_summary['steps'])
+            ],
+            name='episode_train_btgym'
+        )
+        # Test episode stat. summary:
+        ep_summary['test_btgym_stat_op'] = tf.summary.merge(
+            [
+                tf.summary.scalar('episode_test/total_reward', ep_summary['total_r']),
+                tf.summary.scalar('episode_test/final_value', ep_summary['final_value']),
+                tf.summary.scalar('episode_test/env_steps', ep_summary['steps'])
+            ],
+            name='episode_test_btgym'
+        )
+        ep_summary['atari_stat_op'] = tf.summary.merge(
+            [
+                tf.summary.scalar('episode/total_reward', ep_summary['total_r']),
+                tf.summary.scalar('episode/steps', ep_summary['steps'])
+            ],
+            name='episode_atari'
+        )
+        self.log.debug('model-wide and episode summaries ok.')
+        return model_summary, ep_summary
+
+    def _make_runners(self):
+        """
+        Defines thread-runners processes instances.
+
+        Returns:
+            list of runners
+        """
+        # Replay memory_config:
+        if self.use_memory:
+            memory_config = dict(
+                class_ref=Memory,
+                kwargs=dict(
+                    history_size=self.replay_memory_size,
+                    max_sample_size=self.replay_rollout_length,
+                    priority_sample_size=self.rp_sequence_size,
+                    reward_threshold=self.rp_reward_threshold,
+                    use_priority_sampling=self.use_reward_prediction,
+                    task=self.task,
+                    log_level=self.log_level,
+                )
+            )
+        else:
+            memory_config = None
+
+        # Make runners:
+        # `rollout_length` represents the number of "local steps":  the number of time steps
+        # we run the policy before we get full rollout, run train step and update the parameters.
+        runners = []
+        task = 0  # Runners will have [worker_task][env_count] id's
+        for env in self.env_list:
+            runners.append(
+                RunnerThread(
+                    env=env,
+                    policy=self.local_network,
+                    runner_fn_ref=self.runner_fn_ref,
+                    task=self.task + task,
+                    rollout_length=self.rollout_length,  # ~20
+                    episode_summary_freq=self.episode_summary_freq,
+                    env_render_freq=self.env_render_freq,
+                    test=self.test_mode,
+                    ep_summary=self.ep_summary,
+                    memory_config=memory_config,
+                    log_level=self.log_level,
+                )
+            )
+            task += 0.01
+        self.log.debug('thread-runners ok.')
+        return runners
+
+    def _make_policy(self, scope):
+        """
+        Configures and instantiates policy network and ops.
+
+        Note:
+            `global` name_scope network should be defined first.
+
+        Args:
+            scope:  name scope
+
+        Returns:
+            policy instance
+        """
+        with tf.variable_scope(scope):
+            # Make policy instance:
+            network = self.policy_class(**self.policy_kwargs)
+            if 'global' not in scope:
+                try:
+                    # For locals those should be already defined:
+                    assert hasattr(self, 'global_step') and \
+                           hasattr(self, 'global_episode') and \
+                           hasattr(self, 'inc_episode')
+                    # Add attrs to local:
+                    network.global_step = self.global_step
+                    network.global_episode = self.global_episode
+                    network.inc_episode= self.inc_episode
+                    # Override:
+                    network.get_sample_config = self.get_sample_config
+
+                except AssertionError:
+                    self.log.exception(
+                        '`global` name_scope network[s] should be defined before any `local` one[s].'.
+                        format(self.task)
+                    )
+                    raise RuntimeError
+            else:
+                # Set counters:
+                self.global_step = tf.get_variable(
+                    "global_step",
+                    [],
+                    tf.int32,
+                    initializer=tf.constant_initializer(
+                        0,
+                        dtype=tf.int32
+                    ),
+                    trainable=False
+                )
+                self.global_episode = tf.get_variable(
+                    "global_episode",
+                    [],
+                    tf.int32,
+                    initializer=tf.constant_initializer(
+                        0,
+                        dtype=tf.int32
+                    ),
+                    trainable=False
+                )
+                # Increment episode count:
+                self.inc_episode = self.global_episode.assign_add(1)
+        return network
+
+    def _make_dummy_policy(self):
+        class _Dummy(object):
+            """
+            Policy plug when target network is not used.
+            """
+            def __init__(self):
+                self.on_state_in = None
+                self.off_state_in = None
+                self.on_lstm_state_pl_flatten = None
+                self.off_lstm_state_pl_flatten = None
+                self.on_a_r_in = None
+                self.off_a_r_in = None
+                self.on_logits = None
+                self.off_logits = None
+                self.on_vf = None
+                self.off_vf = None
+                self.on_batch_size = None
+                self.on_time_length = None
+                self.off_batch_size = None
+                self.off_time_length = None
+        return _Dummy()
+
+    def get_data(self):
+        """
+        Collect rollouts from every environment.
 
         Returns:
             dictionary of lists of data streams collected from every runner
         """
-        # TODO: nowait?
         data_streams = [get_it() for get_it in self.data_getter]
 
         return {key: [stream[key] for stream in data_streams] for key in data_streams[0].keys()}
@@ -710,91 +829,6 @@ class BaseAAC(object):
             )
         )
         return sample_config
-
-    def _make_policy(self, scope):
-        """
-        Configures and instantiates policy network and ops.
-
-        Note:
-            `global` name_scope network should be defined first.
-
-        Args:
-            scope:  name scope
-
-        Returns:
-            policy instance
-        """
-        with tf.variable_scope(scope):
-            # Make policy instance:
-            network = self.policy_class(**self.policy_kwargs)
-            if scope not in 'global':
-                try:
-                    # For locals those should be already defined:
-                    assert hasattr(self, 'global_step') and \
-                           hasattr(self, 'global_episode') and \
-                           hasattr(self, 'inc_episode')
-                    # Add attrs to local:
-                    network.global_step = self.global_step
-                    network.global_episode = self.global_episode
-                    network.inc_episode= self.inc_episode
-                    # Override:
-                    network.get_sample_config = self.get_sample_config
-
-                except AssertionError:
-                    self.log.exception(
-                        '`global` name_scope network should be defined before any `local` ones.'.
-                        format(self.task)
-                    )
-                    raise RuntimeError
-            else:
-                # Set counters:
-                self.global_step = tf.get_variable(
-                    "global_step",
-                    [],
-                    tf.int32,
-                    initializer=tf.constant_initializer(
-                        0,
-                        dtype=tf.int32
-                    ),
-                    trainable=False
-                )
-                self.global_episode = tf.get_variable(
-                    "global_episode",
-                    [],
-                    tf.int32,
-                    initializer=tf.constant_initializer(
-                        0,
-                        dtype=tf.int32
-                    ),
-                    trainable=False
-                )
-                # Increment episode count:
-                self.inc_episode = self.global_episode.assign_add(1)
-        return network
-
-    def _make_dummy_policy(self):
-
-        class _Dummy(object):
-            """
-            Policy plug when target network is not used.
-            """
-            def __init__(self):
-                self.on_state_in = None
-                self.off_state_in = None
-                self.on_lstm_state_pl_flatten = None
-                self.off_lstm_state_pl_flatten = None
-                self.on_a_r_in = None
-                self.off_a_r_in = None
-                self.on_logits = None
-                self.off_logits = None
-                self.on_vf = None
-                self.off_vf = None
-                self.on_batch_size = None
-                self.on_time_length = None
-                self.off_batch_size = None
-                self.off_time_length = None
-
-        return _Dummy()
 
     def start(self, sess, summary_writer, **kwargs):
         """
@@ -1086,7 +1120,7 @@ class BaseAAC(object):
         # Quick wrap to get direct traceback from this trainer if something goes wrong:
         try:
             # Collect data from child thread runners:
-            data = self._get_data()
+            data = self.get_data()
 
             # Copy weights from local policy to local target policy:
             if self.use_target_policy and self.local_steps % self.pi_prime_update_period == 0:
