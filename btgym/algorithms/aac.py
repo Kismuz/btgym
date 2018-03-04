@@ -211,15 +211,15 @@ class BaseAAC(object):
             except AssertionError:
                 self.env_list = [env]
 
-            ref_env = self.env_list[0]  # reference instance to get obs shapes etc.
+            self.ref_env = self.env_list[0]  # reference instance to get obs shapes etc.
 
             try:
-                assert isinstance(ref_env.observation_space, ObSpace)
+                assert isinstance(self.ref_env.observation_space, ObSpace)
 
             except AssertionError:
                 self.log.exception(
                     'expected environment observation space of type {}, got: {}'.\
-                    format(ObSpace, type(ref_env.observation_space))
+                    format(ObSpace, type(self.ref_env.observation_space))
                 )
                 raise AssertionError
 
@@ -353,15 +353,17 @@ class BaseAAC(object):
             # Update policy configuration
             self.policy_kwargs.update(
                 {
-                    'ob_space': ref_env.observation_space.shape,
-                    'ac_space': ref_env.action_space.n,
+                    'ob_space': self.ref_env.observation_space.shape,
+                    'ac_space': self.ref_env.action_space.n,
                     'rp_sequence_size': self.rp_sequence_size,
                     'aux_estimate': self.use_any_aux_tasks,
                 }
             )
+            # Should be defined later:
             self.sync = None
             self.sync_pi = None
             self.sync_pi_prime = None
+            self.grads = None
             self.summary_writer = None
             self.local_steps = 0
 
@@ -371,7 +373,7 @@ class BaseAAC(object):
             with tf.device(tf.train.replica_device_setter(1, worker_device=self.worker_device)):
                 self.network = self._make_policy('global')
                 if self.use_target_policy:
-                    self.network_prome = self._make_policy('global_prime')
+                    self.network_prime = self._make_policy('global_prime')
 
             # Worker:
             with tf.device(self.worker_device):
@@ -382,6 +384,8 @@ class BaseAAC(object):
 
                 else:
                     self.local_network_prime = pi_prime = self._make_dummy_policy()
+
+                self.worker_device_callback_0() # if need more networks etc.
 
                 # Meant for Batch-norm layers:
                 pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
@@ -400,98 +404,12 @@ class BaseAAC(object):
                     power=1,
                     cycle=False,
                 )
-                clip_epsilon = tf.cast(self.clip_epsilon * self.learn_rate_decayed / self.opt_learn_rate, tf.float32)
-
                 # Freeze training if train_phase is False:
                 self.train_learn_rate = self.learn_rate_decayed * tf.cast(pi.train_phase, tf.float64)
                 self.log.debug('learn rate ok')
 
-                # On-policy AAC loss definition:
-                self.on_pi_act_target = tf.placeholder(
-                    tf.float32, [None, ref_env.action_space.n], name="on_policy_action_pl"
-                )
-                self.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
-                self.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
-
-                on_pi_loss, on_pi_summaries = self.on_policy_loss(
-                    act_target=self.on_pi_act_target,
-                    adv_target=self.on_pi_adv_target,
-                    r_target=self.on_pi_r_target,
-                    pi_logits=pi.on_logits,
-                    pi_vf=pi.on_vf,
-                    pi_prime_logits=pi_prime.on_logits,
-                    entropy_beta=self.model_beta,
-                    epsilon=clip_epsilon,
-                    name='on_policy',
-                    verbose=True
-                )
-                # Start accumulating total loss:
-                self.loss = on_pi_loss
-                model_summaries = on_pi_summaries
-
-                # Off-policy losses:
-                self.off_pi_act_target = tf.placeholder(
-                    tf.float32, [None, ref_env.action_space.n], name="off_policy_action_pl")
-                self.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
-                self.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
-
-                if self.use_off_policy_aac:
-                    # Off-policy AAC loss graph mirrors on-policy:
-                    off_pi_loss, off_pi_summaries = self.off_policy_loss(
-                        act_target=self.off_pi_act_target,
-                        adv_target=self.off_pi_adv_target,
-                        r_target=self.off_pi_r_target,
-                        pi_logits=pi.off_logits,
-                        pi_vf=pi.off_vf,
-                        pi_prime_logits=pi_prime.off_logits,
-                        entropy_beta=self.model_beta,
-                        epsilon=clip_epsilon,
-                        name='off_policy',
-                        verbose=False
-                    )
-                    self.loss = self.loss + self.off_aac_lambda * off_pi_loss
-                    model_summaries += off_pi_summaries
-
-                if self.use_pixel_control:
-                    # Pixel control loss:
-                    self.pc_action = tf.placeholder(tf.float32, [None, ref_env.action_space.n], name="pc_action")
-                    self.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
-
-                    pc_loss, pc_summaries = self.pc_loss(
-                        actions=self.pc_action,
-                        targets=self.pc_target,
-                        pi_pc_q=pi.pc_q,
-                        name='off_policy',
-                        verbose=True
-                    )
-                    self.loss = self.loss + self.pc_lambda * pc_loss
-                    # Add specific summary:
-                    model_summaries += pc_summaries
-
-                if self.use_value_replay:
-                    # Value function replay loss:
-                    self.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
-                    vr_loss, vr_summaries = self.vr_loss(
-                        r_target=self.vr_target,
-                        pi_vf=pi.vr_value,
-                        name='off_policy',
-                        verbose=True
-                    )
-                    self.loss = self.loss + self.vr_lambda * vr_loss
-                    model_summaries += vr_summaries
-
-                if self.use_reward_prediction:
-                    # Reward prediction loss:
-                    self.rp_target = tf.placeholder(tf.float32, [None, 3], name="rp_target")
-
-                    rp_loss, rp_summaries = self.rp_loss(
-                        rp_targets=self.rp_target,
-                        pi_rp_logits=pi.rp_logits,
-                        name='off_policy',
-                        verbose=True
-                    )
-                    self.loss = self.loss + self.rp_lambda * rp_loss
-                    model_summaries += rp_summaries
+                # Define loss and related summaries
+                self.loss, model_summaries = self._make_loss()
 
                 # Define train, sync ops:
                 self.train_op = self._make_train_op()
@@ -512,6 +430,111 @@ class BaseAAC(object):
                   '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
             self.log.exception(msg)
             raise RuntimeError(msg)
+
+    def worker_device_callback_0(self):
+        pass
+
+    def _make_loss(self):
+        return self._make_base_loss()
+
+    def _make_base_loss(self):
+        """
+        Defines base AAC on- and off-policy loss, auxillary VR, RP and PC losses, placeholders and summaries.
+
+        Returns:
+            tensor holding estimated loss graph
+            list of related summaries
+        """
+        # On-policy AAC loss definition:
+        self.on_pi_act_target = tf.placeholder(
+            tf.float32, [None, self.ref_env.action_space.n], name="on_policy_action_pl"
+        )
+        self.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
+        self.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
+
+        clip_epsilon = tf.cast(self.clip_epsilon * self.learn_rate_decayed / self.opt_learn_rate, tf.float32)
+
+        on_pi_loss, on_pi_summaries = self.on_policy_loss(
+            act_target=self.on_pi_act_target,
+            adv_target=self.on_pi_adv_target,
+            r_target=self.on_pi_r_target,
+            pi_logits=self.local_network.on_logits,
+            pi_vf=self.local_network.on_vf,
+            pi_prime_logits=self.local_network_prime.on_logits,
+            entropy_beta=self.model_beta,
+            epsilon=clip_epsilon,
+            name='on_policy',
+            verbose=True
+        )
+        # Start accumulating total loss:
+        loss = on_pi_loss
+        model_summaries = on_pi_summaries
+
+        # Off-policy losses:
+        self.off_pi_act_target = tf.placeholder(
+            tf.float32, [None, self.ref_env.action_space.n], name="off_policy_action_pl")
+        self.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
+        self.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
+
+        if self.use_off_policy_aac:
+            # Off-policy AAC loss graph mirrors on-policy:
+            off_pi_loss, off_pi_summaries = self.off_policy_loss(
+                act_target=self.off_pi_act_target,
+                adv_target=self.off_pi_adv_target,
+                r_target=self.off_pi_r_target,
+                pi_logits=self.local_network.off_logits,
+                pi_vf=self.local_network.off_vf,
+                pi_prime_logits=self.local_network_prime.off_logits,
+                entropy_beta=self.model_beta,
+                epsilon=clip_epsilon,
+                name='off_policy',
+                verbose=False
+            )
+            loss = loss + self.off_aac_lambda * off_pi_loss
+            model_summaries += off_pi_summaries
+
+        if self.use_pixel_control:
+            # Pixel control loss:
+            self.pc_action = tf.placeholder(tf.float32, [None, self.ref_env.action_space.n], name="pc_action")
+            self.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
+
+            pc_loss, pc_summaries = self.pc_loss(
+                actions=self.pc_action,
+                targets=self.pc_target,
+                pi_pc_q=self.local_network.pc_q,
+                name='off_policy',
+                verbose=True
+            )
+            loss = loss + self.pc_lambda * pc_loss
+            # Add specific summary:
+            model_summaries += pc_summaries
+
+        if self.use_value_replay:
+            # Value function replay loss:
+            self.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
+            vr_loss, vr_summaries = self.vr_loss(
+                r_target=self.vr_target,
+                pi_vf=self.local_network.vr_value,
+                name='off_policy',
+                verbose=True
+            )
+            loss = loss + self.vr_lambda * vr_loss
+            model_summaries += vr_summaries
+
+        if self.use_reward_prediction:
+            # Reward prediction loss:
+            self.rp_target = tf.placeholder(tf.float32, [None, 3], name="rp_target")
+
+            rp_loss, rp_summaries = self.rp_loss(
+                rp_targets=self.rp_target,
+                pi_rp_logits=self.local_network.rp_logits,
+                name='off_policy',
+                verbose=True
+            )
+            loss = loss + self.rp_lambda * rp_loss
+            model_summaries += rp_summaries
+
+        return loss, model_summaries
 
     def _make_train_op(self):
         """
@@ -706,7 +729,7 @@ class BaseAAC(object):
                     network.global_step = self.global_step
                     network.global_episode = self.global_episode
                     network.inc_episode= self.inc_episode
-                    # Override:
+                    # Override with aac method:
                     network.get_sample_config = self.get_sample_config
 
                 except AssertionError:

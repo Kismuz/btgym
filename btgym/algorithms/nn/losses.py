@@ -4,7 +4,7 @@ from btgym.algorithms.math_utils import cat_entropy, kl_divergence
 
 
 def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_logits,
-                 entropy_beta, epsilon, name='_aac_', verbose=False):
+                 entropy_beta, epsilon=None, name='_aac_', verbose=False):
     """
     Advantage Actor Critic loss definition.
     Paper: https://arxiv.org/abs/1602.01783

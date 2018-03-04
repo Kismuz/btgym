@@ -45,8 +45,16 @@ def MetaEnvRunnerFn(
 
     else:
         memory = _DummyMemory()
+
+    # We want test data runner to be master:
+
+    if 'test' in task:
+        mode = 1
+    else:
+        mode = 0
     # Pass sample config to environment (.get_sample_config() is actually aac framework method):
-    last_state = env.reset(**policy.get_sample_config())
+    log.warning('mode={}'.format(mode))
+    last_state = env.reset(**policy.get_sample_config(mode))
     last_action, last_reward, last_value, last_context = policy.get_initial_features(state=last_state)
     length = 0
     local_episode = 0
@@ -76,6 +84,7 @@ def MetaEnvRunnerFn(
         # Hacky but we need env.renderer methods ready
         env.renderer.initialize_pyplot()
 
+    log.warning('started data collection.')
     while True:
         terminal_end = False
         rollout = Rollout()
@@ -214,8 +223,8 @@ def MetaEnvRunnerFn(
                         final_value = []
                         total_steps = []
                         total_steps_atari = []
-
-                if task == 0 and local_episode % env_render_freq == 0 :
+                # Only render chief worker and test environment:
+                if '0' in task and 'test' in task and local_episode % env_render_freq == 0 :
                     if not atari_test:
                         # Render environment (chief worker only, and not in atari atari_test mode):
                         render_stat = {
@@ -265,7 +274,7 @@ def MetaEnvRunnerFn(
                         render_stat = dict(render_atari=state['external'][None,:] * 255)
 
                 # New episode:
-                last_state = env.reset(**policy.get_sample_config())
+                last_state = env.reset(**policy.get_sample_config(mode))
                 last_action, last_reward, last_value, last_context = policy.get_initial_features(
                     state=last_state,
                     context=last_context

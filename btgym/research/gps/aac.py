@@ -52,39 +52,43 @@ class GuidedAAC(BaseAAC):
             **kwargs:           see BaseAAC kwargs
         """
         try:
+            self.expert_loss = expert_loss
+            self.aac_lambda = aac_lambda
+            self.guided_lambda = guided_lambda
+
             super(GuidedAAC, self).__init__(
                 runner_fn_ref=runner_fn_ref,
                 _aux_render_modes=_aux_render_modes,
                 _log_name=_log_name,
                 **kwargs
             )
-            with tf.device(self.worker_device):
-                with tf.variable_scope('local'):
-                    guided_loss_ext, guided_summary_ext = expert_loss(
-                        pi_actions=self.local_network.on_logits,
-                        expert_actions=self.local_network.expert_actions,
-                        name='on_policy',
-                        verbose=True
-                    )
-                    self.loss = aac_lambda * self.loss + guided_lambda * guided_loss_ext
-
-                    self.log.notice('aac_lambda: {:1.6f}, guided_lambda: {:1.6f}'.format(aac_lambda, guided_lambda))
-
-                    # Override train op def:
-                    self.grads, _ = tf.clip_by_global_norm(
-                        tf.gradients(self.loss, self.local_network.var_list),
-                        40.0
-                    )
-                    grads_and_vars = list(zip(self.grads, self.network.var_list))
-                    self.train_op = self.optimizer.apply_gradients(grads_and_vars)
-
-                # Merge summary:
-                extended_summary = [guided_summary_ext, tf.summary.scalar("gps_total_loss", self.loss)]
-                extended_summary.append(self.model_summary_op)
-                self.model_summary_op = tf.summary.merge(extended_summary, name='gps_extended_summary')
 
         except:
             msg = 'GuidedAAC.__init()__ exception occurred' + \
                   '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
             self.log.exception(msg)
             raise RuntimeError(msg)
+
+    def _make_loss(self):
+        """
+        Augments base loss with expert actions imitation loss
+
+        Returns:
+            tensor holding estimated loss graph
+            list of related summaries
+        """
+        aac_loss, summaries = self._make_base_loss()
+
+        guided_loss, guided_summary = self.expert_loss(
+            pi_actions=self.local_network.on_logits,
+            expert_actions=self.local_network.expert_actions,
+            name='on_policy',
+            verbose=True
+        )
+        loss = self.aac_lambda * aac_loss + self.guided_lambda * guided_loss
+        summaries += guided_summary
+
+        self.log.notice('aac_lambda: {:1.6f}, guided_lambda: {:1.6f}'.format(self.aac_lambda, self.guided_lambda))
+
+        return loss, summaries
+
