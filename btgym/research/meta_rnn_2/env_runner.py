@@ -55,11 +55,13 @@ def MetaEnvRunnerFn(
     # Pass sample config to environment (.get_sample_config() is actually aac framework method):
     log.warning('mode={}'.format(mode))
     last_state = env.reset(**policy.get_sample_config(mode))
-    last_action, last_reward, last_value, last_context = policy.get_initial_features(state=last_state)
+    last_context = policy.get_initial_features(state=last_state)
     length = 0
     local_episode = 0
     reward_sum = 0
-    # TODO: generalize to last_policy_output:
+    last_action = np.zeros(env.action_space.n)
+    last_action[0] = 1
+    last_reward = 0.0
     last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
 
     # Summary averages accumulators:
@@ -84,7 +86,7 @@ def MetaEnvRunnerFn(
         # Hacky but we need env.renderer methods ready
         env.renderer.initialize_pyplot()
 
-    log.warning('started data collection.')
+    log.notice('started data collection.')
     while True:
         terminal_end = False
         rollout = Rollout()
@@ -275,13 +277,12 @@ def MetaEnvRunnerFn(
 
                 # New episode:
                 last_state = env.reset(**policy.get_sample_config(mode))
-                last_action, last_reward, last_value, last_context = policy.get_initial_features(
-                    state=last_state,
-                    context=last_context
-                )
+                last_context = policy.get_initial_features(state=last_state, context=last_context)
                 length = 0
                 reward_sum = 0
-
+                last_action = np.zeros(env.action_space.n)
+                last_action[0] = 1
+                last_reward = 0.0
                 last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
 
                 # reset per-episode accumulators:
