@@ -20,7 +20,7 @@ class MetaA3C_0_0(BaseAAC):
             kwargs:                         BaseAAC kwargs
         """
         try:
-            super(MetaA3C_0_0, self).__init__(_log_name='MetaA3C_0.0', _use_target_policy=True, **kwargs)
+            super(MetaA3C_0_0, self).__init__(name='MetaA3C_0.0', _use_target_policy=True, **kwargs)
             self.current_trial_num = -1
             self.cycles_per_trial = cycles_per_trial
             self.cycles_counter = 1
@@ -347,7 +347,7 @@ class MetaCriticA3C_0_0(BaseAAC):
             kwargs:                         BaseAAC kwargs
         """
         try:
-            super(MetaCriticA3C_0_0, self).__init__(_log_name=_log_name, **kwargs)
+            super(MetaCriticA3C_0_0, self).__init__(name=_log_name, **kwargs)
             self.current_trial_num = -1
             self.cycles_per_trial = cycles_per_trial
             self.cycles_counter = 1

@@ -215,6 +215,7 @@ class BaseAacPolicy(object):
         Returns:
             LSTM zero-state tuple.
         """
+        # TODO: rework as in: AacStackedMetaPolicy --> base runner, verbose runner; synchro_runner ok
         sess = tf.get_default_session()
         return sess.run(self.on_lstm_init_state)
 

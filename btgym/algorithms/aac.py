@@ -56,12 +56,13 @@ class BaseAAC(object):
                  task,
                  policy_config,
                  log_level,
-                 _log_name='AAC',
+                 name='AAC',
                  on_policy_loss=aac_loss_def,
                  off_policy_loss=aac_loss_def,
                  vr_loss=value_fn_loss_def,
                  rp_loss=rp_loss_def,
                  pc_loss=pc_loss_def,
+                 runner_config=None,
                  runner_fn_ref=BaseEnvRunnerFn,
                  random_seed=None,
                  model_gamma=0.99,  # decay
@@ -98,6 +99,10 @@ class BaseAAC(object):
                  clip_epsilon=0.1,
                  num_epochs=1,
                  pi_prime_update_period=1,
+                 global_step_op=None,
+                 global_episode_op=None,
+                 inc_episode_op=None,
+                 _use_global_network=True,
                  _use_target_policy=False,  # target policy tracking behavioral one with delay
                  _aux_render_modes=None,
                  **kwargs):
@@ -108,13 +113,15 @@ class BaseAAC(object):
             task:                   int, parent worker id
             policy_config:          policy estimator class and configuration dictionary
             log_level:              int, logbook.level
-            _log_name:              str, class-wide logger name, internal
+            name:                   str, class-wide name-scope
             on_policy_loss:         callable returning tensor holding on_policy training loss graph and summaries
             off_policy_loss:        callable returning tensor holding off_policy training loss graph and summaries
             vr_loss:                callable returning tensor holding value replay loss graph and summaries
             rp_loss:                callable returning tensor holding reward prediction loss graph and summaries
             pc_loss:                callable returning tensor holding pixel_control loss graph and summaries
-            runner_fn_ref:          callable defining environment runner execution logic
+            runner_config:          runner class and configuration dictionary,
+            runner_fn_ref:          callable defining environment runner execution logic,
+                                    valid only if no 'runner_config' arg is provided
             random_seed:            int or None
             model_gamma:            scalar, gamma discount factor
             model_gae_lambda:       scalar, GAE lambda
@@ -153,6 +160,10 @@ class BaseAAC(object):
             clip_epsilon:           scalar, PPO: surrogate L^clip epsilon
             num_epochs:             int, num. of SGD runs for every train step, val. > 1 should be used with caution.
             pi_prime_update_period: int, PPO: pi to pi_old update period in number of train steps, def: 1
+            global_step_op:         external tf.variable holding global step counter
+            global_episode_op:      external tf.variable holding global episode counter
+            inc_episode_op:         external tf.op incrementing global step counter
+            _use_global_network:    bool, either to use parameter server policy instance
             _use_target_policy:     bool, PPO: use target policy (aka pi_old), delayed by `pi_prime_update_period` delay
             _aux_render_modes:      additional visualisationas to include in per-episode rendering summary, internal
 
@@ -187,10 +198,10 @@ class BaseAAC(object):
         """
         # Logging:
         self.log_level = log_level
-        self.log_name = _log_name
+        self.name = name
         self.task = task
         StreamHandler(sys.stdout).push_application()
-        self.log = Logger('{}_{}'.format(self.log_name, self.task), level=self.log_level)
+        self.log = Logger('{}_{}'.format(self.name, self.task), level=self.log_level)
 
         # Get direct traceback:
         try:
@@ -233,8 +244,16 @@ class BaseAAC(object):
             self.rp_loss = rp_loss
             self.pc_loss = pc_loss
 
-            # Environmnet runner runtime function:
-            self.runner_fn_ref = runner_fn_ref
+            if runner_config is None:
+                # Runner will be async. ThreadRunner class with runner_fn logic:
+                self.runner_config = {
+                    'class_ref': RunnerThread,
+                    'kwargs': {
+                        'runner_fn_ref': runner_fn_ref,
+                    }
+                }
+            else:
+                self.runner_config = runner_config
 
             # AAC specific:
             self.model_gamma = model_gamma  # decay
@@ -329,6 +348,7 @@ class BaseAAC(object):
             self.use_memory = self.use_any_aux_tasks or self.use_off_policy_aac
 
             self.use_target_policy = _use_target_policy
+            self.use_global_network = _use_global_network
 
             self.log.notice('learn_rate: {:1.6f}, entropy_beta: {:1.6f}'.format(self.opt_learn_rate, self.model_beta))
 
@@ -359,6 +379,16 @@ class BaseAAC(object):
                     'aux_estimate': self.use_any_aux_tasks,
                 }
             )
+
+            if global_step_op is not None:
+                self.global_step = global_step_op
+
+            if global_episode_op is not None:
+                self.global_episode = global_episode_op
+
+            if inc_episode_op is not None:
+                self.inc_episode = inc_episode_op
+
             # Should be defined later:
             self.sync = None
             self.sync_pi = None
@@ -369,61 +399,77 @@ class BaseAAC(object):
 
             # Start building graphs:
             self.log.debug('started building graphs...')
-            # PS:
-            with tf.device(tf.train.replica_device_setter(1, worker_device=self.worker_device)):
-                self.network = self._make_policy('global')
-                if self.use_target_policy:
-                    self.network_prime = self._make_policy('global_prime')
+            if self.use_global_network:
+                # PS:
+                with tf.device(tf.train.replica_device_setter(1, worker_device=self.worker_device)):
+                    self.network = self._make_policy('global')
+                    if self.use_target_policy:
+                        self.network_prime = self._make_policy('global_prime')
+                    else:
+                        self.network_prime = self._make_dummy_policy()
+            else:
+                self.network = self._make_dummy_policy()
+                self.network_prime = self._make_dummy_policy()
 
             # Worker:
             with tf.device(self.worker_device):
-                self.local_network = pi = self._make_policy('local')
+                with tf.variable_scope(self.name):
+                    self.local_network = pi = self._make_policy('local')
 
-                if self.use_target_policy:
-                    self.local_network_prime = pi_prime = self._make_policy('local_prime')
+                    if self.use_target_policy:
+                        self.local_network_prime = pi_prime = self._make_policy('local_prime')
 
-                else:
-                    self.local_network_prime = pi_prime = self._make_dummy_policy()
+                    else:
+                        self.local_network_prime = pi_prime = self._make_dummy_policy()
 
-                self.worker_device_callback_0() # if need more networks etc.
+                    self.worker_device_callback_0() # if need more networks etc.
 
-                # Meant for Batch-norm layers:
-                pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
+                    # Meant for Batch-norm layers:
+                    pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
 
-                self.log.debug('local_network_upd_ops_collection:\n{}'.format(pi.update_ops))
-                self.log.debug('\nlocal_network_var_list_to_save:')
-                for v in pi.var_list:
-                    self.log.debug('{}: {}'.format(v.name, v.get_shape()))
+                    self.log.debug('local_network_upd_ops_collection:\n{}'.format(pi.update_ops))
+                    self.log.debug('\nlocal_network_var_list_to_save:')
+                    for v in pi.var_list:
+                        self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
-                #  Learning rate annealing:
-                self.learn_rate_decayed = tf.train.polynomial_decay(
-                    self.opt_learn_rate,
-                    self.global_step + 1,
-                    self.opt_decay_steps,
-                    self.opt_end_learn_rate,
-                    power=1,
-                    cycle=False,
-                )
-                # Freeze training if train_phase is False:
-                self.train_learn_rate = self.learn_rate_decayed * tf.cast(pi.train_phase, tf.float64)
-                self.log.debug('learn rate ok')
+                    #  Learning rate annealing:
+                    self.learn_rate_decayed = tf.train.polynomial_decay(
+                        self.opt_learn_rate,
+                        self.global_step + 1,
+                        self.opt_decay_steps,
+                        self.opt_end_learn_rate,
+                        power=1,
+                        cycle=False,
+                    )
+                    # Freeze training if train_phase is False:
+                    self.train_learn_rate = self.learn_rate_decayed * tf.cast(pi.train_phase, tf.float64)
+                    self.log.debug('learn rate ok')
 
-                # Define loss and related summaries
-                self.loss, model_summaries = self._make_loss()
+                    # Define loss and related summaries
+                    self.loss, model_summaries = self._make_loss()
 
-                # Define train, sync ops:
-                self.train_op = self._make_train_op()
+                    if self.use_global_network:
+                        # Define train, sync ops:
+                        self.train_op = self._make_train_op()
 
-                # Model stat. summary, episode summary:
-                self.model_summary_op, self.ep_summary = self._combine_summaries(model_summaries)
+                    else:
+                        self.train_op = []
 
-                # Make thread-runner processes:
-                self.runners = self._make_runners()
+                    # Model stat. summary, episode summary:
+                    self.model_summary_op, self.ep_summary = self._combine_summaries(model_summaries)
 
-                # Make rollouts provider[s]:
-                self.data_getter = [make_data_getter(runner.queue) for runner in self.runners]
+                    # Make thread-runner processes:
+                    self.runners = self._make_runners()
 
-                self.log.debug('trainer.__init__() ok')
+                    # Make rollouts provider[s] for async runners:
+                    if self.runner_config['class_ref'] == RunnerThread:
+                        # Make rollouts provider[s] for async threaded runners:
+                        self.data_getter = [make_data_getter(runner.queue) for runner in self.runners]
+                    else:
+                        # Else assume runner is in-thread synchro type and  supports .get data() method:
+                        self.data_getter = [runner.get_data for runner in self.runners]
+
+                    self.log.debug('trainer.__init__() ok')
 
         except:
             msg = 'Base class __init__() exception occurred.' +\
@@ -435,104 +481,109 @@ class BaseAAC(object):
         pass
 
     def _make_loss(self):
-        return self._make_base_loss()
+        return self._make_base_loss(name=self.name, verbose=True)
 
-    def _make_base_loss(self):
+    def _make_base_loss(self, name='base', verbose=True):
         """
         Defines base AAC on- and off-policy loss, auxillary VR, RP and PC losses, placeholders and summaries.
+
+        Args:
+            name:               str, name scope
+            verbose:            summary level
 
         Returns:
             tensor holding estimated loss graph
             list of related summaries
         """
-        # On-policy AAC loss definition:
-        self.on_pi_act_target = tf.placeholder(
-            tf.float32, [None, self.ref_env.action_space.n], name="on_policy_action_pl"
-        )
-        self.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
-        self.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
+        with tf.name_scope(name):
+            # On-policy AAC loss definition:
+            self.on_pi_act_target = tf.placeholder(
+                tf.float32, [None, self.ref_env.action_space.n], name="on_policy_action_pl"
+            )
+            self.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
+            self.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
 
-        clip_epsilon = tf.cast(self.clip_epsilon * self.learn_rate_decayed / self.opt_learn_rate, tf.float32)
+            clip_epsilon = tf.cast(self.clip_epsilon * self.learn_rate_decayed / self.opt_learn_rate, tf.float32)
 
-        on_pi_loss, on_pi_summaries = self.on_policy_loss(
-            act_target=self.on_pi_act_target,
-            adv_target=self.on_pi_adv_target,
-            r_target=self.on_pi_r_target,
-            pi_logits=self.local_network.on_logits,
-            pi_vf=self.local_network.on_vf,
-            pi_prime_logits=self.local_network_prime.on_logits,
-            entropy_beta=self.model_beta,
-            epsilon=clip_epsilon,
-            name='on_policy',
-            verbose=True
-        )
-        # Start accumulating total loss:
-        loss = on_pi_loss
-        model_summaries = on_pi_summaries
-
-        # Off-policy losses:
-        self.off_pi_act_target = tf.placeholder(
-            tf.float32, [None, self.ref_env.action_space.n], name="off_policy_action_pl")
-        self.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
-        self.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
-
-        if self.use_off_policy_aac:
-            # Off-policy AAC loss graph mirrors on-policy:
-            off_pi_loss, off_pi_summaries = self.off_policy_loss(
-                act_target=self.off_pi_act_target,
-                adv_target=self.off_pi_adv_target,
-                r_target=self.off_pi_r_target,
-                pi_logits=self.local_network.off_logits,
-                pi_vf=self.local_network.off_vf,
-                pi_prime_logits=self.local_network_prime.off_logits,
+            on_pi_loss, on_pi_summaries = self.on_policy_loss(
+                act_target=self.on_pi_act_target,
+                adv_target=self.on_pi_adv_target,
+                r_target=self.on_pi_r_target,
+                pi_logits=self.local_network.on_logits,
+                pi_vf=self.local_network.on_vf,
+                pi_prime_logits=self.local_network_prime.on_logits,
                 entropy_beta=self.model_beta,
                 epsilon=clip_epsilon,
-                name='off_policy',
-                verbose=False
+                name='on_policy',
+                verbose=verbose
             )
-            loss = loss + self.off_aac_lambda * off_pi_loss
-            model_summaries += off_pi_summaries
+            # Start accumulating total loss:
+            loss = on_pi_loss
+            model_summaries = on_pi_summaries
 
-        if self.use_pixel_control:
-            # Pixel control loss:
-            self.pc_action = tf.placeholder(tf.float32, [None, self.ref_env.action_space.n], name="pc_action")
-            self.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
+            # Off-policy losses:
+            self.off_pi_act_target = tf.placeholder(
+                tf.float32, [None, self.ref_env.action_space.n], name="off_policy_action_pl")
+            self.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
+            self.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
 
-            pc_loss, pc_summaries = self.pc_loss(
-                actions=self.pc_action,
-                targets=self.pc_target,
-                pi_pc_q=self.local_network.pc_q,
-                name='off_policy',
-                verbose=True
-            )
-            loss = loss + self.pc_lambda * pc_loss
-            # Add specific summary:
-            model_summaries += pc_summaries
+            if self.use_off_policy_aac:
+                # Off-policy AAC loss graph mirrors on-policy:
+                off_pi_loss, off_pi_summaries = self.off_policy_loss(
+                    act_target=self.off_pi_act_target,
+                    adv_target=self.off_pi_adv_target,
+                    r_target=self.off_pi_r_target,
+                    pi_logits=self.local_network.off_logits,
+                    pi_vf=self.local_network.off_vf,
+                    pi_prime_logits=self.local_network_prime.off_logits,
+                    entropy_beta=self.model_beta,
+                    epsilon=clip_epsilon,
+                    name='off_policy',
+                    verbose=False
+                )
+                loss = loss + self.off_aac_lambda * off_pi_loss
+                model_summaries += off_pi_summaries
 
-        if self.use_value_replay:
-            # Value function replay loss:
-            self.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
-            vr_loss, vr_summaries = self.vr_loss(
-                r_target=self.vr_target,
-                pi_vf=self.local_network.vr_value,
-                name='off_policy',
-                verbose=True
-            )
-            loss = loss + self.vr_lambda * vr_loss
-            model_summaries += vr_summaries
+            if self.use_pixel_control:
+                # Pixel control loss:
+                self.pc_action = tf.placeholder(tf.float32, [None, self.ref_env.action_space.n], name="pc_action")
+                self.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
 
-        if self.use_reward_prediction:
-            # Reward prediction loss:
-            self.rp_target = tf.placeholder(tf.float32, [None, 3], name="rp_target")
+                pc_loss, pc_summaries = self.pc_loss(
+                    actions=self.pc_action,
+                    targets=self.pc_target,
+                    pi_pc_q=self.local_network.pc_q,
+                    name='off_policy',
+                    verbose=verbose
+                )
+                loss = loss + self.pc_lambda * pc_loss
+                # Add specific summary:
+                model_summaries += pc_summaries
 
-            rp_loss, rp_summaries = self.rp_loss(
-                rp_targets=self.rp_target,
-                pi_rp_logits=self.local_network.rp_logits,
-                name='off_policy',
-                verbose=True
-            )
-            loss = loss + self.rp_lambda * rp_loss
-            model_summaries += rp_summaries
+            if self.use_value_replay:
+                # Value function replay loss:
+                self.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
+                vr_loss, vr_summaries = self.vr_loss(
+                    r_target=self.vr_target,
+                    pi_vf=self.local_network.vr_value,
+                    name='off_policy',
+                    verbose=verbose
+                )
+                loss = loss + self.vr_lambda * vr_loss
+                model_summaries += vr_summaries
+
+            if self.use_reward_prediction:
+                # Reward prediction loss:
+                self.rp_target = tf.placeholder(tf.float32, [None, 3], name="rp_target")
+
+                rp_loss, rp_summaries = self.rp_loss(
+                    rp_targets=self.rp_target,
+                    pi_rp_logits=self.local_network.rp_logits,
+                    name='off_policy',
+                    verbose=verbose
+                )
+                loss = loss + self.rp_lambda * rp_loss
+                model_summaries += rp_summaries
 
         return loss, model_summaries
 
@@ -543,6 +594,17 @@ class BaseAAC(object):
         Returns:
             tensor holding training op graph;
         """
+
+        # Each worker gets a different set of adam optimizer parameters:
+        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
+
+        # self.optimizer = tf.train.RMSPropOptimizer(
+        #    learning_rate=train_learn_rate,
+        #    decay=self.opt_decay,
+        #    momentum=self.opt_momentum,
+        #    epsilon=self.opt_epsilon,
+        # )
+
         # Clipped gradients:
         self.grads, _ = tf.clip_by_global_norm(
             tf.gradients(self.loss, self.local_network.var_list),
@@ -566,16 +628,6 @@ class BaseAAC(object):
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
         self.inc_step = self.global_step.assign_add(tf.shape(self.local_network.on_state_in['external'])[0])
 
-        # Each worker gets a different set of adam optimizer parameters:
-        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
-
-        # self.optimizer = tf.train.RMSPropOptimizer(
-        #    learning_rate=train_learn_rate,
-        #    decay=self.opt_decay,
-        #    momentum=self.opt_momentum,
-        #    epsilon=self.opt_epsilon,
-        # )
-
         train_op = self.optimizer.apply_gradients(grads_and_vars)
         self.log.debug('train_op defined')
         return train_op
@@ -588,17 +640,21 @@ class BaseAAC(object):
             model_summary op
             episode_summary op
         """
-        # Model-wide statistics:
-        with tf.name_scope('model'):
-            model_summaries += [
-                tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
-                tf.summary.scalar("var_global_norm", tf.global_norm(self.local_network.var_list)),
-                tf.summary.scalar("learn_rate", self.train_learn_rate),
-                # tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
-                tf.summary.scalar("total_loss", self.loss),
-            ]
-        # Model stat. summary:
-        model_summary = tf.summary.merge(model_summaries, name='model_summary')
+        if self.use_global_network:
+            # Model-wide statistics:
+            with tf.name_scope('model'):
+                model_summaries += [
+                    tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
+                    tf.summary.scalar("var_global_norm", tf.global_norm(self.local_network.var_list)),
+                    tf.summary.scalar("learn_rate", self.train_learn_rate),
+                    # tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
+                    tf.summary.scalar("total_loss", self.loss),
+                ]
+            # Model stat. summary:
+            model_summary = tf.summary.merge(model_summaries, name='model_summary')
+
+        else:
+            model_summary = []
 
         # Episode-related summaries:
         ep_summary = dict(
@@ -684,24 +740,54 @@ class BaseAAC(object):
         runners = []
         task = 0  # Runners will have [worker_task][env_count] id's
         for env in self.env_list:
-            runners.append(
-                RunnerThread(
-                    env=env,
-                    policy=self.local_network,
-                    runner_fn_ref=self.runner_fn_ref,
-                    task=self.task + task,
-                    rollout_length=self.rollout_length,  # ~20
-                    episode_summary_freq=self.episode_summary_freq,
-                    env_render_freq=self.env_render_freq,
-                    test=self.test_mode,
-                    ep_summary=self.ep_summary,
-                    memory_config=memory_config,
-                    log_level=self.log_level,
-                )
+            kwargs=dict(
+                env=env,
+                policy=self.local_network,
+                task=self.task + task,
+                rollout_length=self.rollout_length,  # ~20
+                episode_summary_freq=self.episode_summary_freq,
+                env_render_freq=self.env_render_freq,
+                test=self.test_mode,
+                ep_summary=self.ep_summary,
+                memory_config=memory_config,
+                log_level=self.log_level,
             )
+            kwargs.update(self.runner_config['kwargs'])
+            # New runner instance:
+            runners.append(self.runner_config['class_ref'](**kwargs))
             task += 0.01
-        self.log.debug('thread-runners ok.')
+        self.log.debug('runners ok.')
         return runners
+
+    def _make_step_counters(self):
+        """
+        Defines operations for global step and global episode;
+
+        Returns:
+            None, sets attrs.
+        """
+        self.global_step = tf.get_variable(
+            "global_step",
+            [],
+            tf.int32,
+            initializer=tf.constant_initializer(
+                0,
+                dtype=tf.int32
+            ),
+            trainable=False
+        )
+        self.global_episode = tf.get_variable(
+            "global_episode",
+            [],
+            tf.int32,
+            initializer=tf.constant_initializer(
+                0,
+                dtype=tf.int32
+            ),
+            trainable=False
+        )
+        # Increment episode count:
+        self.inc_episode = self.global_episode.assign_add(1)
 
     def _make_policy(self, scope):
         """
@@ -740,28 +826,8 @@ class BaseAAC(object):
                     raise RuntimeError
             else:
                 # Set counters:
-                self.global_step = tf.get_variable(
-                    "global_step",
-                    [],
-                    tf.int32,
-                    initializer=tf.constant_initializer(
-                        0,
-                        dtype=tf.int32
-                    ),
-                    trainable=False
-                )
-                self.global_episode = tf.get_variable(
-                    "global_episode",
-                    [],
-                    tf.int32,
-                    initializer=tf.constant_initializer(
-                        0,
-                        dtype=tf.int32
-                    ),
-                    trainable=False
-                )
-                # Increment episode count:
-                self.inc_episode = self.global_episode.assign_add(1)
+                self._make_step_counters()
+
         return network
 
     def _make_dummy_policy(self):
@@ -1070,6 +1136,7 @@ class BaseAAC(object):
         ep_summary_feeder = {}
 
         # Look for train episode summaries from all env runners:
+
         for stat in data['ep_summary']:
             if stat is not None:
                 for key in stat.keys():
@@ -1077,6 +1144,7 @@ class BaseAAC(object):
                         ep_summary_feeder[key] += [stat[key]]
                     else:
                         ep_summary_feeder[key] = [stat[key]]
+
         # Average values among thread_runners, if any, and write episode summary:
         if ep_summary_feeder != {}:
             ep_summary_feed_dict = {
@@ -1116,6 +1184,10 @@ class BaseAAC(object):
         # Look for renderings (chief worker only, always 0-numbered environment in a list):
         if self.task == 0:
             if data['render_summary'][0] is not None:
+
+                #self.log.warning('data[render_summary]: {}'.format(data['render_summary']))
+                #self.log.warning('self.ep_summary: {}'.format(self.ep_summary))
+
                 render_feed_dict = {
                     self.ep_summary[key]: pic for key, pic in data['render_summary'][0].items()
                 }
@@ -1315,7 +1387,7 @@ class Unreal(BaseAAC):
                     ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).
         """
         try:
-            super(Unreal, self).__init__(_log_name='UNREAL', **kwargs)
+            super(Unreal, self).__init__(name='UNREAL', **kwargs)
         except:
             msg = 'Child class Unreal __init()__ exception occurred' + \
                   '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
@@ -1366,7 +1438,7 @@ class A3C(BaseAAC):
             use_pixel_control=False,
             use_value_replay=False,
             _use_target_policy=False,
-            _log_name='A3C',
+            name='A3C',
             **kwargs
         )
 
@@ -1433,7 +1505,7 @@ class PPO(BaseAAC):
             on_policy_loss=ppo_loss_def,
             off_policy_loss=ppo_loss_def,
             _use_target_policy=True,
-            _log_name='PPO',
+            name='PPO',
             **kwargs
         )
 

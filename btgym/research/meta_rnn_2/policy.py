@@ -39,7 +39,8 @@ class AacStackedMetaPolicy(GuidedPolicy_0_0):
 
         Returns:
             action returned is one-hot 'hold';
-            reward, value returned are zero;
+            reward, zero;
+            value, zero;
             2_RNN zero-state tuple.
 
         Raises:

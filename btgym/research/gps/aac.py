@@ -39,7 +39,7 @@ class GuidedAAC(BaseAAC):
             guided_lambda=1.0,
             runner_fn_ref=VerboseEnvRunnerFn,
             _aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
-            _log_name='GuidedA3C',
+            name='GuidedA3C',
             **kwargs
     ):
         """
@@ -48,7 +48,7 @@ class GuidedAAC(BaseAAC):
             expert_loss:        callable returning tensor holding on_policy imitation loss graph and summaries
             aac_lambda:         float, main on_policy a3c loss lambda
             guided_lambda:      float, imitation loss lambda
-            _log_name:          str, class-wide logger name; internal, do not use
+            name:               str, name scope
             **kwargs:           see BaseAAC kwargs
         """
         try:
@@ -59,7 +59,7 @@ class GuidedAAC(BaseAAC):
             super(GuidedAAC, self).__init__(
                 runner_fn_ref=runner_fn_ref,
                 _aux_render_modes=_aux_render_modes,
-                _log_name=_log_name,
+                name=name,
                 **kwargs
             )
 

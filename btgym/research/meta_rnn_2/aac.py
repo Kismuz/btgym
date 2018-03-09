@@ -1,5 +1,5 @@
 import tensorflow as tf
-import  numpy as np
+import numpy as np
 
 from btgym.research.gps.aac import GuidedAAC
 from btgym.research.meta_rnn_2.env_runner import MetaEnvRunnerFn
@@ -35,7 +35,7 @@ class MetaAAC_0_0(GuidedAAC):
                 aac_lambda=aac_lambda,
                 guided_lambda=guided_lambda,
                 _aux_render_modes=_aux_render_modes,
-                _log_name=_log_name,
+                name=_log_name,
                 **kwargs
             )
         except:
@@ -134,7 +134,7 @@ class MetaAAC_0_1(GuidedAAC):
                 guided_lambda=guided_lambda,
                 _use_target_policy=True,
                 _aux_render_modes=_aux_render_modes,
-                _log_name=_log_name,
+                name=_log_name,
                 **kwargs
             )
 

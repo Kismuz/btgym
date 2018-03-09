@@ -501,7 +501,7 @@ class bVAENA3C(BaseAAC):
 
     def __init__(self, ae_loss=beta_vae_loss_def, ae_alpha=1.0, ae_beta=1.0, _log_name='bVAEN_A3C', **kwargs):
         try:
-            super(bVAENA3C, self).__init__(_log_name=_log_name, **kwargs)
+            super(bVAENA3C, self).__init__(name=_log_name, **kwargs)
             with tf.device(self.worker_device):
                 with tf.variable_scope('local'):
                     on_vae_loss_ext, on_ae_summary_ext = ae_loss(

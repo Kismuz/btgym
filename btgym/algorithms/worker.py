@@ -208,15 +208,15 @@ class Worker(multiprocessing.Process):
             self.log.debug('trainer ok.')
 
             # Saver-related:
-            variables_to_save = [v for v in tf.global_variables() if not v.name.startswith("local")]
-            local_variables = [v for v in tf.global_variables() if v.name.startswith("local")]
+            variables_to_save = [v for v in tf.global_variables() if not 'local' in v.name]
+            local_variables = [v for v in tf.global_variables() if 'local' in v.name]
             init_op = tf.variables_initializer(variables_to_save)
             local_init_op = tf.variables_initializer(local_variables)
             init_all_op = tf.global_variables_initializer()
 
             saver = _FastSaver(variables_to_save)
 
-            self.log.debug('vars_to_save:')
+            self.log.debug('VARIABLES TO SAVE:')
             for v in variables_to_save:
                 self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
@@ -229,6 +229,8 @@ class Worker(multiprocessing.Process):
             summary_dir = logdir + "_{}".format(self.task)
 
             summary_writer = tf.summary.FileWriter(summary_dir)
+
+            self.log.debug('before tf.train.Supervisor... ')
 
             # TODO: switch to tf.train.MonitoredTrainingSession
             sv = tf.train.Supervisor(
