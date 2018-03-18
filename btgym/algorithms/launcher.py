@@ -304,6 +304,8 @@ class Launcher():
 
         for key, value in new_dict.items():
             if type(value) == dict:
+                if key not in old_dict.keys():
+                    old_dict[key] = {}
                 old_dict[key] = self._update_config_dict(old_dict[key], value)
 
             else:

@@ -446,7 +446,7 @@ class BaseAAC(object):
                     self.log.debug('learn rate ok')
 
                     # Define loss and related summaries
-                    self.loss, model_summaries = self._make_loss()
+                    self.loss, self.loss_summaries = self._make_loss()
 
                     if self.use_global_network:
                         # Define train, sync ops:
@@ -456,7 +456,7 @@ class BaseAAC(object):
                         self.train_op = []
 
                     # Model stat. summary, episode summary:
-                    self.model_summary_op, self.ep_summary = self._combine_summaries(model_summaries)
+                    self.model_summary_op, self.ep_summary = self._combine_summaries(self.loss_summaries)
 
                     # Make thread-runner processes:
                     self.runners = self._make_runners()
@@ -632,7 +632,7 @@ class BaseAAC(object):
         self.log.debug('train_op defined')
         return train_op
 
-    def _combine_summaries(self, model_summaries):
+    def _combine_summaries(self, model_summaries=None):
         """
         Defines model-wide and episode-related summaries
 
@@ -640,21 +640,21 @@ class BaseAAC(object):
             model_summary op
             episode_summary op
         """
-        if self.use_global_network:
-            # Model-wide statistics:
-            with tf.name_scope('model'):
-                model_summaries += [
-                    tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
-                    tf.summary.scalar("var_global_norm", tf.global_norm(self.local_network.var_list)),
-                    tf.summary.scalar("learn_rate", self.train_learn_rate),
-                    # tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
-                    tf.summary.scalar("total_loss", self.loss),
-                ]
-            # Model stat. summary:
-            model_summary = tf.summary.merge(model_summaries, name='model_summary')
-
+        if model_summaries is not None:
+            if self.use_global_network:
+                # Model-wide statistics:
+                with tf.name_scope('model'):
+                    model_summaries += [
+                        tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
+                        tf.summary.scalar("var_global_norm", tf.global_norm(self.local_network.var_list)),
+                        tf.summary.scalar("learn_rate", self.train_learn_rate),
+                        # tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
+                        tf.summary.scalar("total_loss", self.loss),
+                    ]
         else:
-            model_summary = []
+            model_summaries = []
+        # Model stat. summary:
+        model_summary = tf.summary.merge(model_summaries, name='model_summary')
 
         # Episode-related summaries:
         ep_summary = dict(
@@ -863,7 +863,7 @@ class BaseAAC(object):
 
         return {key: [stream[key] for stream in data_streams] for key in data_streams[0].keys()}
 
-    def get_sample_config(self, _new_trial=False):
+    def get_sample_config(self, _new_trial=False, **kwargs):
         """
         Returns environment configuration parameters for next episode to sample.
         By default is simple stateful iterator,
@@ -1200,7 +1200,19 @@ class BaseAAC(object):
             self.summary_writer.add_summary(tf.Summary.FromString(model_data), sess.run(self.global_step))
             self.summary_writer.flush()
 
-    def process(self, sess):
+    def process(self, sess, **kwargs):
+        """
+        Main train step method wrapper. Override if needed.
+
+        Args:
+            sess (tensorflow.Session):   tf session obj.
+            kwargs:                      any
+
+
+        """
+        return self._process(sess)
+
+    def _process(self, sess):
         """
         Grabs an on_policy_rollout [and off_policy rollout[s] from replay memory] that's been produced
         by the thread runner. If data identified as 'train data' - computes gradients and updates the parameters;

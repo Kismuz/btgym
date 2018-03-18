@@ -50,6 +50,7 @@ def VerboseEnvRunnerFn(
     # Pass sample config to environment:
     last_state = env.reset(**policy.get_sample_config())
     last_context = policy.get_initial_features(state=last_state)
+    #last_action, last_reward, _, last_context = policy.get_initial_features(state=last_state)
     length = 0
     local_episode = 0
     reward_sum = 0

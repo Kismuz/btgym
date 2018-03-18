@@ -52,7 +52,7 @@ class BaseSynchroRunner():
             log_level:              int, logbook.level
         """
         self.env = env
-        self.task  = task
+        self.task = task
         self.name = name
         self.rollout_length = rollout_length
         self.episode_summary_freq = episode_summary_freq
@@ -64,7 +64,7 @@ class BaseSynchroRunner():
         self.aux_summaries = aux_summaries
         self.log_level = log_level
         StreamHandler(sys.stdout).push_application()
-        self.log = Logger('Runner_{}_{}'.format(self.task, self.name), level=self.log_level)
+        self.log = Logger('{}_Runner_{}'.format(self.name, self.task), level=self.log_level)
         self.sess = None
         self.summary_writer = None
 
@@ -88,6 +88,10 @@ class BaseSynchroRunner():
         self.total_steps = []
         self.total_steps_atari = []
         self.info = None
+        self.pre_experience = None
+        self.state = None
+        self.context = None
+        self.action_reward = None
 
         # Episode accumulators:
         self.ep_accum = None
@@ -118,7 +122,7 @@ class BaseSynchroRunner():
                 _ = self.get_data()
             self.log.notice('Memory filled')
 
-        self.pre_experience = self.get_init_experience(
+        self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
             policy=self.policy,
             init_context=None
         )
@@ -132,7 +136,10 @@ class BaseSynchroRunner():
             init_context    initial policy context for new episode.
 
         Returns:
-            incomplete initial experience of episode as dictionary
+            incomplete initial experience of episode as dictionary (misses bootstrapped R value),
+            next_state,
+            next, policy RNN context
+            action_reward
         """
         self.length = 0
         self.reward_sum = 0
@@ -141,19 +148,36 @@ class BaseSynchroRunner():
         self.local_episode += 1
 
         # Pass sample config to environment (.get_sample_config() is actually aac framework method):
-        state = self.env.reset(**policy.get_sample_config(**self.data_sample_config))
-        # TODO: only valid for AacStackedMetaPolicy  - rework base class!
-        action, reward, value, context = policy.get_initial_features(state=state, context=init_context)
+        init_state = self.env.reset(**policy.get_sample_config(**self.data_sample_config))
+
+        # Master worker always resets context at the episode beginning:
+        # TODO: !
+        if not self.data_sample_config['mode']:
+            init_context = None
+
+        #self.log.warning('init_context_passed: {}'.format(init_context))
+        #self.log.warning('state_metadata: {}'.format(state['metadata']))
+
+        init_action = np.zeros(self.env.action_space.n)
+        init_action[0] = 1
+        init_reward = 0.0
+        init_action_reward = np.concatenate([init_action, np.asarray([init_reward])], axis=-1)
+
+        init_context = policy.get_initial_features(state=init_state, context=init_context)
+        action, logits, value, next_context = policy.act(init_state, init_context, init_action_reward)
+        next_state, reward, terminal, self.info = self.env.step(init_action.argmax())
+
+        next_action_reward = np.concatenate([action, np.asarray([reward])], axis=-1)
 
         experience = {
             'position': {'episode': self.local_episode, 'step': self.length},
-            'state': state,
+            'state': init_state,
             'action': action,
             'reward': reward,
             'value': value,
-            'terminal': False,
-            'context': context,
-            'last_action_reward': np.concatenate([action, np.asarray([0.0])], axis=-1),  # ~zeros
+            'terminal': terminal,
+            'context': init_context,
+            'last_action_reward': init_action_reward,  # ~zeros
             'r': None  # to be updated
         }
         # Execute user-defined callbacks to policy, if any:
@@ -162,46 +186,51 @@ class BaseSynchroRunner():
 
         # reset per-episode  counters and accumulators:
         self.ep_accum = {
-            'logits': [],
-            'value': [],
-            'context': []
+            'logits': [logits],
+            'value': [value],
+            'context': [init_context]
         }
-        self.terminal_end = False
-        self.log.debug('init_experience collected.')
+        self.terminal_end = terminal
+        #self.log.warning('init_experience_context: {}'.format(context))
 
-        return experience
+        return experience, next_state, next_context, next_action_reward
 
-    def get_experience(self, policy, state, context, pre_action_reward):
+    def get_experience(self, policy, state, context, action_reward):
         """
         Get single experience (possibly terminal)
 
         Returns:
-            incomplete experience as dictionary
+            incomplete experience as dictionary (misses bootstrapped R value),
+            next_state,
+            next, policy RNN context
+            action_reward
         """
         # Continue adding experiences to rollout:
-        action, logits, value, new_context = policy.act(state, context, pre_action_reward)
+        action, logits, value, next_context = policy.act(state, context, action_reward)
 
         # log.debug('A: {}, V: {}, step: {} '.format(action, value_, length))
 
         self.ep_accum['logits'].append(logits)
         self.ep_accum['value'].append(value)
-        self.ep_accum['context'].append(new_context)
+        self.ep_accum['context'].append(context)
 
         # log.notice('context: {}'.format(context))
 
         # Argmax to convert from one-hot:
-        new_state, reward, terminal, self.info = self.env.step(action.argmax())
+        next_state, reward, terminal, self.info = self.env.step(action.argmax())
+
+        next_action_reward = np.concatenate([action, np.asarray([reward])], axis=-1)
 
         # Partially collect experience:
         experience = {
             'position': {'episode': self.local_episode, 'step': self.length},
-            'state': new_state,
+            'state': state,
             'action': action,
             'reward': reward,
             'value': value,
             'terminal': terminal,
-            'context': new_context,
-            'last_action_reward': pre_action_reward,
+            'context': context,
+            'last_action_reward': action_reward,
             'r': None,
         }
         for key, callback in policy.callback.items():
@@ -210,7 +239,7 @@ class BaseSynchroRunner():
         # Housekeeping:
         self.length += 1
 
-        return experience
+        return experience, next_state, next_context, next_action_reward
 
     def get_train_stat(self, is_test=False):
         """
@@ -278,6 +307,8 @@ class BaseSynchroRunner():
         # Only render chief worker and test environment:
         # TODO: train as well; source/target?
         if self.task < 1 and self.data_sample_config['mode'] and self.local_episode % self.env_render_freq == 0:
+            # TODO:  !
+        # if self.task < 1  and self.local_episode % self.env_render_freq == 0:
 
             # Render environment (chief worker only):
             render_stat = {
@@ -348,21 +379,18 @@ class BaseSynchroRunner():
 
         if self.terminal_end:
             # Start new episode:
-            self.pre_experience = self.get_init_experience(
+            self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
                 policy=policy,
-                init_context=self.pre_experience['context']  # None (initially) or final context of previous episode
+                init_context=self.context  # None (initially) or final context of previous episode
             )
 
         # Collect single rollout:
         while rollout.size < self.rollout_length and not self.terminal_end:
-            experience = self.get_experience(
+            experience, self.state, self.context, self.action_reward = self.get_experience(
                 policy=policy,
-                state=self.pre_experience['state'],
-                context=self.pre_experience['context'],
-                pre_action_reward=np.concatenate(
-                    [self.pre_experience['action'], np.asarray([self.pre_experience['reward']])],
-                    axis=-1
-                ),
+                state=self.state,
+                context=self.context,
+                action_reward=self.action_reward
             )
             # Complete previous experience by bootstrapping V from next one:
             self.pre_experience['r'] = experience['value']
@@ -407,19 +435,160 @@ class BaseSynchroRunner():
                 if not is_test:
                     self.memory.add(self.pre_experience)
 
-                train_ep_summary = self.get_train_stat(is_test)
-                test_ep_summary = self.get_test_stat(is_test)
+                #train_ep_summary = self.get_train_stat(is_test)
+                train_ep_summary = self.get_train_stat(False)
+                #test_ep_summary = self.get_test_stat(is_test)
                 render_ep_summary = self.get_ep_render()
 
         #self.log.warning('rollout.size: {}'.format(rollout.size))
 
         data = dict(
             on_policy=rollout,
+            terminal=self.terminal_end,
             off_policy=self.memory.sample_uniform(sequence_size=self.rollout_length),
             off_policy_rp=self.memory.sample_priority(exact_size=True),
             ep_summary=train_ep_summary,
             test_ep_summary=test_ep_summary,
             render_summary=render_ep_summary,
+        )
+        return data
+
+    def get_episode(self, policy=None, init_context=None):
+        """
+        Collects entire episode trajectory and bunch of summaries using specified policy.
+        Updates episode statistics and replay memory.
+
+        Args:
+            policy:     policy to execute
+
+        Returns:
+                data dictionary
+        """
+        if policy is None:
+            policy = self.policy
+
+        if init_context is None:
+            init_context = self.context
+        elif init_context == 0:
+            init_context = None
+
+        rollout = Rollout()
+        train_ep_summary = None
+        test_ep_summary = None
+        render_ep_summary = None
+
+        # Start new episode:
+        self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
+            policy=policy,
+            init_context=init_context  # None (initially) or final context of previous episode
+        )
+        # Only training rollouts are added to replay memory:
+        is_test = False
+        try:
+            # Was it test (`type` in metadata is not zero)?
+            # TODO: change to source/target?
+            if self.pre_experience['state']['metadata']['type']:
+                is_test = True
+
+        except KeyError:
+            pass
+
+        # Collect data until episode is over:
+
+        while not self.terminal_end:
+            experience, self.state, self.context, self.action_reward = self.get_experience(
+                policy=policy,
+                state=self.state,
+                context=self.context,
+                action_reward=self.action_reward
+            )
+            # Complete previous experience by bootstrapping V from next one:
+            self.pre_experience['r'] = experience['value']
+            # Push:
+            rollout.add(self.pre_experience)
+
+            if not is_test:
+                self.memory.add(self.pre_experience)
+
+            # Move one step froward:
+            self.pre_experience = experience
+
+            self.reward_sum += experience['reward']
+
+            if self.pre_experience['terminal']:
+                # Episode has been just finished,
+                # need to complete and push last experience and update all episode summaries:
+                self.terminal_end = True
+
+        # Bootstrap:
+        self.pre_experience['r'] = np.asarray(
+            [
+                policy.get_value(
+                    self.pre_experience['state'],
+                    self.pre_experience['context'],
+                    self.pre_experience['last_action_reward']
+                )
+            ]
+        )
+        rollout.add(self.pre_experience)
+        if not is_test:
+            self.memory.add(self.pre_experience)
+
+        # train_ep_summary = self.get_train_stat(is_test)
+        train_ep_summary = self.get_train_stat(False)
+        # test_ep_summary = self.get_test_stat(is_test)
+        render_ep_summary = self.get_ep_render()
+
+        # self.log.warning('episodic_rollout.size: {}'.format(rollout.size))
+
+        data = dict(
+            on_policy=rollout,
+            terminal=self.terminal_end,
+            off_policy=self.memory.sample_uniform(sequence_size=self.rollout_length),
+            off_policy_rp=self.memory.sample_priority(exact_size=True),
+            ep_summary=train_ep_summary,
+            test_ep_summary=test_ep_summary,
+            render_summary=render_ep_summary,
+        )
+        return data
+
+    def get_batch(self, policy, size, require_terminal=True):
+        """
+        Returns batch of 'size' or more rollouts collected under specified policy.
+        Rollouts can be collected from several episodes consequently.
+
+        Args:
+            policy:             policy to use
+            size:               int, number of rollouts to collect
+            require_terminal:   bool, if True - require at least one terminal rollout to be present.
+
+        Returns:
+            dict containing: list of data dictionaries; 'terminal_context' key holding list of terminal
+            output contexts. If 'require_terminal = True, this list is guarantied to hold at least one value.
+        """
+        collected_size = 0
+        batch = []
+        terminal_context = []
+
+        if require_terminal:
+            got_terminal = False
+        else:
+            got_terminal = True
+
+        # Collect rollouts:
+        while not collected_size >= size and got_terminal:
+            rollout_data = self.get_data(policy)
+            batch.append(rollout_data)
+
+            if rollout_data['terminal']:
+                terminal_context.append(self.context)
+                got_terminal = True
+
+            collected_size += 1
+
+        data = dict(
+            data=batch,
+            terminal_context=terminal_context,
         )
         return data
 

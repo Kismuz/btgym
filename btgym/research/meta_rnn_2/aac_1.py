@@ -172,7 +172,7 @@ class MetaAAC_1_0():
                 _use_target_policy=False,
                 _use_global_network=True,
                 _aux_render_modes=_aux_render_modes,
-                name=self.name + '_sub_train',
+                name=self.name + '_sub_Train',
                 **kwargs
             )
 
@@ -194,15 +194,19 @@ class MetaAAC_1_0():
                 global_episode_op=self.train_aac.global_episode,
                 inc_episode_op=self.train_aac.inc_episode,
                 _aux_render_modes=_aux_render_modes,
-                name=self.name + '_sub_test',
+                name=self.name + '_sub_Test',
                 **kwargs
             )
 
             self.local_steps = self.train_aac.local_steps
             self.model_summary_freq = self.train_aac.model_summary_freq
-            self.model_summary_op = self.train_aac.model_summary_op
+            #self.model_summary_op = self.train_aac.model_summary_op
 
             self._make_train_op()
+            self.test_aac.model_summary_op = tf.summary.merge(
+                [self.test_aac.model_summary_op, self._combine_meta_summaries()],
+                name='meta_model_summary'
+            )
 
         except:
             msg = 'MetaAAC_0_1.__init()__ exception occurred' + \
@@ -225,31 +229,58 @@ class MetaAAC_1_0():
 
         self.global_step = self.train_aac.global_step
         self.global_episode = self.train_aac.global_episode
+
+        self.test_aac.global_step = self.train_aac.global_step
+        self.test_aac.global_episode = self.train_aac.global_episode
+        self.test_aac.inc_episode = self.train_aac.inc_episode
+        self.train_aac.inc_episode = None
         self.inc_step = self.train_aac.inc_step
 
         # Meta-loss:
-        self.loss = self.train_aac.loss + self.test_aac.loss
+        self.loss = 0.5 * self.train_aac.loss + 0.5 * self.test_aac.loss
 
         # Clipped gradients:
         self.train_aac.grads, _ = tf.clip_by_global_norm(
             tf.gradients(self.train_aac.loss, pi.var_list),
             40.0
         )
+        self.log.warning('self.train_aac.grads: {}'.format(len(list(self.train_aac.grads))))
+
         # self.test_aac.grads, _ = tf.clip_by_global_norm(
         #     tf.gradients(self.test_aac.loss, pi_prime.var_list),
         #     40.0
         # )
         # Meta-gradient:
-        self.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.loss, pi.var_list + pi_prime.var_list),
+        grads_i, _ = tf.clip_by_global_norm(
+            tf.gradients(self.train_aac.loss, pi.var_list),
             40.0
         )
+
+        grads_i_next, _ = tf.clip_by_global_norm(
+            tf.gradients(self.test_aac.loss, pi_prime.var_list),
+            40.0
+        )
+
+        self.grads = []
+        for g1, g2 in zip(grads_i, grads_i_next):
+            if g1 is not None and g2 is not None:
+                meta_g = 0.5 * g1 + 0.5 * g2
+            else:
+                meta_g = None
+
+            self.grads.append(meta_g)
+
+        #self.log.warning('self.grads_len: {}'.format(len(list(self.grads))))
 
         # Gradients to update local copy of pi_prime (from train data):
         train_grads_and_vars = list(zip(self.train_aac.grads, pi_prime.var_list))
 
+        self.log.warning('train_grads_and_vars_len: {}'.format(len(train_grads_and_vars)))
+
         # Meta-gradients to be sent to parameter server:
         meta_grads_and_vars = list(zip(self.grads, self.train_aac.network.var_list))
+
+        self.log.warning('meta_grads_and_vars_len: {}'.format(len(meta_grads_and_vars)))
 
         # Set global_step increment equal to observation space batch size:
         obs_space_keys = list(self.train_aac.local_network.on_state_in.keys())
@@ -268,6 +299,15 @@ class MetaAAC_1_0():
         self.meta_train_op = self.optimizer.apply_gradients(meta_grads_and_vars)
 
         self.log.debug('meta_train_op defined')
+
+    def _combine_meta_summaries(self):
+
+        meta_model_summaries = [
+            tf.summary.scalar("meta_grad_global_norm", tf.global_norm(self.grads)),
+            tf.summary.scalar("total_meta_loss", self.loss),
+        ]
+
+        return meta_model_summaries
 
     def start(self, sess, summary_writer, **kwargs):
         """
@@ -318,40 +358,47 @@ class MetaAAC_1_0():
 
             # Collect train trajectory:
             train_data = self.train_aac.get_data()
-            feed_dict = self.train_aac.process_data(sess, train_data, False)
+            feed_dict = self.train_aac.process_data(sess, train_data, is_train=True)
 
             #self.log.warning('Train data ok.')
 
             # Update pi_prime parameters wrt collected data:
-            fetches = [self.train_op]
+            if wirte_model_summary:
+                fetches = [self.train_op, self.train_aac.model_summary_op]
+            else:
+                fetches = [self.train_op]
+
             fetched = sess.run(fetches, feed_dict=feed_dict)
 
             #self.log.warning('Train gradients ok.')
 
             # Collect test trajectory wrt updated pi_prime parameters:
             test_data = self.test_aac.get_data()
-            feed_dict.update(self.test_aac.process_data(sess, test_data, False))
+            feed_dict.update(self.test_aac.process_data(sess, test_data, is_train=True))
 
             #self.log.warning('Test data ok.')
 
-            # Perform joint meta-update:
+            # Perform meta-update:
             if wirte_model_summary:
-                fetches = [self.meta_train_op, self.model_summary_op, self.inc_step]
+                meta_fetches = [self.meta_train_op, self.test_aac.model_summary_op, self.inc_step]
             else:
-                fetches = [self.meta_train_op, self.inc_step]
+                meta_fetches = [self.meta_train_op, self.inc_step]
 
-            fetched = sess.run(fetches, feed_dict=feed_dict)
+            meta_fetched = sess.run(meta_fetches, feed_dict=feed_dict)
 
             #self.log.warning('Meta-gradients ok.')
 
             if wirte_model_summary:
-                model_summary = fetched[-2]
+                meta_model_summary = meta_fetched[-2]
+                model_summary = fetched[-1]
 
             else:
+                meta_model_summary = None
                 model_summary = None
 
             # Write down summaries:
-            self.test_aac.process_summary(sess, test_data, model_summary)
+            self.test_aac.process_summary(sess, test_data, meta_model_summary)
+            self.train_aac.process_summary(sess, train_data, model_summary)
             self.local_steps += 1
 
             # TODO: ...what about sampling control?

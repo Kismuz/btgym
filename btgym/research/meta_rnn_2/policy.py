@@ -23,7 +23,7 @@ class AacStackedMetaPolicy(GuidedPolicy_0_0):
 
     def get_initial_features(self, state, context=None):
         """
-        Returns initial states: action, action_logits, value, RNN context
+        Returns initial RNN context
         RNN_1 (lower, actor) context is reset at every call.
         RNN_2 (upper, critic) context is reset if :
             - episode  initial `state` `trial_num` metadata has been changed form last call (new trial started);
@@ -38,10 +38,7 @@ class AacStackedMetaPolicy(GuidedPolicy_0_0):
             context:    last previous episode RNN state (last_context of runner)
 
         Returns:
-            action returned is one-hot 'hold';
-            reward, zero;
-            value, zero;
-            2_RNN zero-state tuple.
+            2 level RNN zero-state tuple.
 
         Raises:
             KeyError if [`metadata`]:[`trial_num`,`type`] keys not found
@@ -54,7 +51,11 @@ class AacStackedMetaPolicy(GuidedPolicy_0_0):
             if context is not None:
                 if state['metadata']['trial_num'] == self.current_trial_num or state['metadata']['type']:
                     # Asssume same training trial or test episode pass, critic context intact to new episode:
-                    new_context[-1] = context[-1]
+                    #new_context[-1] = context[-1]
+                    # TODO: !
+                    # FULL context intact to new episode:
+                    new_context = context
+
                     #print('Meta_policy Actor context reset')
                 else:
                     #print('Meta_policy Actor and Critic context reset')
@@ -69,10 +70,6 @@ class AacStackedMetaPolicy(GuidedPolicy_0_0):
                 'Meta_policy: expected observation state dict. to have keys [`metadata`]:[`trial_num`,`type`]; got: {}'.
                 format(state.keys())
             )
-        action = np.zeros(self.ac_space)
-        action[0] = 1
-        reward = 0.0
-        value = 0.0
 
-        return action, reward, value, new_context
+        return new_context
 
