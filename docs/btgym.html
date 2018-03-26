@@ -201,8 +201,8 @@ Enables efficient data sampling for asynchronous multiply BTgym environments exe
 </tbody>
 </table>
 <dl class="method">
-<dt id="btgym.dataserver.BTgymDataFeedServer.get_trial">
-<code class="descname">get_trial</code><span class="sig-paren">(</span><em>sample_config=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/dataserver.html#BTgymDataFeedServer.get_trial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.dataserver.BTgymDataFeedServer.get_trial" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.dataserver.BTgymDataFeedServer.get_data">
+<code class="descname">get_data</code><span class="sig-paren">(</span><em>sample_config=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/dataserver.html#BTgymDataFeedServer.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.dataserver.BTgymDataFeedServer.get_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get Trial sample according to parameters received.
 If no parameters being passed - just makes and stores pre-sample.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -297,6 +297,22 @@ TODO: should be switched off if using decaying <cite>b_alpha</cite> and <cite>b_
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>reset_kwargs</strong> – dictionary of args to pass to parent data iterator</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trial_sample, trial_stat, dataset_stat</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.server.BTgymServer.get_trial_message">
+<code class="descname">get_trial_message</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/server.html#BTgymServer.get_trial_message"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.server.BTgymServer.get_trial_message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepares  message containing current trial instance, mimicking data_server message protocol.
+Intended for serving requests from data_slave environment.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">dict containing trial instance, d_set statistic and origin key; dict containing ‘cntrl’ response if master
+d_set is not ready;</td>
 </tr>
 </tbody>
 </table>

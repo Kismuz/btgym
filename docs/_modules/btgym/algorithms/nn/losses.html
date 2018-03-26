@@ -184,7 +184,7 @@
 
 
 <div class="viewcode-block" id="aac_loss_def"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.losses.aac_loss_def">[docs]</a><span class="k">def</span> <span class="nf">aac_loss_def</span><span class="p">(</span><span class="n">act_target</span><span class="p">,</span> <span class="n">adv_target</span><span class="p">,</span> <span class="n">r_target</span><span class="p">,</span> <span class="n">pi_logits</span><span class="p">,</span> <span class="n">pi_vf</span><span class="p">,</span> <span class="n">pi_prime_logits</span><span class="p">,</span>
-                 <span class="n">entropy_beta</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;_aac_&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+                 <span class="n">entropy_beta</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;_aac_&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Advantage Actor Critic loss definition.</span>
 <span class="sd">    Paper: https://arxiv.org/abs/1602.01783</span>

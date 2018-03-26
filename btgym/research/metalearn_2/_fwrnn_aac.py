@@ -30,7 +30,8 @@ class MetaAAC_2_0(GuidedAAC):
         super(MetaAAC_2_0, self).__init__(
             runner_config=runner_config,
             name=name,
-            **kwargs)
+            **kwargs
+        )
 
         self.current_data = None
         self.current_feed_dict = None

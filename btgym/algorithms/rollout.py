@@ -29,7 +29,7 @@ def make_data_getter(queue):
         callable, returning dictionary of data.
 
     """
-    def pull_rollout_from_queue():
+    def pull_rollout_from_queue(**kwargs):
         return queue.get(timeout=600.0)
 
     return pull_rollout_from_queue

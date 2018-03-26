@@ -32,9 +32,9 @@ import signal
 import numpy as np
 import copy
 
-from .worker import Worker
-from .aac import A3C
-from .policy import BaseAacPolicy
+from btgym.algorithms.worker import Worker
+from btgym.algorithms.aac import A3C
+from btgym.algorithms.policy import BaseAacPolicy
 
 import sys
 sys.path.insert(0,'..')

@@ -852,14 +852,14 @@ class BaseAAC(object):
                 self.off_time_length = None
         return _Dummy()
 
-    def get_data(self):
+    def get_data(self, **kwargs):
         """
         Collect rollouts from every environment.
 
         Returns:
             dictionary of lists of data streams collected from every runner
         """
-        data_streams = [get_it() for get_it in self.data_getter]
+        data_streams = [get_it(**kwargs) for get_it in self.data_getter]
 
         return {key: [stream[key] for stream in data_streams] for key in data_streams[0].keys()}
 
@@ -934,7 +934,7 @@ class BaseAAC(object):
             sess.run(self.sync)
 
             # Start thread_runners:
-            self._start_runners(sess, summary_writer)
+            self._start_runners(sess, summary_writer, **kwargs)
 
         except:
             msg = 'start() exception occurred' + \
@@ -942,7 +942,7 @@ class BaseAAC(object):
             self.log.exception(msg)
             raise RuntimeError(msg)
 
-    def _start_runners(self, sess, summary_writer):
+    def _start_runners(self, sess, summary_writer, **kwargs):
         """
 
         Args:
@@ -953,7 +953,7 @@ class BaseAAC(object):
 
         """
         for runner in self.runners:
-            runner.start_runner(sess, summary_writer)  # starting runner threads
+            runner.start_runner(sess, summary_writer, **kwargs)  # starting runner threads
 
         self.summary_writer = summary_writer
 
@@ -1008,7 +1008,154 @@ class BaseAAC(object):
             feeder = {self.pc_action: batch['action'], self.pc_target: batch['pixel_change']}
         return feeder
 
+    def process_rollouts(self, rollouts):
+        """
+        rollout.process wrapper: makes single batch from list of rollouts
+
+        Args:
+            rollouts:   list of btgym.algorithms.Rollout class instances
+
+        Returns:
+            single batch data
+
+        """
+        batch = batch_stack(
+            [
+                r.process(
+                    gamma=self.model_gamma,
+                    gae_lambda=self.model_gae_lambda,
+                    size=self.rollout_length,
+                    time_flat=self.time_flat,
+                ) for r in rollouts
+            ]
+        )
+        return batch
+
+    def _get_main_feeder(self, sess, on_policy_batch, off_policy_batch, rp_batch, is_train):
+        """
+        Composes entire train step feed dictionary.
+        Args:
+            sess:                   tf session obj.
+            on_policy_batch:        on-policy data batch
+            off_policy_batch:       off-policy (replay memory) data batch
+            rp_batch:               off-policy reward prediction data batch
+            is_train (bool):        is data provided are train or test
+
+        Returns:
+            feed_dict (dict):   train step feed dictionary
+        """
+        # Feeder for on-policy AAC loss estimation graph:
+        feed_dict = feed_dict_from_nested(self.local_network.on_state_in, on_policy_batch['state'])
+        feed_dict.update(
+            feed_dict_rnn_context(self.local_network.on_lstm_state_pl_flatten, on_policy_batch['context'])
+        )
+        feed_dict.update(
+            {
+                self.local_network.on_a_r_in: on_policy_batch['last_action_reward'],
+                self.local_network.on_batch_size: on_policy_batch['batch_size'],
+                self.local_network.on_time_length: on_policy_batch['time_steps'],
+                self.on_pi_act_target: on_policy_batch['action'],
+                self.on_pi_adv_target: on_policy_batch['advantage'],
+                self.on_pi_r_target: on_policy_batch['r'],
+                self.local_network.train_phase: is_train,  # Zeroes learn rate, [+ batch_norm]
+            }
+        )
+        if self.use_target_policy:
+            feed_dict.update(
+                feed_dict_from_nested(self.local_network_prime.on_state_in, on_policy_batch['state'])
+            )
+            feed_dict.update(
+                feed_dict_rnn_context(self.local_network_prime.on_lstm_state_pl_flatten, on_policy_batch['context'])
+            )
+            feed_dict.update(
+                {
+                    self.local_network_prime.on_batch_size: on_policy_batch['batch_size'],
+                    self.local_network_prime.on_time_length: on_policy_batch['time_steps'],
+                    self.local_network_prime.on_a_r_in: on_policy_batch['last_action_reward']
+                }
+            )
+        if self.use_memory:
+            # Feeder for off-policy AAC loss estimation graph:
+            off_policy_feed_dict = feed_dict_from_nested(self.local_network.off_state_in, off_policy_batch['state'])
+            off_policy_feed_dict.update(
+                feed_dict_rnn_context(self.local_network.off_lstm_state_pl_flatten, off_policy_batch['context']))
+            off_policy_feed_dict.update(
+                {
+                    self.local_network.off_a_r_in: off_policy_batch['last_action_reward'],
+                    self.local_network.off_batch_size: off_policy_batch['batch_size'],
+                    self.local_network.off_time_length: off_policy_batch['time_steps'],
+                    self.off_pi_act_target: off_policy_batch['action'],
+                    self.off_pi_adv_target: off_policy_batch['advantage'],
+                    self.off_pi_r_target: off_policy_batch['r'],
+                }
+            )
+            if self.use_target_policy:
+                off_policy_feed_dict.update(
+                    feed_dict_from_nested(self.local_network_prime.off_state_in, off_policy_batch['state'])
+                )
+                off_policy_feed_dict.update(
+                    {
+                        self.local_network_prime.off_batch_size: off_policy_batch['batch_size'],
+                        self.local_network_prime.off_time_length: off_policy_batch['time_steps'],
+                        self.local_network_prime.off_a_r_in: off_policy_batch['last_action_reward']
+                    }
+                )
+                off_policy_feed_dict.update(
+                    feed_dict_rnn_context(
+                        self.local_network_prime.off_lstm_state_pl_flatten,
+                        off_policy_batch['context']
+                    )
+                )
+            feed_dict.update(off_policy_feed_dict)
+
+            # Update with reward prediction subgraph:
+            if self.use_reward_prediction:
+                # Rebalanced 50/50 sample for RP:
+                feed_dict.update(self._get_rp_feeder(rp_batch))
+
+            # Pixel control ...
+            if self.use_pixel_control:
+                feed_dict.update(self._get_pc_feeder(off_policy_batch))
+
+            # VR...
+            if self.use_value_replay:
+                feed_dict.update(self._get_vr_feeder(off_policy_batch))
+
+        return feed_dict
+
     def process_data(self, sess, data, is_train):
+        """
+        Processes data, composes train step feed dictionary.
+        Args:
+            sess:               tf session obj.
+            data (dict):        data dictionary
+            is_train (bool):    is data provided are train or test
+
+        Returns:
+            feed_dict (dict):   train step feed dictionary
+        """
+        # Process minibatch for on-policy train step:
+        on_policy_batch = self.process_rollouts(data['on_policy'])
+
+        if self.use_memory:
+            # Process rollouts from replay memory:
+            off_policy_batch = self.process_rollouts(data['off_policy'])
+
+            if self.use_reward_prediction:
+                # Rebalanced 50/50 sample for RP:
+                rp_rollouts = data['off_policy_rp']
+                rp_batch = batch_stack([rp.process_rp(self.rp_reward_threshold) for rp in rp_rollouts])
+
+            else:
+                rp_batch = None
+
+        else:
+            off_policy_batch = None
+            rp_batch = None
+
+        return self._get_main_feeder(sess, on_policy_batch, off_policy_batch, rp_batch, is_train)
+
+    def _DEPRECATED_process_data(self, sess, data, is_train):
         """
         Processes data, composes train step feed dictionary.
         Args:
@@ -1124,14 +1271,21 @@ class BaseAAC(object):
 
         return feed_dict
 
-    def process_summary(self, sess, data, model_data=None):
+    def process_summary(self, sess, data, model_data=None, step=None, episode=None):
         """
         Fetches and writes summary data from `data` and `model_data`.
         Args:
             sess:               tf summary obj.
             data(dict):         thread_runner rollouts and metadata
             model_data(dict):   model summary data
+            step:               int, global step or None
+            episode:            int, global episode number or None
         """
+        if step is None:
+            step = sess.run(self.global_step)
+
+        if episode is None:
+            episode = sess.run(self.global_episode)
         # Every worker writes train episode summaries:
         ep_summary_feeder = {}
 
@@ -1159,7 +1313,7 @@ class BaseAAC(object):
                 # BTGym
                 fetched_episode_stat = sess.run(self.ep_summary['btgym_stat_op'], ep_summary_feed_dict)
 
-            self.summary_writer.add_summary(fetched_episode_stat, sess.run(self.global_episode))
+            self.summary_writer.add_summary(fetched_episode_stat, episode)
             self.summary_writer.flush()
 
         # Every worker writes test episode  summaries:
@@ -1179,7 +1333,7 @@ class BaseAAC(object):
                     self.ep_summary[key]: np.average(list) for key, list in test_ep_summary_feeder.items()
                 }
                 fetched_test_episode_stat = sess.run(self.ep_summary['test_btgym_stat_op'], test_ep_summary_feed_dict)
-                self.summary_writer.add_summary(fetched_test_episode_stat, sess.run(self.global_episode))
+                self.summary_writer.add_summary(fetched_test_episode_stat, episode)
 
         # Look for renderings (chief worker only, always 0-numbered environment in a list):
         if self.task == 0:
@@ -1192,12 +1346,12 @@ class BaseAAC(object):
                     self.ep_summary[key]: pic for key, pic in data['render_summary'][0].items()
                 }
                 renderings = sess.run(self.ep_summary['render_op'], render_feed_dict)
-                self.summary_writer.add_summary(renderings, sess.run(self.global_episode))
+                self.summary_writer.add_summary(renderings, episode)
                 self.summary_writer.flush()
 
         # Every worker writes train episode summaries:
         if model_data is not None:
-            self.summary_writer.add_summary(tf.Summary.FromString(model_data), sess.run(self.global_step))
+            self.summary_writer.add_summary(tf.Summary.FromString(model_data), step)
             self.summary_writer.flush()
 
     def process(self, sess, **kwargs):

@@ -236,7 +236,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">debug_pre_sample_fails</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">debug_pre_sample_attempts</span> <span class="o">=</span> <span class="mi">0</span>
 
-<div class="viewcode-block" id="BTgymDataFeedServer.get_trial"><a class="viewcode-back" href="../../btgym.html#btgym.dataserver.BTgymDataFeedServer.get_trial">[docs]</a>    <span class="k">def</span> <span class="nf">get_trial</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymDataFeedServer.get_data"><a class="viewcode-back" href="../../btgym.html#btgym.dataserver.BTgymDataFeedServer.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get Trial sample according to parameters received.</span>
 <span class="sd">        If no parameters being passed - just makes and stores pre-sample.</span>
@@ -332,7 +332,7 @@
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">get_new</span><span class="p">:</span>
             <span class="c1"># Guess sample:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">get_trial</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
                 <span class="n">get_new</span> <span class="o">=</span> <span class="kc">False</span>
 
             <span class="c1"># Stick here with data in hand until receive any request:</span>
@@ -370,10 +370,16 @@
                 <span class="k">elif</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_get_data&#39;</span><span class="p">:</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">is_ready</span><span class="p">:</span>
                         <span class="c1"># Call _get_data to verify sampling guess or resample:</span>
-                        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_trial</span><span class="p">(</span><span class="n">sample_config</span><span class="o">=</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">])</span>
+                        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">sample_config</span><span class="o">=</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">])</span>
                         <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Sending sample_#</span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">local_step</span><span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-                        <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">({</span><span class="s1">&#39;sample&#39;</span><span class="p">:</span> <span class="n">sample</span><span class="p">,</span> <span class="s1">&#39;stat&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="p">})</span>
+                        <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span>
+                            <span class="p">{</span>
+                                <span class="s1">&#39;sample&#39;</span><span class="p">:</span> <span class="n">sample</span><span class="p">,</span>
+                                <span class="s1">&#39;stat&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="p">,</span>
+                                <span class="s1">&#39;origin&#39;</span><span class="p">:</span> <span class="s1">&#39;data_server&#39;</span><span class="p">,</span>
+                            <span class="p">}</span>
+                        <span class="p">)</span>
                         <span class="n">get_new</span> <span class="o">=</span> <span class="kc">True</span>
 
                     <span class="k">else</span><span class="p">:</span>
@@ -401,7 +407,7 @@
                     <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>  <span class="c1"># pairs any other input</span>
 
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;No &lt;ctrl&gt; key received, got:</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">msg</span><span class="p">)}</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;No &lt;ctrl&gt; key received, got:</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">service_input</span><span class="p">)}</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
                 <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span> <span class="c1"># pairs input</span></div></div>
 </pre></div>

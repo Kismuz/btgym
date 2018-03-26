@@ -336,8 +336,6 @@ class BTgymRendering():
             assert len(line_labels) == data.shape[-1], \
                 'Expected `line_labels` kwarg consist of {} names, fot: {}'. format(data.shape[-1], line_labels)
 
-
-
         fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
         #ax = fig.add_subplot(111)
 
@@ -471,10 +469,31 @@ class BTgymNullRendering():
         self.plug = (np.random.rand(100, 200, 3) * 255).astype(dtype=np.uint8)
         self.params = {'rendering': 'disabled'}
         self.render_modes = []
-
+        # self.log_level = WARNING
+        # StreamHandler(sys.stdout).push_application()
+        # self.log = Logger('BTgymRenderer', level=self.log_level)
 
     def initialize_pyplot(self):
         pass
 
-    def render(self, *args, **kwargs):
+    def render(self, mode_list, **kwargs):
+        # self.log.debug('render() call to environment with disabled rendering. Returning dict of null-images.')
+        if type(mode_list) == str:
+            mode_list = [mode_list]
+        rgb_dict = {}
+        for mode in mode_list:
+            rgb_dict[mode] = self.plug
+
+        return rgb_dict
+
+    def draw_plot(self, *args, **kwargs):
+        # self.log.debug('draw_plot() call to environment with disabled rendering. Returning null-image.')
+        return self.plug
+
+    def draw_image(self, *args, **kwargs):
+        # self.log.debug('draw_image() call to environment with disabled rendering. Returning null-image.')
+        return self.plug
+
+    def draw_episode(self, *args, **kwargs):
+        # self.log.debug('draw_episode() call to environment with disabled rendering. Returning null-image.')
         return self.plug

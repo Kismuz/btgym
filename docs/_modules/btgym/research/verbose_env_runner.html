@@ -230,6 +230,7 @@
     <span class="c1"># Pass sample config to environment:</span>
     <span class="n">last_state</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="o">**</span><span class="n">policy</span><span class="o">.</span><span class="n">get_sample_config</span><span class="p">())</span>
     <span class="n">last_context</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">get_initial_features</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">last_state</span><span class="p">)</span>
+    <span class="c1">#last_action, last_reward, _, last_context = policy.get_initial_features(state=last_state)</span>
     <span class="n">length</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">local_episode</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">reward_sum</span> <span class="o">=</span> <span class="mi">0</span>
@@ -259,8 +260,6 @@
     <span class="k">if</span> <span class="n">env</span><span class="o">.</span><span class="n">data_master</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
         <span class="c1"># Hacky but we need env.renderer methods ready</span>
         <span class="n">env</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">initialize_pyplot</span><span class="p">()</span>
-
-
 
     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
         <span class="n">terminal_end</span> <span class="o">=</span> <span class="kc">False</span>

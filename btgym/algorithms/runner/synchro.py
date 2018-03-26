@@ -11,8 +11,8 @@ class BaseSynchroRunner():
     """
     Data provider class. Interacts with environment and outputs data in form of rollouts augmented with
     relevant summaries and metadata. This runner is `synchronous` in sense that data collection is `in-process'
-    and every rollout is collected by explicit call to respective `get_data()` method [this is unlike 'async`
-    thread-runner version found in this this package which, once being started,
+    and every rollout is collected by explicit call to respective `get_data()` method [this is unlike 'async-`
+    thread-runner version found earlier in this this package which, once being started,
     runs on its own and can not be moderated].
     So it makes precise control on policy being executed possible.
     Does not support 'atari' mode.
@@ -100,40 +100,44 @@ class BaseSynchroRunner():
 
         self.log.debug('__init__() done.')
 
-    def start_runner(self, sess, summary_writer):
-        """Legacy wrapper"""
-        self.start(sess, summary_writer)
-
-    def start(self, sess, summary_writer):
+    def start_runner(self, sess, summary_writer, **kwargs):
         """
-        Executes initial sequence; fills initial replay memory if set.
+        Legacy wrapper.
+        """
+        self.start(sess, summary_writer, **kwargs)
+
+    def start(self, sess, summary_writer, init_context=None, data_sample_config=None):
+        """
+        Executes initial sequence; fills initial replay memory if any.
         """
         assert self.policy is not None, 'Initial policy not specified'
         self.sess = sess
         self.summary_writer = summary_writer
 
-        if self.env.data_master is True:
-            # Hacky but we need env.renderer methods ready
-            self.env.renderer.initialize_pyplot()
+        # Hacky but we need env.renderer methods ready:
+        self.env.renderer.initialize_pyplot()
+
+        self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
+            policy=self.policy,
+            init_context=init_context,
+            data_sample_config=data_sample_config
+        )
 
         if self.memory_config is not None:
             while not self.memory.is_full():
                 # collect some rollouts to fill memory:
                 _ = self.get_data()
             self.log.notice('Memory filled')
-
-        self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
-            policy=self.policy,
-            init_context=None
-        )
         self.log.notice('started collecting data.')
 
-    def get_init_experience(self, policy, init_context=None):
+    def get_init_experience(self, policy, init_context=None, data_sample_config=None):
         """
-        Starts new environment episode, does some housekeeping
+        Starts new environment episode.
 
         Args:
-            init_context    initial policy context for new episode.
+            policy:                 policy to execute.
+            init_context:           initial policy context for new episode.
+            data_sample_config:     configuration dictionary of type `btgym.datafeed.base.EnvResetConfig`
 
         Returns:
             incomplete initial experience of episode as dictionary (misses bootstrapped R value),
@@ -147,8 +151,13 @@ class BaseSynchroRunner():
         self.sess.run(self.policy.inc_episode)
         self.local_episode += 1
 
+        # self.log.warning('get_init_exp() data_sample_config: {}'.format(data_sample_config))
+
+        if data_sample_config is None:
+            data_sample_config = policy.get_sample_config(**self.data_sample_config)
+
         # Pass sample config to environment (.get_sample_config() is actually aac framework method):
-        init_state = self.env.reset(**policy.get_sample_config(**self.data_sample_config))
+        init_state = self.env.reset(**data_sample_config)
 
         # Master worker always resets context at the episode beginning:
         # TODO: !
@@ -197,7 +206,7 @@ class BaseSynchroRunner():
 
     def get_experience(self, policy, state, context, action_reward):
         """
-        Get single experience (possibly terminal)
+        Get single experience (possibly terminal).
 
         Returns:
             incomplete experience as dictionary (misses bootstrapped R value),
@@ -208,13 +217,11 @@ class BaseSynchroRunner():
         # Continue adding experiences to rollout:
         action, logits, value, next_context = policy.act(state, context, action_reward)
 
-        # log.debug('A: {}, V: {}, step: {} '.format(action, value_, length))
-
         self.ep_accum['logits'].append(logits)
         self.ep_accum['value'].append(value)
         self.ep_accum['context'].append(context)
 
-        # log.notice('context: {}'.format(context))
+        # self.log.notice('context: {}'.format(context))
 
         # Argmax to convert from one-hot:
         next_state, reward, terminal, self.info = self.env.step(action.argmax())
@@ -296,18 +303,19 @@ class BaseSynchroRunner():
             )
         return ep_stat
 
-    def get_ep_render(self):
+    def get_ep_render(self,is_test=False):
         """
         Visualises episode environment and policy statistics.
+        Relies on environmnet renderer class methods,
+        so it is only valid when envoronment rendering is enabled (typically master one).
 
         Returns:
             dictionary of images as rgb arrays
 
         """
-        # Only render chief worker and test environment:
-        # TODO: train as well; source/target?
-        if self.task < 1 and self.data_sample_config['mode'] and self.local_episode % self.env_render_freq == 0:
-            # TODO:  !
+        # Only render chief worker and test (slave) environment:
+        if is_test or\
+                (self.task < 1 and self.local_episode % self.env_render_freq == 0 and not self.data_sample_config['mode']):
         # if self.task < 1  and self.local_episode % self.env_render_freq == 0:
 
             # Render environment (chief worker only):
@@ -357,13 +365,19 @@ class BaseSynchroRunner():
 
         return render_stat
 
-    def get_data(self, policy=None):
+    def get_data(self, policy=None, init_context=None, data_sample_config=None, force_new_episode=False):
         """
-        Collects data consisting of single rollout and bunch of summaries using specified policy.
+        Collects single trajectory rollout and bunch of summaries using specified policy.
         Updates episode statistics and replay memory.
 
         Args:
-            policy:     policy to execute
+            policy:                 policy to execute
+            init_context:           if specified, overrides initial episode context provided bu self.context
+                                    (valid only if new episode is started within this rollout).
+            data_sample_config:     environment configuration parameters for next episode to sample:
+                                    configuration dictionary of type `btgym.datafeed.base.EnvResetConfig
+            force_new_episode:      bool, if True - resets the environment
+
 
         Returns:
                 data dictionary
@@ -371,18 +385,26 @@ class BaseSynchroRunner():
         if policy is None:
             policy = self.policy
 
+        if init_context is None:
+            init_context = self.context
+
         rollout = Rollout()
         is_test = False
         train_ep_summary = None
         test_ep_summary = None
         render_ep_summary = None
 
-        if self.terminal_end:
+        if self.terminal_end or force_new_episode:
             # Start new episode:
             self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
                 policy=policy,
-                init_context=self.context  # None (initially) or final context of previous episode
+                init_context=init_context,
+                data_sample_config=data_sample_config
             )
+            # self.log.warning(
+            #     'started new episode with:\ndata_sample_config: {}\nforce_new_episode: {}'.
+            #         format(data_sample_config, force_new_episode)
+            # )
 
         # Collect single rollout:
         while rollout.size < self.rollout_length and not self.terminal_end:
@@ -400,9 +422,10 @@ class BaseSynchroRunner():
             # Only training rollouts are added to replay memory:
             is_test = False
             try:
-                # Was it test (`type` in metadata is not zero)?
+                # Was it test (i.e. test episode from traget domain)?
                 # TODO: change to source/target?
-                if self.pre_experience['state']['metadata']['type']:
+                if self.pre_experience['state']['metadata']['type']\
+                        and self.pre_experience['state']['metadata']['trial_type']:
                     is_test = True
 
             except KeyError:
@@ -435,10 +458,9 @@ class BaseSynchroRunner():
                 if not is_test:
                     self.memory.add(self.pre_experience)
 
-                #train_ep_summary = self.get_train_stat(is_test)
-                train_ep_summary = self.get_train_stat(False)
-                #test_ep_summary = self.get_test_stat(is_test)
-                render_ep_summary = self.get_ep_render()
+                train_ep_summary = self.get_train_stat(is_test)
+                test_ep_summary = self.get_test_stat(is_test)
+                render_ep_summary = self.get_ep_render(is_test)
 
         #self.log.warning('rollout.size: {}'.format(rollout.size))
 
@@ -453,13 +475,16 @@ class BaseSynchroRunner():
         )
         return data
 
-    def get_episode(self, policy=None, init_context=None):
+    def get_episode(self, policy=None, init_context=None, data_sample_config=None):
         """
         Collects entire episode trajectory and bunch of summaries using specified policy.
         Updates episode statistics and replay memory.
 
         Args:
-            policy:     policy to execute
+            policy:                 policy to execute
+            init_context:           if specified, overrides initial episode context provided bu self.context
+            data_sample_config:     environment configuration parameters for next episode to sample:
+                                    configuration dictionary of type `btgym.datafeed.base.EnvResetConfig
 
         Returns:
                 data dictionary
@@ -469,7 +494,8 @@ class BaseSynchroRunner():
 
         if init_context is None:
             init_context = self.context
-        elif init_context == 0:
+
+        elif init_context == 0:  # mmm... TODO: fix this shame
             init_context = None
 
         rollout = Rollout()
@@ -480,7 +506,8 @@ class BaseSynchroRunner():
         # Start new episode:
         self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
             policy=policy,
-            init_context=init_context  # None (initially) or final context of previous episode
+            init_context=init_context,  # None (initially) or final context of previous episode
+            data_sample_config=data_sample_config
         )
         # Only training rollouts are added to replay memory:
         is_test = False
@@ -534,10 +561,9 @@ class BaseSynchroRunner():
         if not is_test:
             self.memory.add(self.pre_experience)
 
-        # train_ep_summary = self.get_train_stat(is_test)
-        train_ep_summary = self.get_train_stat(False)
-        # test_ep_summary = self.get_test_stat(is_test)
-        render_ep_summary = self.get_ep_render()
+        train_ep_summary = self.get_train_stat(is_test)
+        test_ep_summary = self.get_test_stat(is_test)
+        render_ep_summary = self.get_ep_render(is_test)
 
         # self.log.warning('episodic_rollout.size: {}'.format(rollout.size))
 
@@ -552,21 +578,36 @@ class BaseSynchroRunner():
         )
         return data
 
-    def get_batch(self, policy, size, require_terminal=True):
+    def get_batch(
+            self,
+            size,
+            policy=None,
+            require_terminal=True,
+            same_trial=True,
+            init_context=None,
+            data_sample_config=None
+    ):
         """
-        Returns batch of 'size' or more rollouts collected under specified policy.
-        Rollouts can be collected from several episodes consequently.
+        Returns batch as list of 'size' or more rollouts collected under specified policy.
+        Rollouts can be collected from several episodes consequently; there is may be more rollouts than set 'size' if
+        it is necessary to collect at least one terminal rollout.
 
         Args:
-            policy:             policy to use
-            size:               int, number of rollouts to collect
-            require_terminal:   bool, if True - require at least one terminal rollout to be present.
+            size:                   int, number of rollouts to collect
+            policy:                 policy to use
+            require_terminal:       bool, if True - require at least one terminal rollout to be present.
+            same_trial:             bool, if True - all episodes are sampled from same trial
+            init_context:           if specified, overrides initial episode context provided bu self.context
+            data_sample_config:     environment configuration parameters for all episodes in batch:
+                                    configuration dictionary of type `btgym.datafeed.base.EnvResetConfig
 
         Returns:
-            dict containing: list of data dictionaries; 'terminal_context' key holding list of terminal
-            output contexts. If 'require_terminal = True, this list is guarantied to hold at least one value.
+            dict containing:
+            'data'key holding list of data dictionaries;
+            'terminal_context' key holding list of terminal output contexts.
+            If 'require_terminal = True, this list is guarantied to hold at least one element.
         """
-        collected_size = 0
+
         batch = []
         terminal_context = []
 
@@ -575,9 +616,35 @@ class BaseSynchroRunner():
         else:
             got_terminal = True
 
-        # Collect rollouts:
-        while not collected_size >= size and got_terminal:
-            rollout_data = self.get_data(policy)
+        if same_trial:
+            assert isinstance(data_sample_config, dict),\
+                'get_batch(same_trial=True) expected `data_sample_config` dict., got: {}'.format(data_sample_config)
+
+        # Collect first rollout:
+        batch = [
+            self.get_data(
+                policy=policy,
+                init_context=init_context,
+                data_sample_config=data_sample_config,
+                force_new_episode=True
+            )
+        ]
+        if same_trial:
+            data_sample_config['trial_config']['get_new'] = False
+
+        collected_size = 1
+
+        if batch[0]['terminal']:
+            terminal_context.append(self.context)
+            got_terminal = True
+
+        # Collect others:
+        while not (collected_size >= size and got_terminal):
+            rollout_data = self.get_data(
+                policy=policy,
+                init_context=init_context,
+                data_sample_config=data_sample_config
+            )
             batch.append(rollout_data)
 
             if rollout_data['terminal']:

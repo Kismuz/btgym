@@ -2,24 +2,26 @@
 import numpy as np
 import copy
 
-from btgym.algorithms.launcher import Launcher
+from btgym.algorithms.launcher.base import Launcher
 
 
 class MetaLauncher(Launcher):
     """
     Launcher class with extended functionality to support gradient-based meta-learning algorithms.
-    Wor every distributed worker configures two master/slave environments in sense that slave environment [almost]
+    For every distributed worker it configures two master/slave environments such that that slave environment
     always runs same data trial as master one.
     Typically master environment is configured to run episodes from train data of the trial and salve one - from test
-    data. With AAC framework properly set it enables single worker to estimate meta-loss by collecting relevant
+    data. With AAC framework properly set up it enables single worker to estimate meta-loss by collecting relevant
     test and train trajectories in parallel.
     """
 
-    def __init__(self, cluster_config=None, **kwargs):
+    def __init__(self, cluster_config=None, render_slave_env=True, **kwargs):
         """
 
         Args:
-            **kwargs:   same as base class args: btgym.algorithms.launcher.Launcher
+            cluster_config:     environment class_config_dict
+            render_slave_env:   bool, if True - rendering enabled for slave environment; master otherwise.
+            **kwargs:           same as base class args: btgym.algorithms.launcher.Launcher
         """
         meta_cluster_config = dict(
             host='127.0.0.1',
@@ -33,6 +35,8 @@ class MetaLauncher(Launcher):
 
         # Force number of parallel envs anyway:
         meta_cluster_config['num_envs'] = 2
+
+        self.render_slave_env = render_slave_env
 
         # Update:
         kwargs['cluster_config'] = meta_cluster_config
@@ -94,7 +98,8 @@ class MetaLauncher(Launcher):
                         'log_dir': self.cluster_config['log_dir'],
                         'max_env_steps': self.max_env_steps,
                         'log_level': self.log_level,
-                        'random_seed': self.workers_rnd_seeds.pop()
+                        'random_seed': self.workers_rnd_seeds.pop(),
+                        'render_last_env': self.render_slave_env  # last env in a pair is slave
                     }
                 )
                 self.clear_port(env_config['kwargs']['port'])

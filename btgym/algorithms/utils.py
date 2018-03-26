@@ -173,6 +173,41 @@ def batch_stack(dict_list, _top=True):
         
     return batch
 
+def batch_gather(batch_dict, indices, _top=True):
+    """
+    Gathers experiences from processed batch according to specified indices.
+
+    Args:
+        batch_dict:     batched data dictionary
+        indices:        array-like, indices to gather
+        _top:           internal
+
+    Returns:
+        batched data of same structure as dict
+
+    """
+    batch = {}
+
+    if isinstance(batch_dict, dict):
+        for key, value in batch_dict.items():
+            batch[key] = batch_gather(value, indices, False)
+
+    elif isinstance(batch_dict, LSTMStateTuple):
+        c = batch_gather(batch_dict[0], indices, False)
+        h = batch_gather(batch_dict[1], indices, False)
+        batch = LSTMStateTuple(c=c, h=h)
+
+    elif isinstance(batch_dict, tuple):
+        batch = tuple([batch_gather(struct, indices, False) for struct in batch_dict])
+
+    else:
+        batch = np.take(batch_dict, indices=indices, axis=0, mode='wrap')
+
+    if _top:
+        # Mind shape inference:
+        batch['batch_size'] = indices.shape[0]
+
+    return batch
 
 def batch_pad(batch, to_size, _one_hot=False):
     """
@@ -228,7 +263,7 @@ def _show_struct(struct):
 
     else:
         try:
-            print('shape:', struct.shape)
+            print('shape: {}, type: {}'.format(np.asarray(struct).shape, type(struct)))
 
         except AttributeError:
             print('value:', struct)

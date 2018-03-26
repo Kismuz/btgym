@@ -73,7 +73,7 @@ class RunnerThread(threading.Thread):
         StreamHandler(sys.stdout).push_application()
         self.log = Logger('ThreadRunner_{}'.format(self.task), level=self.log_level)
 
-    def start_runner(self, sess, summary_writer):
+    def start_runner(self, sess, summary_writer, **kwargs):
         try:
             self.sess = sess
             self.summary_writer = summary_writer

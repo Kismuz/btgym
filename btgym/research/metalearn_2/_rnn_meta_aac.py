@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 
 from btgym.research.gps.aac import GuidedAAC
-from btgym.research.meta_rnn_2.env_runner import MetaEnvRunnerFn
+from btgym.research.metalearn_2._env_runner import MetaEnvRunnerFn
 from btgym.algorithms.runner import RunnerThread
 from btgym.algorithms.memory import Memory
 from btgym.algorithms.nn.losses import ppo_loss_def

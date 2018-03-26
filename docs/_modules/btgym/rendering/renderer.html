@@ -516,8 +516,6 @@
             <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">line_labels</span><span class="p">)</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> \
                 <span class="s1">&#39;Expected `line_labels` kwarg consist of </span><span class="si">{}</span><span class="s1"> names, fot: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span> <span class="nb">format</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">line_labels</span><span class="p">)</span>
 
-
-
         <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_dpi</span><span class="p">,</span> <span class="p">)</span>
         <span class="c1">#ax = fig.add_subplot(111)</span>
 
@@ -651,12 +649,33 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">plug</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;rendering&#39;</span><span class="p">:</span> <span class="s1">&#39;disabled&#39;</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">render_modes</span> <span class="o">=</span> <span class="p">[]</span>
-
+        <span class="c1"># self.log_level = WARNING</span>
+        <span class="c1"># StreamHandler(sys.stdout).push_application()</span>
+        <span class="c1"># self.log = Logger(&#39;BTgymRenderer&#39;, level=self.log_level)</span>
 
     <span class="k">def</span> <span class="nf">initialize_pyplot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">pass</span>
 
-    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode_list</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># self.log.debug(&#39;render() call to environment with disabled rendering. Returning dict of null-images.&#39;)</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">mode_list</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">mode_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">mode_list</span><span class="p">]</span>
+        <span class="n">rgb_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="n">mode_list</span><span class="p">:</span>
+            <span class="n">rgb_dict</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plug</span>
+
+        <span class="k">return</span> <span class="n">rgb_dict</span>
+
+    <span class="k">def</span> <span class="nf">draw_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># self.log.debug(&#39;draw_plot() call to environment with disabled rendering. Returning null-image.&#39;)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plug</span>
+
+    <span class="k">def</span> <span class="nf">draw_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># self.log.debug(&#39;draw_image() call to environment with disabled rendering. Returning null-image.&#39;)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plug</span>
+
+    <span class="k">def</span> <span class="nf">draw_episode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># self.log.debug(&#39;draw_episode() call to environment with disabled rendering. Returning null-image.&#39;)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plug</span></div>
 </pre></div>
 

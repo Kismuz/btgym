@@ -59,20 +59,23 @@ class Worker(multiprocessing.Process):
                  log_level,
                  max_env_steps,
                  random_seed=None,
+                 render_last_env=False,
                  test_mode=False):
         """
 
         Args:
-            env_config:     environment class_config_dict.
-            policy_config:  model policy estimator class_config_dict.
-            trainer_config: algorithm class_config_dict.
-            cluster_spec:   tf.cluster specification.
-            job_name:       worker or parameter server.
-            task:           integer number, 0 is chief worker.
-            log_dir:        for tb summaries and checkpoints.
-            log_level:      int, logbook.level
-            max_env_steps:  number of environment steps to run training on
-            test_mode:      if True - use Atari mode, BTGym otherwise.
+            env_config:         environment class_config_dict.
+            policy_config:      model policy estimator class_config_dict.
+            trainer_config:     algorithm class_config_dict.
+            cluster_spec:       tf.cluster specification.
+            job_name:           worker or parameter server.
+            task:               integer number, 0 is chief worker.
+            log_dir:            for tb summaries and checkpoints.
+            log_level:          int, logbook.level
+            max_env_steps:      number of environment steps to run training on
+            random_seed:        int or None
+            render_last_env:    bool, if True - render enabled for last environment in a list; first otherwise
+            test_mode:          if True - use Atari mode, BTGym otherwise.
 
             Note:
                 - Conventional `self.global_step` refers to number of environment steps,
@@ -100,6 +103,7 @@ class Worker(multiprocessing.Process):
         self.log = None
         self.test_mode = test_mode
         self.random_seed = random_seed
+        self.render_last_env = render_last_env
 
     def run(self):
         """Worker runtime body.
@@ -142,7 +146,7 @@ class Worker(multiprocessing.Process):
 
             self.log.debug('making environments:')
             # Making as many environments as many entries in env_config `port` list:
-            # TODO: Hacky-II: only one example over all parallel environments can be data-master and renderer
+            # TODO: Hacky-II: only one example over all parallel environments can be data-master [and renderer]
             # TODO: measure data_server lags, maybe launch several instances
             self.env_list = []
             env_kwargs = self.env_kwargs.copy()
@@ -152,13 +156,24 @@ class Worker(multiprocessing.Process):
             data_master = env_kwargs.pop('data_master')
             render_enabled = env_kwargs.pop('render_enabled')
 
+            render_list = [False for entry in port_list]
+            if render_enabled:
+                if self.render_last_env:
+                    render_list[-1] = True
+                else:
+                    render_list[0] = True
+
+            data_master_list = [False for entry in port_list]
+            if data_master:
+                data_master_list[0] = True
+
             # Parallel envs. numbering:
             if len(port_list) > 1:
                 task_id = 0.0
             else:
                 task_id = 0
 
-            for port, data_port in zip(port_list, data_port_list):
+            for port, data_port, is_render, is_master in zip(port_list, data_port_list, render_list, data_master_list):
                 if not self.test_mode:
                     # Assume BTgym env. class:
                     self.log.debug('env at port_{} is data_master: {}'.format(port, data_master))
@@ -167,14 +182,13 @@ class Worker(multiprocessing.Process):
                             self.env_class(
                                 port=port,
                                 data_port=data_port,
-                                data_master=data_master,
-                                render_enabled=render_enabled,
+                                data_master=is_master,
+                                render_enabled=is_render,
                                 task= self.task + task_id,
                                 **env_kwargs
                             )
                         )
                         data_master = False
-                        render_enabled = False
                         self.log.info('set BTGym environment {} @ port:{}, data_port:{}'.
                                       format(self.task + task_id, port, data_port))
                         task_id += 0.01
@@ -194,6 +208,8 @@ class Worker(multiprocessing.Process):
                     except:
                         self.log.exception('failed to make Gym/Atari environment')
                         raise RuntimeError
+
+            self.log.debug('Defining trainer...')
 
             # Define trainer:
             trainer = self.trainer_class(

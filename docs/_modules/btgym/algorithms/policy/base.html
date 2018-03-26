@@ -397,6 +397,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            LSTM zero-state tuple.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: rework as in: AacStackedMetaPolicy --&gt; base runner, verbose runner; synchro_runner ok</span>
         <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_session</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_init_state</span><span class="p">)</span></div>
 

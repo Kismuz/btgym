@@ -799,22 +799,22 @@
 <span class="sd">            observation space state</span>
 
 <span class="sd">        Notes:</span>
-<span class="sd">            Current kwarg accepted is::</span>
+<span class="sd">            Current kwargs accepted is::</span>
 
-<span class="sd">                data_control = dict(</span>
-<span class="sd">                    episode=dict(</span>
-<span class="sd">                        get_new=True,</span>
-<span class="sd">                        sample_type=0,</span>
-<span class="sd">                        b_alpha=1,</span>
-<span class="sd">                        b_beta=1</span>
-<span class="sd">                    ),</span>
-<span class="sd">                    trial=dict(</span>
-<span class="sd">                        get_new=True,</span>
-<span class="sd">                        sample_type=0,</span>
-<span class="sd">                        b_alpha=1,</span>
-<span class="sd">                        b_beta=1</span>
-<span class="sd">                    )</span>
+
+<span class="sd">                episode_config=dict(</span>
+<span class="sd">                    get_new=True,</span>
+<span class="sd">                    sample_type=0,</span>
+<span class="sd">                    b_alpha=1,</span>
+<span class="sd">                    b_beta=1</span>
+<span class="sd">                ),</span>
+<span class="sd">                trial_config=dict(</span>
+<span class="sd">                    get_new=True,</span>
+<span class="sd">                    sample_type=0,</span>
+<span class="sd">                    b_alpha=1,</span>
+<span class="sd">                    b_beta=1</span>
 <span class="sd">                )</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Data Server check:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
@@ -996,6 +996,7 @@
         <span class="k">if</span> <span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_modes</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unexpected render mode </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mode</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">({</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_render&#39;</span><span class="p">,</span> <span class="s1">&#39;mode&#39;</span><span class="p">:</span> <span class="n">mode</span><span class="p">})</span>
+
         <span class="n">rgb_array_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">rendered_rgb</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">rgb_array_dict</span><span class="p">)</span>
@@ -1103,8 +1104,9 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Restarts data_server.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_data_server</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_start_data_server</span><span class="p">()</span></div>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_data_server</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_data_server</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._get_dataset_info"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.backtrader.BTgymEnv._get_dataset_info">[docs]</a>    <span class="k">def</span> <span class="nf">_get_dataset_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>

@@ -816,6 +816,7 @@ class BTgymEnv(gym.Env):
         if mode not in self.render_modes:
             raise ValueError('Unexpected render mode {}'.format(mode))
         self.socket.send_pyobj({'ctrl': '_render', 'mode': mode})
+
         rgb_array_dict = self.socket.recv_pyobj()
 
         self.rendered_rgb.update(rgb_array_dict)

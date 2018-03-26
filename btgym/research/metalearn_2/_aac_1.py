@@ -1,121 +1,28 @@
 import tensorflow as tf
-import numpy as np
 
 import sys
 from logbook import Logger, StreamHandler
 
-from btgym.research.gps.aac import GuidedAAC
+from btgym.research.mldg.aac import SubAAC
 from btgym.algorithms.runner.synchro import BaseSynchroRunner
-from btgym.algorithms.memory import Memory
-
-
-class SubAAC(GuidedAAC):
-    """
-    Sub AAC trainers as part of meta-trainer.
-    """
-
-    def __init__(
-            self,
-            trial_source_target_cycle=(1, 0),
-            num_episodes_per_trial=1,
-            **kwargs
-    ):
-        super(SubAAC, self).__init__(**kwargs)
-        self.current_data = None
-        self.current_feed_dict = None
-
-        # Trials sampling control:
-        self.num_source_trials = trial_source_target_cycle[0]
-        self.num_target_trials = trial_source_target_cycle[-1]
-        self.num_episodes_per_trial = num_episodes_per_trial
-
-        # Note that only master (test runner) is requesting trials
-
-        self.current_source_trial = 0
-        self.current_target_trial = 0
-        self.current_trial_mode = 0  # source
-        self.current_episode = 0
-
-    def process(self, sess):
-        """
-        self.process() logic is defined by meta-trainer.
-        """
-        pass
-
-    def get_sample_config(self, mode=0):
-        """
-        Returns environment configuration parameters for next episode to sample.
-
-        Args:
-              mode:     bool, False for slave (train data), True for master (test data)
-
-        Returns:
-            configuration dictionary of type `btgym.datafeed.base.EnvResetConfig`
-        """
-
-        new_trial = 0
-        if mode:
-            # Only master environment updates counters:
-            if self.current_episode >= self.num_episodes_per_trial:
-                # Reset episode counter:
-                self.current_episode = 0
-
-                # Request new trial:
-                new_trial = 1
-                # Decide on trial type (source/target):
-                if self.current_source_trial >= self.num_source_trials:
-                    # Time to switch to target mode:
-                    self.current_trial_mode = 1
-                    # Reset counters:
-                    self.current_source_trial = 0
-                    self.current_target_trial = 0
-
-                if self.current_target_trial >= self.num_target_trials:
-                    # Vise versa:
-                    self.current_trial_mode = 0
-                    self.current_source_trial = 0
-                    self.current_target_trial = 0
-
-                # Update counter:
-                if self.current_trial_mode:
-                    self.current_target_trial += 1
-                else:
-                    self.current_source_trial += 1
-
-            self.current_episode += 1
-        else:
-            new_trial = 1  # slave env. gets new trial anyway
-
-        # Compose btgym.datafeed.base.EnvResetConfig-consistent dict:
-        sample_config = dict(
-            episode_config=dict(
-                get_new=True,
-                sample_type=mode,
-                b_alpha=1.0,
-                b_beta=1.0
-            ),
-            trial_config=dict(
-                get_new=new_trial,
-                sample_type=self.current_trial_mode,
-                b_alpha=1.0,
-                b_beta=1.0
-            )
-        )
-        return sample_config
 
 
 class MetaAAC_1_0():
     """
     Meta-trainer class.
-    Implementation of `gradient-based meta-learning algorithm suitable
-    for adaptation in dynamically changing` environments, as from paper:
+    INITIAL: Implementation of MLDG algorithm tuned
+    for adaptation in dynamically changing environments
+
+    Papers:
+        Da Li et al.,
+         "Learning to Generalize: Meta-Learning for Domain Generalization"
+         https://arxiv.org/abs/1710.03463
+
         Maruan Al-Shedivat et al.,
         "Continuous Adaptation via Meta-Learning in Nonstationary and Competitive Environments"
         https://arxiv.org/abs/1710.03641
 
-         Da Li et al.,
-         "Learning to Generalize: Meta-Learning for Domain Generalization"
-         https://arxiv.org/abs/1710.03463
+
 
     """
 

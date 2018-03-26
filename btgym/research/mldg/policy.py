@@ -51,10 +51,10 @@ class AacStackedMetaPolicy(GuidedPolicy_0_0):
             if context is not None:
                 if state['metadata']['trial_num'] == self.current_trial_num or state['metadata']['type']:
                     # Asssume same training trial or test episode pass, critic context intact to new episode:
-                    #new_context[-1] = context[-1]
+                    new_context[-1] = context[-1]
                     # TODO: !
                     # FULL context intact to new episode:
-                    new_context = context
+                    #new_context = context
 
                     #print('Meta_policy Actor context reset')
                 else:

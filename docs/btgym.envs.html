@@ -366,20 +366,18 @@ modifications; currently used for data sampling control;</td>
 </tbody>
 </table>
 <p class="rubric">Notes</p>
-<p>Current kwarg accepted is:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">data_control</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-    <span class="n">episode</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
-        <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-        <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-        <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span>
-    <span class="p">),</span>
-    <span class="n">trial</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
-        <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-        <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-        <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span>
-    <span class="p">)</span>
+<p>Current kwargs accepted is:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">episode_config</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+    <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">),</span>
+<span class="n">trial_config</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+    <span class="n">get_new</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">b_alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">b_beta</span><span class="o">=</span><span class="mi">1</span>
 <span class="p">)</span>
 </pre></div>
 </div>
