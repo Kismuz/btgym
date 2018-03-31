@@ -77,10 +77,13 @@ To update to latest version::
 
     pip install --upgrade -e .
 
-##### Note:
-BTGym requres Matplotlib version 2.0.2, downgrade your installation if you have version 2.1:
+##### Notes:
+1. BTGym requres **Matplotlib version 2.0.2**, downgrade your installation if you have version 2.1:
 
     pip install matplotlib==2.0.2
+    
+2. **LSOF utility** should be installed to your OS, which can not be the default case for some Linux distributives, 
+see: https://en.wikipedia.org/wiki/Lsof
 
 ****
 ### <a name="start"></a>[Quickstart](#contents)
