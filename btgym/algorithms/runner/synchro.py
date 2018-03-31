@@ -14,7 +14,7 @@ class BaseSynchroRunner():
     and every rollout is collected by explicit call to respective `get_data()` method [this is unlike 'async-`
     thread-runner version found earlier in this this package which, once being started,
     runs on its own and can not be moderated].
-    So it makes precise control on policy being executed possible.
+    Makes precise control on policy being executed possible.
     Does not support 'atari' mode.
     """
 

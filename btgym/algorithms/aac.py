@@ -1008,7 +1008,7 @@ class BaseAAC(object):
             feeder = {self.pc_action: batch['action'], self.pc_target: batch['pixel_change']}
         return feeder
 
-    def process_rollouts(self, rollouts):
+    def _process_rollouts(self, rollouts):
         """
         rollout.process wrapper: makes single batch from list of rollouts
 
@@ -1135,11 +1135,11 @@ class BaseAAC(object):
             feed_dict (dict):   train step feed dictionary
         """
         # Process minibatch for on-policy train step:
-        on_policy_batch = self.process_rollouts(data['on_policy'])
+        on_policy_batch = self._process_rollouts(data['on_policy'])
 
         if self.use_memory:
             # Process rollouts from replay memory:
-            off_policy_batch = self.process_rollouts(data['off_policy'])
+            off_policy_batch = self._process_rollouts(data['off_policy'])
 
             if self.use_reward_prediction:
                 # Rebalanced 50/50 sample for RP:
@@ -1154,122 +1154,6 @@ class BaseAAC(object):
             rp_batch = None
 
         return self._get_main_feeder(sess, on_policy_batch, off_policy_batch, rp_batch, is_train)
-
-    def _DEPRECATED_process_data(self, sess, data, is_train):
-        """
-        Processes data, composes train step feed dictionary.
-        Args:
-            sess:               tf session obj.
-            data (dict):        data dictionary
-            is_train (bool):    is data provided are train or test
-
-        Returns:
-            feed_dict (dict):   train step feed dictionary
-        """
-        # Process minibatch for on-policy train step:
-        on_policy_rollouts = data['on_policy']
-        on_policy_batch = batch_stack(
-            [
-                r.process(
-                    gamma=self.model_gamma,
-                    gae_lambda=self.model_gae_lambda,
-                    size=self.rollout_length,
-                    time_flat=self.time_flat,
-                ) for r in on_policy_rollouts
-            ]
-        )
-        # Feeder for on-policy AAC loss estimation graph:
-        feed_dict = feed_dict_from_nested(self.local_network.on_state_in, on_policy_batch['state'])
-        feed_dict.update(
-            feed_dict_rnn_context(self.local_network.on_lstm_state_pl_flatten, on_policy_batch['context'])
-        )
-        feed_dict.update(
-            {
-                self.local_network.on_a_r_in: on_policy_batch['last_action_reward'],
-                self.local_network.on_batch_size: on_policy_batch['batch_size'],
-                self.local_network.on_time_length: on_policy_batch['time_steps'],
-                self.on_pi_act_target: on_policy_batch['action'],
-                self.on_pi_adv_target: on_policy_batch['advantage'],
-                self.on_pi_r_target: on_policy_batch['r'],
-                self.local_network.train_phase: is_train,  # Zeroes learn rate, [+ batch_norm]
-            }
-        )
-        if self.use_target_policy:
-            feed_dict.update(
-                feed_dict_from_nested(self.local_network_prime.on_state_in, on_policy_batch['state'])
-            )
-            feed_dict.update(
-                feed_dict_rnn_context(self.local_network_prime.on_lstm_state_pl_flatten, on_policy_batch['context'])
-            )
-            feed_dict.update(
-                {
-                    self.local_network_prime.on_batch_size: on_policy_batch['batch_size'],
-                    self.local_network_prime.on_time_length: on_policy_batch['time_steps'],
-                    self.local_network_prime.on_a_r_in: on_policy_batch['last_action_reward']
-                }
-            )
-        if self.use_memory:
-            # Process rollouts from replay memory:
-            off_policy_rollouts = data['off_policy']
-            off_policy_batch = batch_stack(
-                [
-                    r.process(
-                        gamma=self.model_gamma,
-                        gae_lambda=self.model_gae_lambda,
-                        size=self.replay_rollout_length,
-                        time_flat=self.time_flat,
-                    ) for r in off_policy_rollouts
-                ]
-            )
-            # Feeder for off-policy AAC loss estimation graph:
-            off_policy_feed_dict = feed_dict_from_nested(self.local_network.off_state_in, off_policy_batch['state'])
-            off_policy_feed_dict.update(
-                feed_dict_rnn_context(self.local_network.off_lstm_state_pl_flatten, off_policy_batch['context']))
-            off_policy_feed_dict.update(
-                {
-                    self.local_network.off_a_r_in: off_policy_batch['last_action_reward'],
-                    self.local_network.off_batch_size: off_policy_batch['batch_size'],
-                    self.local_network.off_time_length: off_policy_batch['time_steps'],
-                    self.off_pi_act_target: off_policy_batch['action'],
-                    self.off_pi_adv_target: off_policy_batch['advantage'],
-                    self.off_pi_r_target: off_policy_batch['r'],
-                }
-            )
-            if self.use_target_policy:
-                off_policy_feed_dict.update(
-                    feed_dict_from_nested(self.local_network_prime.off_state_in, off_policy_batch['state'])
-                )
-                off_policy_feed_dict.update(
-                    {
-                        self.local_network_prime.off_batch_size: off_policy_batch['batch_size'],
-                        self.local_network_prime.off_time_length: off_policy_batch['time_steps'],
-                        self.local_network_prime.off_a_r_in: off_policy_batch['last_action_reward']
-                    }
-                )
-                off_policy_feed_dict.update(
-                    feed_dict_rnn_context(
-                        self.local_network_prime.off_lstm_state_pl_flatten,
-                        off_policy_batch['context']
-                    )
-                )
-            feed_dict.update(off_policy_feed_dict)
-
-            # Update with reward prediction subgraph:
-            if self.use_reward_prediction:
-                # Rebalanced 50/50 sample for RP:
-                rp_rollouts = data['off_policy_rp']
-                rp_batch = batch_stack([rp.process_rp(self.rp_reward_threshold) for rp in rp_rollouts])
-                feed_dict.update(self._get_rp_feeder(rp_batch))
-
-            # Pixel control ...
-            if self.use_pixel_control:
-                feed_dict.update(self._get_pc_feeder(off_policy_batch))
-
-            # VR...
-            if self.use_value_replay:
-                feed_dict.update(self._get_vr_feeder(off_policy_batch))
-
-        return feed_dict
 
     def process_summary(self, sess, data, model_data=None, step=None, episode=None):
         """

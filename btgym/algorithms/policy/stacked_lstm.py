@@ -230,16 +230,33 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = on_x_lstm_2_out.get_shape().as_list()
-        on_x_lstm_out = tf.reshape(on_x_lstm_2_out, [x_shape_dynamic[0], x_shape_static[-1]])
+        rsh_on_x_lstm_2_out = tf.reshape(on_x_lstm_2_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-        self.debug['reshaped_on_x_lstm_out'] = tf.shape(on_x_lstm_out)
+        self.debug['reshaped_on_x_lstm_2_out'] = tf.shape(rsh_on_x_lstm_2_out)
 
         # Aac value function:
         [_, self.on_vf, _] = dense_aac_network(
-            on_x_lstm_out,
+            rsh_on_x_lstm_2_out,
             ac_space,
             linear_layer_ref=linear_layer_ref,
             name='aac_dense_vfn'
+        )
+
+        # Meta learning scale:
+        # self.meta_grads_scale = noisy_linear(
+        #     rsh_on_x_lstm_2_out,
+        #     1,
+        #     'meta_grads_scale',
+        #     activation_fn=tf.nn.sigmoid,
+        # )
+
+        self.meta_grads_scale = tf.nn.sigmoid(
+            linear(
+                rsh_on_x_lstm_2_out,
+                1,
+                name='meta_grads_scale',
+                initializer=normalized_columns_initializer(0.01),
+            )
         )
 
         # Concatenate LSTM placeholders, init. states and context:

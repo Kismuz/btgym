@@ -42,5 +42,5 @@ class AtariRescale42x42(gym.ObservationWrapper):
             {'external': spaces.Box(0.0, 1.0, [42, 42, 1], dtype=np.float32)}
         )
 
-    def _observation(self, observation):
+    def observation(self, observation):
         return {'external': _process_frame42(observation)}

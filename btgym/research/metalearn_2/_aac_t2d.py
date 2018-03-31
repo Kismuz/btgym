@@ -124,11 +124,11 @@ class AACt2d(GuidedAAC):
 
         """
         # Process minibatch for on-policy train step:
-        on_policy_batch = self.process_rollouts(data['on_policy'])
+        on_policy_batch = self._process_rollouts(data['on_policy'])
 
         if self.use_memory:
             # Process rollouts from replay memory:
-            off_policy_batch = self.process_rollouts(data['off_policy'])
+            off_policy_batch = self._process_rollouts(data['off_policy'])
 
             if self.use_reward_prediction:
                 # Rebalanced 50/50 sample for RP:

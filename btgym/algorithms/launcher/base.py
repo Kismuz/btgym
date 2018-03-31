@@ -55,7 +55,7 @@ class Launcher():
                  max_env_steps=None,
                  root_random_seed=None,
                  test_mode=False,
-                 purge_previous=0,
+                 purge_previous=1,
                  log_level=None,
                  verbose=0):
         """

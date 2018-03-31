@@ -41,8 +41,14 @@ def BaseEnvRunnerFn(sess,
 
     else:
         memory = _DummyMemory()
-    # Pass sample config to environment:
-    last_state = env.reset(**policy.get_sample_config())
+
+    if not atari_test:
+        # Pass sample config to environment:
+        last_state = env.reset(**policy.get_sample_config())
+
+    else:
+        last_state = env.reset()
+
     last_context = policy.get_initial_features(state=last_state)
     length = 0
     local_episode = 0
@@ -203,7 +209,13 @@ def BaseEnvRunnerFn(sess,
                         render_stat = dict(render_atari=state['external'][None,:] * 255)
 
                 # New episode:
-                last_state = env.reset(**policy.get_sample_config())
+                if not atari_test:
+                    # Pass sample config to environment:
+                    last_state = env.reset(**policy.get_sample_config())
+
+                else:
+                    last_state = env.reset()
+
                 last_context = policy.get_initial_features(state=last_state, context=last_context)
                 length = 0
                 reward_sum = 0

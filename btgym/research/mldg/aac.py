@@ -6,10 +6,12 @@ from logbook import Logger, StreamHandler
 from btgym.research.gps.aac import GuidedAAC
 from btgym.algorithms.runner.synchro import BaseSynchroRunner
 
+from btgym.algorithms.nn.layers import noisy_linear
+
 
 class SubAAC(GuidedAAC):
     """
-    Sub AAC trainer as lower-level part of meta-trainer.
+    Sub AAC trainer as lower-level part of meta-optimisation algorithm.
     """
 
     def __init__(
@@ -104,8 +106,8 @@ class SubAAC(GuidedAAC):
 
 class AMLDG():
     """
-    Asynchronous implementation of MLDG algorithm
-    for continuous adaptation in dynamically changing environments.
+    Asynchronous implementation of MLDG algorithm (by Da Li et al.)
+    for one-shot adaptation in dynamically changing environments.
 
     Papers:
         Da Li et al.,
@@ -156,7 +158,7 @@ class AMLDG():
             assert isinstance(self.env_list, list) and len(self.env_list) == 2, \
                 'Expected pair of environments, got: {}'.format(self.env_list)
 
-            # Instantiate two sub-trainers: one for test and one for train environments:
+            # Instantiate two sub-trainers: one for meta-test and one for meta-train environments:
 
             self.runner_config['kwargs']['data_sample_config'] = {'mode': 1}  # master
             self.runner_config['kwargs']['name'] = 'master'
@@ -174,11 +176,11 @@ class AMLDG():
                 _use_target_policy=False,
                 _use_global_network=True,
                 _aux_render_modes=_aux_render_modes,
-                name=self.name + '_sub_Train',
+                name=self.name + '/metaTrain',
                 **kwargs
             )
 
-            self.runner_config['kwargs']['data_sample_config'] = {'mode': 0}  # master
+            self.runner_config['kwargs']['data_sample_config'] = {'mode': 0}  # slave
             self.runner_config['kwargs']['name'] = 'slave'
 
             self.test_aac = aac_class_ref(
@@ -197,15 +199,15 @@ class AMLDG():
                 global_episode_op=self.train_aac.global_episode,
                 inc_episode_op=self.train_aac.inc_episode,
                 _aux_render_modes=_aux_render_modes,
-                name=self.name + '_sub_Test',
+                name=self.name + '/metaTest',
                 **kwargs
             )
 
             self.local_steps = self.train_aac.local_steps
             self.model_summary_freq = self.train_aac.model_summary_freq
-            #self.model_summary_op = self.train_aac.model_summary_op
 
             self._make_train_op()
+
             self.test_aac.model_summary_op = tf.summary.merge(
                 [self.test_aac.model_summary_op, self._combine_meta_summaries()],
                 name='meta_model_summary'
@@ -219,17 +221,18 @@ class AMLDG():
 
     def _make_train_op(self):
         """
-
-        Defines:
-            tensors holding training op graph for sub trainers and self;
+        Defines tensors holding training op graph for meta-train, meta-test and meta-optimisation.
         """
-        pi = self.train_aac.local_network
-        pi_prime = self.test_aac.local_network
+        # Handy aliases:
+        pi = self.train_aac.local_network  # local meta-train policy
+        pi_prime = self.test_aac.local_network  # local meta-test policy
+        pi_global = self.train_aac.network  # global shared policy
 
         self.test_aac.sync = self.test_aac.sync_pi = tf.group(
             *[v1.assign(v2) for v1, v2 in zip(pi_prime.var_list, pi.var_list)]
         )
 
+        # Shared counters:
         self.global_step = self.train_aac.global_step
         self.global_episode = self.train_aac.global_episode
 
@@ -239,75 +242,98 @@ class AMLDG():
         self.train_aac.inc_episode = None
         self.inc_step = self.train_aac.inc_step
 
-        # Meta-loss:
-        self.loss = 0.5 * self.train_aac.loss + 0.5 * self.test_aac.loss
+        # Meta-opt. loss:
+        self.loss = self.train_aac.loss + self.test_aac.loss
 
         # Clipped gradients:
         self.train_aac.grads, _ = tf.clip_by_global_norm(
             tf.gradients(self.train_aac.loss, pi.var_list),
             40.0
         )
-        #self.log.warning('self.train_aac.grads: {}'.format(len(list(self.train_aac.grads))))
-
-        # Meta-gradient:
-        grads_i, _ = tf.clip_by_global_norm(
-            tf.gradients(self.train_aac.loss, pi.var_list),
-            40.0
-        )
-
-        grads_i_next, _ = tf.clip_by_global_norm(
+        self.test_aac.grads, _ = tf.clip_by_global_norm(
             tf.gradients(self.test_aac.loss, pi_prime.var_list),
             40.0
         )
+        # Aliases:
+        pi.grads = self.train_aac.grads
+        pi_prime.grads = self.test_aac.grads
 
+        # # Learned meta opt. scaling (equivalent to learned meta-update step-size),
+        # # conditioned on test input:
+        # self.meta_grads_scale = tf.reduce_mean(pi_prime.meta_grads_scale)
+        # meta_grads_scale_var_list = [var for var in pi_prime.var_list if 'meta_grads_scale' in var.name]
+        # meta_grads_scale_var_list_global = [
+        #     var for var in pi_global.var_list if 'meta_grads_scale' in var.name
+        # ]
+
+        # self.log.warning('meta_grads_scale_var_list: {}'.format(meta_grads_scale_var_list))
+
+        # Meta_optimisation gradients as sum of meta-train and meta-test gradients:
         self.grads = []
-        for g1, g2 in zip(grads_i, grads_i_next):
+        for g1, g2 in zip(pi.grads, pi_prime.grads):
             if g1 is not None and g2 is not None:
-                meta_g = 0.5 * g1 + 0.5 * g2
+                meta_g = g1 + g2
+                # meta_g = (1 - self.meta_grads_scale) * g1 + self.meta_grads_scale * g2
             else:
-                meta_g = None
+                meta_g = None  # need to map correctly to vars
 
             self.grads.append(meta_g)
 
+        # # Second order grads for learned grad. scaling param:
+        # meta_grads_scale_grads, _ = tf.clip_by_global_norm(
+        #     tf.gradients([g for g in self.grads if g is not None], meta_grads_scale_var_list),
+        #     40.0
+        # )
+        # # Second order grads wrt global variables:
+        # meta_grads_scale_grads_and_vars = list(zip(meta_grads_scale_grads, meta_grads_scale_var_list_global))
+
+        # self.log.warning('meta_grads_scale_grads:\n{}'.format(meta_grads_scale_grads))
+        # self.log.warning('meta_grads_scale_grads_and_vars:\n{}'.format(meta_grads_scale_grads_and_vars))
+
         #self.log.warning('self.grads_len: {}'.format(len(list(self.grads))))
 
-        # Gradients to update local copy of pi_prime (from train data):
-        train_grads_and_vars = list(zip(self.train_aac.grads, pi_prime.var_list))
+        # Gradients to update local meta-test policy (from train data):
+        train_grads_and_vars = list(zip(pi.grads, pi_prime.var_list))
 
         # self.log.warning('train_grads_and_vars_len: {}'.format(len(train_grads_and_vars)))
 
         # Meta-gradients to be sent to parameter server:
-        meta_grads_and_vars = list(zip(self.grads, self.train_aac.network.var_list))
+        meta_grads_and_vars = list(zip(self.grads, pi_global.var_list)) #+ meta_grads_scale_grads_and_vars
 
-        # self.log.warning('meta_grads_and_vars_len: {}'.format(len(meta_grads_and_vars)))
+        # Remove empty entries:
+        meta_grads_and_vars = [(g, v) for (g, v) in meta_grads_and_vars if g is not None]
+
+        # for item in meta_grads_and_vars:
+        #     self.log.warning('\nmeta_g_v: {}'.format(item))
 
         # Set global_step increment equal to observation space batch size:
         obs_space_keys = list(self.train_aac.local_network.on_state_in.keys())
-
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
         self.train_aac.inc_step = self.train_aac.global_step.assign_add(
             tf.shape(self.train_aac.local_network.on_state_in['external'])[0]
         )
 
+        # Pi to pi_prime local adaptation op:
         self.train_op = self.train_aac.optimizer.apply_gradients(train_grads_and_vars)
 
-        # Optimizer for meta-update:
-        #self.optimizer = tf.train.AdamOptimizer(self.train_aac.train_learn_rate, epsilon=1e-5)
-        # ..non-decaying:
-        self.optimizer = tf.train.AdamOptimizer(self.train_aac.opt_learn_rate, epsilon=1e-5)
-        # TODO: own alpha-leran rate
+        # Optimizer for meta-update, sharing same learn rate (change?):
+        self.optimizer = tf.train.AdamOptimizer(self.train_aac.train_learn_rate, epsilon=1e-5)
+
+        # Global meta-optimisation op:
         self.meta_train_op = self.optimizer.apply_gradients(meta_grads_and_vars)
 
         self.log.debug('meta_train_op defined')
 
     def _combine_meta_summaries(self):
-
+        """
+        Additional summaries here.
+        """
         meta_model_summaries = [
-            tf.summary.scalar("meta_grad_global_norm", tf.global_norm(self.grads)),
-            tf.summary.scalar("total_meta_loss", self.loss),
+            tf.summary.scalar('meta_grad_global_norm', tf.global_norm(self.grads)),
+            tf.summary.scalar('total_meta_loss', self.loss),
+            # tf.summary.scalar('meta_grad_scale', self.meta_grads_scale)
         ]
-
         return meta_model_summaries
 
     def start(self, sess, summary_writer, **kwargs):
@@ -350,7 +376,8 @@ class AMLDG():
 
     def process(self, sess):
         """
-        Meta-train/test procedure for one-shot learning. One call runs entire episode.
+        Meta-train/test procedure for one-shot learning.
+        Single call runs single meta-test episode.
 
         Args:
             sess (tensorflow.Session):   tf session obj.
@@ -362,36 +389,38 @@ class AMLDG():
             sess.run(self.test_aac.sync_pi)
             # self.log.warning('Init Sync ok.')
 
-            # Decide on data configuration for train/test trajectories,
+            # Get data configuration,
             # (want both data streams come from  same trial,
-            # and trial type(either from source or target domain);
-            # note: data_config counters get updated once per process() call
+            # and trial type we got can be either from source or target domain);
+            # note: data_config counters get updated once per .process() call
             train_data_config = self.train_aac.get_sample_config(mode=1)  # master env., samples trial
             test_data_config = self.train_aac.get_sample_config(mode=0)   # slave env, catches up with same trial
 
             # self.log.warning('train_data_config: {}'.format(train_data_config))
             # self.log.warning('test_data_config: {}'.format(test_data_config))
 
-            # If this step data comes from source or target domain:
+            # If this step data comes from source or target domain
+            # (i.e. is it either meta-optimised or true test episode):
             is_target = train_data_config['trial_config']['sample_type']
             done = False
 
-            # Collect initial train trajectory rollout:
+            # Collect initial meta-train trajectory rollout:
             train_data = self.train_aac.get_data(data_sample_config=train_data_config, force_new_episode=True)
             feed_dict = self.train_aac.process_data(sess, train_data, is_train=True)
 
             # self.log.warning('Init Train data ok.')
 
-            # Disable changing trials,
-            # in case train episode termintaes earlier than test - we need to resample train episode from same trial:
+            # Disable possibility of master data runner acquiring new trials,
+            # in case meta-train episode termintaes earlier than meta-test -
+            # we than need to get additional meta-train trajectories from exactly same distribution (trial):
             train_data_config['trial_config']['get_new'] = 0
 
             roll_num = 0
 
+            # Collect entire meta-test episode rollout by rollout:
             while not done:
                 # self.log.warning('Roll #{}'.format(roll_num))
 
-                # Collect entire episode rollout by rollout:
                 wirte_model_summary = \
                     self.local_steps % self.model_summary_freq == 0
 
@@ -401,9 +430,10 @@ class AMLDG():
                 #     )
                 # )
 
+                # Paranoid checks against data sampling logic faults to prevent possible cheating:
                 train_trial_chksum = np.average(train_data['on_policy'][0]['state']['metadata']['trial_num'])
 
-                # Update pi_prime parameters wrt collected data:
+                # Update pi_prime parameters wrt collected train data:
                 if wirte_model_summary:
                     fetches = [self.train_op, self.train_aac.model_summary_op]
                 else:
@@ -416,7 +446,7 @@ class AMLDG():
                 # Collect test rollout using updated pi_prime policy:
                 test_data = self.test_aac.get_data(data_sample_config=test_data_config)
 
-                # If test episode ended?
+                # If meta-test episode has just ended?
                 done = np.asarray(test_data['terminal']).any()
 
                 # self.log.warning(
@@ -427,16 +457,15 @@ class AMLDG():
 
                 test_trial_chksum = np.average(test_data['on_policy'][0]['state']['metadata']['trial_num'])
 
+                # Ensure slave runner data consistency, can correct if episode just started:
                 if roll_num == 0 and train_trial_chksum != test_trial_chksum:
-                    # Ensure test data consistency, can correct if episode just started:
                     test_data = self.test_aac.get_data(data_sample_config=test_data_config, force_new_episode=True)
                     done = np.asarray(test_data['terminal']).any()
+                    faulty_chksum = test_trial_chksum
                     test_trial_chksum = np.average(test_data['on_policy'][0]['state']['metadata']['trial_num'])
 
                     self.log.warning(
-                        'Test trial corrected: {}'.format(
-                            np.asarray(test_data['on_policy'][0]['state']['metadata']['trial_num'])
-                        )
+                        'Test trial corrected: {} -> {}'.format(faulty_chksum, test_trial_chksum)
                     )
 
                 # self.log.warning(
@@ -445,7 +474,7 @@ class AMLDG():
                 # )
 
                 if train_trial_chksum != test_trial_chksum:
-                    # Still error? - highly probable algorithm logic bug. Issue warning.
+                    # Still got error? - highly probable algorithm logic fault. Issue warning.
                     msg = 'Train/test trials mismatch found!\nGot train trials: {},\nTest trials: {}'. \
                         format(
                         train_data['on_policy'][0]['state']['metadata']['trial_num'][0],
@@ -456,7 +485,7 @@ class AMLDG():
                     self.log.warning(msg)
                     self.log.warning(msg2)
 
-                # Check episode type consistency; if failed - h.p. logic bug, warn:
+                # Check episode type for consistency; if failed - another data sampling logic fault, warn:
                 try:
                     assert (np.asarray(test_data['on_policy'][0]['state']['metadata']['type']) == 1).any()
                     assert (np.asarray(train_data['on_policy'][0]['state']['metadata']['type']) == 0).any()
@@ -471,7 +500,7 @@ class AMLDG():
                 # self.log.warning('Test data ok.')
 
                 if not is_target:
-                    # Process test data and perform meta-train step:
+                    # Process test data and perform meta-optimisation step:
                     feed_dict.update(self.test_aac.process_data(sess, test_data, is_train=True))
 
                     if wirte_model_summary:
@@ -483,10 +512,10 @@ class AMLDG():
 
                     # self.log.warning('Meta-gradients ok.')
                 else:
-                    # Test, no updates sent to parameter server:
+                    # True test, no updates sent to parameter server:
                     meta_fetched = [None, None]
 
-                    # self.log.warning('Meta-test rollout ok.')
+                    # self.log.warning('Meta-opt. rollout ok.')
 
                 if wirte_model_summary:
                     meta_model_summary = meta_fetched[-2]
@@ -510,6 +539,178 @@ class AMLDG():
                 # Write down summaries:
                 self.test_aac.process_summary(sess, test_data, meta_model_summary)
                 self.train_aac.process_summary(sess, train_data, model_summary)
+                self.local_steps += 1
+                roll_num += 1
+        except:
+            msg = 'process() exception occurred' + \
+                  '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
+            self.log.exception(msg)
+            raise RuntimeError(msg)
+
+
+class AMLDG_2(AMLDG):
+    """Deviated."""
+
+    def __init__(self, name='AMLDGv2', **kwargs):
+        super(AMLDG_2, self).__init__(name=name, **kwargs)
+
+    def assert_trial_type(self, data, type):
+        """
+        Check actual trial type consistency; if failed - possible data sampling logic fault, issue warning.
+
+        Args:
+            data:
+            type:   bool
+
+        Returns:
+
+        """
+        try:
+            assert (np.asarray(data['on_policy'][0]['state']['metadata']['trial_type']) == type).any()
+        except AssertionError:
+            self.log.warning(
+                'Source trial assertion failed!\nExpected: `trial_type`={}\nGot metadata: {}'.\
+                    format(type, data['on_policy'][0]['state']['metadata'])
+            )
+
+    def assert_episode_type(self, train_data, test_data):
+        """
+        Check episode type for consistency; if failed - possible data sampling logic fault, issue warning.
+
+        Args:
+            train_data:
+            test_data:
+        """
+        try:
+            assert (np.asarray(test_data['on_policy'][0]['state']['metadata']['type']) == 1).any()
+            assert (np.asarray(train_data['on_policy'][0]['state']['metadata']['type']) == 0).any()
+        except AssertionError:
+            msg = 'Train/test episodes types assertion failed!\nGot train metadata: {},\nGot test metadata:  {}'.\
+                format(
+                    train_data['on_policy'][0]['state']['metadata'],
+                    test_data['on_policy'][0]['state']['metadata']
+            )
+            self.log.warning(msg)
+
+    def process(self, sess):
+        """
+        Meta-train/test procedure for one-shot learning.
+        Single call runs single meta-test episode.
+
+        Args:
+            sess (tensorflow.Session):   tf session obj.
+
+        """
+        try:
+            # Copy from parameter server:
+            sess.run(self.train_aac.sync_pi)
+            sess.run(self.test_aac.sync_pi)
+            # self.log.warning('Init Sync ok.')
+
+            # Get data configuration,
+            #  Want data streams come from  different trials from same doman!
+            # note: data_config counters get updated once per .process() call
+            train_data_config = self.train_aac.get_sample_config(mode=1)  # master env., samples trial
+            test_data_config = self.train_aac.get_sample_config(mode=0)  # slave env, catches up with same trial
+
+            # self.log.warning('train_data_config: {}'.format(train_data_config))
+            # self.log.warning('test_data_config: {}'.format(test_data_config))
+
+            # If this step data comes from source or target domain
+            # (i.e. is it either meta-optimised or true test episode):
+            is_target = train_data_config['trial_config']['sample_type']
+            done = False
+
+            # Collect initial meta-train trajectory rollout:
+            train_data = self.train_aac.get_data(data_sample_config=train_data_config, force_new_episode=True)
+            feed_dict = self.train_aac.process_data(sess, train_data, is_train=True)
+
+            # self.log.warning('Init Train data ok.')
+
+            roll_num = 0
+
+            # Collect entire meta-test episode rollout by rollout:
+            while not done:
+                self.assert_trial_type(train_data, is_target)
+                # self.log.warning('Roll #{}'.format(roll_num))
+
+                wirte_model_summary = \
+                    self.local_steps % self.model_summary_freq == 0
+
+                if not is_target:
+                    # Update pi_prime parameters wrt collected train data:
+                    if wirte_model_summary:
+                        fetches = [self.train_op, self.train_aac.model_summary_op]
+                    else:
+                        fetches = [self.train_op]
+
+                    fetched = sess.run(fetches, feed_dict=feed_dict)
+                else:
+                    # Target domain test, no local policy update:
+                    fetched = [None, None]
+
+                # self.log.warning('Train gradients ok.')
+
+                # Collect test rollout using [updated] pi_prime policy:
+                test_data = self.test_aac.get_data(data_sample_config=test_data_config)
+                self.assert_trial_type(test_data, is_target)
+
+                # If meta-test episode has just ended?
+                done = np.asarray(test_data['terminal']).any()
+
+                # Reset master env to new trial to decorellate: TODO: quick fix, this one roll gets waisted, change
+                if roll_num == 0:
+                    train_data = self.train_aac.get_data(data_sample_config=train_data_config, force_new_episode=True)
+                    self.assert_trial_type(train_data, is_target)
+
+
+                self.assert_episode_type(train_data, test_data)
+
+                # self.log.warning('Test data ok.')
+
+                if not is_target:
+                    # Process test data and perform meta-optimisation step:
+                    feed_dict.update(self.test_aac.process_data(sess, test_data, is_train=True))
+
+                    if wirte_model_summary:
+                        meta_fetches = [self.meta_train_op, self.test_aac.model_summary_op, self.inc_step]
+                    else:
+                        meta_fetches = [self.meta_train_op, self.inc_step]
+
+                    meta_fetched = sess.run(meta_fetches, feed_dict=feed_dict)
+
+                    # self.log.warning('Meta-gradients ok.')
+                else:
+                    # Target domain test, no updates sent to parameter server:
+                    meta_fetched = [None, None]
+
+                    # self.log.warning('Meta-opt. rollout ok.')
+
+                if wirte_model_summary:
+                    meta_model_summary = meta_fetched[-2]
+                    model_summary = fetched[-1]
+
+                else:
+                    meta_model_summary = None
+                    model_summary = None
+
+                # Next step housekeeping:
+                # copy from parameter server:
+                sess.run(self.train_aac.sync_pi)
+                sess.run(self.test_aac.sync_pi)  # TODO: maybe not?
+                # self.log.warning('Sync ok.')
+
+
+                if not is_target:
+                    # Collect next train trajectory rollout:
+                    train_data = self.train_aac.get_data(data_sample_config=train_data_config)
+                    feed_dict = self.train_aac.process_data(sess, train_data, is_train=True)
+                    # self.log.warning('Train data ok.')
+                    self.train_aac.process_summary(sess, train_data, model_summary)
+
+                # test summary anyway:
+                self.test_aac.process_summary(sess, test_data, meta_model_summary)
+
                 self.local_steps += 1
                 roll_num += 1
         except:
