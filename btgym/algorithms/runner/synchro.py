@@ -161,8 +161,8 @@ class BaseSynchroRunner():
 
         # Master worker always resets context at the episode beginning:
         # TODO: !
-        if not self.data_sample_config['mode']:
-            init_context = None
+        #if not self.data_sample_config['mode']:
+        init_context = None
 
         #self.log.warning('init_context_passed: {}'.format(init_context))
         #self.log.warning('state_metadata: {}'.format(state['metadata']))

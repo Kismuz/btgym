@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def guided_aac_loss_def_0_0(pi_actions, expert_actions, name='on_policy/aac', verbose=False):
+def guided_aac_loss_def_0_0(pi_actions, expert_actions, name='on_policy/aac', verbose=False, **kwargs):
     """
     Cross-entropy imitation loss on expert actions.
 
@@ -31,7 +31,7 @@ def guided_aac_loss_def_0_0(pi_actions, expert_actions, name='on_policy/aac', ve
     return loss, summaries
 
 
-def guided_aac_loss_def_0_1(pi_actions, expert_actions, name='on_policy/aac', verbose=False):
+def guided_aac_loss_def_0_1(pi_actions, expert_actions, name='on_policy/aac', verbose=False, **kwargs):
     """
     Cross-entropy imitation loss on {`buy`, `sell`} subset of expert actions.
 
@@ -62,7 +62,7 @@ def guided_aac_loss_def_0_1(pi_actions, expert_actions, name='on_policy/aac', ve
     return loss, summaries
 
 
-def guided_aac_loss_def_0_3(pi_actions, expert_actions, name='on_policy/aac', verbose=False):
+def guided_aac_loss_def_0_3(pi_actions, expert_actions, name='on_policy/aac', verbose=False, **kwargs):
     """
     MSE imitation loss on {`buy`, `sell`} subset of expert actions.
 
@@ -76,12 +76,16 @@ def guided_aac_loss_def_0_3(pi_actions, expert_actions, name='on_policy/aac', ve
         list of related tensorboard summaries.
     """
     with tf.name_scope(name + '/guided_loss'):
-        # Loss over expert buy/ sell:
+        if 'guided_lambda' in kwargs.keys():
+            guided_lambda = kwargs['guided_lambda']
+        else:
+            guided_lambda = 1.0
 
+        # Loss over expert buy/ sell:
         loss = tf.losses.mean_squared_error(
             labels=expert_actions[..., 1:3],
             predictions=tf.nn.softmax(pi_actions)[..., 1:3],
-        )
+        ) * guided_lambda
 
         if verbose:
             summaries = [tf.summary.scalar('actions_mse', loss)]

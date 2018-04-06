@@ -37,6 +37,7 @@ class GuidedAAC(BaseAAC):
             expert_loss=guided_aac_loss_def_0_3,
             aac_lambda=1.0,
             guided_lambda=1.0,
+            guided_decay_steps=None,
             runner_fn_ref=VerboseEnvRunnerFn,
             _aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
             name='GuidedA3C',
@@ -48,13 +49,17 @@ class GuidedAAC(BaseAAC):
             expert_loss:        callable returning tensor holding on_policy imitation loss graph and summaries
             aac_lambda:         float, main on_policy a3c loss lambda
             guided_lambda:      float, imitation loss lambda
+            guided_decay_steps: number of steps guided_lambda is annealed to zero
             name:               str, name scope
             **kwargs:           see BaseAAC kwargs
         """
         try:
             self.expert_loss = expert_loss
             self.aac_lambda = aac_lambda
-            self.guided_lambda = guided_lambda
+            self.guided_lambda = guided_lambda * 1.0
+            self.guided_decay_steps = guided_decay_steps
+            self.guided_lambda_decayed = None
+            self.train_guided_lambda = None
 
             super(GuidedAAC, self).__init__(
                 runner_fn_ref=runner_fn_ref,
@@ -62,7 +67,6 @@ class GuidedAAC(BaseAAC):
                 name=name,
                 **kwargs
             )
-
         except:
             msg = 'GuidedAAC.__init()__ exception occurred' + \
                   '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
@@ -79,16 +83,35 @@ class GuidedAAC(BaseAAC):
         """
         aac_loss, summaries = self._make_base_loss()
 
-        guided_loss, guided_summary = self.expert_loss(
+        # Guidance annealing:
+        if self.guided_decay_steps is not None:
+            self.guided_lambda_decayed = tf.train.polynomial_decay(
+                self.guided_lambda,
+                self.global_step + 1,
+                self.guided_decay_steps,
+                0,
+                power=1,
+                cycle=False,
+            )
+        else:
+            self.guided_lambda_decayed = self.guided_lambda
+        # Switch to zero when testing - prevents information leakage:
+        self.train_guided_lambda = self.guided_lambda_decayed * tf.cast(self.local_network.train_phase, tf.float32)
+
+        self.guided_loss, guided_summary = self.expert_loss(
             pi_actions=self.local_network.on_logits,
             expert_actions=self.local_network.expert_actions,
             name='on_policy',
-            verbose=True
+            verbose=True,
+            guided_lambda=self.train_guided_lambda
         )
-        loss = self.aac_lambda * aac_loss + self.guided_lambda * guided_loss
+        loss = self.aac_lambda * aac_loss + self.guided_loss
+
         summaries += guided_summary
 
-        self.log.notice('aac_lambda: {:1.6f}, guided_lambda: {:1.6f}'.format(self.aac_lambda, self.guided_lambda))
+        self.log.notice(
+            'guided_lambda: {:1.6f}, guided_decay_steps: {}'.format(self.guided_lambda, self.guided_decay_steps)
+        )
 
         return loss, summaries
 
