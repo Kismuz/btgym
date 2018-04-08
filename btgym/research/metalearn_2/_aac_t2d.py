@@ -50,7 +50,7 @@ class AACt2d(GuidedAAC):
 
     def get_episode(self, **kwargs):
         """
-         Get exactly one episode trajectory as single rollout.
+         Get exactly one episode trajectory as single rollout. <-- DEAD WRONG
 
         Args:
             **kwargs:   see env.reset() method

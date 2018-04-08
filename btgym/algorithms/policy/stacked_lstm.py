@@ -242,22 +242,21 @@ class StackedLstmPolicy(BaseAacPolicy):
             name='aac_dense_vfn'
         )
 
-        # Meta learning scale:
-        # self.meta_grads_scale = noisy_linear(
+        # Meta learning scale/rate:
+        self.meta_grads_scale = noisy_linear(
+            rsh_on_x_lstm_2_out,
+            1,
+            'meta_grads_scale',
+            activation_fn=tf.nn.sigmoid,
+        )
+
+        # self.meta_grads_scale = linear(
         #     rsh_on_x_lstm_2_out,
         #     1,
-        #     'meta_grads_scale',
-        #     activation_fn=tf.nn.sigmoid,
+        #     name='meta_grads_scale',
+        #     initializer=normalized_columns_initializer(0.01),
         # )
 
-        self.meta_grads_scale = tf.nn.sigmoid(
-            linear(
-                rsh_on_x_lstm_2_out,
-                1,
-                name='meta_grads_scale',
-                initializer=normalized_columns_initializer(0.01),
-            )
-        )
 
         # Concatenate LSTM placeholders, init. states and context:
         self.on_lstm_init_state = (self.on_lstm_1_init_state, self.on_lstm_2_init_state)

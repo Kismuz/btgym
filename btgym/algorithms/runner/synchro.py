@@ -477,7 +477,8 @@ class BaseSynchroRunner():
 
     def get_episode(self, policy=None, init_context=None, data_sample_config=None):
         """
-        Collects entire episode trajectory and bunch of summaries using specified policy.
+        WRONG
+        Collects entire episode trajectory as single rollout and bunch of summaries using specified policy.
         Updates episode statistics and replay memory.
 
         Args:
@@ -630,6 +631,7 @@ class BaseSynchroRunner():
             )
         ]
         if same_trial:
+            # sample new episodes from same trial only:
             data_sample_config['trial_config']['get_new'] = False
 
         collected_size = 1

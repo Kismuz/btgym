@@ -129,6 +129,7 @@ class AMLDG():
             opt_decay_steps=None,
             opt_end_learn_rate=None,
             opt_learn_rate=1e-4,
+            fast_opt_learn_rate=1e-3,
             opt_max_env_steps=10 ** 7,
             aac_lambda=1.0,
             guided_lambda=1.0,
@@ -147,6 +148,7 @@ class AMLDG():
 
             self.opt_learn_rate = opt_learn_rate
             self.opt_max_env_steps = opt_max_env_steps
+            self.fast_opt_learn_rate = fast_opt_learn_rate
 
             if opt_end_learn_rate is None:
                 self.opt_end_learn_rate = self.opt_learn_rate
@@ -185,7 +187,7 @@ class AMLDG():
                 task=self.task,
                 log_level=log_level,
                 runner_config=self.runner_config,
-                opt_learn_rate=self.opt_learn_rate,
+                opt_learn_rate=self.fast_opt_learn_rate,  # non-decaying, used for fast pi_prime adaptation
                 opt_max_env_steps=self.opt_max_env_steps,
                 aac_lambda=aac_lambda,
                 guided_lambda=guided_lambda,
@@ -207,7 +209,7 @@ class AMLDG():
                 task=self.task,
                 log_level=log_level,
                 runner_config=self.runner_config,
-                opt_learn_rate=self.opt_learn_rate,
+                opt_learn_rate=0.0,  # test_aac.optimizer is not used
                 opt_max_env_steps=self.opt_max_env_steps,
                 aac_lambda=aac_lambda,
                 guided_lambda=guided_lambda,
@@ -253,6 +255,9 @@ class AMLDG():
         self.test_aac.sync = self.test_aac.sync_pi = tf.group(
             *[v1.assign(v2) for v1, v2 in zip(pi_prime.var_list, pi.var_list)]
         )
+        self.test_aac.sync_pi_global = self.test_aac.sync_global = tf.group(
+            *[v1.assign(v2) for v1, v2 in zip(pi_prime.var_list, pi_global.var_list)]
+        )
         self.train_aac.sync_pi_local = tf.group(
             *[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_prime.var_list)]
         )
@@ -283,39 +288,43 @@ class AMLDG():
         pi.grads = self.train_aac.grads
         pi_prime.grads = self.test_aac.grads
 
-        # # Learned meta opt. scaling (equivalent to learned meta-update step-size),
-        # # conditioned on test input:
-        # self.meta_grads_scale = tf.reduce_mean(pi_prime.meta_grads_scale)
-        # meta_grads_scale_var_list = [var for var in pi_prime.var_list if 'meta_grads_scale' in var.name]
-        # meta_grads_scale_var_list_global = [
-        #     var for var in pi_global.var_list if 'meta_grads_scale' in var.name
-        # ]
-
-        # self.log.warning('meta_grads_scale_var_list: {}'.format(meta_grads_scale_var_list))
-
         # Meta_optimisation gradients as sum of meta-train and meta-test gradients:
         self.grads = []
         for g1, g2 in zip(pi.grads, pi_prime.grads):
             if g1 is not None and g2 is not None:
                 meta_g = g1 + g2
-                # meta_g = (1 - self.meta_grads_scale) * g1 + self.meta_grads_scale * g2
+
             else:
                 meta_g = None  # need to map correctly to vars
 
             self.grads.append(meta_g)
 
-        # # Second order grads for learned grad. scaling param:
-        # meta_grads_scale_grads, _ = tf.clip_by_global_norm(
-        #     tf.gradients([g for g in self.grads if g is not None], meta_grads_scale_var_list),
-        #     40.0
-        # )
-        # # Second order grads wrt global variables:
-        # meta_grads_scale_grads_and_vars = list(zip(meta_grads_scale_grads, meta_grads_scale_var_list_global))
+        # Learned inner meta-update step-size),
+        # conditioned on train input:
+        with tf.variable_scope('learnable_alpha'):
 
-        # self.log.warning('meta_grads_scale_grads:\n{}'.format(meta_grads_scale_grads))
-        # self.log.warning('meta_grads_scale_grads_and_vars:\n{}'.format(meta_grads_scale_grads_and_vars))
+            self.alpha_rate = tf.exp(-10 * tf.reduce_mean(pi.meta_grads_scale))
+            alpha_rate_var_list = [var for var in pi.var_list if 'meta_grads_scale' in var.name]
+            alpha_rate_var_list_global = [
+                var for var in pi_global.var_list if 'meta_grads_scale' in var.name
+            ]
+            # self.log.warning('alpha_rate_var_list: {}'.format(alpha_rate_var_list))
+            self.alpha_rate_loss = tf.reduce_mean(
+                [tf.reduce_mean(g) for g in pi.grads if g is not None]
+            )
 
-        #self.log.warning('self.grads_len: {}'.format(len(list(self.grads))))
+            # Second order grads for learned alpha rate:
+            alpha_rate_grads, _ = tf.clip_by_global_norm(
+                tf.gradients(self.alpha_rate_loss, alpha_rate_var_list),
+                40.0
+            )
+            # Second order grads wrt global variables:
+            alpha_rate_grads_and_vars = list(zip(alpha_rate_grads, alpha_rate_var_list_global))
+
+            # self.log.warning('alpha_rate_grads:\n{}'.format(alpha_rate_grads))
+            # self.log.warning('alpha_rate_grads_and_vars:\n{}'.format(alpha_rate_grads_and_vars))
+            #
+            # self.log.warning('self.grads_len: {}'.format(len(list(self.grads))))
 
         # Gradients to update local meta-test policy (from train data):
         train_grads_and_vars = list(zip(pi.grads, pi_prime.var_list))
@@ -323,7 +332,7 @@ class AMLDG():
         # self.log.warning('train_grads_and_vars_len: {}'.format(len(train_grads_and_vars)))
 
         # Meta-gradients to be sent to parameter server:
-        meta_grads_and_vars = list(zip(self.grads, pi_global.var_list)) #+ meta_grads_scale_grads_and_vars
+        meta_grads_and_vars = list(zip(self.grads, pi_global.var_list)) + alpha_rate_grads_and_vars
 
         # Remove empty entries:
         meta_grads_and_vars = [(g, v) for (g, v) in meta_grads_and_vars if g is not None]
@@ -339,7 +348,10 @@ class AMLDG():
             tf.shape(self.train_aac.local_network.on_state_in['external'])[0]
         )
         # Pi to pi_prime local adaptation op:
-        self.train_op = self.train_aac.optimizer.apply_gradients(train_grads_and_vars)
+        # self.train_op = self.train_aac.optimizer.apply_gradients(train_grads_and_vars)
+
+        self.fast_opt = tf.train.GradientDescentOptimizer(self.alpha_rate)
+        self.train_op = self.fast_opt.apply_gradients(train_grads_and_vars)
 
         #  Learning rate annealing:
         self.learn_rate_decayed = tf.train.polynomial_decay(
@@ -366,7 +378,8 @@ class AMLDG():
         meta_model_summaries = [
             tf.summary.scalar('meta_grad_global_norm', tf.global_norm(self.grads)),
             tf.summary.scalar('total_meta_loss', self.loss),
-            tf.summary.scalar('meta_learn_rate', self.learn_rate_decayed)
+            tf.summary.scalar('alpha_learn_rate', self.alpha_rate),
+            tf.summary.scalar('alpha_learn_rate_loss', self.alpha_rate_loss)
         ]
         return meta_model_summaries
 
@@ -421,7 +434,7 @@ class AMLDG():
 
         """
         try:
-            assert (np.asarray(data['on_policy'][0]['state']['metadata']['trial_type']) == type).any()
+            assert (np.asarray(data['on_policy'][0]['state']['metadata']['trial_type']) == type).all()
         except AssertionError:
             self.log.warning(
                 'Source trial assertion failed!\nExpected: `trial_type`={}\nGot metadata: {}'.\
@@ -460,7 +473,7 @@ class AMLDG():
             test_data:
         """
         try:
-            assert (np.asarray(data['on_policy'][0]['state']['metadata']['type']) == type).any()
+            assert (np.asarray(data['on_policy'][0]['state']['metadata']['type']) == type).all()
 
         except AssertionError:
             msg = 'Episode types assertion failed!\nExpected episode_type: {},\nGot episode metadata:  {}'.\
@@ -583,8 +596,8 @@ class AMLDG():
 
                 # Check episode type for consistency; if failed - another data sampling logic fault, warn:
                 try:
-                    assert (np.asarray(test_data['on_policy'][0]['state']['metadata']['type']) == 1).any()
-                    assert (np.asarray(train_data['on_policy'][0]['state']['metadata']['type']) == 0).any()
+                    assert (np.asarray(test_data['on_policy'][0]['state']['metadata']['type']) == 1).all()
+                    assert (np.asarray(train_data['on_policy'][0]['state']['metadata']['type']) == 0).all()
                 except AssertionError:
                     msg = 'Train/test episodes types mismatch found!\nGot train ep. type: {},\nTest ep.type: {}'. \
                         format(
@@ -648,7 +661,10 @@ class AMLDG():
 
 
 class AMLDG_2(AMLDG):
-    """Deviated."""
+    """
+    FAILED
+    Deviated.
+    """
 
     def __init__(self, name='AMLDGv2', **kwargs):
         super(AMLDG_2, self).__init__(name=name, **kwargs)
@@ -811,7 +827,10 @@ class AMLDG_2(AMLDG):
 
 
 class AMLDG_3(AMLDG):
-    """Closed-loop meta-update."""
+    """
+    FAILED
+    Closed-loop meta-update.
+    """
 
     def __init__(self, fast_learn_rate_train=0.1, fast_learn_rate_test=0.1, name='AMLDGv3', **kwargs):
         self.fast_learn_rate_train = fast_learn_rate_train
