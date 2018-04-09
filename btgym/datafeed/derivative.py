@@ -19,6 +19,7 @@
 
 from logbook import WARNING
 from .base import BTgymBaseData
+import datetime
 
 
 class BTgymEpisode(BTgymBaseData):
@@ -122,26 +123,31 @@ class BTgymRandomDataDomain(BTgymBaseData):
             trial_params=None,
             episode_params=None,
             target_period=None,
+            use_target_backshift=False,
             name='RndDataDomain',
             task=0,
             log_level=WARNING,
     ):
         """
         Args:
-            filename:           Str or list of str, file_names containing CSV historic data;
-            parsing_params:     csv parsing options, see base class description for details;
-            trial_params:       dict, describes trial parameters, should contain keys:
-                                {sample_duration, time_gap, start_00, start_weekdays, test_period, expanding};
-            episode_params:     dict, describes episode parameters, should contain keys:
-                                {sample_duration, time_gap, start_00, start_weekdays};
+            filename:               Str or list of str, file_names containing CSV historic data;
+            parsing_params:         csv parsing options, see base class description for details;
+            trial_params:           dict, describes trial parameters, should contain keys:
+                                    {sample_duration, time_gap, start_00, start_weekdays, test_period, expanding};
+            episode_params:         dict, describes episode parameters, should contain keys:
+                                    {sample_duration, time_gap, start_00, start_weekdays};
 
-            target_period:      dict, domain target period, def={'days': 0, 'hours': 0, 'minutes': 0};
-                                setting this param to non-zero duration forces separation to source/target
-                                domains (which can be thought of as creating  top-level train/test subsets) with
-                                target data duration equal to `target_period`. Source data always precedes target one.
-            name:               str, optional
-            task:               int, optional
-            log_level:          int, logbook.level
+            target_period:          dict, domain target period, def={'days': 0, 'hours': 0, 'minutes': 0};
+                                    setting this param to non-zero duration forces separation to source/target
+                                    domains (which can be thought of as creating  top-level train/test subsets) with
+                                    target data duration equal to `target_period`.
+                                    Source data always precedes target one.
+            use_target_backshift:   bool, if true - target domain is shifted back by the duration of trial train period,
+                                    thus allowing training on part of target domain data,
+                                    namely train part of the trial closest to source/target break point.
+            name:                   str, optional
+            task:                   int, optional
+            log_level:              int, logbook.level
         """
         if parsing_params is None:
             parsing_params = dict(
@@ -180,6 +186,12 @@ class BTgymRandomDataDomain(BTgymBaseData):
         if target_period is None:
             target_period = {'days': 0, 'hours': 0, 'minutes': 0}
         trial_params['test_period'] = target_period
+
+
+        # Setting target backshift:
+        if use_target_backshift:
+            trial_params['_test_period_backshift_delta'] =\
+                datetime.timedelta(**trial_params['sample_duration']) - datetime.timedelta(**trial_test_period)
 
         episode_config = dict(
             class_ref=self.episode_class_ref,

@@ -350,7 +350,8 @@ class AMLDG():
         # Pi to pi_prime local adaptation op:
         # self.train_op = self.train_aac.optimizer.apply_gradients(train_grads_and_vars)
 
-        self.fast_opt = tf.train.GradientDescentOptimizer(self.alpha_rate)
+        # self.fast_opt = tf.train.GradientDescentOptimizer(self.alpha_rate)
+        self.fast_opt = tf.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
         self.train_op = self.fast_opt.apply_gradients(train_grads_and_vars)
 
         #  Learning rate annealing:
@@ -378,8 +379,8 @@ class AMLDG():
         meta_model_summaries = [
             tf.summary.scalar('meta_grad_global_norm', tf.global_norm(self.grads)),
             tf.summary.scalar('total_meta_loss', self.loss),
-            tf.summary.scalar('alpha_learn_rate', self.alpha_rate),
-            tf.summary.scalar('alpha_learn_rate_loss', self.alpha_rate_loss)
+            #tf.summary.scalar('alpha_learn_rate', self.alpha_rate),
+            #tf.summary.scalar('alpha_learn_rate_loss', self.alpha_rate_loss)
         ]
         return meta_model_summaries
 

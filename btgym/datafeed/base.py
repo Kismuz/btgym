@@ -213,6 +213,7 @@ class BTgymBaseData:
         self.test_interval = [0, 0]
         self.test_period = {'days': 0, 'hours': 0, 'minutes': 0}
         self.train_period = {'days': 0, 'hours': 0, 'minutes': 0}
+        self._test_period_backshift_delta = datetime.timedelta(**{'days': 0, 'hours': 0, 'minutes': 0})
         self.sample_num = 0
         self.task = 0
         self.metadata = {'sample_num': 0, 'type': None}
@@ -308,6 +309,9 @@ class BTgymBaseData:
         self.test_num_records = round(self.test_range_delta.total_seconds() / (60 * self.timeframe))
         self.train_num_records = self.data.shape[0] - self.test_num_records
 
+        # self.backshift_delta = datetime.timedelta(**self._test_period_backshift)
+        self.backshift_num_records = round(self._test_period_backshift_delta.total_seconds() / (60 * self.timeframe))
+
         break_point = self.train_num_records
 
         try:
@@ -332,7 +336,7 @@ class BTgymBaseData:
                 raise AssertionError
 
         self.train_interval = [0, break_point]
-        self.test_interval = [break_point, self.data.shape[0]]
+        self.test_interval = [break_point - self.backshift_num_records, self.data.shape[0]]
 
         self.sample_num = 0
         self.is_ready = True
