@@ -303,40 +303,13 @@ class AMLDG():
 
             self.grads.append(meta_g)
 
-        # Learned inner meta-update step-size),
-        # conditioned on train input:
-        with tf.variable_scope('learnable_alpha'):
-
-            self.alpha_rate = tf.exp(-10 * tf.reduce_mean(pi.meta_grads_scale))
-            alpha_rate_var_list = [var for var in pi.var_list if 'meta_grads_scale' in var.name]
-            alpha_rate_var_list_global = [
-                var for var in pi_global.var_list if 'meta_grads_scale' in var.name
-            ]
-            # self.log.warning('alpha_rate_var_list: {}'.format(alpha_rate_var_list))
-            self.alpha_rate_loss = tf.reduce_mean(
-                [tf.reduce_mean(g) for g in pi.grads if g is not None]
-            )
-
-            # Second order grads for learned alpha rate:
-            alpha_rate_grads, _ = tf.clip_by_global_norm(
-                tf.gradients(self.alpha_rate_loss, alpha_rate_var_list),
-                40.0
-            )
-            # Second order grads wrt global variables:
-            alpha_rate_grads_and_vars = list(zip(alpha_rate_grads, alpha_rate_var_list_global))
-
-            # self.log.warning('alpha_rate_grads:\n{}'.format(alpha_rate_grads))
-            # self.log.warning('alpha_rate_grads_and_vars:\n{}'.format(alpha_rate_grads_and_vars))
-            #
-            # self.log.warning('self.grads_len: {}'.format(len(list(self.grads))))
-
         # Gradients to update local meta-test policy (from train data):
         train_grads_and_vars = list(zip(pi.grads, pi_prime.var_list))
 
         # self.log.warning('train_grads_and_vars_len: {}'.format(len(train_grads_and_vars)))
 
         # Meta-gradients to be sent to parameter server:
-        meta_grads_and_vars = list(zip(self.grads, pi_global.var_list)) + alpha_rate_grads_and_vars
+        meta_grads_and_vars = list(zip(self.grads, pi_global.var_list))
 
         # Remove empty entries:
         meta_grads_and_vars = [(g, v) for (g, v) in meta_grads_and_vars if g is not None]
