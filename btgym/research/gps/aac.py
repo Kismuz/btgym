@@ -73,7 +73,7 @@ class GuidedAAC(BaseAAC):
             self.log.exception(msg)
             raise RuntimeError(msg)
 
-    def _make_loss(self):
+    def _make_loss(self, **kwargs):
         """
         Augments base loss with expert actions imitation loss
 
@@ -81,7 +81,7 @@ class GuidedAAC(BaseAAC):
             tensor holding estimated loss graph
             list of related summaries
         """
-        aac_loss, summaries = self._make_base_loss()
+        aac_loss, summaries = self._make_base_loss(**kwargs)
 
         # Guidance annealing:
         if self.guided_decay_steps is not None:

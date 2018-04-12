@@ -173,6 +173,7 @@ def batch_stack(dict_list, _top=True):
         
     return batch
 
+
 def batch_gather(batch_dict, indices, _top=True):
     """
     Gathers experiences from processed batch according to specified indices.
@@ -208,6 +209,7 @@ def batch_gather(batch_dict, indices, _top=True):
         batch['batch_size'] = indices.shape[0]
 
     return batch
+
 
 def batch_pad(batch, to_size, _one_hot=False):
     """
@@ -247,6 +249,33 @@ def batch_pad(batch, to_size, _one_hot=False):
         padded_batch = batch
 
     return padded_batch
+
+
+def is_subdict(sub_dict, big_dict):
+    """
+    Checks if first arg is sub_dictionary of second arg by means of structure and values.
+
+    Args:
+        sub_dict:       dictionary
+        big_dict:       dictionary
+
+    Returns:
+        bool
+    """
+    conditions = []
+    if isinstance(sub_dict, dict):
+        for key, value in sub_dict.items():
+            try:
+                conditions.append(is_subdict(value, big_dict[key]))
+            except KeyError:
+                conditions.append(False)
+    else:
+        try:
+            conditions.append(sub_dict == big_dict)
+        except KeyError:
+            conditions.append(False)
+
+    return np.asarray(conditions).all()
 
 
 def _show_struct(struct):

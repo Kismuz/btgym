@@ -399,18 +399,18 @@ class MLDG():
             for rollout in test_data['on_policy']:
                 test_batch_size += len(rollout['position'])
 
-            test_feed_dict = self.test_aac.process_data(sess, test_data, is_train=True)
+            test_feed_dict = self.test_aac.process_data(sess,,,,, test_data,,
 
-            # self.log.warning('Test data rollout for step {} ok.'.format(self.local_steps))
-            #
-            # self.log.warning(
-            #     'Test data trial_num: {}'.format(
-            #         np.asarray(test_data['on_policy'][0]['state']['metadata']['trial_num'])
-            #     )
-            # )
+                             # self.log.warning('Test data rollout for step {} ok.'.format(self.local_steps))
+                             #
+                             # self.log.warning(
+                             #     'Test data trial_num: {}'.format(
+                             #         np.asarray(test_data['on_policy'][0]['state']['metadata']['trial_num'])
+                             #     )
+                             # )
 
-            # Sample train data of same size:
-            feed_dict = self.train_aac._get_main_feeder(
+                             # Sample train data of same size:
+                             feed_dict = self.train_aac._get_main_feeder(
                 sess,
                 self.train_aac.sample_batch(on_policy_batch, test_batch_size),
                 self.train_aac.sample_batch(off_policy_batch, test_batch_size),

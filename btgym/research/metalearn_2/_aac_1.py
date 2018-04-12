@@ -265,7 +265,7 @@ class MetaAAC_1_0():
 
             # Collect train trajectory:
             train_data = self.train_aac.get_data()
-            feed_dict = self.train_aac.process_data(sess, train_data, is_train=True)
+            feed_dict = self.train_aac.process_data(sess,,,,, train_data,,
 
             #self.log.warning('Train data ok.')
 
@@ -281,7 +281,7 @@ class MetaAAC_1_0():
 
             # Collect test trajectory wrt updated pi_prime parameters:
             test_data = self.test_aac.get_data()
-            feed_dict.update(self.test_aac.process_data(sess, test_data, is_train=True))
+            feed_dict.update(self.test_aac.process_data(sess,,,,, test_data,, )
 
             #self.log.warning('Test data ok.')
 

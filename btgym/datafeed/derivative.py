@@ -267,7 +267,7 @@ class BTgymDataset(BTgymRandomDataDomain):
             start_00=False,
             start_weekdays=None,
             parsing_params=None,
-            test_period=None,
+            target_period=None,
             name='SimpleDataSet',
             log_level=WARNING,
             **kwargs
@@ -282,7 +282,7 @@ class BTgymDataset(BTgymRandomDataDomain):
                                 of the day (usually 00:00), def=False;
             start_weekdays:     list, only weekdays from the list will be used for sample start,
                                 def=[0, 1, 2, 3, 4, 5, 6];
-            test_period:        domain test(target) period. def={'days': 0, 'hours': 0, 'minutes': 0};
+            target_period:      domain test(aka target) period. def={'days': 0, 'hours': 0, 'minutes': 0};
                                 setting this param to non-zero duration forces data separation to train/test
                                 subsets. Train data always precedes test one.
             parsing_params:     csv parsing options, see base class description for details;
@@ -337,7 +337,7 @@ class BTgymDataset(BTgymRandomDataDomain):
             parsing_params=parsing_params,
             trial_params=trial_params,
             episode_params=episode_params,
-            target_period=test_period,
+            target_period=target_period,
             name=name,
             log_level=log_level,
         )

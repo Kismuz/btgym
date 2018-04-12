@@ -402,13 +402,13 @@ class BaseAAC(object):
             if self.use_global_network:
                 # PS:
                 with tf.device(tf.train.replica_device_setter(1, worker_device=self.worker_device)):
-                    self.network = self._make_policy('global')
+                    self.network = pi_global = self._make_policy('global')
                     if self.use_target_policy:
                         self.network_prime = self._make_policy('global_prime')
                     else:
                         self.network_prime = self._make_dummy_policy()
             else:
-                self.network = self._make_dummy_policy()
+                self.network = pi_global = self._make_dummy_policy()
                 self.network_prime = self._make_dummy_policy()
 
             # Worker:
@@ -426,6 +426,9 @@ class BaseAAC(object):
 
                     # Meant for Batch-norm layers:
                     pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
+
+                    # Just in case:
+                    self.dummy_pi = self._make_dummy_policy()
 
                     self.log.debug('local_network_upd_ops_collection:\n{}'.format(pi.update_ops))
                     self.log.debug('\nlocal_network_var_list_to_save:')
@@ -446,20 +449,23 @@ class BaseAAC(object):
                     self.log.debug('learn rate ok')
 
                     # Define loss and related summaries
-                    self.loss, self.loss_summaries = self._make_loss()
+                    self.loss, self.loss_summaries = self._make_loss(pi=pi, pi_prime=pi_prime)
 
                     if self.use_global_network:
                         # Define train, sync ops:
-                        self.train_op = self._make_train_op()
+                        self.train_op = self._make_train_op(pi=pi, pi_prime=pi_prime, pi_global=pi_global)
 
                     else:
                         self.train_op = []
 
                     # Model stat. summary, episode summary:
-                    self.model_summary_op, self.ep_summary = self._combine_summaries(self.loss_summaries)
+                    self.model_summary_op, self.ep_summary = self._combine_summaries(
+                        policy=pi,
+                        model_summaries=self.loss_summaries
+                    )
 
                     # Make thread-runner processes:
-                    self.runners = self._make_runners()
+                    self.runners = self._make_runners(policy=pi)
 
                     # Make rollouts provider[s] for async runners:
                     if self.runner_config['class_ref'] == RunnerThread:
@@ -480,14 +486,16 @@ class BaseAAC(object):
     def worker_device_callback_0(self):
         pass
 
-    def _make_loss(self):
-        return self._make_base_loss(name=self.name, verbose=True)
+    def _make_loss(self, **kwargs):
+        return self._make_base_loss(name=self.name, verbose=True, **kwargs)
 
-    def _make_base_loss(self, name='base', verbose=True):
+    def _make_base_loss(self, pi, pi_prime, name='base', verbose=True):
         """
-        Defines base AAC on- and off-policy loss, auxillary VR, RP and PC losses, placeholders and summaries.
+        Defines base AAC on- and off-policy loss, auxiliary VR, RP and PC losses, placeholders and summaries.
 
         Args:
+            pi:                 policy network obj.
+            pi_prime:           optional policy network obj.
             name:               str, name scope
             verbose:            summary level
 
@@ -497,21 +505,21 @@ class BaseAAC(object):
         """
         with tf.name_scope(name):
             # On-policy AAC loss definition:
-            self.on_pi_act_target = tf.placeholder(
+            pi.on_pi_act_target = tf.placeholder(
                 tf.float32, [None, self.ref_env.action_space.n], name="on_policy_action_pl"
             )
-            self.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
-            self.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
+            pi.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
+            pi.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
 
             clip_epsilon = tf.cast(self.clip_epsilon * self.learn_rate_decayed / self.opt_learn_rate, tf.float32)
 
             on_pi_loss, on_pi_summaries = self.on_policy_loss(
-                act_target=self.on_pi_act_target,
-                adv_target=self.on_pi_adv_target,
-                r_target=self.on_pi_r_target,
-                pi_logits=self.local_network.on_logits,
-                pi_vf=self.local_network.on_vf,
-                pi_prime_logits=self.local_network_prime.on_logits,
+                act_target=pi.on_pi_act_target,
+                adv_target=pi.on_pi_adv_target,
+                r_target=pi.on_pi_r_target,
+                pi_logits=pi.on_logits,
+                pi_vf=pi.on_vf,
+                pi_prime_logits=pi_prime.on_logits,
                 entropy_beta=self.model_beta,
                 epsilon=clip_epsilon,
                 name='on_policy',
@@ -522,20 +530,20 @@ class BaseAAC(object):
             model_summaries = on_pi_summaries
 
             # Off-policy losses:
-            self.off_pi_act_target = tf.placeholder(
+            pi.off_pi_act_target = tf.placeholder(
                 tf.float32, [None, self.ref_env.action_space.n], name="off_policy_action_pl")
-            self.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
-            self.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
+            pi.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
+            pi.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
 
             if self.use_off_policy_aac:
                 # Off-policy AAC loss graph mirrors on-policy:
                 off_pi_loss, off_pi_summaries = self.off_policy_loss(
-                    act_target=self.off_pi_act_target,
-                    adv_target=self.off_pi_adv_target,
-                    r_target=self.off_pi_r_target,
-                    pi_logits=self.local_network.off_logits,
-                    pi_vf=self.local_network.off_vf,
-                    pi_prime_logits=self.local_network_prime.off_logits,
+                    act_target=pi.off_pi_act_target,
+                    adv_target=pi.off_pi_adv_target,
+                    r_target=pi.off_pi_r_target,
+                    pi_logits=pi.off_logits,
+                    pi_vf=pi.off_vf,
+                    pi_prime_logits=pi_prime.off_logits,
                     entropy_beta=self.model_beta,
                     epsilon=clip_epsilon,
                     name='off_policy',
@@ -546,13 +554,13 @@ class BaseAAC(object):
 
             if self.use_pixel_control:
                 # Pixel control loss:
-                self.pc_action = tf.placeholder(tf.float32, [None, self.ref_env.action_space.n], name="pc_action")
-                self.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
+                pi.pc_action = tf.placeholder(tf.float32, [None, self.ref_env.action_space.n], name="pc_action")
+                pi.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
 
                 pc_loss, pc_summaries = self.pc_loss(
-                    actions=self.pc_action,
-                    targets=self.pc_target,
-                    pi_pc_q=self.local_network.pc_q,
+                    actions=pi.pc_action,
+                    targets=pi.pc_target,
+                    pi_pc_q=pi.pc_q,
                     name='off_policy',
                     verbose=verbose
                 )
@@ -562,10 +570,10 @@ class BaseAAC(object):
 
             if self.use_value_replay:
                 # Value function replay loss:
-                self.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
+                pi.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
                 vr_loss, vr_summaries = self.vr_loss(
-                    r_target=self.vr_target,
-                    pi_vf=self.local_network.vr_value,
+                    r_target=pi.vr_target,
+                    pi_vf=pi.vr_value,
                     name='off_policy',
                     verbose=verbose
                 )
@@ -574,11 +582,11 @@ class BaseAAC(object):
 
             if self.use_reward_prediction:
                 # Reward prediction loss:
-                self.rp_target = tf.placeholder(tf.float32, [None, 3], name="rp_target")
+                pi.rp_target = tf.placeholder(tf.float32, [None, 3], name="rp_target")
 
                 rp_loss, rp_summaries = self.rp_loss(
-                    rp_targets=self.rp_target,
-                    pi_rp_logits=self.local_network.rp_logits,
+                    rp_targets=pi.rp_target,
+                    pi_rp_logits=pi.rp_logits,
                     name='off_policy',
                     verbose=verbose
                 )
@@ -587,9 +595,14 @@ class BaseAAC(object):
 
         return loss, model_summaries
 
-    def _make_train_op(self):
+    def _make_train_op(self, pi, pi_prime, pi_global):
         """
         Defines training op graph and supplementary sync operations.
+
+        Args:
+            pi:                 policy network obj.
+            pi_prime:           optional policy network obj.
+            pi_global:          shared policy network obj. hosted by parameter server
 
         Returns:
             tensor holding training op graph;
@@ -607,32 +620,32 @@ class BaseAAC(object):
 
         # Clipped gradients:
         self.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.loss, self.local_network.var_list),
+            tf.gradients(self.loss, pi.var_list),
             40.0
         )
         # Copy weights from the parameter server to the local model
         self.sync = self.sync_pi = tf.group(
-            *[v1.assign(v2) for v1, v2 in zip(self.local_network.var_list, self.network.var_list)]
+            *[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_global.var_list)]
         )
         if self.use_target_policy:
             # Copy weights from new policy model to target one:
             self.sync_pi_prime = tf.group(
-                *[v1.assign(v2) for v1, v2 in zip(self.local_network_prime.var_list, self.local_network.var_list)]
+                *[v1.assign(v2) for v1, v2 in zip(pi_prime.var_list, pi.var_list)]
             )
-        grads_and_vars = list(zip(self.grads, self.network.var_list))
+        grads_and_vars = list(zip(self.grads, pi_global.var_list))
 
         # Set global_step increment equal to observation space batch size:
-        obs_space_keys = list(self.local_network.on_state_in.keys())
+        obs_space_keys = list(pi.on_state_in.keys())
 
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
-        self.inc_step = self.global_step.assign_add(tf.shape(self.local_network.on_state_in['external'])[0])
+        self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in['external'])[0])
 
         train_op = self.optimizer.apply_gradients(grads_and_vars)
         self.log.debug('train_op defined')
         return train_op
 
-    def _combine_summaries(self, model_summaries=None):
+    def _combine_summaries(self, policy=None, model_summaries=None):
         """
         Defines model-wide and episode-related summaries
 
@@ -646,11 +659,12 @@ class BaseAAC(object):
                 with tf.name_scope('model'):
                     model_summaries += [
                         tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
-                        tf.summary.scalar("var_global_norm", tf.global_norm(self.local_network.var_list)),
                         #tf.summary.scalar("learn_rate", self.train_learn_rate),
                         tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
                         tf.summary.scalar("total_loss", self.loss),
                     ]
+                    if policy is not None:
+                        model_summaries += [ tf.summary.scalar("var_global_norm", tf.global_norm(policy.var_list))]
         else:
             model_summaries = []
         # Model stat. summary:
@@ -710,9 +724,12 @@ class BaseAAC(object):
         self.log.debug('model-wide and episode summaries ok.')
         return model_summary, ep_summary
 
-    def _make_runners(self):
+    def _make_runners(self, policy):
         """
         Defines thread-runners processes instances.
+
+        Args:
+            policy:     policy for runner to execute
 
         Returns:
             list of runners
@@ -742,7 +759,7 @@ class BaseAAC(object):
         for env in self.env_list:
             kwargs=dict(
                 env=env,
-                policy=self.local_network,
+                policy=policy,
                 task=self.task + task,
                 rollout_length=self.rollout_length,  # ~20
                 episode_summary_freq=self.episode_summary_freq,
@@ -957,55 +974,64 @@ class BaseAAC(object):
 
         self.summary_writer = summary_writer
 
-    def _get_rp_feeder(self, batch):
+    def _get_rp_feeder(self, pi, batch):
         """
         Returns feed dictionary for `reward prediction` loss estimation subgraph.
+
+        Args:
+            pi:     policy to feed
         """
-        feeder = feed_dict_from_nested(self.local_network.rp_state_in, batch['state'])
+        feeder = feed_dict_from_nested(pi.rp_state_in, batch['state'])
         feeder.update(
             {
-                self.rp_target: batch['rp_target'],
-                self.local_network.rp_batch_size: batch['batch_size'],
+                pi.rp_target: batch['rp_target'],
+                pi.rp_batch_size: batch['batch_size'],
             }
         )
         return feeder
 
-    def _get_vr_feeder(self, batch):
+    def _get_vr_feeder(self, pi, batch):
         """
         Returns feed dictionary for `value replay` loss estimation subgraph.
+
+        Args:
+            pi:     policy to feed
         """
         if not self.use_off_policy_aac:  # use single pass of network on same off-policy batch
-            feeder = feed_dict_from_nested(self.local_network.vr_state_in, batch['state'])
-            feeder.update(feed_dict_rnn_context(self.local_network.vr_lstm_state_pl_flatten, batch['context']))
+            feeder = feed_dict_from_nested(pi.vr_state_in, batch['state'])
+            feeder.update(feed_dict_rnn_context(pi.vr_lstm_state_pl_flatten, batch['context']))
             feeder.update(
                 {
-                    self.local_network.vr_batch_size: batch['batch_size'],
-                    self.local_network.vr_time_length: batch['time_steps'],
-                    self.local_network.vr_a_r_in: batch['last_action_reward'],
-                    self.vr_target: batch['r']
+                    pi.vr_batch_size: batch['batch_size'],
+                    pi.vr_time_length: batch['time_steps'],
+                    pi.vr_a_r_in: batch['last_action_reward'],
+                    pi.vr_target: batch['r']
                 }
             )
         else:
-            feeder = {self.vr_target: batch['r']}  # redundant actually :)
+            feeder = {pi.vr_target: batch['r']}  # redundant actually :)
         return feeder
 
-    def _get_pc_feeder(self, batch):
+    def _get_pc_feeder(self, pi, batch):
         """
         Returns feed dictionary for `pixel control` loss estimation subgraph.
+
+        Args:
+            pi:     policy to feed
         """
         if not self.use_off_policy_aac:  # use single pass of network on same off-policy batch
-            feeder = feed_dict_from_nested(self.local_network.pc_state_in, batch['state'])
+            feeder = feed_dict_from_nested(pi.pc_state_in, batch['state'])
             feeder.update(
-                feed_dict_rnn_context(self.local_network.pc_lstm_state_pl_flatten, batch['context']))
+                feed_dict_rnn_context(pi.pc_lstm_state_pl_flatten, batch['context']))
             feeder.update(
                 {
-                    self.local_network.pc_a_r_in: batch['last_action_reward'],
-                    self.pc_action: batch['action'],
-                    self.pc_target: batch['pixel_change']
+                    pi.pc_a_r_in: batch['last_action_reward'],
+                    pi.pc_action: batch['action'],
+                    pi.pc_target: batch['pixel_change']
                 }
             )
         else:
-            feeder = {self.pc_action: batch['action'], self.pc_target: batch['pixel_change']}
+            feeder = {pi.pc_action: batch['action'], pi.pc_target: batch['pixel_change']}
         return feeder
 
     def _process_rollouts(self, rollouts):
@@ -1031,11 +1057,13 @@ class BaseAAC(object):
         )
         return batch
 
-    def _get_main_feeder(self, sess, on_policy_batch, off_policy_batch, rp_batch, is_train):
+    def _get_main_feeder(self, sess, on_policy_batch, off_policy_batch, rp_batch, is_train, pi, pi_prime=None):
         """
         Composes entire train step feed dictionary.
         Args:
             sess:                   tf session obj.
+            pi:                     policy to feed
+            pi_prime:               optional policy to feed
             on_policy_batch:        on-policy data batch
             off_policy_batch:       off-policy (replay memory) data batch
             rp_batch:               off-policy reward prediction data batch
@@ -1045,64 +1073,64 @@ class BaseAAC(object):
             feed_dict (dict):   train step feed dictionary
         """
         # Feeder for on-policy AAC loss estimation graph:
-        feed_dict = feed_dict_from_nested(self.local_network.on_state_in, on_policy_batch['state'])
+        feed_dict = feed_dict_from_nested(pi.on_state_in, on_policy_batch['state'])
         feed_dict.update(
-            feed_dict_rnn_context(self.local_network.on_lstm_state_pl_flatten, on_policy_batch['context'])
+            feed_dict_rnn_context(pi.on_lstm_state_pl_flatten, on_policy_batch['context'])
         )
         feed_dict.update(
             {
-                self.local_network.on_a_r_in: on_policy_batch['last_action_reward'],
-                self.local_network.on_batch_size: on_policy_batch['batch_size'],
-                self.local_network.on_time_length: on_policy_batch['time_steps'],
-                self.on_pi_act_target: on_policy_batch['action'],
-                self.on_pi_adv_target: on_policy_batch['advantage'],
-                self.on_pi_r_target: on_policy_batch['r'],
-                self.local_network.train_phase: is_train,  # Zeroes learn rate, [+ batch_norm]
+                pi.on_a_r_in: on_policy_batch['last_action_reward'],
+                pi.on_batch_size: on_policy_batch['batch_size'],
+                pi.on_time_length: on_policy_batch['time_steps'],
+                pi.on_pi_act_target: on_policy_batch['action'],
+                pi.on_pi_adv_target: on_policy_batch['advantage'],
+                pi.on_pi_r_target: on_policy_batch['r'],
+                pi.train_phase: is_train,  # Zeroes learn rate, [+ batch_norm]
             }
         )
-        if self.use_target_policy:
+        if self.use_target_policy and pi_prime is not None:
             feed_dict.update(
-                feed_dict_from_nested(self.local_network_prime.on_state_in, on_policy_batch['state'])
+                feed_dict_from_nested(pi_prime.on_state_in, on_policy_batch['state'])
             )
             feed_dict.update(
-                feed_dict_rnn_context(self.local_network_prime.on_lstm_state_pl_flatten, on_policy_batch['context'])
+                feed_dict_rnn_context(pi_prime.on_lstm_state_pl_flatten, on_policy_batch['context'])
             )
             feed_dict.update(
                 {
-                    self.local_network_prime.on_batch_size: on_policy_batch['batch_size'],
-                    self.local_network_prime.on_time_length: on_policy_batch['time_steps'],
-                    self.local_network_prime.on_a_r_in: on_policy_batch['last_action_reward']
+                    pi_prime.on_batch_size: on_policy_batch['batch_size'],
+                    pi_prime.on_time_length: on_policy_batch['time_steps'],
+                    pi_prime.on_a_r_in: on_policy_batch['last_action_reward']
                 }
             )
         if self.use_memory:
             # Feeder for off-policy AAC loss estimation graph:
-            off_policy_feed_dict = feed_dict_from_nested(self.local_network.off_state_in, off_policy_batch['state'])
+            off_policy_feed_dict = feed_dict_from_nested(pi.off_state_in, off_policy_batch['state'])
             off_policy_feed_dict.update(
-                feed_dict_rnn_context(self.local_network.off_lstm_state_pl_flatten, off_policy_batch['context']))
+                feed_dict_rnn_context(pi.off_lstm_state_pl_flatten, off_policy_batch['context']))
             off_policy_feed_dict.update(
                 {
-                    self.local_network.off_a_r_in: off_policy_batch['last_action_reward'],
-                    self.local_network.off_batch_size: off_policy_batch['batch_size'],
-                    self.local_network.off_time_length: off_policy_batch['time_steps'],
-                    self.off_pi_act_target: off_policy_batch['action'],
-                    self.off_pi_adv_target: off_policy_batch['advantage'],
-                    self.off_pi_r_target: off_policy_batch['r'],
+                    pi.off_a_r_in: off_policy_batch['last_action_reward'],
+                    pi.off_batch_size: off_policy_batch['batch_size'],
+                    pi.off_time_length: off_policy_batch['time_steps'],
+                    pi.off_pi_act_target: off_policy_batch['action'],
+                    pi.off_pi_adv_target: off_policy_batch['advantage'],
+                    pi.off_pi_r_target: off_policy_batch['r'],
                 }
             )
-            if self.use_target_policy:
+            if self.use_target_policy and pi_prime is not None:
                 off_policy_feed_dict.update(
-                    feed_dict_from_nested(self.local_network_prime.off_state_in, off_policy_batch['state'])
+                    feed_dict_from_nested(pi_prime.off_state_in, off_policy_batch['state'])
                 )
                 off_policy_feed_dict.update(
                     {
-                        self.local_network_prime.off_batch_size: off_policy_batch['batch_size'],
-                        self.local_network_prime.off_time_length: off_policy_batch['time_steps'],
-                        self.local_network_prime.off_a_r_in: off_policy_batch['last_action_reward']
+                        pi_prime.off_batch_size: off_policy_batch['batch_size'],
+                        pi_prime.off_time_length: off_policy_batch['time_steps'],
+                        pi_prime.off_a_r_in: off_policy_batch['last_action_reward']
                     }
                 )
                 off_policy_feed_dict.update(
                     feed_dict_rnn_context(
-                        self.local_network_prime.off_lstm_state_pl_flatten,
+                        pi_prime.off_lstm_state_pl_flatten,
                         off_policy_batch['context']
                     )
                 )
@@ -1111,23 +1139,25 @@ class BaseAAC(object):
             # Update with reward prediction subgraph:
             if self.use_reward_prediction:
                 # Rebalanced 50/50 sample for RP:
-                feed_dict.update(self._get_rp_feeder(rp_batch))
+                feed_dict.update(self._get_rp_feeder(pi, rp_batch))
 
             # Pixel control ...
             if self.use_pixel_control:
-                feed_dict.update(self._get_pc_feeder(off_policy_batch))
+                feed_dict.update(self._get_pc_feeder(pi, off_policy_batch))
 
             # VR...
             if self.use_value_replay:
-                feed_dict.update(self._get_vr_feeder(off_policy_batch))
+                feed_dict.update(self._get_vr_feeder(pi, off_policy_batch))
 
         return feed_dict
 
-    def process_data(self, sess, data, is_train):
+    def process_data(self, sess, data, is_train, pi, pi_prime=None):
         """
         Processes data, composes train step feed dictionary.
         Args:
             sess:               tf session obj.
+            pi:                 policy to feed
+            pi_prime:           optional policy to feed
             data (dict):        data dictionary
             is_train (bool):    is data provided are train or test
 
@@ -1153,7 +1183,7 @@ class BaseAAC(object):
             off_policy_batch = None
             rp_batch = None
 
-        return self._get_main_feeder(sess, on_policy_batch, off_policy_batch, rp_batch, is_train)
+        return self._get_main_feeder(sess, on_policy_batch, off_policy_batch, rp_batch, is_train, pi, pi_prime)
 
     def process_summary(self, sess, data, model_data=None, step=None, episode=None):
         """
@@ -1283,7 +1313,7 @@ class BaseAAC(object):
                 # If there is no any test rollouts  - do a train step:
                 sess.run(self.sync_pi)  # only sync at train time
 
-                feed_dict = self.process_data(sess, data, is_train)
+                feed_dict = self.process_data(sess, data, is_train, self.local_network, self.local_network_prime)
 
                 # Say `No` to redundant summaries:
                 wirte_model_summary =\

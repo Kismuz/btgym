@@ -391,14 +391,14 @@ class MetaAAC_0_1(GuidedAAC):
                 # Do a train step on train data:
                 # here we send gradients to global_prime network
                 sess.run(self.sync_pi_mu)
-                train_feed_dict = self.process_data(sess, train_data, is_source)
+                train_feed_dict = self.process_data(sess,,,,,,,,
                 fetches = [self.train_op['train']]
                 fetched = sess.run(fetches, feed_dict=train_feed_dict)  # TODO: use train summaries as well
 
                 # Do a train step on test data:
                 # grads sent to global network
                 sess.run(self.sync_pi_mu_prime)
-                test_feed_dict = self.process_data(sess, test_data, is_source)
+                test_feed_dict = self.process_data(sess,,,,,,,,
                 fetches = [self.train_op['test']]
 
                 if wirte_model_summary:

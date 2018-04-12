@@ -5,6 +5,7 @@ import sys
 from btgym.algorithms.rollout import Rollout
 from btgym.algorithms.memory import _DummyMemory
 from btgym.algorithms.math_utils import softmax
+from btgym.algorithms.utils import is_subdict
 
 
 class BaseSynchroRunner():
@@ -30,6 +31,7 @@ class BaseSynchroRunner():
             policy=None,
             data_sample_config=None,
             memory_config=None,
+            test_conditions=None,
             aux_summaries=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
             name='synchro',
             log_level=WARNING,
@@ -42,11 +44,13 @@ class BaseSynchroRunner():
             rollout_length:         int
             episode_summary_freq:   int
             env_render_freq:        int
-            test:                   not used
-            ep_summary:             not used
+            test:                   legacy, not used
+            ep_summary:             legacy, not used
             policy:                 policy instance to execute
             data_sample_config:     dict, data sampling configuration dictionary
             memory_config:          dict, replay memory configuration
+            test_conditions:        dict or None,
+                                    dictionary of single experience conditions to check to mark it as test one.
             aux_summaries:          iterable of str, additional summaries to compute
             name:                   str, name scope
             log_level:              int, logbook.level
@@ -67,6 +71,19 @@ class BaseSynchroRunner():
         self.log = Logger('{}_Runner_{}'.format(self.name, self.task), level=self.log_level)
         self.sess = None
         self.summary_writer = None
+
+        if test_conditions is None:
+            # Default test conditions are: experience comes from test episode, from target domain:
+            self.test_conditions = {
+                'state': {
+                    'metadata': {
+                        'type': 1,
+                        'trial_type': 1
+                    }
+                }
+            }
+        else:
+            self.test_conditions = test_conditions
 
         # Make replay memory:
         if self.memory_config is not None:
@@ -314,9 +331,11 @@ class BaseSynchroRunner():
 
         """
         # Only render chief worker and test (slave) environment:
-        if is_test or\
-                (self.task < 1 and self.local_episode % self.env_render_freq == 0 and not self.data_sample_config['mode']):
-        # if self.task < 1  and self.local_episode % self.env_render_freq == 0:
+        if self.task < 1 and (
+            is_test or(
+                self.local_episode % self.env_render_freq == 0 and not self.data_sample_config['mode']
+            )
+        ):
 
             # Render environment (chief worker only):
             render_stat = {
@@ -419,18 +438,19 @@ class BaseSynchroRunner():
             # Push:
             rollout.add(self.pre_experience)
 
+            # Where are you coming from?
+            is_test = is_subdict(self.test_conditions, self.pre_experience)
+
+            # try:
+            #     # Was it test (i.e. test episode from traget domain)?
+            #     if self.pre_experience['state']['metadata']['type']\
+            #             and self.pre_experience['state']['metadata']['trial_type']:
+            #         is_test = True
+            #
+            # except KeyError:
+            #     pass
+
             # Only training rollouts are added to replay memory:
-            is_test = False
-            try:
-                # Was it test (i.e. test episode from traget domain)?
-                # TODO: change to source/target?
-                if self.pre_experience['state']['metadata']['type']\
-                        and self.pre_experience['state']['metadata']['trial_type']:
-                    is_test = True
-
-            except KeyError:
-                pass
-
             if not is_test:
                 self.memory.add(self.pre_experience)
 
@@ -510,16 +530,16 @@ class BaseSynchroRunner():
             init_context=init_context,  # None (initially) or final context of previous episode
             data_sample_config=data_sample_config
         )
-        # Only training rollouts are added to replay memory:
-        is_test = False
-        try:
-            # Was it test (`type` in metadata is not zero)?
-            # TODO: change to source/target?
-            if self.pre_experience['state']['metadata']['type']:
-                is_test = True
 
-        except KeyError:
-            pass
+        is_test = is_subdict(self.test_conditions, self.pre_experience)
+        # try:
+        #     # Was it test (`type` in metadata is not zero)?
+        #     # TODO: change to source/target?
+        #     if self.pre_experience['state']['metadata']['type']:
+        #         is_test = True
+        #
+        # except KeyError:
+        #     pass
 
         # Collect data until episode is over:
 

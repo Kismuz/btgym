@@ -1,2 +1,0 @@
-# NOTE: INCORRECT IMPLEMENTATION, DO NOTE USE
-from .amaml import *

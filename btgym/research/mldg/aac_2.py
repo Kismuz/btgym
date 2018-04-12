@@ -1,11 +1,6 @@
 import tensorflow as tf
 import numpy as np
 
-import sys
-from logbook import Logger, StreamHandler
-from btgym.research.gps.aac import GuidedAAC
-from btgym.algorithms.runner.synchro import BaseSynchroRunner
-
 from btgym.algorithms.utils import batch_stack, batch_gather
 from btgym.research.mldg.aac import AMLDG, SubAAC
 
@@ -116,7 +111,7 @@ class SubAAC_d(SubAAC):
 
 class AMLDG_d(AMLDG):
     """
-    Tragectories2distributions.
+    Tragectories2distributions mod of AMLDG()
     """
 
     def __init__(
@@ -167,6 +162,7 @@ class AMLDG_d(AMLDG):
             #         len(train_batch['on_policy']) * self.rollout_length
             #     )
             # )
+
             # Data leakage tests:
             train_trial_chksum = np.average(
                 [
@@ -257,7 +253,9 @@ class AMLDG_d(AMLDG):
                 # Perform meta_update using both on_policy test data and sampled train data:
                 if not is_target:
                     # Process test data and perform meta-optimisation step:
-                    feed_dict.update(self.test_aac.process_data(sess, test_data, is_train=True))
+                    feed_dict.update(
+                        self.test_aac.process_data(sess,test_data,is_train=True,pi=self.test_aac.local_network)
+                    )
 
                     if wirte_model_summary:
                         meta_fetches = [self.meta_train_op, self.test_aac.model_summary_op, self.inc_step]

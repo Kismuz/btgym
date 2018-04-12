@@ -109,6 +109,10 @@ class AMLDG():
     Asynchronous implementation of MLDG algorithm (by Da Li et al.)
     for one-shot adaptation in dynamically changing environments.
 
+    This class is AAC wrapper; relies on sub-AAC classes to make separate policy networks
+    for train/test data streams, performs data streams synchronization according to algorithm logic
+    via data_config dictionaries; performs actual data checks to prevent test information leakage.
+
     Papers:
         Da Li et al.,
          "Learning to Generalize: Meta-Learning for Domain Generalization"
@@ -516,7 +520,7 @@ class AMLDG():
 
             # Collect initial meta-train trajectory rollout:
             train_data = self.train_aac.get_data(data_sample_config=train_data_config, force_new_episode=True)
-            feed_dict = self.train_aac.process_data(sess, train_data, is_train=True)
+            feed_dict = self.train_aac.process_data(sess, train_data, is_train=True,pi=self.train_aac.local_network)
 
             # self.log.warning('Init Train data ok.')
 
@@ -611,7 +615,9 @@ class AMLDG():
 
                 if not is_target:
                     # Process test data and perform meta-optimisation step:
-                    feed_dict.update(self.test_aac.process_data(sess, test_data, is_train=True))
+                    feed_dict.update(
+                        self.test_aac.process_data(sess, test_data, is_train=True, pi=self.test_aac.local_network)
+                    )
 
                     if wirte_model_summary:
                         meta_fetches = [self.meta_train_op, self.test_aac.model_summary_op, self.inc_step]
@@ -646,7 +652,7 @@ class AMLDG():
 
                 # Collect next train trajectory rollout:
                 train_data = self.train_aac.get_data(data_sample_config=train_data_config)
-                feed_dict = self.train_aac.process_data(sess, train_data, is_train=True)
+                feed_dict = self.train_aac.process_data(sess,train_data, is_train=True, pi=self.train_aac.local_network)
                 # self.log.warning('Train data ok.')
 
                 # Write down summaries:
@@ -663,8 +669,7 @@ class AMLDG():
 
 class AMLDG_2(AMLDG):
     """
-    FAILED
-    Deviated.
+    FAILED do not use
     """
 
     def __init__(self, name='AMLDGv2', **kwargs):
@@ -701,7 +706,7 @@ class AMLDG_2(AMLDG):
 
             # Collect initial meta-train trajectory rollout:
             train_data = self.train_aac.get_data(data_sample_config=train_data_config, force_new_episode=True)
-            feed_dict = self.train_aac.process_data(sess, train_data, is_train=True)
+            feed_dict = self.train_aac.process_data(sess, train_data,is_train=True, pi=self.train_aac.local_network)
 
             # self.log.warning('Init Train data ok.')
 
@@ -763,7 +768,9 @@ class AMLDG_2(AMLDG):
 
                 if not is_target:
                     # Process test data and perform meta-optimisation step:
-                    feed_dict.update(self.test_aac.process_data(sess, test_data, is_train=True))
+                    feed_dict.update(
+                        self.test_aac.process_data(sess, test_data,is_train=True, pi=self.test_aac.local_network)
+                    )
 
                     if wirte_model_summary:
                         meta_fetches = [self.meta_train_op, self.test_aac.model_summary_op, self.inc_step]
@@ -795,7 +802,7 @@ class AMLDG_2(AMLDG):
                 # self.log.warning('Sync ok.')
 
                 # if not is_target:
-                    # Collect next train trajectory rollout:
+                # Collect next train trajectory rollout:
                 train_data = self.train_aac.get_data(data_sample_config=train_data_config)
 
                 # Concatenate new train and previous step test data:
@@ -810,7 +817,7 @@ class AMLDG_2(AMLDG):
                 #         'Key: {}, value_type: {},  value_shape: {}'.format(k, type(v), np.asarray(v).shape)
                 #     )
 
-                feed_dict = self.train_aac.process_data(sess, train_data, is_train=True)
+                feed_dict = self.train_aac.process_data(sess, train_data,is_train=True, pi=self.train_aac.local_network)
 
                 # self.log.warning('Train data ok.')
                 self.train_aac.process_summary(sess, train_data, model_summary)
@@ -829,7 +836,7 @@ class AMLDG_2(AMLDG):
 
 class AMLDG_3(AMLDG):
     """
-    FAILED
+    FAILED do not use
     Closed-loop meta-update.
     """
 
@@ -965,7 +972,7 @@ class AMLDG_3(AMLDG):
 
             # Collect initial meta-train trajectory rollout:
             train_data = self.train_aac.get_data(data_sample_config=train_data_config, force_new_episode=True)
-            feed_dict = self.train_aac.process_data(sess, train_data, is_train=True)
+            feed_dict =self.train_aac.process_data(sess, train_data,is_train=True, pi=self.train_aac.local_network)
 
             # self.log.warning('Init Train data ok.')
 
@@ -1042,7 +1049,9 @@ class AMLDG_3(AMLDG):
                 # self.log.warning('Test data ok.')
 
                 # Process test data and perform meta-optimisation step:
-                feed_dict.update(self.test_aac.process_data(sess, test_data, is_train=True))
+                feed_dict.update(
+                    self.test_aac.process_data(sess, test_data, is_train=True, pi=self.test_aac.local_network)
+                )
 
                 if not is_target:
                     # Update local pi_prime (with fast_learn_rate) and global shared parameters (via slow_learn_rate):
@@ -1085,7 +1094,7 @@ class AMLDG_3(AMLDG):
 
                 # Collect next train trajectory rollout:
                 train_data = self.train_aac.get_data(data_sample_config=train_data_config)
-                feed_dict = self.train_aac.process_data(sess, train_data, is_train=True)
+                feed_dict = self.train_aac.process_data(sess, train_data,is_train=True, pi=self.train_aac.local_network)
                 # self.log.warning('Train data ok.')
 
                 # Write down summaries:

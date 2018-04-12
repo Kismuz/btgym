@@ -151,11 +151,11 @@ class MetaAAC_2_0(GuidedAAC):
 
             # Collect train trajectory:
             train_data = self.get_data()
-            feed_dict = self.process_data(sess, train_data, is_train=True)
-            # self.log.warning('Train data ok.')
+            feed_dict = self.process_data(sess,,,,, train_data,,
+                        # self.log.warning('Train data ok.')
 
-            # Copy from parameter server:
-            sess.run(self.sync_pi)
+                        # Copy from parameter server:
+                        sess.run(self.sync_pi)
             # self.log.warning('Sync ok.')
 
             # Update pi_prime parameters wrt collected data:

@@ -39,7 +39,7 @@ class DomainTest(unittest.TestCase):
                 episode_duration={'days': 0, 'hours': 23, 'minutes': 55},
                 start_00=False,
                 time_gap={'days': 0, 'hours': 10},
-                test_period={'days': 360, 'hours': 0, 'minutes': 0}
+                target_period={'days': 360, 'hours': 0, 'minutes': 0}
             )
             domain.reset()
 
@@ -53,7 +53,7 @@ class DomainTest(unittest.TestCase):
           episode_duration={'days': 0, 'hours': 23, 'minutes': 55},
           start_00=False,
           time_gap={'days': 0, 'hours': 10},
-          test_period={'days': 40, 'hours': 0, 'minutes': 0}
+          target_period={'days': 40, 'hours': 0, 'minutes': 0}
         )
         domain.reset()
         sup_train_time = 0

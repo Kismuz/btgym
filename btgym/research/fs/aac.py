@@ -218,14 +218,14 @@ class FS_AAC_0(GuidedAAC):
 
             # Collect initial meta-train trajectory rollout:
             train_data = self.get_data(data_sample_config=train_data_config, force_new_episode=True)
-            feed_dict = self.process_data(sess, train_data, is_train=is_train)
+            feed_dict = self.process_data(sess,,,,, train_data,,
 
-            # self.log.warning('Init Train data ok.')
+                        # self.log.warning('Init Train data ok.')
 
-            # Disable possibility of master data runner acquiring new trials,
-            # in case meta-train episode terminates earlier than meta-test -
-            # we than need to get additional meta-train trajectories from exactly same distribution (trial):
-            train_data_config['trial_config']['get_new'] = 0
+                        # Disable possibility of master data runner acquiring new trials,
+                        # in case meta-train episode terminates earlier than meta-test -
+                        # we than need to get additional meta-train trajectories from exactly same distribution (trial):
+                        train_data_config['trial_config']['get_new'] = 0
 
             roll_num = 0
 
@@ -276,7 +276,7 @@ class FS_AAC_0(GuidedAAC):
 
                     # Collect next train trajectory rollout:
                     train_data = self.get_data(data_sample_config=train_data_config)
-                    feed_dict = self.process_data(sess, train_data, is_train=is_train)
+                    feed_dict = self.process_data(sess,,,,, train_data,,
                     # self.log.warning('Train data ok.')
 
                 else:
