@@ -87,7 +87,7 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         # Base on-policy AAC network:
         # Conv. layers:
-        on_aac_x = conv_2d_network(
+        on_aac_x = on_encoded_external= conv_2d_network(
             self.on_state_in['external'],
             ob_space['external'],
             ac_space,
@@ -244,7 +244,7 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         # Meta learning scale/rate:
         self.meta_grads_scale = noisy_linear(
-            rsh_on_x_lstm_2_out,
+            rsh_on_x_lstm_2_out, #batch_flatten(on_encoded_external),
             1,
             'meta_grads_scale',
             activation_fn=tf.nn.sigmoid,

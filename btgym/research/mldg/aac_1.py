@@ -112,13 +112,13 @@ class AMLDG_1(GuidedAAC):
         self.train_guided_lambda = self.guided_lambda_decayed * tf.cast(self.local_network.train_phase, tf.float32)
 
         # Guided losses, need two of them:
-        guided_train_loss, _ = self.expert_loss(
-            pi_actions=pi.on_logits,
-            expert_actions=pi.expert_actions,
-            name='on_policy',
-            verbose=False,
-            guided_lambda=self.train_guided_lambda
-        )
+        # guided_train_loss, _ = self.expert_loss(
+        #     pi_actions=pi.on_logits,
+        #     expert_actions=pi.expert_actions,
+        #     name='on_policy',
+        #     verbose=False,
+        #     guided_lambda=self.train_guided_lambda
+        # )
         guided_test_loss, g_summary = self.expert_loss(
             pi_actions=pi_prime.on_logits,
             expert_actions=pi_prime.expert_actions,
@@ -127,7 +127,7 @@ class AMLDG_1(GuidedAAC):
             guided_lambda=self.train_guided_lambda
         )
 
-        self.meta_train_loss += guided_train_loss
+        # self.meta_train_loss += guided_train_loss
         self.meta_test_loss += guided_test_loss
 
         return self.meta_train_loss + self.meta_test_loss, meta_train_summaries + meta_test_summaries + g_summary
@@ -204,12 +204,13 @@ class AMLDG_1(GuidedAAC):
         """
         Additional summaries here.
         """
-        meta_model_summaries = [
-            tf.summary.scalar('meta_grad_global_norm', tf.global_norm(self.grads)),
-            tf.summary.scalar('total_meta_loss', self.loss),
-            #tf.summary.scalar('alpha_learn_rate', self.alpha_rate),
-            #tf.summary.scalar('alpha_learn_rate_loss', self.alpha_rate_loss)
-        ]
+        with tf.name_scope(self.name):
+            meta_model_summaries = [
+                tf.summary.scalar('meta_grad_global_norm', tf.global_norm(self.grads)),
+                # tf.summary.scalar('total_meta_loss', self.loss),
+                # tf.summary.scalar('alpha_learn_rate', self.alpha_rate),
+                # tf.summary.scalar('alpha_learn_rate_loss', self.alpha_rate_loss)
+            ]
         return meta_model_summaries
 
     def get_sample_config(self, **kwargs):
