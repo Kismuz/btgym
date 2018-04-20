@@ -93,12 +93,13 @@ MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv
 ```
 Adding more controls may look like:
 ```python
+from gym import spaces
 from btgym import BTgymEnv
 
 MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
                          episode_duration={'days': 2, 'hours': 23, 'minutes': 55},
                          drawdown_call=50,
-                         state_shape=(4,20),
+                         state_shape=dict(raw_state=spaces.Box(low=0,high=1,shape=(30,4))),
                          port=5555,
                          verbose=1,
                          )
