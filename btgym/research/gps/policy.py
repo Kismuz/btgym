@@ -23,7 +23,7 @@ class GuidedPolicy_0_0(AacStackedRL2Policy):
         **kwargs
     ):
         super(GuidedPolicy_0_0, self).__init__(
-            conv_2d_layer_confi=conv_2d_layer_config,
+            conv_2d_layer_config=conv_2d_layer_config,
             lstm_class_ref=lstm_class_ref,
             lstm_layers=lstm_layers,
             lstm_2_init_period=lstm_2_init_period,

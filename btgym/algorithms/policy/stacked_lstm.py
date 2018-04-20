@@ -24,10 +24,10 @@ class StackedLstmPolicy(BaseAacPolicy):
                  ob_space,
                  ac_space,
                  rp_sequence_size,
+                 state_encoder_class_ref=conv_2d_network,
                  lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
-                 #lstm_class_ref=rnn.BasicLSTMCell,
                  lstm_layers=(256, 256),
-                 linear_layer_ref=linear,
+                 linear_layer_ref=noisy_linear,
                  aux_estimate=False,
                  encode_internal_state=False,
                  **kwargs):
@@ -62,6 +62,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.ob_space = ob_space
         self.ac_space = ac_space
         self.rp_sequence_size = rp_sequence_size
+        self.state_encoder_class_ref = state_encoder_class_ref
         self.lstm_class = lstm_class_ref
         self.lstm_layers = lstm_layers
         self.aux_estimate = aux_estimate
@@ -87,14 +88,14 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         # Base on-policy AAC network:
         # Conv. layers:
-        on_aac_x = on_encoded_external= conv_2d_network(
-            self.on_state_in['external'],
-            ob_space['external'],
-            ac_space,
+        on_aac_x = on_encoded_external= self.state_encoder_class_ref(
+            x=self.on_state_in['external'],
+            ob_space=ob_space['external'],
+            ac_space=ac_space,
             name='conv1d_external',
             **kwargs
         )
-
+        self.debug['on_state_external_encoded'] = on_aac_x
         # Aux min/max_loss:
         if 'raw_state' in list(self.on_state_in.keys()):
             self.raw_state = self.on_state_in['raw_state']
@@ -122,10 +123,10 @@ class StackedLstmPolicy(BaseAacPolicy):
         if 'internal' in list(self.on_state_in.keys()):
             if self.encode_internal_state:
                 # Use convolution encoder:
-                on_x_internal = conv_2d_network(
-                    self.on_state_in['internal'],
-                    ob_space['internal'],
-                    ac_space,
+                on_x_internal = self.state_encoder_class_ref(
+                    x=self.on_state_in['internal'],
+                    ob_space=ob_space['internal'],
+                    ac_space=ac_space,
                     name='conv1d_internal',
                     # conv_2d_layer_ref=conv2d_dw,
                     conv_2d_num_filters=32,
@@ -136,7 +137,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                 x_int_shape_static = on_x_internal.get_shape().as_list()
                 on_x_internal = [
                     tf.reshape(on_x_internal, [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])])]
-                self.debug['state_internal_enc'] = tf.shape(on_x_internal)
+                self.debug['on_state_internal_encoded'] = on_x_internal
 
             else:
                 # Feed as is:
@@ -145,7 +146,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                     self.on_state_in['internal'],
                     [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
                 )
-                self.debug['state_internal'] = tf.shape(self.on_state_in['internal'])
+                self.debug['on_state_internal_encoded'] = self.on_state_in['internal']
                 on_x_internal = [on_x_internal]
 
         else:
@@ -158,13 +159,13 @@ class StackedLstmPolicy(BaseAacPolicy):
                 self.on_state_in['reward'],
                 [self.on_batch_size, max_seq_len, np.prod(x_rewards_shape_static[1:])]
             )
-            self.debug['rewards'] = tf.shape(x_rewards)
+            self.debug['rewards'] = tf.shapex_rewards
             x_rewards = [x_rewards]
 
         else:
             x_rewards = []
 
-        self.debug['conv_input_to_lstm1'] = tf.shape(on_aac_x)
+        self.debug['conv_input_to_lstm1'] = on_aac_x
 
         # Feed last last_reward into LSTM_1 layer along with encoded `external` state features:
         on_stage2_1_input = [on_aac_x, on_a_r_in[..., -1][..., None]] #+ on_x_internal
@@ -175,15 +176,15 @@ class StackedLstmPolicy(BaseAacPolicy):
         # LSTM_1 full input:
         on_aac_x = tf.concat(on_stage2_1_input, axis=-1)
 
-        self.debug['concat_input_to_lstm1'] = tf.shape(on_aac_x)
+        self.debug['concat_input_to_lstm1'] = on_aac_x
 
         # First LSTM layer takes encoded `external` state:
         [on_x_lstm_1_out, self.on_lstm_1_init_state, self.on_lstm_1_state_out, self.on_lstm_1_state_pl_flatten] =\
             lstm_network(on_aac_x, self.on_time_length, lstm_class_ref, (lstm_layers[0],), name='lstm_1')
 
-        self.debug['on_x_lstm_1_out'] = tf.shape(on_x_lstm_1_out)
-        self.debug['self.on_lstm_1_state_out'] = tf.shape(self.on_lstm_1_state_out)
-        self.debug['self.on_lstm_1_state_pl_flatten'] = tf.shape(self.on_lstm_1_state_pl_flatten)
+        self.debug['on_x_lstm_1_out'] = on_x_lstm_1_out
+        self.debug['self.on_lstm_1_state_out'] = self.on_lstm_1_state_out
+        self.debug['self.on_lstm_1_state_pl_flatten'] = self.on_lstm_1_state_pl_flatten
 
         # For time_flat only: Reshape on_lstm_1_state_out from [1,2,20,size] -->[20,1,2,size] --> [20,1, 2xsize]:
         reshape_lstm_1_state_out = tf.transpose(self.on_lstm_1_state_out, [2, 0, 1, 3])
@@ -199,7 +200,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         x_shape_static = on_x_lstm_1_out.get_shape().as_list()
         rsh_on_x_lstm_1_out = tf.reshape(on_x_lstm_1_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-        self.debug['reshaped_on_x_lstm_1_out'] = tf.shape(rsh_on_x_lstm_1_out)
+        self.debug['reshaped_on_x_lstm_1_out'] = rsh_on_x_lstm_1_out
 
         # Aac policy output and action-sampling function:
         [self.on_logits, _, self.on_sample] = dense_aac_network(
@@ -219,20 +220,20 @@ class StackedLstmPolicy(BaseAacPolicy):
         # LSTM_2 full input:
         on_aac_x = tf.concat(on_stage2_2_input, axis=-1)
 
-        self.debug['on_stage2_2_input'] = tf.shape(on_aac_x)
+        self.debug['on_stage2_2_input'] = on_aac_x
 
         [on_x_lstm_2_out, self.on_lstm_2_init_state, self.on_lstm_2_state_out, self.on_lstm_2_state_pl_flatten] = \
             lstm_network(on_aac_x, self.on_time_length, lstm_class_ref, (lstm_layers[-1],), name='lstm_2')
 
-        self.debug['on_x_lstm_2_out'] = tf.shape(on_x_lstm_2_out)
-        self.debug['self.on_lstm_2_state_out'] = tf.shape(self.on_lstm_2_state_out)
-        self.debug['self.on_lstm_2_state_pl_flatten'] = tf.shape(self.on_lstm_2_state_pl_flatten)
+        self.debug['on_x_lstm_2_out'] = on_x_lstm_2_out
+        self.debug['self.on_lstm_2_state_out'] = self.on_lstm_2_state_out
+        self.debug['self.on_lstm_2_state_pl_flatten'] = self.on_lstm_2_state_pl_flatten
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = on_x_lstm_2_out.get_shape().as_list()
         rsh_on_x_lstm_2_out = tf.reshape(on_x_lstm_2_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-        self.debug['reshaped_on_x_lstm_2_out'] = tf.shape(rsh_on_x_lstm_2_out)
+        self.debug['reshaped_on_x_lstm_2_out'] = rsh_on_x_lstm_2_out
 
         # Aac value function:
         [_, self.on_vf, _] = dense_aac_network(
@@ -267,10 +268,10 @@ class StackedLstmPolicy(BaseAacPolicy):
         #if False: # Temp. disable
 
         # Off-policy AAC network (shared):
-        off_aac_x = conv_2d_network(
-            self.off_state_in['external'],
-            ob_space['external'],
-            ac_space,
+        off_aac_x = self.state_encoder_class_ref(
+            x=self.off_state_in['external'],
+            ob_space=ob_space['external'],
+            ac_space=ac_space,
             name='conv1d_external',
             reuse=True,
             **kwargs
@@ -287,10 +288,10 @@ class StackedLstmPolicy(BaseAacPolicy):
         if 'internal' in list(self.off_state_in.keys()):
             if self.encode_internal_state:
                 # Use convolution encoder:
-                off_x_internal = conv_2d_network(
-                    self.off_state_in['internal'],
-                    ob_space['internal'],
-                    ac_space,
+                off_x_internal = self.state_encoder_class_ref(
+                    x=self.off_state_in['internal'],
+                    ob_space=ob_space['internal'],
+                    ac_space=ac_space,
                     name='conv1d_internal',
                     # conv_2d_layer_ref=conv2d_dw,
                     conv_2d_num_filters=32,
@@ -400,10 +401,10 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.rp_batch_size = tf.placeholder(tf.int32, name='rp_batch_size')
 
         # Shared conv. output:
-        rp_x = conv_2d_network(
-            self.rp_state_in['external'],
-            ob_space['external'],
-            ac_space,
+        rp_x = self.state_encoder_class_ref(
+            x=self.rp_state_in['external'],
+            ob_space=ob_space['external'],
+            ac_space=ac_space,
             name='conv1d_external',
             reuse=True,
             **kwargs

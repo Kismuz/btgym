@@ -837,6 +837,10 @@ class DevStrat_4_12(DevStrat_4_11):
     # Time embedding period:
     time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
 
+    # Hyperparameters for estimating signal features:
+    features_parameters =[8, 16, 32, 64, 128, 256]
+    num_features = len(features_parameters)
+
     # Number of environment steps to skip before returning next response,
     # e.g. if set to 10 -- agent will interact with environment every 10th step;
     # every other step agent action is assumed to be 'hold':
@@ -853,13 +857,13 @@ class DevStrat_4_12(DevStrat_4_11):
 
     reward_scale = 1  # reward multiplicator
 
-    state_ext_scale = np.linspace(3e3, 1e3, num=6)
+    state_ext_scale = np.linspace(3e3, 1e3, num=num_features)
 
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
         state_shape=
         {
-            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 6), dtype=np.float32),
+            'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, num_features), dtype=np.float32),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
             'metadata': DictSpace(
                 {
@@ -908,16 +912,13 @@ class DevStrat_4_12(DevStrat_4_11):
     )
 
     def set_datalines(self):
-        self.data.sma_8 = btind.SimpleMovingAverage(self.datas[0], period=8)
-        self.data.sma_16 = btind.SimpleMovingAverage(self.datas[0], period=16)
-        self.data.sma_32 = btind.SimpleMovingAverage(self.datas[0], period=32)
-        self.data.sma_64 = btind.SimpleMovingAverage(self.datas[0], period=64)
-        self.data.sma_128 = btind.SimpleMovingAverage(self.datas[0], period=128)
-        self.data.sma_256 = btind.SimpleMovingAverage(self.datas[0], period=256)
+        self.data.features = [
+            btind.SimpleMovingAverage(self.datas[0], period=period) for period in self.features_parameters
+        ]
 
         self.data.dim_sma = btind.SimpleMovingAverage(
             self.datas[0],
-            period=(256 + self.time_dim)
+            period=(np.asarray(self.features_parameters).max() + self.time_dim)
         )
         self.data.dim_sma.plotinfo.plot = False
 
@@ -925,13 +926,7 @@ class DevStrat_4_12(DevStrat_4_11):
 
         x_sma = np.stack(
             [
-                np.frombuffer(self.data.sma_8.get(size=self.time_dim)),
-                np.frombuffer(self.data.sma_16.get(size=self.time_dim)),
-                np.frombuffer(self.data.sma_32.get(size=self.time_dim)),
-                np.frombuffer(self.data.sma_64.get(size=self.time_dim)),
-                np.frombuffer(self.data.sma_128.get(size=self.time_dim)),
-                np.frombuffer(self.data.sma_256.get(size=self.time_dim)),
-                #np.frombuffer(self.data.sma_512.get(size=self.time_dim)),
+                feature.get(size=self.time_dim) for feature in self.data.features
             ],
             axis=-1
         )

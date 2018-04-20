@@ -73,7 +73,8 @@ def conv_1d_network(x,
                     pad="SAME",
                     dtype=tf.float32,
                     collections=None,
-                    reuse=False):
+                    reuse=False,
+                    **kwargs):
     """
     Stage1 network: from preprocessed 1D input to estimated features.
     Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.
