@@ -10,7 +10,10 @@
 
 /.idea/
 
-/examples/.ipynb_checkpoints/
+/examples/.ipynb_checkpoints/4
+
+# Mac DS_Store files
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
