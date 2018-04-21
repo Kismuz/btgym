@@ -111,7 +111,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             self.raw_state = None
             self.state_min_max = None
 
-            # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
+        # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
         x_shape_dynamic = tf.shape(on_aac_x)
         max_seq_len = tf.cast(x_shape_dynamic[0] / self.on_batch_size, tf.int32)
         x_shape_static = on_aac_x.get_shape().as_list()
@@ -180,7 +180,16 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         # First LSTM layer takes encoded `external` state:
         [on_x_lstm_1_out, self.on_lstm_1_init_state, self.on_lstm_1_state_out, self.on_lstm_1_state_pl_flatten] =\
-            lstm_network(on_aac_x, self.on_time_length, lstm_class_ref, (lstm_layers[0],), name='lstm_1')
+            lstm_network(
+                x=on_aac_x,
+                lstm_sequence_length=self.on_time_length,
+                lstm_class=lstm_class_ref,
+                lstm_layers=(lstm_layers[0],),
+                name='lstm_1'
+            )
+
+        # var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
+        # print('var_list: ', var_list)
 
         self.debug['on_x_lstm_1_out'] = on_x_lstm_1_out
         self.debug['self.on_lstm_1_state_out'] = self.on_lstm_1_state_out
@@ -223,7 +232,13 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.debug['on_stage2_2_input'] = on_aac_x
 
         [on_x_lstm_2_out, self.on_lstm_2_init_state, self.on_lstm_2_state_out, self.on_lstm_2_state_pl_flatten] = \
-            lstm_network(on_aac_x, self.on_time_length, lstm_class_ref, (lstm_layers[-1],), name='lstm_2')
+            lstm_network(
+                x=on_aac_x,
+                lstm_sequence_length=self.on_time_length,
+                lstm_class=lstm_class_ref,
+                lstm_layers=(lstm_layers[-1],),
+                name='lstm_2'
+            )
 
         self.debug['on_x_lstm_2_out'] = on_x_lstm_2_out
         self.debug['self.on_lstm_2_state_out'] = self.on_lstm_2_state_out
@@ -257,7 +272,6 @@ class StackedLstmPolicy(BaseAacPolicy):
         #     name='meta_grads_scale',
         #     initializer=normalized_columns_initializer(0.01),
         # )
-
 
         # Concatenate LSTM placeholders, init. states and context:
         self.on_lstm_init_state = (self.on_lstm_1_init_state, self.on_lstm_2_init_state)
@@ -322,7 +336,14 @@ class StackedLstmPolicy(BaseAacPolicy):
         off_aac_x = tf.concat(off_stage2_1_input, axis=-1)
 
         [off_x_lstm_1_out, _, _, self.off_lstm_1_state_pl_flatten] =\
-            lstm_network(off_aac_x, self.off_time_length, lstm_class_ref, (lstm_layers[0],), name='lstm_1', reuse=True)
+            lstm_network(
+                off_aac_x,
+                self.off_time_length,
+                lstm_class_ref,
+                (lstm_layers[0],),
+                name='lstm_1',
+                reuse=True
+            )
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = off_x_lstm_1_out.get_shape().as_list()
@@ -343,7 +364,14 @@ class StackedLstmPolicy(BaseAacPolicy):
         off_aac_x = tf.concat(off_stage2_2_input, axis=-1)
 
         [off_x_lstm_2_out, _, _, self.off_lstm_2_state_pl_flatten] = \
-            lstm_network(off_aac_x, self.off_time_length, lstm_class_ref, (lstm_layers[-1],), name='lstm_2', reuse=True)
+            lstm_network(
+                off_aac_x,
+                self.off_time_length,
+                lstm_class_ref,
+                (lstm_layers[-1],),
+                name='lstm_2',
+                reuse=True
+            )
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = off_x_lstm_2_out.get_shape().as_list()

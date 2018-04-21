@@ -104,6 +104,7 @@ class BaseAAC(object):
                  inc_episode_op=None,
                  _use_global_network=True,
                  _use_target_policy=False,  # target policy tracking behavioral one with delay
+                 _use_local_memory=False,  # in-place memory
                  _aux_render_modes=None,
                  **kwargs):
         """
@@ -165,6 +166,7 @@ class BaseAAC(object):
             inc_episode_op:         external tf.op incrementing global step counter
             _use_global_network:    bool, either to use parameter server policy instance
             _use_target_policy:     bool, PPO: use target policy (aka pi_old), delayed by `pi_prime_update_period` delay
+            _use_local_memory:      bool: use in-process replay memory instead of runner-based one
             _aux_render_modes:      additional visualisationas to include in per-episode rendering summary, internal
 
         Note:
@@ -192,9 +194,13 @@ class BaseAAC(object):
                     when rollout was collected (i.e. by behavioral policy estimator with older
                     parameters).
 
-                Nevertheless, time_flatting can be interesting
-                    because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
-                    ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).
+                Nevertheless, time_flat:
+                    - allows use of static RNN;
+                    - one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
+                    ensuring iid property;
+                    - allowing second-order derivatives which is impossible in current tf dynamic RNN implementation as
+                    it uses tf.while_loop internally;
+                    - computationally cheaper;
         """
         # Logging:
         self.log_level = log_level
@@ -345,7 +351,8 @@ class BaseAAC(object):
                 self.use_value_replay = use_value_replay
 
             self.use_any_aux_tasks = use_value_replay or use_pixel_control or use_reward_prediction
-            self.use_memory = self.use_any_aux_tasks or self.use_off_policy_aac
+            self.use_local_memory = _use_local_memory
+            self.use_memory = (self.use_any_aux_tasks or self.use_off_policy_aac) and not self.use_local_memory
 
             self.use_target_policy = _use_target_policy
             self.use_global_network = _use_global_network
@@ -377,6 +384,7 @@ class BaseAAC(object):
                     'ac_space': self.ref_env.action_space.n,
                     'rp_sequence_size': self.rp_sequence_size,
                     'aux_estimate': self.use_any_aux_tasks,
+                    'time_flat': self.time_flat
                 }
             )
 
@@ -1057,7 +1065,15 @@ class BaseAAC(object):
         )
         return batch
 
-    def _get_main_feeder(self, sess, on_policy_batch, off_policy_batch, rp_batch, is_train, pi, pi_prime=None):
+    def _get_main_feeder(
+            self,
+            sess,
+            on_policy_batch=None,
+            off_policy_batch=None,
+            rp_batch=None,
+            is_train=True,
+            pi=None,
+            pi_prime=None):
         """
         Composes entire train step feed dictionary.
         Args:
@@ -1072,37 +1088,39 @@ class BaseAAC(object):
         Returns:
             feed_dict (dict):   train step feed dictionary
         """
+        feed_dict = {}
         # Feeder for on-policy AAC loss estimation graph:
-        feed_dict = feed_dict_from_nested(pi.on_state_in, on_policy_batch['state'])
-        feed_dict.update(
-            feed_dict_rnn_context(pi.on_lstm_state_pl_flatten, on_policy_batch['context'])
-        )
-        feed_dict.update(
-            {
-                pi.on_a_r_in: on_policy_batch['last_action_reward'],
-                pi.on_batch_size: on_policy_batch['batch_size'],
-                pi.on_time_length: on_policy_batch['time_steps'],
-                pi.on_pi_act_target: on_policy_batch['action'],
-                pi.on_pi_adv_target: on_policy_batch['advantage'],
-                pi.on_pi_r_target: on_policy_batch['r'],
-                pi.train_phase: is_train,  # Zeroes learn rate, [+ batch_norm]
-            }
-        )
-        if self.use_target_policy and pi_prime is not None:
+        if on_policy_batch is not None:
+            feed_dict = feed_dict_from_nested(pi.on_state_in, on_policy_batch['state'])
             feed_dict.update(
-                feed_dict_from_nested(pi_prime.on_state_in, on_policy_batch['state'])
-            )
-            feed_dict.update(
-                feed_dict_rnn_context(pi_prime.on_lstm_state_pl_flatten, on_policy_batch['context'])
+                feed_dict_rnn_context(pi.on_lstm_state_pl_flatten, on_policy_batch['context'])
             )
             feed_dict.update(
                 {
-                    pi_prime.on_batch_size: on_policy_batch['batch_size'],
-                    pi_prime.on_time_length: on_policy_batch['time_steps'],
-                    pi_prime.on_a_r_in: on_policy_batch['last_action_reward']
+                    pi.on_a_r_in: on_policy_batch['last_action_reward'],
+                    pi.on_batch_size: on_policy_batch['batch_size'],
+                    pi.on_time_length: on_policy_batch['time_steps'],
+                    pi.on_pi_act_target: on_policy_batch['action'],
+                    pi.on_pi_adv_target: on_policy_batch['advantage'],
+                    pi.on_pi_r_target: on_policy_batch['r'],
+                    pi.train_phase: is_train,  # Zeroes learn rate, [+ batch_norm]
                 }
             )
-        if self.use_memory:
+            if self.use_target_policy and pi_prime is not None:
+                feed_dict.update(
+                    feed_dict_from_nested(pi_prime.on_state_in, on_policy_batch['state'])
+                )
+                feed_dict.update(
+                    feed_dict_rnn_context(pi_prime.on_lstm_state_pl_flatten, on_policy_batch['context'])
+                )
+                feed_dict.update(
+                    {
+                        pi_prime.on_batch_size: on_policy_batch['batch_size'],
+                        pi_prime.on_time_length: on_policy_batch['time_steps'],
+                        pi_prime.on_a_r_in: on_policy_batch['last_action_reward']
+                    }
+                )
+        if (self.use_any_aux_tasks or self.use_off_policy_aac) and off_policy_batch is not None:
             # Feeder for off-policy AAC loss estimation graph:
             off_policy_feed_dict = feed_dict_from_nested(pi.off_state_in, off_policy_batch['state'])
             off_policy_feed_dict.update(
@@ -1137,16 +1155,16 @@ class BaseAAC(object):
             feed_dict.update(off_policy_feed_dict)
 
             # Update with reward prediction subgraph:
-            if self.use_reward_prediction:
+            if self.use_reward_prediction and rp_batch is not None:
                 # Rebalanced 50/50 sample for RP:
                 feed_dict.update(self._get_rp_feeder(pi, rp_batch))
 
             # Pixel control ...
-            if self.use_pixel_control:
+            if self.use_pixel_control and off_policy_batch is not None:
                 feed_dict.update(self._get_pc_feeder(pi, off_policy_batch))
 
             # VR...
-            if self.use_value_replay:
+            if self.use_value_replay and off_policy_batch is not None:
                 feed_dict.update(self._get_vr_feeder(pi, off_policy_batch))
 
         return feed_dict

@@ -133,7 +133,7 @@ def as_array(struct):
 def batch_stack(dict_list, _top=True):
     """
     Stacks values of given processed rollouts along batch dimension.
-    Initial batch dimension is saved as key 'batch_size' for further shape inference.
+    Cumulative batch dimension is saved as key 'batch_size' for further shape inference.
 
     Example:
         dict_list sizes: [[20,10,10,1], [20,10,10,1]] --> result size: [40,10,10,1],

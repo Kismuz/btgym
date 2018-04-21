@@ -13,7 +13,7 @@ class CasualConvStrategy(GuidedStrategy_0_0):
     Provides stream of data for casual convolutional encoder
     """
     # Time embedding period:
-    time_dim = 256  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
+    time_dim = 128  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
 
     # Hyperparameters for estimating signal features:
     features_parameters = [8, 32, 128]

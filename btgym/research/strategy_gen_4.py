@@ -838,7 +838,7 @@ class DevStrat_4_12(DevStrat_4_11):
     time_dim = 30  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
 
     # Hyperparameters for estimating signal features:
-    features_parameters =[8, 16, 32, 64, 128, 256]
+    features_parameters = [8, 16, 32, 64, 128, 256]
     num_features = len(features_parameters)
 
     # Number of environment steps to skip before returning next response,

@@ -44,7 +44,8 @@ class BaseAacPolicy(object):
             rp_sequence_size:   reward prediction sample length
             lstm_class:         tf.nn.lstm class
             lstm_layers:        tuple of LSTM layers sizes
-            aux_estimate:       (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary.
+            aux_estimate:       bool, if True - add auxiliary tasks estimations to self.callbacks dictionary
+            time_flat:          bool, if True - use static rnn, dynamic otherwise
             **kwargs            not used
         """
         self.ob_space = ob_space
@@ -98,7 +99,12 @@ class BaseAacPolicy(object):
 
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
         [on_x_lstm_out, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
-            lstm_network(on_aac_x, self.on_time_length, lstm_class, lstm_layers)
+            lstm_network(
+                x=on_aac_x,
+                lstm_sequence_length=self.on_time_length,
+                lstm_class=lstm_class,
+                lstm_layers=lstm_layers,
+            )
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = on_x_lstm_out.get_shape().as_list()
@@ -360,6 +366,7 @@ class __Aac1dPolicy(BaseAacPolicy):
                  lstm_class=rnn.BasicLSTMCell,
                  lstm_layers=(256,),
                  aux_estimate=True,
+                 time_flat=False,
                  **kwargs):
         """
         Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,
@@ -381,6 +388,7 @@ class __Aac1dPolicy(BaseAacPolicy):
         self.lstm_class = lstm_class
         self.lstm_layers = lstm_layers
         self.aux_estimate = aux_estimate
+        self.time_flat = time_flat
         self.callback = {}
 
         # Placeholders for obs. state input:
@@ -441,7 +449,7 @@ class __Aac1dPolicy(BaseAacPolicy):
 
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
         [on_x_lstm_out, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
-            lstm_network(on_aac_x, self.on_time_length, lstm_class, lstm_layers)
+            lstm_network(on_aac_x, self.on_time_length, lstm_class, lstm_layers, time_flat=time_flat)
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = on_x_lstm_out.get_shape().as_list()
@@ -475,7 +483,7 @@ class __Aac1dPolicy(BaseAacPolicy):
         off_aac_x = tf.concat(off_stage2_input, axis=-1)
 
         [off_x_lstm_out, _, _, self.off_lstm_state_pl_flatten] =\
-            lstm_network(off_aac_x, self.off_time_length, lstm_class, lstm_layers, reuse=True)
+            lstm_network(off_aac_x, self.off_time_length, lstm_class, lstm_layers, time_flat=time_flat, reuse=True)
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = off_x_lstm_out.get_shape().as_list()
