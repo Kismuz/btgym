@@ -104,6 +104,7 @@ def lstm_network(
         lstm_sequence_length,
         lstm_class=rnn.BasicLSTMCell,
         lstm_layers=(256,),
+        static=False,
         name='lstm',
         reuse=False,
         **kwargs
@@ -119,6 +120,14 @@ def lstm_network(
          lstm flattened feed placeholders as tuple.
     """
     with tf.variable_scope(name, reuse=reuse):
+        # Prepare rnn type:
+        if static:
+            rnn_net = tf.nn.static_rnn
+            # Remove time dimension (suppose always get one) and wrap to list:
+            x = [x[:, 0, :]]
+
+        else:
+            rnn_net = tf.nn.dynamic_rnn
         # Define LSTM layers:
         lstm = []
         for size in lstm_layers:
@@ -133,18 +142,23 @@ def lstm_network(
         lstm_state_pl = rnn_placeholders(lstm.zero_state(1, dtype=tf.float32))
         lstm_state_pl_flatten = flatten_nested(lstm_state_pl)
 
-        lstm_outputs, lstm_state_out = tf.nn.dynamic_rnn(
+        print('rnn_net: ', rnn_net)
+
+        lstm_outputs, lstm_state_out = rnn_net(
             cell=lstm,
             inputs=x,
             initial_state=lstm_state_pl,
             sequence_length=lstm_sequence_length,
         )
 
-        print('lstm_outputs: ', lstm_outputs)
-        print('lstm_state_out:', lstm_state_out)
+        # print('\nlstm_outputs: ', lstm_outputs)
+        # print('\nlstm_state_out:', lstm_state_out)
 
-
-        x_out = lstm_outputs
+        # Unwrap and expand:
+        if static:
+            x_out = lstm_outputs[0][:, None, :]
+        else:
+            x_out = lstm_outputs
         state_out = lstm_state_out
     return x_out, lstm_init_state, state_out, lstm_state_pl_flatten
 

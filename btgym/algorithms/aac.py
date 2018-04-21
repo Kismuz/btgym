@@ -384,7 +384,7 @@ class BaseAAC(object):
                     'ac_space': self.ref_env.action_space.n,
                     'rp_sequence_size': self.rp_sequence_size,
                     'aux_estimate': self.use_any_aux_tasks,
-                    'time_flat': self.time_flat
+                    'static_rnn': self.time_flat
                 }
             )
 

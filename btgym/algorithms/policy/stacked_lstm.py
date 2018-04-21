@@ -30,6 +30,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                  linear_layer_ref=noisy_linear,
                  aux_estimate=False,
                  encode_internal_state=False,
+                 static_rnn=False,
                  **kwargs):
         """
         Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,
@@ -68,6 +69,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.aux_estimate = aux_estimate
         self.callback = {}
         self.encode_internal_state = encode_internal_state
+        self.static_rnn = static_rnn
         self.debug = {}
 
         # Placeholders for obs. state input:
@@ -185,6 +187,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                 lstm_sequence_length=self.on_time_length,
                 lstm_class=lstm_class_ref,
                 lstm_layers=(lstm_layers[0],),
+                static=static_rnn,
                 name='lstm_1'
             )
 
@@ -237,6 +240,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                 lstm_sequence_length=self.on_time_length,
                 lstm_class=lstm_class_ref,
                 lstm_layers=(lstm_layers[-1],),
+                static=static_rnn,
                 name='lstm_2'
             )
 
@@ -342,6 +346,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                 lstm_class_ref,
                 (lstm_layers[0],),
                 name='lstm_1',
+                static=static_rnn,
                 reuse=True
             )
 
@@ -370,6 +375,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                 lstm_class_ref,
                 (lstm_layers[-1],),
                 name='lstm_2',
+                static=static_rnn,
                 reuse=True
             )
 
