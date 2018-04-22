@@ -142,7 +142,7 @@ def lstm_network(
         lstm_state_pl = rnn_placeholders(lstm.zero_state(1, dtype=tf.float32))
         lstm_state_pl_flatten = flatten_nested(lstm_state_pl)
 
-        print('rnn_net: ', rnn_net)
+        # print('rnn_net: ', rnn_net)
 
         lstm_outputs, lstm_state_out = rnn_net(
             cell=lstm,

@@ -865,6 +865,7 @@ class DevStrat_4_12(DevStrat_4_11):
         {
             'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, num_features), dtype=np.float32),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
+            'datetime': spaces.Box(low=0, high=1, shape=(1, 5), dtype=np.float32),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -952,4 +953,28 @@ class DevStrat_4_12(DevStrat_4_11):
         x_broker = tanh(np.gradient(x_broker, axis=-1) * self.p.state_int_scale)
 
         return x_broker[:, None, :]
+
+    def get_datetime_state(self):
+        time = self.data.datetime.time()
+        date = self.data.datetime.date()
+
+        # Encode in [0, 1]:
+        mn = date.month / 12
+        wd = date.weekday() / 6
+        d = date.day / 31
+        h = time.hour / 24
+        mm = time.minute / 60
+
+        encoded_stamp = [mn, d, wd, h, mm]
+        return np.asarray(encoded_stamp)[None, :]
+
+    def get_state(self):
+        # Update inner state statistic and compose state:
+        self.update_sliding_stat()
+
+        self.state['external'] = self.get_market_state()
+        self.state['internal'] = self.get_broker_state()
+        self.state['datetime'] = self.get_datetime_state()
+
+        return self.state
 

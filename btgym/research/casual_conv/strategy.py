@@ -43,6 +43,7 @@ class CasualConvStrategy(GuidedStrategy_0_0):
         {
             'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, num_features), dtype=np.float32),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
+            'datetime': spaces.Box(low=0, high=1, shape=(1, 5), dtype=np.float32),
             'expert': spaces.Box(low=0, high=1, shape=(len(portfolio_actions),), dtype=np.float32),  # TODO: change inheritance!
             'metadata': DictSpace(
                 {

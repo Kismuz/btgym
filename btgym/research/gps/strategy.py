@@ -39,6 +39,7 @@ class GuidedStrategy_0_0(DevStrat_4_12):
         {
             'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 6), dtype=np.float32),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
+            'datetime': spaces.Box(low=0, high=1, shape=(1, 5), dtype=np.float32),
             'expert': spaces.Box(low=0, high=1, shape=(len(portfolio_actions),), dtype=np.float32),
             'metadata': DictSpace(
                 {
@@ -135,6 +136,7 @@ class GuidedStrategy_0_0(DevStrat_4_12):
 
         self.state['external'] = self.get_market_state()
         self.state['internal'] = self.get_broker_state()
+        self.state['datetime'] = self.get_datetime_state()
         self.state['expert'] = self.get_expert_state()
 
         return self.state

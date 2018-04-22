@@ -88,6 +88,8 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.off_batch_size = tf.placeholder(tf.int32, name='off_policy_batch_size')
         self.off_time_length = tf.placeholder(tf.int32, name='off_policy_sequence_size')
 
+        self.debug['on_state_in_keys'] = list(self.on_state_in.keys())
+
         # Base on-policy AAC network:
         # Conv. layers:
         on_aac_x = on_encoded_external= self.state_encoder_class_ref(
@@ -148,32 +150,45 @@ class StackedLstmPolicy(BaseAacPolicy):
                     self.on_state_in['internal'],
                     [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
                 )
-                self.debug['on_state_internal_encoded'] = self.on_state_in['internal']
+                self.debug['on_state_internal_encoded'] = on_x_internal
                 on_x_internal = [on_x_internal]
 
         else:
             on_x_internal = []
 
-        # Not used:
-        if 'reward' in list(self.on_state_in.keys()):
-            x_rewards_shape_static = self.on_state_in['reward'].get_shape().as_list()
-            x_rewards = tf.reshape(
-                self.on_state_in['reward'],
-                [self.on_batch_size, max_seq_len, np.prod(x_rewards_shape_static[1:])]
+        if 'datetime' in list(self.on_state_in.keys()):
+            x_dt_shape_static = self.on_state_in['datetime'].get_shape().as_list()
+            on_x_dt = tf.reshape(
+                self.on_state_in['datetime'],
+                [self.on_batch_size, max_seq_len, np.prod(x_dt_shape_static[1:])]
             )
-            self.debug['rewards'] = tf.shapex_rewards
-            x_rewards = [x_rewards]
+            on_x_dt = [on_x_dt]
 
         else:
-            x_rewards = []
+            on_x_dt = []
+
+        self.debug['on_state_dt_encoded'] = on_x_dt
+
+        # Not used:
+        # if 'reward' in list(self.on_state_in.keys()):
+        #     x_rewards_shape_static = self.on_state_in['reward'].get_shape().as_list()
+        #     x_rewards = tf.reshape(
+        #         self.on_state_in['reward'],
+        #         [self.on_batch_size, max_seq_len, np.prod(x_rewards_shape_static[1:])]
+        #     )
+        #     self.debug['rewards'] = tf.shapex_rewards
+        #     x_rewards = [x_rewards]
+        #
+        # else:
+        #     x_rewards = []
 
         self.debug['conv_input_to_lstm1'] = on_aac_x
 
-        # Feed last last_reward into LSTM_1 layer along with encoded `external` state features:
-        on_stage2_1_input = [on_aac_x, on_a_r_in[..., -1][..., None]] #+ on_x_internal
+        # Feed last last_reward into LSTM_1 layer along with encoded `external` state features and datetime stamp:
+        on_stage2_1_input = [on_aac_x, on_a_r_in[..., -1][..., None]] + on_x_dt
 
-        # Feed last_action, encoded `external` state,  `internal` state into LSTM_2:
-        on_stage2_2_input = [on_aac_x, on_a_r_in] + on_x_internal
+        # Feed last_action, encoded `external` state,  `internal` state, datetime stamp into LSTM_2:
+        on_stage2_2_input = [on_aac_x, on_a_r_in] + on_x_internal + on_x_dt
 
         # LSTM_1 full input:
         on_aac_x = tf.concat(on_stage2_1_input, axis=-1)
@@ -282,9 +297,6 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.on_lstm_state_out = (self.on_lstm_1_state_out, self.on_lstm_2_state_out)
         self.on_lstm_state_pl_flatten = self.on_lstm_1_state_pl_flatten + self.on_lstm_2_state_pl_flatten
 
-
-        #if False: # Temp. disable
-
         # Off-policy AAC network (shared):
         off_aac_x = self.state_encoder_class_ref(
             x=self.off_state_in['external'],
@@ -333,9 +345,20 @@ class StackedLstmPolicy(BaseAacPolicy):
         else:
             off_x_internal = []
 
-        off_stage2_1_input = [off_aac_x, off_a_r_in[..., -1][..., None]] #+ off_x_internal
+        if 'datetime' in list(self.off_state_in.keys()):
+            x_dt_shape_static = self.off_state_in['datetime'].get_shape().as_list()
+            off_x_dt = tf.reshape(
+                self.off_state_in['datetime'],
+                [self.off_batch_size, max_seq_len, np.prod(x_dt_shape_static[1:])]
+            )
+            off_x_dt = [off_x_dt]
 
-        off_stage2_2_input = [off_aac_x, off_a_r_in] + off_x_internal
+        else:
+            off_x_dt = []
+
+        off_stage2_1_input = [off_aac_x, off_a_r_in[..., -1][..., None]] + off_x_dt
+
+        off_stage2_2_input = [off_aac_x, off_a_r_in] + off_x_internal + off_x_dt
 
         off_aac_x = tf.concat(off_stage2_1_input, axis=-1)
 
@@ -474,6 +497,8 @@ class StackedLstmPolicy(BaseAacPolicy):
         # Callbacks:
         if self.aux_estimate:
             self.callback['pixel_change'] = self.get_pc_target
+
+        # print('policy_debug_dict:\n', self.debug)
 
 
 class AacStackedRL2Policy(StackedLstmPolicy):
