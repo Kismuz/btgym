@@ -16,7 +16,7 @@ class CasualConvStrategy(GuidedStrategy_0_0):
     time_dim = 128  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
 
     # Hyperparameters for estimating signal features:
-    features_parameters = [8, 32, 128]
+    features_parameters = [4, 8, 16, 32, 64]
     num_features = len(features_parameters)
 
     # Number of environment steps to skip before returning next response,
@@ -35,7 +35,7 @@ class CasualConvStrategy(GuidedStrategy_0_0):
 
     reward_scale = 1  # reward multiplicator
 
-    state_ext_scale = np.linspace(3e3, 1e3, num=num_features)
+    state_ext_scale = np.linspace(4e3, 1e3, num=num_features)
 
     params = dict(
         # Note: fake `Width` dimension to use 2d conv etc.:
