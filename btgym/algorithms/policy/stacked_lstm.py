@@ -277,7 +277,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             name='aac_dense_vfn'
         )
 
-        # Meta learning scale/rate:
+        # Meta learning scale/rate [DEPRECATED, remove]:
         self.meta_grads_scale = noisy_linear(
             rsh_on_x_lstm_2_out, #batch_flatten(on_encoded_external),
             1,
@@ -285,12 +285,13 @@ class StackedLstmPolicy(BaseAacPolicy):
             activation_fn=tf.nn.sigmoid,
         )
 
-        # self.meta_grads_scale = linear(
-        #     rsh_on_x_lstm_2_out,
-        #     1,
-        #     name='meta_grads_scale',
-        #     initializer=normalized_columns_initializer(0.01),
-        # )
+        # Inner learning rate:
+        self.on_learn_alpha = noisy_linear(
+            rsh_on_x_lstm_2_out,  # batch_flatten(on_encoded_external),
+            1,
+            'learn_alpha',
+            activation_fn=tf.nn.sigmoid,
+        )
 
         # Concatenate LSTM placeholders, init. states and context:
         self.on_lstm_init_state = (self.on_lstm_1_init_state, self.on_lstm_2_init_state)
@@ -404,14 +405,23 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = off_x_lstm_2_out.get_shape().as_list()
-        off_x_lstm_out = tf.reshape(off_x_lstm_2_out, [x_shape_dynamic[0], x_shape_static[-1]])
+        rsh_off_x_lstm_2_out = tf.reshape(off_x_lstm_2_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
         # Aac value function:
         [_, self.off_vf, _] = dense_aac_network(
-            off_x_lstm_out,
+            rsh_off_x_lstm_2_out,
             ac_space,
             linear_layer_ref=linear_layer_ref,
             name='aac_dense_vfn',
+            reuse=True
+        )
+
+        # Inner learning rate:
+        self.off_learn_alpha = noisy_linear(
+            rsh_off_x_lstm_2_out,
+            1,
+            'learn_alpha',
+            activation_fn=tf.nn.sigmoid,
             reuse=True
         )
 
@@ -434,7 +444,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.pc_lstm_state_pl_flatten = self.off_lstm_state_pl_flatten
 
         # Shared conv and lstm nets, same off-policy batch:
-        pc_x = off_x_lstm_out
+        pc_x = rsh_off_x_lstm_2_out
 
         # PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:
         self.pc_q = duelling_pc_network(pc_x, self.ac_space, linear_layer_ref=linear_layer_ref, **kwargs)

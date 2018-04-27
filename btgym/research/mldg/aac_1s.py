@@ -335,6 +335,12 @@ class AMLDG_1s(GuidedAAC):
             tf.gradients(self.off_pi_loss, pi.var_list),
             40.0
         )
+
+        pi.on_grads = [
+            g1 + g2 if g1 is not None and g2 is not None else g1 if g2 is None else g2
+            for g1, g2 in zip(pi.on_grads, pi.off_grads)
+        ]
+
         self.grads = pi.on_grads
 
         # Gradients to update local policy (conditioned on train, off-policy data):
@@ -406,7 +412,7 @@ class AMLDG_1s(GuidedAAC):
                 )
                 # self.log.warning('train rollout added to memory.')
 
-                # Collect test rollout using [updated] pi_prime policy:
+                # Collect test rollout using [updated by prev. step] policy:
                 test_data = self.get_data(
                     policy=self.local_network,
                     data_sample_config=data_config
@@ -419,7 +425,7 @@ class AMLDG_1s(GuidedAAC):
 
                 # TODO: paranoid check is_train ~ actual_data_trial_type
 
-                feed_dict = self.process_data(sess, test_data, is_train=True, pi=self.local_network)
+                feed_dict = self.process_data(sess, test_data, is_train=is_train, pi=self.local_network)
 
                 # self._check(feed_dict)
 
@@ -435,15 +441,15 @@ class AMLDG_1s(GuidedAAC):
                 # self._check(feed_dict)
 
                 if is_train:
-                    train_op = self.train_op
+                    train_op = [self.local_train_op, self.train_op]
 
                 else:
-                    train_op = self.local_train_op
+                    train_op = [self.local_train_op]
 
                 if wirte_model_summary:
-                    meta_fetches = [train_op, self.model_summary_op, self.inc_step]
+                    meta_fetches = train_op + [self.model_summary_op, self.inc_step]
                 else:
-                    meta_fetches = [train_op, self.inc_step]
+                    meta_fetches = train_op + [self.inc_step]
 
                 meta_fetched = sess.run(meta_fetches, feed_dict=feed_dict)
 
@@ -468,3 +474,211 @@ class AMLDG_1s(GuidedAAC):
                   '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
             self.log.exception(msg)
             raise RuntimeError(msg)
+
+
+class AMLDG_1s_a(AMLDG_1s):
+
+    def __init__(self, num_train_updates = 1, name='AMLDG1sa', **kwargs):
+        super(AMLDG_1s_a, self).__init__(name=name, **kwargs)
+
+        self.num_train_updates = num_train_updates
+        # self.meta_summaries = self.combine_aux_summaries()
+
+    def _make_train_op(self, pi, pi_prime, pi_global):
+        """
+        Defines training op graph and supplementary sync operations.
+
+                - separate optimization with different rates;
+
+        Returns:
+            tensor holding training op graph;
+        """
+        # Copy weights from the parameter server to the local pi:
+        self.sync_pi = tf.group(
+            *[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_global.var_list)]
+        )
+        self.sync = self.sync_pi
+        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
+
+        # Clipped gradients:
+        pi.on_grads, _ = tf.clip_by_global_norm(
+            tf.gradients(self.on_pi_loss, pi.var_list),
+            40.0
+        )
+        pi.off_grads, _ = tf.clip_by_global_norm(
+            tf.gradients(self.off_pi_loss, pi.var_list),
+            40.0
+        )
+        self.grads = pi.on_grads
+
+        # Learnable fast rate:
+        #self.fast_learn_rate = tf.reduce_mean(pi.off_learn_alpha, name='mean_alpha_rate') / 10
+        self.fast_optimizer = tf.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
+        # self.alpha_rate_loss = tf.global_norm(pi.off_grads)
+        # self.alpha_grads, _ = tf.clip_by_global_norm(
+        #     tf.gradients(self.alpha_rate_loss, pi.var_list),
+        #     40.0
+        # )
+        # # Sum on_ and  second order alpha_ gradients:
+        # pi.off_grads = [
+        #     g1 + g2 if g1 is not None and g2 is not None else g1 if g2 is None else g2
+        #     for g1, g2 in zip(pi.off_grads, self.alpha_grads)
+        # ]
+
+        # Gradients to update local policy (conditioned on train, off-policy data):
+        local_grads_and_vars = list(zip(pi.off_grads, pi.var_list))
+
+        # Meta-gradients to be sent to parameter server:
+        global_grads_and_vars = list(zip(pi.on_grads, pi_global.var_list))
+
+        # Set global_step increment equal to observation space batch size:
+        obs_space_keys = list(pi.on_state_in.keys())
+
+        assert 'external' in obs_space_keys, \
+            'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
+        self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in['external'])[0])
+
+        # Local fast optimisation op:
+        self.local_train_op = self.fast_optimizer.apply_gradients(local_grads_and_vars)
+
+        # Global meta-optimisation op:
+        self.global_train_op = self.optimizer.apply_gradients(global_grads_and_vars)
+
+        self.log.debug('train_op defined')
+        return [self.local_train_op, self.global_train_op]
+
+    # def combine_aux_summaries(self):
+    #     """
+    #     Additional summaries here.
+    #     """
+    #     off_model_summaries = tf.summary.merge(
+    #         [
+    #             tf.summary.scalar('alpha_rate', self.fast_learn_rate),
+    #         ]
+    #     )
+    #     return off_model_summaries
+
+    def _process(self, sess):
+        """
+        Meta-train/test procedure for one-shot learning.
+        Single call runs single meta-test episode.
+
+        Args:
+            sess (tensorflow.Session):   tf session obj.
+
+        """
+        try:
+            sess.run(self.sync_pi)
+
+            self.episode_memory.reset()
+
+            # Get data configuration,
+            data_config = self.get_sample_config(mode=1)
+
+            # self.log.warning('data_config: {}'.format(data_config))
+
+            # If this step data comes from source or target domain
+            # (i.e. is it either meta-optimised or true test episode):
+            is_train = not data_config['trial_config']['sample_type']
+            done = False
+            roll_num = 0
+
+            #  ** Data leakage checks removed.
+
+            # Collect initial trajectory rollout:
+            train_data = self.get_data(
+                policy=self.local_network,
+                data_sample_config=data_config,
+                force_new_episode=True
+            )
+
+            # self.log.warning('initial_rollout_ok')
+
+            while not done:
+                # self.log.warning('Roll #{}'.format(roll_num))
+
+                write_model_summary = \
+                    self.local_steps % self.model_summary_freq == 0
+
+                # Add to replay buffer:
+                self.episode_memory.add_batch(
+                    **self.half_process_data(sess, train_data, is_train=is_train, pi=self.local_network)
+                )
+                # self.log.warning('train rollout added to memory.')
+                feed_dict = {}
+                for i in range(self.num_train_updates):
+                    # Sample off policy data and make feeder:
+                    feed_dict = (
+                        self._get_main_feeder(
+                            sess,
+                            **self.episode_memory.sample(self.train_batch_size),
+                            is_train=is_train,
+                            pi=self.local_network,
+                        )
+                    )
+                    # self._check(feed_dict)
+
+                    fetches = [self.local_train_op]
+
+                    fetched = sess.run(fetches, feed_dict=feed_dict)
+
+                    # # Write down particular model summary:
+                    # if write_model_summary:
+                    #     self.summary_writer.add_summary(tf.Summary.FromString(fetched[-1]), sess.run(self.global_step))
+                    #     self.summary_writer.flush()
+
+                # Collect test on_policy rollout using [updated] policy:
+                test_data = self.get_data(
+                    policy=self.local_network,
+                    data_sample_config=data_config
+                )
+
+                # self.log.warning('test rollout collected.')
+
+                # If meta-test episode has just ended?
+                done = np.asarray(test_data['terminal']).any()
+
+                # TODO: paranoid check is_train ~ actual_data_trial_type
+
+                feed_dict.update(self.process_data(sess, test_data, is_train=is_train, pi=self.local_network))
+
+                # self._check(feed_dict)
+
+                if is_train:
+                    train_op = self.train_op
+
+                    if write_model_summary:
+                        meta_fetches = [train_op, self.model_summary_op, self.inc_step]
+
+                    else:
+                        meta_fetches = [train_op, self.inc_step]
+
+                    meta_fetched = sess.run(meta_fetches, feed_dict=feed_dict)
+
+                else:
+                    meta_fetched = [None, None]
+
+                if write_model_summary:
+
+                    meta_model_summary = meta_fetched[-2]
+
+                else:
+                    meta_model_summary = None
+
+                # Make this test trajectory next train:
+                train_data = test_data
+                # self.log.warning('Trajectories swapped.')
+
+                # Write down summaries:
+                self.process_summary(sess, test_data, model_data=meta_model_summary)
+
+                self.local_steps += 1
+                roll_num += 1
+
+        except:
+            msg = '.process() exception occurred' + \
+                  '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
+            self.log.exception(msg)
+            raise RuntimeError(msg)
+
+
