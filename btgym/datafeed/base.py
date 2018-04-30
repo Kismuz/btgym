@@ -32,6 +32,7 @@ import pandas as pd
 DataSampleConfig = dict(
     get_new=True,
     sample_type=0,
+    global_time=None,
     b_alpha=1,
     b_beta=1
 )
@@ -192,6 +193,7 @@ class BTgymBaseData:
 
         self.data = None  # Will hold actual data as pandas dataframe
         self.is_ready = False
+        self.global_time = None
         self.data_stat = None  # Dataset descriptive statistic as pandas dataframe
         self.data_range_delta = None  # Dataset total duration timedelta
         self.max_time_gap = None
@@ -339,6 +341,7 @@ class BTgymBaseData:
         self.test_interval = [break_point - self.backshift_num_records, self.data.shape[0]]
 
         self.sample_num = 0
+        self.global_time = self.data[0:1].index[0]
         self.is_ready = True
 
     def read_csv(self, data_filename=None, force_reload=False):
@@ -457,7 +460,7 @@ class BTgymBaseData:
     def sample(self, **kwargs):
         return self._sample(**kwargs)
 
-    def _sample(self, get_new=True, sample_type=0, b_alpha=1.0, b_beta=1.0):
+    def _sample(self, get_new=True, sample_type=0, b_alpha=1.0, b_beta=1.0, **kwargs):
         """
         Samples continuous subset of data.
 

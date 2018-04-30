@@ -78,6 +78,9 @@ class BTgymBaseStrategy(bt.Strategy):
         target_call=10,  # finish episode when reaching profit target, in percent.
         dataset_stat=None,  # Summary descriptive statistics for entire dataset and
         episode_stat=None,  # current episode. Got updated by server.
+        metadata=None,
+        trial_stat=None,
+        trial_metadata=None,
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
     )
@@ -171,6 +174,22 @@ class BTgymBaseStrategy(bt.Strategy):
             period=self.time_dim
         )
         self.data.dim_sma.plotinfo.plot = False
+
+        # self.log.warning('self.p.dir: {}'.format(dir(self.params)))
+
+        # Episode metadata, not included in obs.state.shape by default:
+        self.metadata = {
+            'type': np.asarray(self.p.metadata['type']),
+            'trial_num': np.asarray(self.p.metadata['parent_sample_num']),
+            'trial_type': np.asarray(self.p.metadata['parent_sample_type']),
+            'sample_num': np.asarray(self.p.metadata['sample_num']),
+            'first_row': np.asarray(self.p.metadata['first_row'])
+        }
+        # This flag controls if this episode can move global time forward (=iff it is test episode from target domain):
+        self.can_increment_global_time = self.metadata['type'] and self.metadata['trial_type']
+
+        self.log.debug('strategy.metadata: {}'.format(self.metadata))
+        self.log.debug('can_increment_global_time: {}'.format(self.can_increment_global_time))
 
         # Sliding staistics accumulators, globally normalized last `avg_perod` values,
         # so it's a bit more efficient than use bt.Observers:
@@ -335,6 +354,7 @@ class BTgymBaseStrategy(bt.Strategy):
         Invoked once by Strategy.__init__().
         """
         #self.log.warning('Deprecated method. Use __init__  with Super(..., self).__init__(**kwargs) instead.')
+        pass
 
     def _get_raw_state(self):
         """
@@ -491,6 +511,15 @@ class BTgymBaseStrategy(bt.Strategy):
             self.is_done = True
 
         return self.is_done
+
+    def get_time(self):
+        """
+        Retrieves current time point of the episode running.
+
+        Returns:
+            datetime object
+        """
+        return self.data.datetime.datetime()
 
     def notify_order(self, order):
         """

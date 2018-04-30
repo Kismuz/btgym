@@ -110,6 +110,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
             **kwargs:   see BTgymBaseStrategy args.
         """
         super(DevStrat_4_6, self).__init__(**kwargs)
+        self.state['metadata'] = self.metadata
 
         self.log.debug('DEV_state_shape: {}'.format(self.p.state_shape))
         self.log.debug('DEV_skip_frame: {}'.format(self.p.skip_frame))
@@ -119,19 +120,12 @@ class DevStrat_4_6(BTgymBaseStrategy):
         self.log.debug('DEV_dataset_stat:\n{}'.format(self.p.dataset_stat))
         self.log.debug('DEV_episode_stat:\n{}'.format(self.p.episode_stat))
 
+    def set_datalines(self):
+
         # Define data channels:
         self.channel_O = bt.Sum(self.data.open, - self.data.open(-1))
         self.channel_H = bt.Sum(self.data.high, - self.data.open)
-        self.channel_L = bt.Sum(self.data.low,  - self.data.open)
-
-        # Episodic metadata:
-        self.state['metadata'] = {
-            'type': np.asarray(self.p.metadata['type']),
-            'trial_num': np.asarray(self.p.metadata['parent_sample_num']),
-            'trial_type': np.asarray(self.p.metadata['parent_sample_type']),
-            'sample_num': np.asarray(self.p.metadata['sample_num']),
-            'first_row': np.asarray(self.p.metadata['first_row'])
-        }
+        self.channel_L = bt.Sum(self.data.low, - self.data.open)
 
     def get_market_state(self):
 

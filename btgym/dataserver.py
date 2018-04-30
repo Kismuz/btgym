@@ -20,6 +20,7 @@
 import multiprocessing
 import copy
 import zmq
+import datetime
 
 from .datafeed import DataSampleConfig
 
@@ -50,16 +51,17 @@ class BTgymDataFeedServer(multiprocessing.Process):
         self.local_step = 0
         self.dataset = dataset
         self.network_address = network_address
-        self.pre_sample = None
-        self.pre_sample_config = copy.deepcopy(DataSampleConfig)
+        self.default_sample_config = copy.deepcopy(DataSampleConfig)
 
         self.debug_pre_sample_fails = 0
         self.debug_pre_sample_attempts = 0
 
+        self.global_time = None
+
     def get_data(self, sample_config=None):
         """
         Get Trial sample according to parameters received.
-        If no parameters being passed - just makes and stores pre-sample.
+        If no parameters being passed - makes sample with default parameters.
 
         Args:
             sample_config:   sampling parameters configuration dictionary
@@ -67,52 +69,22 @@ class BTgymDataFeedServer(multiprocessing.Process):
         Returns:
             sample:     if `sample_params` arg has been passed and dataset is ready
             None:       otherwise
-
-        Notes:
-            Some heuristic used here to enable parallelism: as training usually requires long series of similar samples,
-            we pre-sample data with most probable parameters;
-            first guessed sample gets type =`Train`, b_alpha=1, b_beta=1, and subsequent ones get actual
-            sampling params of previous accepted sample. If newly received parameters doesnt match pre-sampled ones -
-            we discard our guess and sample again with actual params.
-            TODO: should be switched off if using decaying `b_alpha` and `b_beta` params.
         """
         if self.dataset.is_ready:
             if sample_config is not None:
-                if self.pre_sample is None or not self.pre_sample_config == sample_config:
-                    self.log.debug('Pre-sampling guess failed, resampling.')
-                    self.pre_sample_config = copy.deepcopy(sample_config)
-                    sample = self.dataset.sample(**sample_config)
-
-                    self.debug_pre_sample_fails += 1
-
-                else:
-                    self.log.debug('Pre-sampling guess succeeded.')
-                    sample = self.pre_sample
+                sample_config['global_time'] = copy.deepcopy(self.global_time)
+                sample = self.dataset.sample(**sample_config)
 
             else:
-                self.log.debug('Guessing sample with params: {}'.format(self.pre_sample_config))
-                self.pre_sample = self.dataset.sample(**self.pre_sample_config)
-
-                self.debug_pre_sample_attempts += 1
-
-                return None
+                self.default_sample_config['global_time'] = copy.deepcopy(self.global_time)
+                self.log.debug('Guessing sample with params: {}'.format(self.default_sample_config))
+                sample = self.dataset.sample(**self.default_sample_config)
 
             self.local_step += 1
 
-            # Debug:
-            if self.local_step % 100 == 0:
-                self.log.debug(
-                    'Pre_samples: {}, failed: {}, fails/attempts: {}'.
-                        format(
-                        self.debug_pre_sample_attempts,
-                        self.debug_pre_sample_fails,
-                        self.debug_pre_sample_fails / (self.debug_pre_sample_attempts + 1e-10)
-                    )
-                )
         else:
             # Dataset not ready, make dummy:
             sample = None
-            self.pre_sample = None
 
         return sample
 
@@ -150,12 +122,12 @@ class BTgymDataFeedServer(multiprocessing.Process):
         get_new = True
 
         while True:
-            if get_new:
-            # Guess sample:
-                self.get_data()
-                get_new = False
+            # if get_new:
+            # # Guess sample:
+            #     self.get_data()
+            #     get_new = False
 
-            # Stick here with data in hand until receive any request:
+            # Stick here until receive any request:
             service_input = socket.recv_pyobj()
             self.log.debug('Received <{}>'.format(service_input))
 
@@ -180,6 +152,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
                         kwargs = {}
 
                     self.dataset.reset(**kwargs)
+                    self.global_time = self.dataset.global_time
                     message = {'ctrl': 'Reset with kwargs: {}'.format(kwargs)}
                     self.log.debug('Data_is_ready: {}'.format(self.dataset.is_ready))
                     socket.send_pyobj(message)
@@ -219,6 +192,30 @@ class BTgymDataFeedServer(multiprocessing.Process):
                         dataset_is_ready=self.dataset.is_ready
                     )
                     socket.send_pyobj(info_dict)
+
+                # Set global time:
+                elif service_input['ctrl'] == '_set_global_time':
+                    try:
+                        assert isinstance(service_input['time'], datetime.datetime)
+                        if self.global_time is not None and self.global_time > service_input['time']:
+                            message = 'Moving back in time not supported! ' +\
+                                      'Current global_time: {}, '.format(self.global_time) +\
+                                      'attempt to set: {}; nothing done. '.format(service_input['time']) +\
+                                      'Hint: check sampling logic consistency.'
+
+                            self.log.warning(message)
+
+                        else:
+                            self.global_time = service_input['time']
+                            message = 'Global_time set to: {}'.format(self.global_time)
+
+                    except AssertionError:
+                        message =\
+                            'Expected global_time value to be instance of datetime.datetime(), got: {}; nothing done'.\
+                            format(service_input['time'])
+                        self.log.warning(message)
+
+                    socket.send_pyobj(message)
 
                 else:  # ignore any other input
                     # NOTE: response dictionary must include 'ctrl' key

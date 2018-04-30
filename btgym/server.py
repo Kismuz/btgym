@@ -49,10 +49,13 @@ class _BTgymAnalyzer(bt.Analyzer):
         # Inherit logger and ZMQ socket from parent:
         self.log = self.strategy.env._log
         self.socket = self.strategy.env._socket
+        self.data_socket = self.strategy.env._data_socket
         self.render = self.strategy.env._render
 
         # Pass data serving methods:
         self.get_current_trial = self.strategy.env._get_data
+        self.can_increment_global_time = self.strategy.can_increment_global_time
+        self.get_global_time = self.strategy.get_time
         self.get_dataset_info = self.strategy.env._get_info
 
         self.message = None
@@ -107,9 +110,20 @@ class _BTgymAnalyzer(bt.Analyzer):
             # Gather response:
             raw_state = self.strategy._get_raw_state()
             state = self.strategy.get_state()
-            # DUMMY:
-
             reward = self.strategy.get_reward()
+
+            # Send global_time to data_server, if authorized;
+            if self.can_increment_global_time:
+                global_time = self.get_global_time()
+                self.log.debug('got strategy time: {}'.format(global_time))
+                self.data_socket.send_pyobj(
+                    {
+                        'ctrl': '_set_global_time',
+                        'time':  global_time
+                    }
+                )
+                global_time_response = self.data_socket.recv_pyobj()
+                self.log.debug(global_time_response)
 
             # Halt and wait to receive message from outer world:
             self.message = self.socket.recv_pyobj()
@@ -143,7 +157,9 @@ class _BTgymAnalyzer(bt.Analyzer):
                 else:
                     message = {'ctrl': 'send control keys: <_reset>, <_getstat>, ' +
                                        '<_render>, <_stop>, or valid agent action'}
-                    self.log.debug('Analyzer received unexpected key: {}; Sent: {}'.format(self.message, str(message)))
+                    self.log.warning(
+                        'Analyzer received unexpected key: {}; Sent: {}'.format(self.message, str(message))
+                    )
                     self.socket.send_pyobj(message)
 
                 # Halt again:
@@ -379,14 +395,14 @@ class BTgymServer(multiprocessing.Process):
         Intended for serving requests from data_slave environment.
 
         Returns:
-            dict containing trial instance, d_set statistic and origin key; dict containing 'cntrl' response if master
+            dict containing trial instance, d_set statistic and origin key; dict containing 'ctrl' response if master
             d_set is not ready;
         """
         if self.trial_sample is not None:
             message = {
                 'sample': self.trial_sample,
                 'stat': self.dataset_stat,
-                'origin': 'master_environmnet',
+                'origin': 'master_environment',
             }
 
         else:
@@ -529,6 +545,7 @@ class BTgymServer(multiprocessing.Process):
             start_time = time.time()
             cerebro = copy.deepcopy(self.cerebro)
             cerebro._socket = self.socket
+            cerebro._data_socket = self.data_socket
             cerebro._log = self.log
             cerebro._render = self.render
 
