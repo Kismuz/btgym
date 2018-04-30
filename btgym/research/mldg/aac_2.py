@@ -134,10 +134,220 @@ class AMLDG_d(AMLDG):
             'render_summary': [None],
         }
 
+    def process_source(self, sess, train_data_config, test_data_config):
+        """
+        Trains on single meta-test episode from source domain.
+
+        Args:
+            sess:
+            train_data_config:
+            test_data_config:
+
+        Returns:
+
+        """
+
+        # Collect batch of train rollouts:
+        train_batch = self.train_aac.get_batch(
+            size=self.train_distribution_size,
+            require_terminal=True,
+            same_trial=True,
+            data_sample_config=train_data_config
+        )
+
+        # Process to get train data distribution:
+        on_policy_distr, off_policy_distr, rp_distr = self.train_aac.process_batch(sess, train_batch)
+
+        # self.log.warning(
+        #     'Train distribution ok, made from ~{} experiences'.format(
+        #         len(train_batch['on_policy']) * self.rollout_length
+        #     )
+        # )
+
+        # Data leakage tests:
+        train_trial_chksum = np.average(
+            [
+                np.average(data['state']['metadata']['trial_num']) for data in train_batch['on_policy']
+            ]
+        )
+        # self.log.warning('train_trial_chksum: {}'.format(train_trial_chksum))
+        try:
+            assert (np.asarray(
+                [
+                    (np.asarray(data['state']['metadata']['type']) == 0).all() for data in train_batch['on_policy']
+                ]
+            ) == 1).all()
+
+        except AssertionError:
+            self.log.warning('Train data type mismatch found!')
+
+        # Start collecting meta-test episode data rollout by rollout:
+        done = False
+        roll_num = 0
+
+        while not done:
+            sess.run(self.test_aac.sync_pi_global)  # from global to pi_prime
+            sess.run(self.train_aac.sync_pi_local)  # from pi_prime to pi
+            feed_dict = {}
+
+            wirte_model_summary = \
+                self.local_steps % self.model_summary_freq == 0
+
+            for i in range(self.num_train_updates):
+                # Sample from train distribution, make feed dictionary:
+                feed_dict = self.train_aac._get_main_feeder(
+                    sess,
+                    self.train_aac.sample_batch(on_policy_distr, self.train_batch_size),
+                    self.train_aac.sample_batch(off_policy_distr, self.train_batch_size),
+                    self.train_aac.sample_batch(rp_distr, self.train_batch_size),
+                    is_train=True,
+                    pi=self.train_aac.local_network,
+                )
+
+                # Perform pi-prime update conditioned on train sample:
+                # note: learn rate is not annealed here
+                if wirte_model_summary:
+                    fetches = [self.train_op, self.train_aac.model_summary_op]
+                else:
+                    fetches = [self.train_op]
+
+                fetched = sess.run(fetches, feed_dict=feed_dict)
+
+                # self.log.warning('Pi_prime update {} ok.'.format(i))
+
+            # Note: reusing last train data sample for meta-update step:
+
+            # Collect test rollout using updated pi_prime policy:
+            test_data = self.test_aac.get_data(data_sample_config=test_data_config)
+
+            # If meta-test episode has just ended?
+            done = np.asarray(test_data['terminal']).any()
+
+            test_trial_chksum = np.average(test_data['on_policy'][0]['state']['metadata']['trial_num'])
+
+            # Ensure slave runner data consistency, can correct if episode just started:
+            if roll_num == 0 and train_trial_chksum != test_trial_chksum:
+                test_data = self.test_aac.get_data(data_sample_config=test_data_config, force_new_episode=True)
+                done = np.asarray(test_data['terminal']).any()
+                faulty_chksum = test_trial_chksum
+                test_trial_chksum = np.average(test_data['on_policy'][0]['state']['metadata']['trial_num'])
+
+                self.log.warning(
+                    'Test trial corrected: {} -> {}'.format(faulty_chksum, test_trial_chksum)
+                )
+            if train_trial_chksum != test_trial_chksum:
+                # Still got error? - highly probable algorithm logic fault. Issue warning.
+                msg = 'Train/test trials mismatch found!\nGot train trials: {},\nTest trials: {}'. \
+                    format(
+                    train_trial_chksum,
+                    test_trial_chksum
+                )
+                msg2 = 'Train data config: {}\n Test data config: {}'.format(train_data_config, test_data_config)
+
+                self.log.warning(msg)
+                self.log.warning(msg2)
+
+            try:
+                assert (np.asarray(test_data['on_policy'][0]['state']['metadata']['type']) == 1).all()
+
+            except AssertionError:
+                self.log.warning('Train data type mismatch found!')
+
+            # Perform meta_update using both on_policy test data and sampled train data:
+
+            # Process test data and perform meta-optimisation step:
+            feed_dict.update(
+                self.test_aac.process_data(sess, test_data, is_train=True, pi=self.test_aac.local_network)
+            )
+
+            if wirte_model_summary:
+                meta_fetches = [self.meta_train_op, self.test_aac.model_summary_op, self.inc_step]
+            else:
+                meta_fetches = [self.meta_train_op, self.inc_step]
+
+            meta_fetched = sess.run(meta_fetches, feed_dict=feed_dict)
+
+            # self.log.warning('Meta-gradients ok.')
+
+            if wirte_model_summary:
+                meta_model_summary = meta_fetched[-2]
+                model_summary = fetched[-1]
+
+            else:
+                meta_model_summary = None
+                model_summary = None
+
+            # Summaries etc:
+            self.test_aac.process_summary(sess, test_data, meta_model_summary)
+            self.train_aac.process_summary(sess, self.dummy_data, model_summary)
+            self.local_steps += 1
+            roll_num += 1
+
+    def process_target(self, sess, train_data_config, test_data_config):
+        """
+        Evaluates single meta-test episode from target domain.
+
+        Args:
+            sess:
+            train_data_config:
+            test_data_config:
+
+        Returns:
+
+        """
+
+        done = False
+        # Master runner to sample new trial:
+        _ = self.train_aac.get_data(data_sample_config=train_data_config, force_new_episode=True)
+        while not done:
+            # Collect test rollout:
+            test_data = self.test_aac.get_data(data_sample_config=test_data_config)
+            new_episode = False
+
+            # If meta-test episode has just ended?
+            done = np.asarray(test_data['terminal']).any()
+
+            # Summaries:
+            # self.log.warning(
+            #     'test_data:\n>>{}<<\n>>{}<<\n>>{}<<\nis_test: {}'. format(
+            #         test_data['ep_summary'], test_data['test_ep_summary'], test_data['terminal'], test_data['is_test']
+            #     )
+            # )
+            self.test_aac.process_summary(sess, test_data, None)
+
     def process(self, sess):
         try:
+            # Sync parameters:
+            sess.run(self.test_aac.sync_pi_global)  # from global to pi_prime
+            sess.run(self.train_aac.sync_pi_local)  # from pi_prime to pi
 
-            # Sync pi parameters:
+            # Define trial parameters:
+            train_data_config = self.train_aac.get_sample_config(mode=1)  # master env., samples trial
+            test_data_config = self.train_aac.get_sample_config(mode=0)  # slave env, catches up with same trial
+
+            # self.log.warning('train_data_config: {}'.format(train_data_config))
+            # self.log.warning('test_data_config: {}'.format(test_data_config))
+
+            is_target = train_data_config['trial_config']['sample_type']
+
+            # self.log.warning('is_target: {}'.format(is_target))
+
+            if is_target:
+                self.process_target(sess, train_data_config, test_data_config)
+
+            else:
+                self.process_source(sess, train_data_config, test_data_config)
+
+        except:
+            msg = 'process() exception occurred' + \
+                  '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
+            self.log.exception(msg)
+            raise RuntimeError(msg)
+
+    def __process(self, sess):
+        try:
+
+            # Sync parameters:
             sess.run(self.train_aac.sync_pi)
 
             # Define trial parameters:
@@ -198,7 +408,8 @@ class AMLDG_d(AMLDG):
                         self.train_aac.sample_batch(on_policy_distr, self.train_batch_size),
                         self.train_aac.sample_batch(off_policy_distr, self.train_batch_size),
                         self.train_aac.sample_batch(rp_distr, self.train_batch_size),
-                        is_train=True
+                        is_train=True,
+                        pi=self.train_aac.local_network,
                     )
 
                     # Perform pi-prime update conditioned on train sample:
@@ -254,7 +465,7 @@ class AMLDG_d(AMLDG):
                 if not is_target:
                     # Process test data and perform meta-optimisation step:
                     feed_dict.update(
-                        self.test_aac.process_data(sess,test_data,is_train=True,pi=self.test_aac.local_network)
+                        self.test_aac.process_data(sess,test_data,is_train=True, pi=self.test_aac.local_network)
                     )
 
                     if wirte_model_summary:

@@ -113,7 +113,7 @@ class AMLDG_1d(AMLDG_1):
         self.grads = []
         for g1, g2 in zip(pi.grads, pi_prime.grads):
             if g1 is not None and g2 is not None:
-                meta_g = g1 * self.g1_lambda + g2  # if g1 is excluded - we got MAML
+                meta_g = g1 * self.g1_lambda + g2
 
             else:
                 meta_g = None  # need this to map correctly to vars
@@ -184,7 +184,7 @@ class AMLDG_1d(AMLDG_1):
 
             while not done:
                 # self.log.warning('Roll #{}'.format(roll_num))
-
+                feed_dict = {}
                 wirte_model_summary = \
                     self.local_steps % self.model_summary_freq == 0
 

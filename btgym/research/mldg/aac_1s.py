@@ -477,6 +477,9 @@ class AMLDG_1s(GuidedAAC):
 
 
 class AMLDG_1s_a(AMLDG_1s):
+    """
+    FAILED
+    """
 
     def __init__(self, num_train_updates = 1, name='AMLDG1sa', **kwargs):
         super(AMLDG_1s_a, self).__init__(name=name, **kwargs)

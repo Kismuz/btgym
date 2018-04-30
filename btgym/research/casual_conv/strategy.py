@@ -230,7 +230,7 @@ class CasualConvStrategy_0(CasualConvStrategy):
         features_low = [MinPool(self.data, period=period) for period in self.features_parameters]
         features_high = [MaxPool(self.data, period=period) for period in self.features_parameters]
 
-        # If `scale` was scalar make it vector:
+        # If `scale` was scalar - make it vector:
         if len(np.asarray(self.p.state_ext_scale).shape) < 1:
             self.p.state_ext_scale = np.repeat(np.asarray(self.p.state_ext_scale), self.num_features)
 

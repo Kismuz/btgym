@@ -217,7 +217,6 @@ class AMLDG():
                 opt_max_env_steps=self.opt_max_env_steps,
                 aac_lambda=aac_lambda,
                 guided_lambda=guided_lambda,
-                # guided_lambda=0.0,  # prevent information leakage
                 rollout_length=self.rollout_length,
                 trial_source_target_cycle=trial_source_target_cycle,
                 num_episodes_per_trial=num_episodes_per_trial,
@@ -274,7 +273,6 @@ class AMLDG():
         self.test_aac.global_episode = self.train_aac.global_episode
         self.test_aac.inc_episode = self.train_aac.inc_episode
         self.train_aac.inc_episode = None
-        self.inc_step = self.train_aac.inc_step
 
         # Meta-opt. loss:
         self.loss = self.train_aac.loss + self.test_aac.loss
@@ -322,8 +320,9 @@ class AMLDG():
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
         self.train_aac.inc_step = self.train_aac.global_step.assign_add(
-            tf.shape(self.train_aac.local_network.on_state_in['external'])[0]
+            tf.shape(self.test_aac.local_network.on_state_in['external'])[0]
         )
+        self.inc_step = self.train_aac.inc_step
         # Pi to pi_prime local adaptation op:
         # self.train_op = self.train_aac.optimizer.apply_gradients(train_grads_and_vars)
 

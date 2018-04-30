@@ -320,7 +320,7 @@ class BaseSynchroRunner():
             )
         return ep_stat
 
-    def get_ep_render(self,is_test=False):
+    def get_ep_render(self, is_test=False):
         """
         Visualises episode environment and policy statistics.
         Relies on environmnet renderer class methods,
@@ -424,6 +424,7 @@ class BaseSynchroRunner():
             #     'started new episode with:\ndata_sample_config: {}\nforce_new_episode: {}'.
             #         format(data_sample_config, force_new_episode)
             # )
+            # self.log.warning('pre_experience_metadata: {}'.format(self.pre_experience['state']['metadata']))
 
         # Collect single rollout:
         while rollout.size < self.rollout_length and not self.terminal_end:
@@ -492,6 +493,7 @@ class BaseSynchroRunner():
             ep_summary=train_ep_summary,
             test_ep_summary=test_ep_summary,
             render_summary=render_ep_summary,
+            is_test=is_test,
         )
         return data
 
@@ -596,6 +598,7 @@ class BaseSynchroRunner():
             ep_summary=train_ep_summary,
             test_ep_summary=test_ep_summary,
             render_summary=render_ep_summary,
+            is_test=is_test,
         )
         return data
 
