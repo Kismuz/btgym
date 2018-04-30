@@ -123,11 +123,11 @@ class _BTgymAnalyzer(bt.Analyzer):
                     }
                 )
                 global_time_response = self.data_socket.recv_pyobj()
-                self.log.debug(global_time_response)
+                self.log.debug('DATA_COMM/glob.time received: {}'.format(global_time_response))
 
             # Halt and wait to receive message from outer world:
             self.message = self.socket.recv_pyobj()
-            msg = 'COMM recieved: {}'.format(self.message)
+            msg = 'COMM received: {}'.format(self.message)
             self.log.debug(msg)
 
             # Control actions loop, ignoring 'action' key:

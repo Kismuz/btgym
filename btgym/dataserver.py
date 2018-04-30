@@ -29,6 +29,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
     """
     Data provider server class.
     Enables efficient data sampling for asynchronous multiply BTgym environments execution.
+    Manages global back-testing time.
     """
     process = None
     dataset_stat = None
@@ -153,11 +154,11 @@ class BTgymDataFeedServer(multiprocessing.Process):
 
                     self.dataset.reset(**kwargs)
                     self.global_time = self.dataset.global_time
+                    self.log.notice('Initial global_time set to: {}'.format(self.global_time))
                     message = {'ctrl': 'Reset with kwargs: {}'.format(kwargs)}
                     self.log.debug('Data_is_ready: {}'.format(self.dataset.is_ready))
                     socket.send_pyobj(message)
                     self.local_step = 0
-                    get_new = True
 
                 # Send dataset sample:
                 elif service_input['ctrl'] == '_get_data':

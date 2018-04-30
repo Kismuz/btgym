@@ -185,7 +185,8 @@ class BTgymBaseStrategy(bt.Strategy):
             'sample_num': np.asarray(self.p.metadata['sample_num']),
             'first_row': np.asarray(self.p.metadata['first_row'])
         }
-        # This flag controls if this episode can move global time forward (=iff it is test episode from target domain):
+        # This flag shows if this episode can move global time forward (see: btgym.server._BTgymAnalyzer.next() method);
+        # default logic: iff it is test episode from target domain:
         self.can_increment_global_time = self.metadata['type'] and self.metadata['trial_type']
 
         self.log.debug('strategy.metadata: {}'.format(self.metadata))
@@ -382,7 +383,7 @@ class BTgymBaseStrategy(bt.Strategy):
 
     def get_state(self):
         """
-        Override this method, defining necessary calculations and return arbitrary shaped tensor.
+        Override this method, define necessary calculations and return arbitrary shaped tensor.
         It's option either to compute entire featurized environment state or just pass raw price data
         to RL algorithm featurizer module.
 
