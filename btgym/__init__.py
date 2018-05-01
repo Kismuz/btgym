@@ -19,14 +19,13 @@
 
 from gym.envs.registration import register
 
+from .spaces import DictSpace
 from .strategy import BTgymBaseStrategy
 from .server import BTgymServer
 from .datafeed import BTgymDataset, BTgymRandomDataDomain, BTgymSequentialDataDomain
 from .datafeed import DataSampleConfig, EnvResetConfig
 from .dataserver import BTgymDataFeedServer
-# from .monitor import BTgymMonitor
 from .rendering import BTgymRendering
-from .spaces import DictSpace
 from .envs.backtrader import BTgymEnv
 
 register(

@@ -55,7 +55,7 @@ class _BTgymAnalyzer(bt.Analyzer):
         # Pass data serving methods:
         self.get_current_trial = self.strategy.env._get_data
         self.can_increment_global_time = self.strategy.can_increment_global_time
-        self.get_global_time = self.strategy.get_time
+        self.get_timestamp = self.strategy._get_timestamp
         self.get_dataset_info = self.strategy.env._get_info
 
         self.message = None
@@ -112,19 +112,6 @@ class _BTgymAnalyzer(bt.Analyzer):
             state = self.strategy.get_state()
             reward = self.strategy.get_reward()
 
-            # Send global_time to data_server, if authorized;
-            if self.can_increment_global_time:
-                global_time = self.get_global_time()
-                self.log.debug('got strategy time: {}'.format(global_time))
-                self.data_socket.send_pyobj(
-                    {
-                        'ctrl': '_set_global_time',
-                        'time':  global_time
-                    }
-                )
-                global_time_response = self.data_socket.recv_pyobj()
-                self.log.debug('DATA_COMM/glob.time received: {}'.format(global_time_response))
-
             # Halt and wait to receive message from outer world:
             self.message = self.socket.recv_pyobj()
             msg = 'COMM received: {}'.format(self.message)
@@ -180,6 +167,20 @@ class _BTgymAnalyzer(bt.Analyzer):
             # opt to send entire info_list or just latest part:
             info = [self.info_list[-1]]
             self.socket.send_pyobj((state, reward, is_done, info))
+
+            # Increment global time by sending timestamp to data_server, if authorized;
+            if self.can_increment_global_time:
+                global_timestamp = self.get_timestamp()
+                self.log.debug('got strategy timestamp: {}'.format(global_timestamp))
+
+                self.data_socket.send_pyobj(
+                    {
+                        'ctrl': '_set_global_time',
+                        'timestamp': global_timestamp
+                    }
+                )
+                global_time_response = self.data_socket.recv_pyobj()
+                self.log.debug('DATA_COMM/glob.time received: {}'.format(global_time_response))
 
             # Back up step information for rendering.
             # It pays when using skip-frames: will'll get future state otherwise.

@@ -21,6 +21,7 @@ import backtrader as bt
 import backtrader.indicators as btind
 
 from gym import spaces
+from btgym import DictSpace
 
 import numpy as np
 from collections import deque
@@ -66,19 +67,59 @@ class BTgymBaseStrategy(bt.Strategy):
         # one can define any shape; should match env.observation_space.shape.
         # observation space state min/max values,
         # For `raw_state' (default) - absolute min/max values from BTgymDataset will be used.
-        state_shape=dict(
-            raw_state=spaces.Box(
+        state_shape={
+            'raw_state': spaces.Box(
                 shape=(time_dim, 4),
                 low=0, # will get overridden.
                 high=0,
                 dtype=np.float32,
+            ),
+            'metadata': DictSpace(
+                {
+                    'type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1,
+                        dtype=np.uint32
+                    ),
+                    'trial_num': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10,
+                        dtype=np.uint32
+                    ),
+                    'trial_type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1,
+                        dtype=np.uint32
+                    ),
+                    'sample_num': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10,
+                        dtype=np.uint32
+                    ),
+                    'first_row': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10,
+                        dtype=np.uint32
+                    ),
+                    'timestamp': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=np.finfo(np.float64).max,
+                        dtype=np.float64
+                    ),
+                }
             )
-        ),
+        },
         drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.
         target_call=10,  # finish episode when reaching profit target, in percent.
         dataset_stat=None,  # Summary descriptive statistics for entire dataset and
         episode_stat=None,  # current episode. Got updated by server.
-        metadata=None,
+        metadata={},
         trial_stat=None,
         trial_metadata=None,
         portfolio_actions=portfolio_actions,
@@ -142,7 +183,7 @@ class BTgymBaseStrategy(bt.Strategy):
         self.broker_message = '_'
         self.final_message = '_'
         self.raw_state = None
-        self.state = dict()
+        self.time_stamp = 0
 
         # Inherit logger from cerebro:
         self.log = self.env._log
@@ -177,15 +218,22 @@ class BTgymBaseStrategy(bt.Strategy):
 
         # self.log.warning('self.p.dir: {}'.format(dir(self.params)))
 
-        # Episode metadata, not included in obs.state.shape by default:
+        # Episode-wide metadata:
         self.metadata = {
             'type': np.asarray(self.p.metadata['type']),
             'trial_num': np.asarray(self.p.metadata['parent_sample_num']),
             'trial_type': np.asarray(self.p.metadata['parent_sample_type']),
             'sample_num': np.asarray(self.p.metadata['sample_num']),
-            'first_row': np.asarray(self.p.metadata['first_row'])
+            'first_row': np.asarray(self.p.metadata['first_row']),
+            'timestamp': np.asarray(self.time_stamp, dtype=np.float64)
         }
-        # This flag shows if this episode can move global time forward (see: btgym.server._BTgymAnalyzer.next() method);
+        self.state = {
+            'raw_state': None,
+            'metadata': None
+        }
+
+        # This flag shows to the outer world if this episode can move global
+        # time forward (see: btgym.server._BTgymAnalyzer.next() method);
         # default logic: iff it is test episode from target domain:
         self.can_increment_global_time = self.metadata['type'] and self.metadata['trial_type']
 
@@ -381,6 +429,31 @@ class BTgymBaseStrategy(bt.Strategy):
 
         return self.raw_state
 
+    def get_metadata_state(self):
+        self.metadata['timestamp'] = np.asarray(self._get_timestamp())
+
+        return self.metadata
+
+    def _get_time(self):
+        """
+        Retrieves current time point of the episode data.
+
+        Returns:
+            datetime object
+        """
+        return self.data.datetime.datetime()
+
+    def _get_timestamp(self):
+        """
+        Sets attr. and returns current data timestamp.
+
+        Returns:
+            POSIX timestamp
+        """
+        self.time_stamp = self._get_time().timestamp()
+
+        return self.time_stamp
+
     def get_state(self):
         """
         Override this method, define necessary calculations and return arbitrary shaped tensor.
@@ -398,7 +471,8 @@ class BTgymBaseStrategy(bt.Strategy):
             - should update self.state variable
         """
         #self.update_sliding_stat()
-        self.state['raw_state'] = self.raw_state
+        self.state['raw_state'] = self.raw_state  # using attr <-- method called by server.Analyzer
+        self.state['metadata'] = self.get_metadata_state()
         return self.state
 
     def get_reward(self):
@@ -512,15 +586,6 @@ class BTgymBaseStrategy(bt.Strategy):
             self.is_done = True
 
         return self.is_done
-
-    def get_time(self):
-        """
-        Retrieves current time point of the episode running.
-
-        Returns:
-            datetime object
-        """
-        return self.data.datetime.datetime()
 
     def notify_order(self, order):
         """

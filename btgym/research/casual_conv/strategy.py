@@ -78,7 +78,13 @@ class CasualConvStrategy(GuidedStrategy_0_0):
                         low=0,
                         high=10 ** 10,
                         dtype=np.uint32
-                    )
+                    ),
+                    'timestamp': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=np.finfo(np.float64).max,
+                        dtype=np.float64
+                    ),
                 }
             )
         },
@@ -211,7 +217,13 @@ class CasualConvStrategy_0(CasualConvStrategy):
                         low=0,
                         high=10 ** 10,
                         dtype=np.uint32
-                    )
+                    ),
+                    'timestamp': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=np.finfo(np.float64).max,
+                        dtype=np.float64
+                    ),
                 }
             )
         },

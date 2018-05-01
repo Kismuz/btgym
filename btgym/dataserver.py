@@ -57,7 +57,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
         self.debug_pre_sample_fails = 0
         self.debug_pre_sample_attempts = 0
 
-        self.global_time = None
+        self.global_timestamp = 0
 
     def get_data(self, sample_config=None):
         """
@@ -73,12 +73,14 @@ class BTgymDataFeedServer(multiprocessing.Process):
         """
         if self.dataset.is_ready:
             if sample_config is not None:
-                sample_config['global_time'] = copy.deepcopy(self.global_time)
+                # Add current global time:
+                sample_config['timestamp'] = copy.deepcopy(self.global_timestamp)
+                self.log.debug('Sampling with params: {}'.format(sample_config))
                 sample = self.dataset.sample(**sample_config)
 
             else:
-                self.default_sample_config['global_time'] = copy.deepcopy(self.global_time)
-                self.log.debug('Guessing sample with params: {}'.format(self.default_sample_config))
+                self.default_sample_config['timestamp'] = copy.deepcopy(self.global_timestamp)
+                self.log.debug('Sampling with default params: {}'.format(self.default_sample_config))
                 sample = self.dataset.sample(**self.default_sample_config)
 
             self.local_step += 1
@@ -153,8 +155,11 @@ class BTgymDataFeedServer(multiprocessing.Process):
                         kwargs = {}
 
                     self.dataset.reset(**kwargs)
-                    self.global_time = self.dataset.global_time
-                    self.log.notice('Initial global_time set to: {}'.format(self.global_time))
+                    self.global_timestamp = self.dataset.global_timestamp
+                    self.log.notice(
+                        'Initial global_time set to: {} / stamp: {}'.
+                            format(datetime.datetime.fromtimestamp(self.global_timestamp), self.global_timestamp)
+                    )
                     message = {'ctrl': 'Reset with kwargs: {}'.format(kwargs)}
                     self.log.debug('Data_is_ready: {}'.format(self.dataset.is_ready))
                     socket.send_pyobj(message)
@@ -163,7 +168,6 @@ class BTgymDataFeedServer(multiprocessing.Process):
                 # Send dataset sample:
                 elif service_input['ctrl'] == '_get_data':
                     if self.dataset.is_ready:
-                        # Call _get_data to verify sampling guess or resample:
                         sample = self.get_data(sample_config=service_input['kwargs'])
                         message = 'Sending sample_#{}.'.format(self.local_step)
                         self.log.debug(message)
@@ -196,25 +200,20 @@ class BTgymDataFeedServer(multiprocessing.Process):
 
                 # Set global time:
                 elif service_input['ctrl'] == '_set_global_time':
-                    try:
-                        assert isinstance(service_input['time'], datetime.datetime)
-                        if self.global_time is not None and self.global_time > service_input['time']:
-                            message = 'Moving back in time not supported! ' +\
-                                      'Current global_time: {}, '.format(self.global_time) +\
-                                      'attempt to set: {}; nothing done. '.format(service_input['time']) +\
-                                      'Hint: check sampling logic consistency.'
+                    if self.global_timestamp is not None and self.global_timestamp > service_input['timestamp']:
+                        message = 'Moving back in time not supported! ' +\
+                                  'Current global_time: {}, '.\
+                                      format(datetime.datetime.fromtimestamp(self.global_timestamp)) +\
+                                  'attempt to set: {}; nothing done. '.\
+                                      format(datetime.datetime.fromtimestamp(service_input['timestamp'])) +\
+                                  'Hint: check sampling logic consistency.'
 
-                            self.log.warning(message)
-
-                        else:
-                            self.global_time = service_input['time']
-                            message = 'Global_time set to: {}'.format(self.global_time)
-
-                    except AssertionError:
-                        message =\
-                            'Expected global_time value to be instance of datetime.datetime(), got: {}; nothing done'.\
-                            format(service_input['time'])
                         self.log.warning(message)
+
+                    else:
+                        self.global_timestamp = service_input['timestamp']
+                        message = 'global_time set to: {} / stamp: {}'.\
+                            format(datetime.datetime.fromtimestamp(self.global_timestamp), self.global_timestamp)
 
                     socket.send_pyobj(message)
 

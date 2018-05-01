@@ -72,7 +72,13 @@ class GuidedStrategy_0_0(DevStrat_4_12):
                         low=0,
                         high=10 ** 10,
                         dtype=np.uint32
-                    )
+                    ),
+                    'timestamp': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=np.finfo(np.float64).max,
+                        dtype=np.float64
+                    ),
                 }
             )
         },
@@ -134,10 +140,13 @@ class GuidedStrategy_0_0(DevStrat_4_12):
         # Update inner state statistic and compose state:
         self.update_sliding_stat()
 
-        self.state['external'] = self.get_market_state()
-        self.state['internal'] = self.get_broker_state()
-        self.state['datetime'] = self.get_datetime_state()
-        self.state['expert'] = self.get_expert_state()
+        self.state = {
+            'external': self.get_market_state(),
+            'internal': self.get_broker_state(),
+            'datetime': self.get_datetime_state(),
+            'expert': self.get_expert_state(),
+            'metadata': self.get_metadata_state(),
+        }
 
         return self.state
 
@@ -157,7 +166,6 @@ class ExpertObserver(bt.observer.Observer):
     )
 
     def next(self):
-
         action = np.argmax(self._owner.current_expert_action)
         if action == 0:
             self.lines.hold[0] = 0

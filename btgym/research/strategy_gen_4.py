@@ -90,7 +90,13 @@ class DevStrat_4_6(BTgymBaseStrategy):
                             low=0,
                             high=10**10,
                             dtype=np.uint32
-                        )
+                        ),
+                        'timestamp': spaces.Box(
+                            shape=(),
+                            low=0,
+                            high=np.finfo(np.float64).max,
+                            dtype=np.float64
+                        ),
                     }
                 )
             },
@@ -173,6 +179,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
         self.state['internal'] = self.get_broker_state()
         self.state['action'] = np.asarray(self.sliding_stat['action'])[:, None, None]
         self.state['reward'] = np.asarray(self.sliding_stat['reward'])[:, None, None]
+        self.state['metadata'] = self.get_metadata_state()
 
         return self.state
 
@@ -285,7 +292,13 @@ class DevStrat_4_7(DevStrat_4_6):
                         low=0,
                         high=10 ** 10,
                         dtype=np.uint32
-                    )
+                    ),
+                    'timestamp': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=np.finfo(np.float64).max,
+                        dtype=np.float64
+                    ),
                 }
             )
         },
@@ -319,9 +332,11 @@ class DevStrat_4_7(DevStrat_4_6):
         # Update inner state statistic and compose state:
         self.update_sliding_stat()
 
-        self.state['external'] = self.get_market_state()
-        self.state['internal'] = self.get_broker_state()
-
+        self.state = {
+            'external': self.get_market_state(),
+            'internal': self.get_broker_state(),
+            'metadata': self.get_metadata_state(),
+        }
         return self.state
 
     def get_reward(self):
@@ -458,7 +473,13 @@ class DevStrat_4_8(DevStrat_4_7):
                         low=0,
                         high=10 ** 10,
                         dtype=np.uint32
-                    )
+                    ),
+                    'timestamp': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=np.finfo(np.float64).max,
+                        dtype=np.float64
+                    ),
                 }
             )
         },
@@ -496,8 +517,11 @@ class DevStrat_4_8(DevStrat_4_7):
         # Update inner state statistic and compose state:
         self.update_sliding_stat()
 
-        self.state['external'] = self.get_market_state()
-        self.state['internal'] = self.get_broker_state()
+        self.state = {
+            'external': self.get_market_state(),
+            'internal': self.get_broker_state(),
+            'metadata': self.get_metadata_state(),
+        }
 
         return self.state
 
@@ -562,7 +586,13 @@ class DevStrat_4_9(DevStrat_4_7):
                         low=0,
                         high=10 ** 10,
                         dtype=np.uint32
-                    )
+                    ),
+                    'timestamp': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=np.finfo(np.float64).max,
+                        dtype=np.float64
+                    ),
                 }
             )
         },
@@ -618,8 +648,11 @@ class DevStrat_4_9(DevStrat_4_7):
         # Update inner state statistic and compose state:
         self.update_sliding_stat()
 
-        self.state['external'] = self.get_market_state()
-        self.state['internal'] = self.get_broker_state()
+        self.state = {
+            'external': self.get_market_state(),
+            'internal': self.get_broker_state(),
+            'metadata': self.get_metadata_state(),
+        }
 
         return self.state
 
@@ -761,7 +794,13 @@ class DevStrat_4_11(DevStrat_4_10):
                         low=0,
                         high=10 ** 10,
                         dtype=np.uint32
-                    )
+                    ),
+                    'timestamp': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=np.finfo(np.float64).max,
+                        dtype=np.float64
+                    ),
                 }
             )
         },
@@ -891,7 +930,13 @@ class DevStrat_4_12(DevStrat_4_11):
                         low=0,
                         high=10 ** 10,
                         dtype=np.uint32
-                    )
+                    ),
+                    'timestamp': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=np.finfo(np.float64).max,
+                        dtype=np.float64
+                    ),
                 }
             )
         },
@@ -966,9 +1011,12 @@ class DevStrat_4_12(DevStrat_4_11):
         # Update inner state statistic and compose state:
         self.update_sliding_stat()
 
-        self.state['external'] = self.get_market_state()
-        self.state['internal'] = self.get_broker_state()
-        self.state['datetime'] = self.get_datetime_state()
+        self.state = {
+            'external': self.get_market_state(),
+            'internal': self.get_broker_state(),
+            'datetime': self.get_datetime_state(),
+            'metadata': self.get_metadata_state(),
+        }
 
         return self.state
 
