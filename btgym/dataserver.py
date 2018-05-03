@@ -73,8 +73,15 @@ class BTgymDataFeedServer(multiprocessing.Process):
         """
         if self.dataset.is_ready:
             if sample_config is not None:
-                # Add current global time:
-                sample_config['timestamp'] = copy.deepcopy(self.global_timestamp)
+                # We do not allow configuration timestamps which point earlier than current global_timestamp;
+                # if config timestamp points later - it is ok because global time will be shifted accordingly after
+                # [traget test] sample will get into work.
+                if sample_config['timestamp'] is None:
+                    sample_config['timestamp'] = 0
+
+                if sample_config['timestamp'] < self.global_timestamp:
+                    sample_config['timestamp'] = copy.deepcopy(self.global_timestamp)
+
                 self.log.debug('Sampling with params: {}'.format(sample_config))
                 sample = self.dataset.sample(**sample_config)
 

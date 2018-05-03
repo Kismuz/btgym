@@ -193,7 +193,9 @@ class BTgymBaseData:
 
         self.data = None  # Will hold actual data as pandas dataframe
         self.is_ready = False
-        self.global_timestamp = None
+        self.global_timestamp = 0
+        self.start_timestamp = 0
+        self.final_timestamp = 0
         self.data_stat = None  # Dataset descriptive statistic as pandas dataframe
         self.data_range_delta = None  # Dataset total duration timedelta
         self.max_time_gap = None
@@ -211,6 +213,7 @@ class BTgymBaseData:
         self.train_range_delta = None
         self.test_num_records = 0
         self.train_num_records = 0
+        self.total_num_records = 0
         self.train_interval = [0, 0]
         self.test_interval = [0, 0]
         self.test_period = {'days': 0, 'hours': 0, 'minutes': 0}
@@ -280,6 +283,40 @@ class BTgymBaseData:
         if level is not None:
             self.log = Logger('{}_{}'.format(self.name, self.task), level=level)
 
+    def set_global_timestamp(self, timestamp):
+        if self.data is not None:
+            if timestamp is not None:
+                assert timestamp < self.final_timestamp, \
+                    'global time passed <{}> is out of bound <{}> for provided data.'. \
+                        format(
+                        datetime.datetime.fromtimestamp(timestamp), datetime.datetime.fromtimestamp(self.final_timestamp)
+                    )
+                if timestamp < self.start_timestamp:
+                    if self.global_timestamp == 0:
+                        self.global_timestamp = self.start_timestamp
+
+                else:
+                    if timestamp > self.global_timestamp:
+                        self.global_timestamp = timestamp
+
+            else:
+                self.global_timestamp = self.start_timestamp
+
+    def get_global_index(self):
+        """
+
+        Returns:
+            data row corresponded to current global_time
+        """
+        if self.is_ready:
+            return self.data.index.get_loc(
+                datetime.datetime.fromtimestamp(self.global_timestamp),
+                method='pad'
+            )
+
+        else:
+            return 0
+
     def reset(self, data_filename=None, **kwargs):
         """
         Gets instance ready.
@@ -291,9 +328,15 @@ class BTgymBaseData:
         """
         self._reset(data_filename=data_filename, **kwargs)
 
-    def _reset(self, data_filename=None, **kwargs):
+    def _reset(self, data_filename=None, timestamp=None, **kwargs):
 
         self.read_csv(data_filename)
+
+
+        # Add global timepoint:
+        self.start_timestamp = self.data.index[0].timestamp()
+        self.final_timestamp = self.data.index[-1].timestamp()
+        self.set_global_timestamp(timestamp)
 
         # Maximum data time gap allowed within sample as pydatetimedelta obj:
         self.max_time_gap = datetime.timedelta(**self.time_gap)
@@ -341,7 +384,7 @@ class BTgymBaseData:
         self.test_interval = [break_point - self.backshift_num_records, self.data.shape[0]]
 
         self.sample_num = 0
-        self.global_timestamp = self.data[0:1].index[0].timestamp()
+
         self.is_ready = True
 
     def read_csv(self, data_filename=None, force_reload=False):
@@ -390,8 +433,9 @@ class BTgymBaseData:
                 raise FileNotFoundError(msg)
 
         self.data = pd.concat(dataframes)
-        range = pd.to_datetime(self.data.index)
-        self.data_range_delta = (range[-1] - range[0]).to_pytimedelta()
+        data_range = pd.to_datetime(self.data.index)
+        self.total_num_records = self.data.shape[0]
+        self.data_range_delta = (data_range[-1] - data_range[0]).to_pytimedelta()
 
     def describe(self):
         """
@@ -460,7 +504,7 @@ class BTgymBaseData:
     def sample(self, **kwargs):
         return self._sample(**kwargs)
 
-    def _sample(self, get_new=True, sample_type=0, b_alpha=1.0, b_beta=1.0, **kwargs):
+    def _sample(self, get_new=True, sample_type=0, timestamp=None, b_alpha=1.0, b_beta=1.0, **kwargs):
         """
         Samples continuous subset of data.
 
@@ -468,6 +512,7 @@ class BTgymBaseData:
             get_new (bool):                 sample new (True) or reuse (False) last made sample;
             sample_type (int or bool):      0 (train) or 1 (test) - get sample from train or test data subsets
                                             respectively.
+            timestamp:                      POSIX timestamp
             b_alpha (float):                beta-distribution sampling alpha > 0, valid for train episodes.
             b_beta (float):                 beta-distribution sampling beta > 0, valid for train episodes.
 
@@ -510,6 +555,8 @@ class BTgymBaseData:
                 # Get beta_distributed sample in train interval:
                 self.sample_instance = self._sample_interval(
                     self.train_interval,
+                    sample_type=sample_type,
+                    timestamp=timestamp,
                     b_alpha=b_alpha,
                     b_beta=b_beta,
                     name='train_' + self.sample_name
@@ -519,11 +566,13 @@ class BTgymBaseData:
                 # Get uniform sample in test interval:
                 self.sample_instance = self._sample_interval(
                     self.test_interval,
+                    sample_type=sample_type,
+                    timestamp=timestamp,
                     b_alpha=1,
                     b_beta=1,
                     name='test_' + self.sample_name
                 )
-            self.sample_instance.metadata['type'] = sample_type
+            self.sample_instance.metadata['type'] = sample_type  # TODO: can move inside sample()
             self.sample_instance.metadata['sample_num'] = self.sample_num
             self.sample_instance.metadata['parent_sample_num'] = copy.deepcopy(self.metadata['sample_num'])
             self.sample_instance.metadata['parent_sample_type'] = copy.deepcopy(self.metadata['type'])
@@ -535,7 +584,12 @@ class BTgymBaseData:
 
         return self.sample_instance
 
-    def _sample_random(self, name='random_sample_'):
+    def _sample_random(
+            self,
+            sample_type=0,
+            timestamp=None,
+            name='random_sample_'
+    ):
         """
         Randomly samples continuous subset of data.
 
@@ -622,7 +676,15 @@ class BTgymBaseData:
         self.log.error(msg)
         raise RuntimeError(msg)
 
-    def _sample_interval(self, interval, b_alpha=1.0, b_beta=1.0, name='interval_sample_'):
+    def _sample_interval(
+            self,
+            interval,
+            sample_type=0,
+            timestamp=None,
+            b_alpha=1.0,
+            b_beta=1.0,
+            name='interval_sample_'
+    ):
         """
         Samples continuous subset of data,
         such as entire episode records lie within positions specified by interval.
@@ -647,7 +709,7 @@ class BTgymBaseData:
 
         except (AssertionError, AttributeError) as e:
             self.log.exception('Instance holds no data. Hint: forgot to call .read_csv()?')
-            raise  AssertionError
+            raise AssertionError
 
         try:
             assert len(interval) == 2
@@ -669,15 +731,42 @@ class BTgymBaseData:
 
         sample_num_records = self.sample_num_records
 
-        try:
-            assert interval[0] < interval[-1] <= self.data.shape[0]
-
-        except AssertionError:
-            self.log.exception(
-                'Cannot sample with size {}, inside {} from dataset of {} records'.
-                 format(sample_num_records, interval, self.data.shape[0])
-            )
-            raise AssertionError
+        # # Truncate sampling interval according to received global timestamp, if any:
+        # self.log.debug(
+        #     'got interval: {} / {} - {}'.format(
+        #         interval,
+        #         self.data.index[interval[0]],
+        #         self.data.index[interval[-1]]
+        #     )
+        # )
+        # self.log.debug('got sample_type: {}, timestamp: []'.format(sample_type, timestamp))
+        # if timestamp is not None:
+        #     global_index = self.get_global_index()
+        #     if sample_type:
+        #         # Test:
+        #         interval[0] = max([interval[0], global_index])
+        #
+        #     else:
+        #         # Train:
+        #         interval[-1] = min([interval[-1], global_index])
+        #
+        # try:
+        #     assert interval[0] < interval[-1] <= self.data.shape[0]
+        #
+        # except AssertionError:
+        #     self.log.exception(
+        #         'Cannot sample with size {}, inside {} from dataset of {} records'.
+        #          format(sample_num_records, interval, self.data.shape[0])
+        #     )
+        #     raise AssertionError
+        #
+        # self.log.debug(
+        #     'truncated interval: {} / {} - {}'.format(
+        #         interval,
+        #         self.data.index[interval[0]],
+        #         self.data.index[interval[-1]]
+        #     )
+        # )
 
         self.log.debug('Maximum sample time duration set to: {}.'.format(self.max_sample_len_delta))
         self.log.debug('Respective number of steps: {}.'.format(sample_num_records))

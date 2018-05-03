@@ -118,10 +118,10 @@ class BTgymRandomDataDomain(BTgymBaseData):
 
     def __init__(
             self,
-            filename=None,
+            filename,
+            trial_params,
+            episode_params,
             parsing_params=None,
-            trial_params=None,
-            episode_params=None,
             target_period=None,
             use_target_backshift=False,
             name='RndDataDomain',
@@ -149,6 +149,14 @@ class BTgymRandomDataDomain(BTgymBaseData):
             task:                   int, optional
             log_level:              int, logbook.level
         """
+        sample_params_keys = {'sample_duration', 'time_gap'}
+
+        assert isinstance(trial_params, dict) and sample_params_keys <= set(trial_params.keys()),\
+            'Expected dict. <trial_params> contain keys: {}, got: {}'.format(sample_params_keys, trial_params)
+
+        assert isinstance(episode_params, dict) and sample_params_keys <= set(episode_params.keys()), \
+            'Expected dict. <episode_params> contain keys: {}, got: {}'.format(sample_params_keys, episode_params)
+
         if parsing_params is None:
             parsing_params = dict(
                 # Default parameters for source-specific CSV datafeed class,
@@ -185,6 +193,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
 
         if target_period is None:
             target_period = {'days': 0, 'hours': 0, 'minutes': 0}
+
         trial_params['test_period'] = target_period
 
 
