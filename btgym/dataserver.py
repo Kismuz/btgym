@@ -183,6 +183,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
                                 'sample': sample,
                                 'stat': self.dataset_stat,
                                 'origin': 'data_server',
+                                'timestamp': self.global_timestamp,
                             }
                         )
                         get_new = True
@@ -222,6 +223,11 @@ class BTgymDataFeedServer(multiprocessing.Process):
                         message = 'global_time set to: {} / stamp: {}'.\
                             format(datetime.datetime.fromtimestamp(self.global_timestamp), self.global_timestamp)
 
+                    socket.send_pyobj(message)
+
+                elif service_input['ctrl'] == '_get_global_time':
+                    # Tell time:
+                    message = {'timestamp': self.global_timestamp}
                     socket.send_pyobj(message)
 
                 else:  # ignore any other input

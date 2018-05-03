@@ -24,7 +24,7 @@ import itertools
 import zmq
 import copy
 
-import time
+import time, datetime
 import random
 from datetime import timedelta
 
@@ -387,8 +387,9 @@ class BTgymServer(multiprocessing.Process):
         trial_sample.reset()
         dataset_stat = data_server_response['message']['stat']
         origin = data_server_response['message']['origin']
+        timestamp = data_server_response['message']['timestamp']
 
-        return trial_sample, trial_stat, dataset_stat, origin
+        return trial_sample, trial_stat, dataset_stat, origin, timestamp
 
     def get_trial_message(self):
         """
@@ -404,6 +405,7 @@ class BTgymServer(multiprocessing.Process):
                 'sample': self.trial_sample,
                 'stat': self.dataset_stat,
                 'origin': 'master_environment',
+                'timestamp': self.get_global_time()
             }
 
         else:
@@ -411,6 +413,28 @@ class BTgymServer(multiprocessing.Process):
             self.log.debug('Sent to slave: ' + str(message))
 
         return message
+
+    def get_global_time(self):
+        """
+        Asks dataserver for current dataset global_time.
+
+        Returns:
+            POSIX timestamp
+        """
+        data_server_response = self._comm_with_timeout(
+            socket=self.data_socket,
+            message={'ctrl': '_get_global_time'}
+        )
+        if data_server_response['status'] in 'ok':
+            pass
+
+        else:
+            msg = 'BtgymServer_sampling_attempt: data_server @{} unreachable with status: <{}>.'. \
+                format(self.data_network_address, data_server_response['status'])
+            self.log.error(msg)
+            raise ConnectionError(msg)
+
+        return data_server_response['message']['timestamp']
 
     def run(self):
         """
@@ -588,7 +612,7 @@ class BTgymServer(multiprocessing.Process):
                 self.log.info(
                     'Requesting new Trial sample with args: {}'.format(sample_config['trial_config'])
                 )
-                self.trial_sample, self.trial_stat, self.dataset_stat, origin =\
+                self.trial_sample, self.trial_stat, self.dataset_stat, origin, current_timestamp =\
                     self.get_trial(**sample_config['trial_config'])
 
                 if origin in 'data_server':
@@ -598,12 +622,21 @@ class BTgymServer(multiprocessing.Process):
 
             else:
                 self.log.info('Reusing Trial <{}>'.format(self.trial_sample.filename))
+                current_timestamp = self.get_global_time()
 
+            self.log.debug(
+                'current global_time: {}'.format(datetime.datetime.fromtimestamp(current_timestamp))
+            )
             # Get episode:
+            if sample_config['episode_config']['timestamp'] is None or\
+                    sample_config['episode_config']['timestamp'] < current_timestamp:
+                sample_config['episode_config']['timestamp'] = current_timestamp
+
             self.log.info(
                 'Requesting episode from <{}> with args: {}'.
                     format(self.trial_sample.filename, sample_config['episode_config'])
             )
+
             episode_sample = self.trial_sample.sample(**sample_config['episode_config'])
             self.log.info('Got new Episode: <{}>'.format(episode_sample.filename))
 
