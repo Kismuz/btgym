@@ -324,7 +324,6 @@ class BTgymTimeDataDomain(BTgymRandomDataDomain):
         Returns:
             dict of train and test sampling intervals for current global_time point
         """
-        # TODO: assert exact current time split  for target trial
         if self.is_ready:
             current_index = self.get_global_index()
             assert current_index >= self.train_num_records

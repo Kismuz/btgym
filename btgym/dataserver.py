@@ -57,7 +57,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
         self.debug_pre_sample_fails = 0
         self.debug_pre_sample_attempts = 0
 
-        self.global_timestamp = 0
+        # self.global_timestamp = 0
 
     def get_data(self, sample_config=None):
         """
@@ -79,14 +79,14 @@ class BTgymDataFeedServer(multiprocessing.Process):
                 if sample_config['timestamp'] is None:
                     sample_config['timestamp'] = 0
 
-                if sample_config['timestamp'] < self.global_timestamp:
-                    sample_config['timestamp'] = copy.deepcopy(self.global_timestamp)
+                if sample_config['timestamp'] < self.dataset.global_timestamp:
+                    sample_config['timestamp'] = copy.deepcopy(self.dataset.global_timestamp)
 
                 self.log.debug('Sampling with params: {}'.format(sample_config))
                 sample = self.dataset.sample(**sample_config)
 
             else:
-                self.default_sample_config['timestamp'] = copy.deepcopy(self.global_timestamp)
+                self.default_sample_config['timestamp'] = copy.deepcopy(self.dataset.global_timestamp)
                 self.log.debug('Sampling with default params: {}'.format(self.default_sample_config))
                 sample = self.dataset.sample(**self.default_sample_config)
 
@@ -129,14 +129,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
         self.dataset_stat = self.dataset.describe()
 
         # Main loop:
-        get_new = True
-
         while True:
-            # if get_new:
-            # # Guess sample:
-            #     self.get_data()
-            #     get_new = False
-
             # Stick here until receive any request:
             service_input = socket.recv_pyobj()
             self.log.debug('Received <{}>'.format(service_input))
@@ -162,10 +155,13 @@ class BTgymDataFeedServer(multiprocessing.Process):
                         kwargs = {}
 
                     self.dataset.reset(**kwargs)
-                    self.global_timestamp = self.dataset.global_timestamp
+                    # self.global_timestamp = self.dataset.global_timestamp
                     self.log.notice(
                         'Initial global_time set to: {} / stamp: {}'.
-                            format(datetime.datetime.fromtimestamp(self.global_timestamp), self.global_timestamp)
+                        format(
+                            datetime.datetime.fromtimestamp(self.dataset.global_timestamp),
+                            self.dataset.global_timestamp
+                        )
                     )
                     message = {'ctrl': 'Reset with kwargs: {}'.format(kwargs)}
                     self.log.debug('Data_is_ready: {}'.format(self.dataset.is_ready))
@@ -183,10 +179,9 @@ class BTgymDataFeedServer(multiprocessing.Process):
                                 'sample': sample,
                                 'stat': self.dataset_stat,
                                 'origin': 'data_server',
-                                'timestamp': self.global_timestamp,
+                                'timestamp': self.dataset.global_timestamp,
                             }
                         )
-                        get_new = True
 
                     else:
                         message = {'ctrl': 'Dataset not ready, waiting for control key <_reset_data>'}
@@ -208,10 +203,10 @@ class BTgymDataFeedServer(multiprocessing.Process):
 
                 # Set global time:
                 elif service_input['ctrl'] == '_set_global_time':
-                    if self.global_timestamp is not None and self.global_timestamp > service_input['timestamp']:
+                    if self.dataset.global_timestamp != 0 and self.dataset.global_timestamp > service_input['timestamp']:
                         message = 'Moving back in time not supported! ' +\
                                   'Current global_time: {}, '.\
-                                      format(datetime.datetime.fromtimestamp(self.global_timestamp)) +\
+                                      format(datetime.datetime.fromtimestamp(self.dataset.global_timestamp)) +\
                                   'attempt to set: {}; nothing done. '.\
                                       format(datetime.datetime.fromtimestamp(service_input['timestamp'])) +\
                                   'Hint: check sampling logic consistency.'
@@ -219,15 +214,17 @@ class BTgymDataFeedServer(multiprocessing.Process):
                         self.log.warning(message)
 
                     else:
-                        self.global_timestamp = service_input['timestamp']
+                        self.dataset.global_timestamp = service_input['timestamp']
                         message = 'global_time set to: {} / stamp: {}'.\
-                            format(datetime.datetime.fromtimestamp(self.global_timestamp), self.global_timestamp)
-
+                            format(
+                                datetime.datetime.fromtimestamp(self.dataset.global_timestamp),
+                                self.dataset.global_timestamp
+                            )
                     socket.send_pyobj(message)
 
                 elif service_input['ctrl'] == '_get_global_time':
                     # Tell time:
-                    message = {'timestamp': self.global_timestamp}
+                    message = {'timestamp': self.dataset.global_timestamp}
                     socket.send_pyobj(message)
 
                 else:  # ignore any other input

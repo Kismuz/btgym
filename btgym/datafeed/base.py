@@ -205,9 +205,9 @@ class BTgymBaseData:
         self.max_sample_len_delta = None
         self.sample_duration = None
         self.sample_num_records = 0
-        self.start_weekdays = None
-        self.start_00 = None
-        self.expanding = None
+        self.start_weekdays = {0, 1, 2, 3, 4, 5, 6}
+        self.start_00 = False
+        self.expanding = False
 
         self.sample_instance = None
 
@@ -813,6 +813,15 @@ class BTgymBaseData:
             # Easy part:
             last_row = first_row + sample_num_records  # + 1
             sampled_data = self.data[first_row: last_row]
+
+            self.log.debug(
+                'first_row: {}, last_row: {}, data_shape: {}'.format(
+                    first_row,
+                    last_row,
+                    sampled_data.shape
+                )
+            )
+
             sample_len = (sampled_data.index[-1] - sampled_data.index[0]).to_pytimedelta()
             self.log.debug('Actual sample duration: {}.'.format(sample_len))
             self.log.debug('Total sample time gap: {}.'.format(sample_len - self.max_sample_len_delta))
