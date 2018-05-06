@@ -618,7 +618,7 @@ class BTgymServer(multiprocessing.Process):
                 if origin in 'data_server':
                     self.trial_sample.set_logger(self.log_level, self.task)
 
-                self.log.info('Got new Trial: <{}>'.format(self.trial_sample.filename))
+                self.log.debug('Got new Trial: <{}>'.format(self.trial_sample.filename))
 
             else:
                 self.log.info('Reusing Trial <{}>'.format(self.trial_sample.filename))
@@ -634,11 +634,11 @@ class BTgymServer(multiprocessing.Process):
 
             self.log.info(
                 'Requesting episode from <{}> with args: {}'.
-                    format(self.trial_sample.filename, sample_config['episode_config'])
+                format(self.trial_sample.filename, sample_config['episode_config'])
             )
 
             episode_sample = self.trial_sample.sample(**sample_config['episode_config'])
-            self.log.info('Got new Episode: <{}>'.format(episode_sample.filename))
+            self.log.debug('Got new Episode: <{}>'.format(episode_sample.filename))
 
             # Get episode data statistic and pass it to strategy params:
             cerebro.strats[0][0][2]['trial_stat'] = self.trial_stat

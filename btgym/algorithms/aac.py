@@ -776,6 +776,7 @@ class BaseAAC(object):
                 ep_summary=self.ep_summary,
                 memory_config=memory_config,
                 log_level=self.log_level,
+                global_step_op=self.global_step
             )
             kwargs.update(self.runner_config['kwargs'])
             # New runner instance:

@@ -81,7 +81,7 @@ class BTgymTimeTrial(BTgymDataTrial):
     def get_intervals(self):
         """
         Estimates exact sampling intervals such as test episode starts as close to current global time point as
-        data consistency allows but no earlier
+        data consistency allows but no earlier;
 
         Returns:
             dict of train and test sampling intervals for current global_time point
@@ -111,7 +111,7 @@ class BTgymTimeTrial(BTgymDataTrial):
             else:
                 # Intervals for source trial:
                 train_interval = [0, self.train_num_records - 1]
-                test_interval = [self.train_num_records, self.total_num_records - 1]
+                test_interval = [self.train_num_records, self.total_num_records - 1]  # TODO: ?!
 
             self.log.debug(
                 'train_interval: {}, datetimes: {} - {}'.
@@ -123,10 +123,10 @@ class BTgymTimeTrial(BTgymDataTrial):
             )
             self.log.debug(
                 'test_interval: {}, datetimes: {} - {}'.
-                    format(
-                        test_interval,
-                        self.data.index[test_interval[0]],
-                        self.data.index[test_interval[-1]],
+                format(
+                    test_interval,
+                    self.data.index[test_interval[0]],
+                    self.data.index[test_interval[-1]],
                 )
             )
         else:
@@ -135,7 +135,16 @@ class BTgymTimeTrial(BTgymDataTrial):
 
         return train_interval, test_interval
 
-    def sample(self, get_new=True, sample_type=0, timestamp=None, b_alpha=1.0, b_beta=1.0, **kwargs):
+    def sample(
+            self,
+            get_new=True,
+            sample_type=0,
+            timestamp=None,
+            align_left=True,
+            b_alpha=1.0,
+            b_beta=1.0,
+            **kwargs
+    ):
         """
         Samples continuous subset of data.
 
@@ -143,7 +152,8 @@ class BTgymTimeTrial(BTgymDataTrial):
             get_new (bool):                 sample new (True) or reuse (False) last made sample;
             sample_type (int or bool):      0 (train) or 1 (test) - get sample from train or test data subsets
                                             respectively.
-            timestamp:                      POSIX timestamp
+            timestamp:                      POSIX timestamp.
+            align_left:                     bool, if True: set test interval as close to current timepoint as possible.
             b_alpha (float):                beta-distribution sampling alpha > 0, valid for train episodes.
             b_beta (float):                 beta-distribution sampling beta > 0, valid for train episodes.
         """
@@ -181,10 +191,10 @@ class BTgymTimeTrial(BTgymDataTrial):
                 )
 
             else:
-                # Get left-aligned (as close as possible to current global_time) sample in test interval:
+                # Get [possibly left-aligned i.e. as close as possible to current global_time] sample in test interval:
                 self.sample_instance = self._sample_aligned_interval(
                     test_interval,
-                    align_left=True,
+                    align_left=align_left,
                     b_alpha=1,
                     b_beta=1,
                     name='test_' + self.sample_name
@@ -214,12 +224,12 @@ class BTgymTimeDataDomain(BTgymRandomDataDomain):
     and target trials set as set of trials such as: trial test period starts somewhere in the past and ends at
     current time point and trial test period starts from now on for all time points in available dataset range.
 
-    Sampling control is defined as:
+    Sampling control is defined by:
     - `current time point` is set arbitrary and is stateful in sense it can be only increased (no backward time);
     - source trials can be sampled from past (known) data multiply times;
     - target trial can only be sampled once according to current time point or later (unknown data);
     - as any sampled target trial is being evaluated by outer algorithm, current time should be incremented
-      to match last evaluated record (marking  all evaluated data as already known
+      to match last evaluated record (marking all evaluated data as already known
       and making it available for training);
     """
     trial_class_ref = BTgymTimeTrial
@@ -319,7 +329,7 @@ class BTgymTimeDataDomain(BTgymRandomDataDomain):
 
     def get_intervals(self):
         """
-        Estimates exact sampling intervals such as train period of target trial overlaps with known up to date data
+        Estimates exact sampling intervals such as train period of target trial overlaps by known up to date data
 
         Returns:
             dict of train and test sampling intervals for current global_time point
@@ -440,7 +450,7 @@ class BTgymTimeDataDomain(BTgymRandomDataDomain):
         """
         self.set_global_timestamp(timestamp)
         train_interval, test_interval = self.get_intervals()
-        if get_new:
+        if get_new or self.sample_instance is None:
             if sample_type:
                 self.sample_instance = self._sample_interval(
                     interval=test_interval,

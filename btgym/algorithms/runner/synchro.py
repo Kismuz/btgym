@@ -1,6 +1,7 @@
 import numpy as np
 from logbook import Logger, StreamHandler, WARNING
 import sys
+import time
 
 from btgym.algorithms.rollout import Rollout
 from btgym.algorithms.memory import _DummyMemory
@@ -32,6 +33,8 @@ class BaseSynchroRunner():
             data_sample_config=None,
             memory_config=None,
             test_conditions=None,
+            slowdown_steps=0,
+            global_step_op=None,
             aux_summaries=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
             name='synchro',
             log_level=WARNING,
@@ -51,6 +54,7 @@ class BaseSynchroRunner():
             memory_config:          dict, replay memory configuration
             test_conditions:        dict or None,
                                     dictionary of single experience conditions to check to mark it as test one.
+            slowdown_time:          time to sleep between steps
             aux_summaries:          iterable of str, additional summaries to compute
             name:                   str, name scope
             log_level:              int, logbook.level
@@ -71,6 +75,15 @@ class BaseSynchroRunner():
         self.log = Logger('{}_Runner_{}'.format(self.name, self.task), level=self.log_level)
         self.sess = None
         self.summary_writer = None
+
+        self.global_step_op = global_step_op
+
+        if self.task == 0 and slowdown_steps > 0 and self.global_step_op is not None:
+            self.log.notice('is slowed down by {} global_iterations/step'.format(slowdown_steps))
+            self.slowdown_steps = slowdown_steps
+
+        else:
+            self.slowdown_steps = 0
 
         if test_conditions is None:
             # Default test conditions are: experience comes from test episode, from target domain:
@@ -104,7 +117,7 @@ class BaseSynchroRunner():
         self.final_value = []
         self.total_steps = []
         self.total_steps_atari = []
-        self.info = None
+        self.info = [None]
         self.pre_experience = None
         self.state = None
         self.context = None
@@ -116,6 +129,12 @@ class BaseSynchroRunner():
         self.norm_image = lambda x: np.round((x - x.min()) / np.ptp(x) * 255)
 
         self.log.debug('__init__() done.')
+
+    def sleep(self):
+        if self.slowdown_steps > 0:
+            start_global_step = self.sess.run(self.global_step_op)
+            while start_global_step + self.slowdown_steps > self.sess.run(self.global_step_op):
+                time.sleep(0.1)
 
     def start_runner(self, sess, summary_writer, **kwargs):
         """
@@ -204,7 +223,8 @@ class BaseSynchroRunner():
             'terminal': terminal,
             'context': init_context,
             'last_action_reward': init_action_reward,  # ~zeros
-            'r': None  # to be updated
+            'r': None,  # to be updated
+            'info': self.info[-1],
         }
         # Execute user-defined callbacks to policy, if any:
         for key, callback in policy.callback.items():
@@ -218,6 +238,9 @@ class BaseSynchroRunner():
         }
         self.terminal_end = terminal
         #self.log.warning('init_experience_context: {}'.format(context))
+
+        # Take a nap:
+        self.sleep()
 
         return experience, next_state, next_context, next_action_reward
 
@@ -256,12 +279,16 @@ class BaseSynchroRunner():
             'context': context,
             'last_action_reward': action_reward,
             'r': None,
+            'info': self.info[-1],
         }
         for key, callback in policy.callback.items():
             experience[key] = callback(**locals())
 
         # Housekeeping:
         self.length += 1
+
+        # Take a nap:
+        self.sleep()
 
         return experience, next_state, next_context, next_action_reward
 

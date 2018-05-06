@@ -79,6 +79,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
                 if sample_config['timestamp'] is None:
                     sample_config['timestamp'] = 0
 
+                # If config timestamp is outdated - refresh with latest:
                 if sample_config['timestamp'] < self.dataset.global_timestamp:
                     sample_config['timestamp'] = copy.deepcopy(self.dataset.global_timestamp)
 
@@ -221,6 +222,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
                                 self.dataset.global_timestamp
                             )
                     socket.send_pyobj(message)
+                    self.log.debug(message)
 
                 elif service_input['ctrl'] == '_get_global_time':
                     # Tell time:
