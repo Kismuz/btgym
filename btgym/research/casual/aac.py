@@ -7,10 +7,10 @@ from btgym.research.gps.aac import GuidedAAC
 from btgym.algorithms.runner.synchro import BaseSynchroRunner
 
 
-class TA3C(GuidedAAC):
+class CA3C(GuidedAAC):
     """
     Temporally dependant vanilla A3C. This is mot a meta-learning class.
-    Requires stateful temporal data stream provider class such as btgym.datafeed.time.BTgymTimeDataDomain
+    Requires stateful temporal data stream provider class such as btgym.datafeed.time.BTgymCasualDataDomain
     """
 
     def __init__(
@@ -23,7 +23,7 @@ class TA3C(GuidedAAC):
             trial_sample_params=(1.0, 1.0),
             _aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
             _use_target_policy=False,
-            name='TemporalA3C',
+            name='CasualA3C',
             **kwargs
     ):
         try:
@@ -64,7 +64,7 @@ class TA3C(GuidedAAC):
             self.current_trial_mode = 0  # source
             self.current_episode = 1
 
-            super(TA3C, self).__init__(
+            super(CA3C, self).__init__(
                 runner_config=self.runner_config,
                 _aux_render_modes=_aux_render_modes,
                 name=name,
@@ -180,15 +180,14 @@ class TA3C(GuidedAAC):
         self.log.info('test episode started...')
 
         while not done:
-            sess.run(self.sync_pi)
+            #sess.run(self.sync_pi)
 
             data = self.get_data(
                 policy=self.local_network,
-                data_sample_config=data_config
+                data_sample_config=data_config,
+                policy_sync_op=self.sync_pi,  # update policy after each single step instead of single rollout
             )
             done = np.asarray(data['terminal']).any()
-
-            # self.process_summary(sess, data)
 
             # self.log.warning('test episode done: {}'.format(done))
 
@@ -207,18 +206,18 @@ class TA3C(GuidedAAC):
             )
 
         self.log.notice(
-            'test episode finished, global_time: {}'.format(
+            'test episode finished, global_time set: {}'.format(
                 datetime.datetime.fromtimestamp(self.global_timestamp)
             )
         )
         self.log.notice(
-            'final value: {} after {} steps @ {}'.format(
+            'final value: {:8.2f} after {} steps @ {}'.format(
                 data['on_policy'][0]['info']['broker_value'][-1],
                 data['on_policy'][0]['info']['step'][-1],
                 data['on_policy'][0]['info']['time'][-1],
             )
         )
-
+        data['ep_summary'] = [None]  # We only test here, want no train NAN's
         self.process_summary(sess, data)
 
     def process_train(self, sess, data_config):

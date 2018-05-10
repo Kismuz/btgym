@@ -134,7 +134,7 @@ class BaseSynchroRunner():
         if self.slowdown_steps > 0:
             start_global_step = self.sess.run(self.global_step_op)
             while start_global_step + self.slowdown_steps > self.sess.run(self.global_step_op):
-                time.sleep(0.1)
+                time.sleep(0.05)
 
     def start_runner(self, sess, summary_writer, **kwargs):
         """
@@ -166,12 +166,13 @@ class BaseSynchroRunner():
             self.log.notice('Memory filled')
         self.log.notice('started collecting data.')
 
-    def get_init_experience(self, policy, init_context=None, data_sample_config=None):
+    def get_init_experience(self, policy, policy_sync_op=None, init_context=None, data_sample_config=None):
         """
         Starts new environment episode.
 
         Args:
             policy:                 policy to execute.
+            policy_sync_op:         operation copying local behavioural policy params from global one
             init_context:           initial policy context for new episode.
             data_sample_config:     configuration dictionary of type `btgym.datafeed.base.EnvResetConfig`
 
@@ -207,6 +208,10 @@ class BaseSynchroRunner():
         init_action[0] = 1
         init_reward = 0.0
         init_action_reward = np.concatenate([init_action, np.asarray([init_reward])], axis=-1)
+
+        # Update policy:
+        if policy_sync_op is not None:
+            self.sess.run(policy_sync_op)
 
         init_context = policy.get_initial_features(state=init_state, context=init_context)
         action, logits, value, next_context = policy.act(init_state, init_context, init_action_reward)
@@ -244,7 +249,7 @@ class BaseSynchroRunner():
 
         return experience, next_state, next_context, next_action_reward
 
-    def get_experience(self, policy, state, context, action_reward):
+    def get_experience(self, policy, state, context, action_reward, policy_sync_op=None):
         """
         Get single experience (possibly terminal).
 
@@ -254,6 +259,11 @@ class BaseSynchroRunner():
             next, policy RNN context
             action_reward
         """
+        # Update policy:
+        if policy_sync_op is not None:
+            self.sess.run(policy_sync_op)
+            # self.log.warning('Per-step policy sync done.')
+
         # Continue adding experiences to rollout:
         action, logits, value, next_context = policy.act(state, context, action_reward)
 
@@ -411,13 +421,21 @@ class BaseSynchroRunner():
 
         return render_stat
 
-    def get_data(self, policy=None, init_context=None, data_sample_config=None, force_new_episode=False):
+    def get_data(
+            self,
+            policy=None,
+            policy_sync_op=None,
+            init_context=None,
+            data_sample_config=None,
+            force_new_episode=False
+    ):
         """
         Collects single trajectory rollout and bunch of summaries using specified policy.
         Updates episode statistics and replay memory.
 
         Args:
             policy:                 policy to execute
+            policy_sync_op:         operation copying local behavioural policy params from global one
             init_context:           if specified, overrides initial episode context provided bu self.context
                                     (valid only if new episode is started within this rollout).
             data_sample_config:     environment configuration parameters for next episode to sample:
@@ -444,6 +462,7 @@ class BaseSynchroRunner():
             # Start new episode:
             self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
                 policy=policy,
+                policy_sync_op=policy_sync_op,
                 init_context=init_context,
                 data_sample_config=data_sample_config
             )
@@ -457,6 +476,7 @@ class BaseSynchroRunner():
         while rollout.size < self.rollout_length and not self.terminal_end:
             experience, self.state, self.context, self.action_reward = self.get_experience(
                 policy=policy,
+                policy_sync_op=policy_sync_op,
                 state=self.state,
                 context=self.context,
                 action_reward=self.action_reward
@@ -524,7 +544,7 @@ class BaseSynchroRunner():
         )
         return data
 
-    def get_episode(self, policy=None, init_context=None, data_sample_config=None):
+    def get_episode(self, policy=None, policy_sync_op=None, init_context=None, data_sample_config=None):
         """
         WRONG
         Collects entire episode trajectory as single rollout and bunch of summaries using specified policy.
@@ -532,6 +552,7 @@ class BaseSynchroRunner():
 
         Args:
             policy:                 policy to execute
+            policy_sync_op:         operation copying local behavioural policy params from global one
             init_context:           if specified, overrides initial episode context provided bu self.context
             data_sample_config:     environment configuration parameters for next episode to sample:
                                     configuration dictionary of type `btgym.datafeed.base.EnvResetConfig
@@ -556,6 +577,7 @@ class BaseSynchroRunner():
         # Start new episode:
         self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
             policy=policy,
+            policy_sync_op=policy_sync_op,
             init_context=init_context,  # None (initially) or final context of previous episode
             data_sample_config=data_sample_config
         )
@@ -575,6 +597,7 @@ class BaseSynchroRunner():
         while not self.terminal_end:
             experience, self.state, self.context, self.action_reward = self.get_experience(
                 policy=policy,
+                policy_sync_op=policy_sync_op,
                 state=self.state,
                 context=self.context,
                 action_reward=self.action_reward
@@ -633,6 +656,7 @@ class BaseSynchroRunner():
             self,
             size,
             policy=None,
+            policy_sync_op=None,
             require_terminal=True,
             same_trial=True,
             init_context=None,
@@ -646,6 +670,7 @@ class BaseSynchroRunner():
         Args:
             size:                   int, number of rollouts to collect
             policy:                 policy to use
+            policy_sync_op:         operation copying local behavioural policy params from global one
             require_terminal:       bool, if True - require at least one terminal rollout to be present.
             same_trial:             bool, if True - all episodes are sampled from same trial
             init_context:           if specified, overrides initial episode context provided bu self.context
@@ -675,6 +700,7 @@ class BaseSynchroRunner():
         batch = [
             self.get_data(
                 policy=policy,
+                policy_sync_op=policy_sync_op,
                 init_context=init_context,
                 data_sample_config=data_sample_config,
                 force_new_episode=True
@@ -694,6 +720,7 @@ class BaseSynchroRunner():
         while not (collected_size >= size and got_terminal):
             rollout_data = self.get_data(
                 policy=policy,
+                policy_sync_op=policy_sync_op,
                 init_context=init_context,
                 data_sample_config=data_sample_config
             )

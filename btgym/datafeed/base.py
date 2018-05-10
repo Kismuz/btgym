@@ -289,49 +289,6 @@ class BTgymBaseData:
         if self.data is not None:
             self.global_timestamp = self.data.index[0].timestamp()
 
-    # def set_global_timestamp(self, timestamp):
-    #     """
-    #     Performs validity checks and sets current global_time.
-    #     Args:
-    #         timestamp:  POSIX timestamp
-    #
-    #     Returns:
-    #
-    #     """
-    #     if self.data is not None:
-    #         if timestamp is not None:
-    #             assert timestamp < self.final_timestamp, \
-    #                 'global time passed <{}> is out of upper bound <{}> for provided data.'. \
-    #                 format(
-    #                     datetime.datetime.fromtimestamp(timestamp),
-    #                     datetime.datetime.fromtimestamp(self.final_timestamp)
-    #                 )
-    #             if timestamp < self.start_timestamp:
-    #                 if self.global_timestamp == 0:
-    #                     self.global_timestamp = self.start_timestamp
-    #
-    #             else:
-    #                 if timestamp > self.global_timestamp:
-    #                     self.global_timestamp = timestamp
-    #
-    #         else:
-    #             if self.global_timestamp == 0:
-    #                 self.global_timestamp = self.start_timestamp
-    #
-    # def get_global_index(self):
-    #     """
-    #     Returns:
-    #         data row corresponded to current global_time
-    #     """
-    #     if self.is_ready:
-    #         return self.data.index.get_loc(
-    #             datetime.datetime.fromtimestamp(self.global_timestamp),
-    #             method='pad'
-    #         )
-    #
-    #     else:
-    #         return 0
-
     def reset(self, data_filename=None, **kwargs):
         """
         Gets instance ready.
@@ -631,6 +588,9 @@ class BTgymBaseData:
         self.log.debug('Respective number of steps: {}.'.format(self.sample_num_records))
         self.log.debug('Maximum allowed data time gap set to: {}.\n'.format(self.max_time_gap))
 
+        sampled_data = None
+        sample_len = 0
+
         # Sanity check param:
         max_attempts = 100
         attempts = 0
@@ -671,7 +631,7 @@ class BTgymBaseData:
             sampled_data = self.data[first_row: last_row]
             sample_len = (sampled_data.index[-1] - sampled_data.index[0]).to_pytimedelta()
             self.log.debug('Actual sample duration: {}.'.format(sample_len, ))
-            self.log.debug('Total episode time gap: {}.'.format(sample_len - self.max_sample_len_delta))
+            self.log.debug('Total sample time gap: {}.'.format(sample_len - self.max_sample_len_delta))
 
             # Perform data gap check:
             if sample_len - self.max_sample_len_delta < self.max_time_gap:
@@ -691,8 +651,21 @@ class BTgymBaseData:
                 attempts += 1
 
         # Got here -> sanity check failed:
-        msg = ('Quitting after {} sampling attempts.' +
-               'Hint: check sampling params / dataset consistency.').format(attempts)
+        msg = (
+            '\nQuitting after {} sampling attempts.\n' +
+            'Full sample duration: {}\n' +
+            'Total sample time gap: {}\n' +
+            'Sample start time: {}\n' +
+            'Sample finish time: {}\n' +
+            'Hint: check sampling params / dataset consistency.'
+        ).format(
+            attempts,
+            sample_len,
+            sample_len - self.max_sample_len_delta,
+            sampled_data.index[0],
+            sampled_data.index[-1]
+
+        )
         self.log.error(msg)
         raise RuntimeError(msg)
 
@@ -752,6 +725,9 @@ class BTgymBaseData:
         self.log.debug('Maximum sample time duration set to: {}.'.format(self.max_sample_len_delta))
         self.log.debug('Respective number of steps: {}.'.format(sample_num_records))
         self.log.debug('Maximum allowed data time gap set to: {}.\n'.format(self.max_time_gap))
+
+        sampled_data = None
+        sample_len = 0
 
         # Sanity check param:
         max_attempts = 100
@@ -844,8 +820,21 @@ class BTgymBaseData:
                 attempts += 1
 
         # Got here -> sanity check failed:
-        msg = ('Quitting after {} sampling attempts.' +
-               'Hint: check sampling params / dataset consistency.').format(attempts)
+        msg = (
+                '\nQuitting after {} sampling attempts.\n' +
+                'Full sample duration: {}\n' +
+                'Total sample time gap: {}\n' +
+                'Sample start time: {}\n' +
+                'Sample finish time: {}\n' +
+                'Hint: check sampling params / dataset consistency.'
+        ).format(
+            attempts,
+            sample_len,
+            sample_len - self.max_sample_len_delta,
+            sampled_data.index[0],
+            sampled_data.index[-1]
+
+        )
         self.log.error(msg)
         raise RuntimeError(msg)
 

@@ -1,7 +1,7 @@
 
 import unittest
 import datetime
-from .time import BTgymTimeDataDomain
+from .casual import BTgymCasualDataDomain
 
 from logbook import WARNING, INFO, DEBUG
 
@@ -10,16 +10,16 @@ filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv'
 
 trial_params=dict(
         start_weekdays={0, 1, 2, 3, 4, 5, 6},
-        sample_duration={'days': 15, 'hours': 0, 'minutes': 0},
+        sample_duration={'days': 20, 'hours': 0, 'minutes': 0},
         start_00=False,
-        time_gap={'days': 7, 'hours': 0},
-        test_period={'days': 3, 'hours': 0, 'minutes': 0},
+        time_gap={'days': 10, 'hours': 0},
+        test_period={'days': 6, 'hours': 0, 'minutes': 0},
     )
 episode_params=dict(
     start_weekdays={0, 1, 2, 3, 4, 5, 6},
-    sample_duration={'days': 1, 'hours': 23, 'minutes': 55},
+    sample_duration={'days': 2, 'hours': 23, 'minutes': 55},
     start_00=False,
-    time_gap={'days': 1, 'hours': 0},
+    time_gap={'days': 2, 'hours': 0},
 )
 
 
@@ -34,7 +34,7 @@ class TimeDomainTest(unittest.TestCase):
         Any train trial mast precede any test period.
         Same true for train/test episodes.
         """
-        domain = BTgymTimeDataDomain(
+        domain = BTgymCasualDataDomain(
             filename=filename,
             trial_params=trial_params,
             episode_params=episode_params,
@@ -88,7 +88,7 @@ class TimeDomainTest(unittest.TestCase):
             ):
                 self.assertLessEqual(global_time, ep_t_1.data.index[0])
 
-            timestamp += 50000
+            timestamp += 100000
 
 
 if __name__ == '__main__':

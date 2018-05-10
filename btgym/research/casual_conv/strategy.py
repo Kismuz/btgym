@@ -152,11 +152,15 @@ class CasualConvStrategy_0(CasualConvStrategy):
     Casual convolutional encoder + `sliding candle` price data features instead of SMA.
     """
     # Time embedding period:
-    time_dim = 512  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
+    # time_dim = 512  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
+    time_dim = 128
 
     # Periods for estimating signal features,
     # note: here number of feature channels is doubled due to fact Hi/Low values computed for each period specified:
-    features_parameters = [8, 32, 128, 512]
+
+    # features_parameters = [8, 32, 128, 512]
+    features_parameters = [2, 8, 32, 64, 128]
+
     num_features = len(features_parameters)
 
     # Number of environment steps to skip before returning next response,

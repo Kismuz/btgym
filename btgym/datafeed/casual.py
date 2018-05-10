@@ -8,7 +8,7 @@ from .base import BTgymBaseData
 from .derivative import BTgymEpisode, BTgymDataTrial,  BTgymRandomDataDomain
 
 
-class BTgymTimeTrial(BTgymDataTrial):
+class BTgymCasualTrial(BTgymDataTrial):
     """
     Intermediate-level data class.
     Implements conception of `Trial` object.
@@ -30,7 +30,7 @@ class BTgymTimeTrial(BTgymDataTrial):
             _config_stack:      dict, holding configuration for nested child samples;
         """
 
-        super(BTgymTimeTrial, self).__init__(name=name, **kwargs)
+        super(BTgymCasualTrial, self).__init__(name=name, **kwargs)
 
     def set_global_timestamp(self, timestamp):
         """
@@ -212,7 +212,7 @@ class BTgymTimeTrial(BTgymDataTrial):
         return self.sample_instance
 
 
-class BTgymTimeDataDomain(BTgymRandomDataDomain):
+class BTgymCasualDataDomain(BTgymRandomDataDomain):
     """
     In conjunction with 'time aware' algorithms, imitates online data stream by implementing conception of
     sliding `current time point` and enabling sampling control according to it.
@@ -232,7 +232,7 @@ class BTgymTimeDataDomain(BTgymRandomDataDomain):
       to match last evaluated record (marking all evaluated data as already known
       and making it available for training);
     """
-    trial_class_ref = BTgymTimeTrial
+    trial_class_ref = BTgymCasualTrial
     episode_class_ref = BTgymEpisode
 
     def __init__(
@@ -270,7 +270,7 @@ class BTgymTimeDataDomain(BTgymRandomDataDomain):
 
         trial_params['start_00'] = False
 
-        super(BTgymTimeDataDomain, self).__init__(
+        super(BTgymCasualDataDomain, self).__init__(
             filename=filename,
             trial_params=trial_params,
             episode_params=episode_params,
