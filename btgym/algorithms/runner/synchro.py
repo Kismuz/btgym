@@ -198,11 +198,11 @@ class BaseSynchroRunner():
 
         # Master worker always resets context at the episode beginning:
         # TODO: !
-        #if not self.data_sample_config['mode']:
+        # if not self.data_sample_config['mode']:
         init_context = None
 
-        #self.log.warning('init_context_passed: {}'.format(init_context))
-        #self.log.warning('state_metadata: {}'.format(state['metadata']))
+        # self.log.warning('init_context_passed: {}'.format(init_context))
+        # self.log.warning('state_metadata: {}'.format(state['metadata']))
 
         init_action = np.zeros(self.env.action_space.n)
         init_action[0] = 1
@@ -263,20 +263,20 @@ class BaseSynchroRunner():
         if policy_sync_op is not None:
             self.sess.run(policy_sync_op)
             # TODO: meta-learning related; TEMPORAL, refract:
-            if hasattr(policy, 'meta') and self.task == 0:
-                wait = 1
-                i = 0
-                while wait:
-                    wait = policy.meta.act()
-                    # self.log.warning('policy_meta_action: {}'.format(wait))
-                    time.sleep(4)
-                    # i += 1
-                    self.sess.run([policy_sync_op, policy.meta.sync_slot_op])
-
-                policy.meta.reset()
-                policy.meta.global_reset()
-
-                # self.log.notice('waited: {}'.format(i))
+            # if hasattr(policy, 'meta') and self.task == 0:
+            #     wait = 1
+            #     i = 0
+            #     while wait:
+            #         wait = policy.meta.act()
+            #         # self.log.warning('policy_meta_action: {}'.format(wait))
+            #         time.sleep(4)
+            #         # i += 1
+            #         self.sess.run([policy_sync_op, policy.meta.sync_slot_op])
+            #
+            #     policy.meta.reset()
+            #     policy.meta.global_reset()
+            #
+            #     # self.log.notice('waited: {}'.format(i))
 
         # Continue adding experiences to rollout:
         action, logits, value, next_context = policy.act(state, context, action_reward)
@@ -565,7 +565,7 @@ class BaseSynchroRunner():
 
     def get_episode(self, policy=None, policy_sync_op=None, init_context=None, data_sample_config=None):
         """
-        WRONG
+        WRONG do not use
         Collects entire episode trajectory as single rollout and bunch of summaries using specified policy.
         Updates episode statistics and replay memory.
 

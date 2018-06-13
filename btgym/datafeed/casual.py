@@ -222,11 +222,11 @@ class BTgymCasualTrial(BTgymDataTrial):
 
 class BTgymCasualDataDomain(BTgymRandomDataDomain):
     """
-    In conjunction with 'time aware' algorithms, imitates online data stream by implementing conception of
-    sliding `current time point` and enabling sampling control according to it.
+    Imitates online data stream by implementing conception of sliding `current time point`
+    and enabling sampling control according to it.
 
-    Objective is to prevent data leakage by allowing training on known, past data only and testing on unknown,
-    future data, providing realistic training cycle.
+    Objective is to enable proper train/evaluation/test data split and prevent data leakage by
+     allowing training on known, past data only and testing on unknown, future data, providing realistic training cycle.
 
     Source trials set is defined as all trials starting somewhere in past and ending no later than current time point,
     and target trials set as set of trials such as: trial test period starts somewhere in the past and ends at
@@ -236,7 +236,8 @@ class BTgymCasualDataDomain(BTgymRandomDataDomain):
     - `current time point` is set arbitrary and is stateful in sense it can be only increased (no backward time);
     - source trials can be sampled from past (known) data multiply times;
     - target trial can only be sampled once according to current time point or later (unknown data);
-    - as any sampled target trial is being evaluated by outer algorithm, current time should be incremented
+    - as any sampled target trial is being evaluated by outer algorithm, current time should be incremented either by
+      providing 'timestamp' arg. to sample() method or calling set_global_timestamp() method,
       to match last evaluated record (marking all evaluated data as already known
       and making it available for training);
     """
@@ -426,14 +427,6 @@ class BTgymCasualDataDomain(BTgymRandomDataDomain):
                     format(self.train_num_records, self.test_num_records)
             )
             raise AssertionError
-
-        # if self.expanding:
-        #     self.train_interval = [current_index - self.sample_num_records, current_index]
-        #
-        # else:
-        #     self.train_interval = [0, current_index]
-        #
-        # self.test_interval = [current_index - self.train_num_records, current_index + self.test_num_records]
 
         self.sample_num = 0
 
