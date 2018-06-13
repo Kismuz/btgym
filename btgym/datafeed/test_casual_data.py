@@ -9,17 +9,17 @@ from logbook import WARNING, INFO, DEBUG
 filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv'
 
 trial_params=dict(
-        start_weekdays={0, 1, 2, 3, 4, 5, 6},
-        sample_duration={'days': 20, 'hours': 0, 'minutes': 0},
-        start_00=False,
-        time_gap={'days': 10, 'hours': 0},
-        test_period={'days': 6, 'hours': 0, 'minutes': 0},
-    )
+    start_weekdays={0, 1, 2, 3, 4, 5, 6},
+    sample_duration={'days': 10, 'hours': 0, 'minutes': 0},
+    start_00=False,
+    time_gap={'days': 5, 'hours': 0},
+    test_period={'days': 3, 'hours': 0, 'minutes': 0},
+)
 episode_params=dict(
     start_weekdays={0, 1, 2, 3, 4, 5, 6},
     sample_duration={'days': 2, 'hours': 23, 'minutes': 55},
     start_00=False,
-    time_gap={'days': 2, 'hours': 0},
+    time_gap={'days': 2, 'hours': 10},
 )
 
 

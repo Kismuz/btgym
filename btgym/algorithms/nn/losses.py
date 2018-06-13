@@ -37,6 +37,7 @@ def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_lo
         loss = pi_loss + vf_loss - entropy * entropy_beta
 
         mean_vf = tf.reduce_mean(pi_vf)
+        mean_t_target = tf.reduce_mean(r_target)
 
         summaries = [
             tf.summary.scalar('policy_loss', pi_loss),
@@ -46,6 +47,9 @@ def aac_loss_def(act_target, adv_target, r_target, pi_logits, pi_vf, pi_prime_lo
             summaries += [
                 tf.summary.scalar('entropy', entropy),
                 tf.summary.scalar('value_fn', mean_vf),
+                tf.summary.scalar('empirical_return',mean_t_target),
+                #tf.summary.histogram('value_fn', pi_vf),
+                tf.summary.histogram('empirical_return', r_target),
             ]
 
     return loss, summaries

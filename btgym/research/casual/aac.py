@@ -1,4 +1,4 @@
-
+import tensorflow as tf
 import numpy as np
 import time
 import datetime
@@ -264,4 +264,234 @@ class CA3C(GuidedAAC):
         #
         #     )
         # )
+
+
+class CA3Ca(CA3C):
+    """
+    + Adaptive iteratations.
+    """
+
+    def __init__(self, name='CasualAdaA3C', **kwargs):
+        super(CA3Ca, self).__init__(name=name, **kwargs)
+
+    def _make_loss(self, **kwargs):
+        aac_loss, summaries = self._make_base_loss(**kwargs)
+
+        # Guidance annealing:
+        if self.guided_decay_steps is not None:
+            self.guided_lambda_decayed = tf.train.polynomial_decay(
+                self.guided_lambda,
+                self.global_step + 1,
+                self.guided_decay_steps,
+                0,
+                power=1,
+                cycle=False,
+            )
+        else:
+            self.guided_lambda_decayed = self.guided_lambda
+        # Switch to zero when testing - prevents information leakage:
+        self.train_guided_lambda = self.guided_lambda_decayed * tf.cast(self.local_network.train_phase, tf.float32)
+
+        self.guided_loss, guided_summary = self.expert_loss(
+            pi_actions=self.local_network.on_logits,
+            expert_actions=self.local_network.expert_actions,
+            name='on_policy',
+            verbose=True,
+            guided_lambda=self.train_guided_lambda
+        )
+        loss = self.aac_lambda * aac_loss + self.guided_loss
+
+        summaries += guided_summary
+
+        self.log.notice(
+            'guided_lambda: {:1.6f}, guided_decay_steps: {}'.format(self.guided_lambda, self.guided_decay_steps)
+        )
+
+        if hasattr(self.local_network, 'meta'):
+            self.log.notice('meta_policy enabled')
+            summaries += self.local_network.meta.summaries
+
+        return loss, summaries
+
+    def _make_train_op(self, pi, pi_prime, pi_global):
+        """
+        Defines training op graph and supplementary sync operations.
+
+        Args:
+            pi:                 policy network obj.
+            pi_prime:           optional policy network obj.
+            pi_global:          shared policy network obj. hosted by parameter server
+
+        Returns:
+            tensor holding training op graph;
+        """
+
+        # Each worker gets a different set of adam optimizer parameters:
+        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
+
+        # Clipped gradients:
+        self.grads, _ = tf.clip_by_global_norm(
+            tf.gradients(self.loss, pi.var_list),
+            40.0
+        )
+        self.grads_global_norm = tf.global_norm(self.grads)
+        # Copy weights from the parameter server to the local model
+        self.sync = self.sync_pi = tf.group(
+            *[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_global.var_list)]
+        )
+        if self.use_target_policy:
+            # Copy weights from new policy model to target one:
+            self.sync_pi_prime = tf.group(
+                *[v1.assign(v2) for v1, v2 in zip(pi_prime.var_list, pi.var_list)]
+            )
+        grads_and_vars = list(zip(self.grads, pi_global.var_list))
+
+        # Set global_step increment equal to observation space batch size:
+        obs_space_keys = list(pi.on_state_in.keys())
+
+        assert 'external' in obs_space_keys, \
+            'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
+        self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in['external'])[0])
+
+        self.local_network.meta.grads_and_vars = list(
+            zip(self.local_network.meta.grads, self.network.meta.var_list)
+        )
+        self.meta_opt = tf.train.GradientDescentOptimizer(self.local_network.meta.learn_rate)
+
+        self.meta_train_op = self.meta_opt.apply_gradients(self.local_network.meta.grads_and_vars)
+
+        self.local_network.meta.sync_slot_op = tf.assign(
+            self.local_network.meta.cluster_averages_slot,
+            self.network.meta.cluster_averages_slot,
+        )
+
+        self.local_network.meta.send_stat_op = tf.scatter_nd_update(
+            self.network.meta.cluster_averages_slot,
+            [[0, self.task], [1, self.task]],
+            [
+                self.local_network.meta.cluster_averages_slot[0, self.task],
+                self.local_network.meta.cluster_averages_slot[1, self.task]
+            ]
+        )
+        self.local_network.meta.global_reset = self.network.meta.reset
+
+        train_op = self.optimizer.apply_gradients(grads_and_vars)
+
+        self.local_network.meta.ppp = self.network.meta
+
+        self.log.debug('train_op defined')
+        return tf.group([train_op, self.meta_train_op])
+
+    def process_test(self, sess, data_config):
+        data = {}
+        done = False
+        # Set target episode beginning to be at current timepoint:
+        data_config['trial_config']['align_left'] = 1
+
+        self.log.info('test episode started...')
+
+        while not done:
+
+            # TODO: temporal, refract
+            # self.local_network.meta.global_reset()
+            sess.run(self.sync_pi)
+
+            data = self.get_data(
+                policy=self.local_network,
+                data_sample_config=data_config,
+                rollout_length=2,
+                policy_sync_op=self.sync_pi,  # update policy after each single step instead of single rollout
+            )
+            done = np.asarray(data['terminal']).any()
+
+            # self.log.warning('test episode done: {}'.format(done))
+
+            self.global_timestamp = data['on_policy'][0]['state']['metadata']['timestamp'][-1]
+
+            # # Wait for other workers to catch up with training:
+            # start_global_step = sess.run(self.global_step)
+            # while self.test_skeep_steps >= sess.run(self.global_step) - start_global_step:
+            #     time.sleep(self.test_sleep_time)
+
+            self.log.info(
+                'test episode rollout done, global_time: {}, global_step: {}'.format(
+                    datetime.datetime.fromtimestamp(self.global_timestamp),
+                    sess.run(self.global_step)
+                )
+            )
+            # Now can train on already past data:
+            feed_dict = self.process_data(sess, data, is_train=True, pi=self.local_network)
+
+            fetches = [self.train_op, self.model_summary_op, self.inc_step]
+
+            fetched = sess.run(fetches, feed_dict=feed_dict)
+
+            model_summary = fetched[-2]
+
+            data['ep_summary'] = [None]  # We only test here, want no train NAN's
+            self.process_summary(sess, data, model_summary)
+
+        self.log.notice(
+            'test episode finished, global_time set: {}'.format(
+                datetime.datetime.fromtimestamp(self.global_timestamp)
+            )
+        )
+        self.log.notice(
+            'final value: {:8.2f} after {} steps @ {}'.format(
+                data['on_policy'][0]['info']['broker_value'][-1],
+                data['on_policy'][0]['info']['step'][-1],
+                data['on_policy'][0]['info']['time'][-1],
+            )
+        )
+
+    def process_train(self, sess, data_config):
+        data = {}
+        done = False
+        # Set source episode to be sampled uniformly from test interval:
+        data_config['trial_config']['align_left'] = 0
+        # self.log.warning('train episode started...')
+
+        while not done:
+            sess.run(self.sync_pi)
+
+            wirte_model_summary = \
+                self.local_steps % self.model_summary_freq == 0
+
+            data = self.get_data(
+                policy=self.local_network,
+                data_sample_config=data_config,
+                policy_sync_op=None
+            )
+            done = np.asarray(data['terminal']).any()
+            feed_dict = self.process_data(sess, data, is_train=True, pi=self.local_network)
+
+            if wirte_model_summary:
+                fetches = [self.local_network.on_vf, self.train_op, self.model_summary_op, self.inc_step]
+            else:
+                fetches = [self.local_network.on_vf, self.train_op, self.inc_step]
+
+            sess.run(self.local_network.meta.sync_slot_op)
+
+            fetched = sess.run(fetches, feed_dict=feed_dict)
+
+            if wirte_model_summary:
+                model_summary = fetched[-2]
+
+            else:
+                model_summary = None
+
+            self.process_summary(sess, data, model_summary)
+
+            # Meta:
+            train_stat = fetched[0] - 10
+
+            if sess.run(self.network.meta.cluster_averages_slot)[0, self.task] == 0:
+                self.local_network.meta.reset()
+
+            self.local_network.meta.update(train_stat)
+
+            sess.run(self.local_network.meta.send_stat_op)
+
+            self.local_steps += 1
+
 

@@ -72,7 +72,7 @@ class BTgymCasualTrial(BTgymDataTrial):
         if self.is_ready:
             return self.data.index.get_loc(
                 datetime.datetime.fromtimestamp(self.global_timestamp),
-                method='pad'
+                method='backfill'
             )
 
         else:
@@ -177,7 +177,8 @@ class BTgymCasualTrial(BTgymDataTrial):
             raise AssertionError
 
         # Set actual time:
-        self.set_global_timestamp(timestamp)
+        if timestamp is not None:
+            self.set_global_timestamp(timestamp)
         train_interval, test_interval = self.get_intervals()
 
         if self.sample_instance is None or get_new:
@@ -191,10 +192,17 @@ class BTgymCasualTrial(BTgymDataTrial):
                 )
 
             else:
-                # Get [possibly left-aligned i.e. as close as possible to current global_time] sample in test interval:
+                # If parent is target - get left-aligned (i.e. as close as possible to current global_time)
+                # sample in test interval; else (parenet is source) - uniformly sample from test interval:
+                if self.metadata['parent_sample_type']:
+                    align = align_left
+
+                else:
+                    align = False
+
                 self.sample_instance = self._sample_aligned_interval(
                     test_interval,
-                    align_left=align_left,
+                    align_left=align,
                     b_alpha=1,
                     b_beta=1,
                     name='test_' + self.sample_name
@@ -321,7 +329,7 @@ class BTgymCasualDataDomain(BTgymRandomDataDomain):
         if self.is_ready:
             return self.data.index.get_loc(
                 datetime.datetime.fromtimestamp(self.global_timestamp),
-                method='pad'
+                method='backfill'
             )
 
         else:

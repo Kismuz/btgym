@@ -64,6 +64,7 @@ class BaseAAC(object):
                  pc_loss=pc_loss_def,
                  runner_config=None,
                  runner_fn_ref=BaseEnvRunnerFn,
+                 cluster_spec=None,
                  random_seed=None,
                  model_gamma=0.99,  # decay
                  model_gae_lambda=1.00,  # GAE lambda
@@ -123,6 +124,7 @@ class BaseAAC(object):
             runner_config:          runner class and configuration dictionary,
             runner_fn_ref:          callable defining environment runner execution logic,
                                     valid only if no 'runner_config' arg is provided
+            cluster_spec:           dict, full training cluster spec (may be used by meta-trainer)
             random_seed:            int or None
             model_gamma:            scalar, gamma discount factor
             model_gae_lambda:       scalar, GAE lambda
@@ -206,6 +208,7 @@ class BaseAAC(object):
         self.log_level = log_level
         self.name = name
         self.task = task
+        self.cluster_spec = cluster_spec
         StreamHandler(sys.stdout).push_application()
         self.log = Logger('{}_{}'.format(self.name, self.task), level=self.log_level)
 
@@ -384,7 +387,9 @@ class BaseAAC(object):
                     'ac_space': self.ref_env.action_space.n,
                     'rp_sequence_size': self.rp_sequence_size,
                     'aux_estimate': self.use_any_aux_tasks,
-                    'static_rnn': self.time_flat
+                    'static_rnn': self.time_flat,
+                    'task': self.task,
+                    'cluster_spec': self.cluster_spec
                 }
             )
 
@@ -631,6 +636,7 @@ class BaseAAC(object):
             tf.gradients(self.loss, pi.var_list),
             40.0
         )
+        self.grads_global_norm = tf.global_norm(self.grads)
         # Copy weights from the parameter server to the local model
         self.sync = self.sync_pi = tf.group(
             *[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_global.var_list)]
@@ -666,10 +672,14 @@ class BaseAAC(object):
                 # Model-wide statistics:
                 with tf.name_scope('model'):
                     model_summaries += [
-                        tf.summary.scalar("grad_global_norm", tf.global_norm(self.grads)),
+                        tf.summary.scalar("grad_global_norm", self.grads_global_norm),
                         #tf.summary.scalar("learn_rate", self.train_learn_rate),
                         tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
                         tf.summary.scalar("total_loss", self.loss),
+                        #tf.summary.histogram('roll_reward', self.local_network.on_a_r_in[:, -1]),  # TODO!
+                        tf.summary.scalar('roll_reward', tf.reduce_mean(self.local_network.on_a_r_in[:, -1])),
+                        tf.summary.histogram('advantage', self.local_network.on_pi_adv_target),
+                        tf.summary.scalar('roll_advantage',tf.reduce_mean(self.local_network.on_pi_adv_target)),
                     ]
                     if policy is not None:
                         model_summaries += [ tf.summary.scalar("var_global_norm", tf.global_norm(policy.var_list))]
@@ -820,7 +830,7 @@ class BaseAAC(object):
         Configures and instantiates policy network and ops.
 
         Note:
-            `global` name_scope network should be defined first.
+            `global` name_scope networks should be defined first.
 
         Args:
             scope:  name scope

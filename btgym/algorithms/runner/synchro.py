@@ -262,7 +262,21 @@ class BaseSynchroRunner():
         # Update policy:
         if policy_sync_op is not None:
             self.sess.run(policy_sync_op)
-            # self.log.warning('Per-step policy sync done.')
+            # TODO: meta-learning related; TEMPORAL, refract:
+            if hasattr(policy, 'meta') and self.task == 0:
+                wait = 1
+                i = 0
+                while wait:
+                    wait = policy.meta.act()
+                    # self.log.warning('policy_meta_action: {}'.format(wait))
+                    time.sleep(4)
+                    # i += 1
+                    self.sess.run([policy_sync_op, policy.meta.sync_slot_op])
+
+                policy.meta.reset()
+                policy.meta.global_reset()
+
+                # self.log.notice('waited: {}'.format(i))
 
         # Continue adding experiences to rollout:
         action, logits, value, next_context = policy.act(state, context, action_reward)
@@ -427,6 +441,7 @@ class BaseSynchroRunner():
             policy_sync_op=None,
             init_context=None,
             data_sample_config=None,
+            rollout_length=None,
             force_new_episode=False
     ):
         """
@@ -440,6 +455,7 @@ class BaseSynchroRunner():
                                     (valid only if new episode is started within this rollout).
             data_sample_config:     environment configuration parameters for next episode to sample:
                                     configuration dictionary of type `btgym.datafeed.base.EnvResetConfig
+            rollout_length:         length of rollout to collect, if specified  - overrides self.rollout_length attr
             force_new_episode:      bool, if True - resets the environment
 
 
@@ -451,6 +467,9 @@ class BaseSynchroRunner():
 
         if init_context is None:
             init_context = self.context
+
+        if rollout_length is None:
+            rollout_length = self.rollout_length
 
         rollout = Rollout()
         is_test = False
@@ -473,7 +492,7 @@ class BaseSynchroRunner():
             # self.log.warning('pre_experience_metadata: {}'.format(self.pre_experience['state']['metadata']))
 
         # Collect single rollout:
-        while rollout.size < self.rollout_length and not self.terminal_end:
+        while rollout.size < rollout_length and not self.terminal_end:
             experience, self.state, self.context, self.action_reward = self.get_experience(
                 policy=policy,
                 policy_sync_op=policy_sync_op,
@@ -535,7 +554,7 @@ class BaseSynchroRunner():
         data = dict(
             on_policy=rollout,
             terminal=self.terminal_end,
-            off_policy=self.memory.sample_uniform(sequence_size=self.rollout_length),
+            off_policy=self.memory.sample_uniform(sequence_size=rollout_length),
             off_policy_rp=self.memory.sample_priority(exact_size=True),
             ep_summary=train_ep_summary,
             test_ep_summary=test_ep_summary,

@@ -217,6 +217,7 @@ class Worker(multiprocessing.Process):
                 task=self.task,
                 policy_config=self.policy_config,
                 log_level=self.log_level,
+                cluster_spec=self.cluster_spec,
                 random_seed=self.random_seed,
                 **self.trainer_kwargs,
             )
