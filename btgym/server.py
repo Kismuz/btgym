@@ -108,7 +108,7 @@ class _BTgymAnalyzer(bt.Analyzer):
             #print('Analyzer_env_iteration:', self.strategy.env_iteration)
 
             # Gather response:
-            raw_state = self.strategy._get_raw_state()
+            raw_state = self.strategy.get_raw_state()
             state = self.strategy.get_state()
             reward = self.strategy.get_reward()
 

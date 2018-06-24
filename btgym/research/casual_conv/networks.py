@@ -17,6 +17,8 @@ def conv_1d_casual_encoder(
         conv_1d_activation=tf.nn.elu,
         conv_1d_overlap=1,
         name='casual_encoder',
+        keep_prob=None,
+        conv_1d_gated=False,
         reuse=False,
         collections=None,
         **kwargs
@@ -77,6 +79,9 @@ def conv_1d_casual_encoder(
             if conv_1d_activation is not None:
                 y = conv_1d_activation(y)
 
+            if keep_prob is not None:
+                y = tf.nn.dropout(y, keep_prob=keep_prob, name="_layer_{}_with_dropout".format(i))
+
             layers.append(y)
 
             depth = conv_1d_overlap // conv_1d_filter_size ** i
@@ -88,20 +93,43 @@ def conv_1d_casual_encoder(
 
         # encoded = tf.stack([h[:, -1, :] for h in layers], axis=1, name='encoded_state')
 
-        encoded = tf.concat(
-            [
-                tf.slice(
-                    h,
-                    begin=[0, h.get_shape().as_list()[1] - d, 0],
-                    size=[-1, d, -1]
-                ) for h, d in zip(layers, slice_depth)
-            ],
-            axis=1,
-            name='encoded_state'
-        )
+        sliced_layers = [
+            tf.slice(
+                h,
+                begin=[0, h.get_shape().as_list()[1] - d, 0],
+                size=[-1, d, -1]
+            ) for h, d in zip(layers, slice_depth)
+        ]
+        output_stack = sliced_layers
+        # But:
+        if conv_1d_gated:
+            split_size = int(conv_1d_num_filters / 2)
+            output_stack = []
+            for l in sliced_layers:
+                x1 = l[..., :split_size]
+                x2 = l[..., split_size:]
 
-        # encoded = tf.concat(layers, axis=1, name='full_encoded_state')
-        # print('encoded :', encoded)
+                y = tf.multiply(
+                    x1,
+                    tf.nn.sigmoid(x2),
+                    name='gated_conv_output'
+                )
+                output_stack.append(y)
+
+        encoded = tf.concat(output_stack, axis=1, name='encoded_state')
+
+        # encoded = tf.concat(
+        #     [
+        #         tf.slice(
+        #             h,
+        #             begin=[0, h.get_shape().as_list()[1] - d, 0],
+        #             size=[-1, d, -1]
+        #         ) for h, d in zip(layers, slice_depth)
+        #     ],
+        #     axis=1,
+        #     name='encoded_state'
+        # )
+        print('encoder :', encoded)
 
     return encoded
 
@@ -135,10 +163,23 @@ def attention_layer(inputs, attention_ref=tf.contrib.seq2seq.LuongAttention, nam
         **kwargs
     )
 
-    alignments = attention_mechanism(query_state, None)  # normalized attention weights
+    # alignments = attention_mechanism(query_state, None)  # normalized attention weights
+
+    # Suppose there is no previous context for attention (uhm?):
+    alignments = attention_mechanism(
+        query_state,
+        attention_mechanism.initial_alignments(tf.shape(inputs)[0], dtype=tf.float32)
+    )
+    # Somehow attention call returns tuple of twin tensors (wtf?):
+    if isinstance(alignments, tuple):
+        alignments = alignments[0]
 
     # Compute context vector:
-    expanded_alignments = tf.expand_dims(alignments, 1)
+    expanded_alignments = tf.expand_dims(alignments, axis=-2)
+
+    # print('attention_mechanism.values:', attention_mechanism.values)
+    # print('alignments: ', alignments)
+    # print('expanded_alignments:', expanded_alignments)
 
     context = tf.matmul(expanded_alignments, attention_mechanism.values)  # values == source_states
 
@@ -159,6 +200,9 @@ def conv_1d_casual_attention_encoder(
         conv_1d_activation=tf.nn.elu,
         conv_1d_attention_ref=tf.contrib.seq2seq.LuongAttention,
         name='casual_encoder',
+        keep_prob=None,
+        conv_1d_gated=False,
+        conv_1d_full_hidden=False,
         reuse=False,
         collections=None,
         **kwargs
@@ -216,9 +260,24 @@ def conv_1d_casual_attention_encoder(
             y = tf.reshape(y, [-1, num_time_batches, conv_1d_num_filters], name='layer_{}_output'.format(i))
 
             y = norm_layer(y)
+
             if conv_1d_activation is not None:
                 y = conv_1d_activation(y)
 
+            if keep_prob is not None:
+                y = tf.nn.dropout(y, keep_prob=keep_prob, name="_layer_{}_with_dropout".format(i))
+
+            if conv_1d_gated:
+                split_size = int(conv_1d_num_filters / 2)
+
+                y1 = y[..., :split_size]
+                y2 = y[..., split_size:]
+
+                y = tf.multiply(
+                    y1,
+                    tf.nn.sigmoid(y2),
+                    name="_layer_{}_gated".format(i)
+                )
             layers.append(y)
 
             # Insert attention for all but top layer:
@@ -230,12 +289,18 @@ def conv_1d_casual_attention_encoder(
                 )
                 attention_layers.append(attention)
 
-        convolved = tf.stack([h[:, -1, :] for h in layers], axis=1, name='convolved_stack')
+        if conv_1d_full_hidden:
+            convolved = tf.concat(layers, axis=-2, name='convolved_stack_full')
+
+        else:
+            convolved = tf.stack([h[:, -1, :] for h in layers], axis=1, name='convolved_stack')
+
         attended = tf.concat(attention_layers, axis=-2, name='attention_stack')
 
         encoded = tf.concat([convolved, attended], axis=-2, name='encoded_state')
-
+        # print('layers', layers)
         # print('convolved: ', convolved)
+        # print('attention_layers:', attention_layers)
         # print('attention_stack: ', attended)
         # print('encoded :', encoded)
 

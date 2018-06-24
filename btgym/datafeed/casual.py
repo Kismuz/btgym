@@ -249,6 +249,7 @@ class BTgymCasualDataDomain(BTgymRandomDataDomain):
             filename,
             trial_params,
             episode_params,
+            frozen_time_split=None,
             name='TimeDataDomain',
             **kwargs):
         """
@@ -274,6 +275,14 @@ class BTgymCasualDataDomain(BTgymRandomDataDomain):
         self.total_samples = -1
         self.sample_num = -1
         self.sample_stride = -1
+
+        if frozen_time_split is not None:
+            self.frozen_time_split = datetime.timedelta(**frozen_time_split)
+
+        else:
+            self.frozen_time_split = None
+
+        self.frozen_split_timestamp = None
 
         kwargs.update({'target_period': episode_params['sample_duration']})
 
@@ -303,24 +312,28 @@ class BTgymCasualDataDomain(BTgymRandomDataDomain):
 
         """
         if self.data is not None:
-            if timestamp is not None:
-                assert timestamp < self.final_timestamp, \
-                    'global time passed <{}> is out of upper bound <{}> for provided data.'. \
-                    format(
-                        datetime.datetime.fromtimestamp(timestamp),
-                        datetime.datetime.fromtimestamp(self.final_timestamp)
-                    )
-                if timestamp < self.start_timestamp:
-                    if self.global_timestamp == 0:
-                        self.global_timestamp = self.start_timestamp
-
-                else:
-                    if timestamp > self.global_timestamp:
-                        self.global_timestamp = timestamp
+            if self.frozen_split_timestamp is not None:
+                self.global_timestamp = self.frozen_split_timestamp
 
             else:
-                if self.global_timestamp == 0:
-                    self.global_timestamp = self.start_timestamp
+                if timestamp is not None:
+                    assert timestamp < self.final_timestamp, \
+                        'global time passed <{}> is out of upper bound <{}> for provided data.'. \
+                        format(
+                            datetime.datetime.fromtimestamp(timestamp),
+                            datetime.datetime.fromtimestamp(self.final_timestamp)
+                        )
+                    if timestamp < self.start_timestamp:
+                        if self.global_timestamp == 0:
+                            self.global_timestamp = self.start_timestamp
+
+                    else:
+                        if timestamp > self.global_timestamp:
+                            self.global_timestamp = timestamp
+
+                else:
+                    if self.global_timestamp == 0:
+                        self.global_timestamp = self.start_timestamp
 
     def get_global_index(self):
         """
@@ -415,7 +428,14 @@ class BTgymCasualDataDomain(BTgymRandomDataDomain):
         self.start_timestamp = self.data.index[self.sample_num_records].timestamp()
         self.final_timestamp = self.data.index[-self.test_num_records].timestamp()
 
-        self.set_global_timestamp(timestamp)
+        if self.frozen_time_split is not None:
+            split_num_records = int(self.frozen_time_split.total_seconds() / (60 * self.timeframe))
+            self.frozen_split_timestamp = self.data.index[split_num_records].timestamp()
+            self.set_global_timestamp(self.frozen_split_timestamp)
+
+        else:
+            self.frozen_split_timestamp = None
+            self.set_global_timestamp(timestamp)
         current_index = self.get_global_index()
 
         try:

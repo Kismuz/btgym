@@ -72,6 +72,16 @@ class BaseAacPolicy(object):
         self.off_batch_size = tf.placeholder(tf.int32, name='off_policy_batch_size')
         self.off_time_length = tf.placeholder(tf.int32, name='off_policy_sequence_size')
 
+        try:
+            if self.train_phase is not None:
+                pass
+
+        except AttributeError:
+            self.train_phase = tf.placeholder_with_default(
+                tf.constant(False, dtype=tf.bool),
+                shape=(),
+                name='train_phase_flag_pl'
+            )
         # Base on-policy AAC network:
         # Conv. layers:
         on_aac_x = conv_2d_network(self.on_state_in['external'], ob_space['external'], ac_space, **kwargs)
@@ -190,17 +200,7 @@ class BaseAacPolicy(object):
         # RP output:
         self.rp_logits = dense_rp_network(rp_x)
 
-        # Batch-norm related (useless, ignore):
-        try:
-            if self.train_phase is not None:
-                pass
-
-        except:
-            self.train_phase = tf.placeholder_with_default(
-                tf.constant(False, dtype=tf.bool),
-                shape=(),
-                name='train_phase_flag_pl'
-            )
+        # Batch-norm related :
         self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         # Add moving averages to save list:
         moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')

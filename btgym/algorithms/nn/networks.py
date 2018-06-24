@@ -27,6 +27,7 @@ def conv_2d_network(x,
                     name='conv2d',
                     collections=None,
                     reuse=False,
+                    keep_prob=None,
                     **kwargs):
     """
     Stage1 network: from preprocessed 2D input to estimated features.
@@ -36,7 +37,6 @@ def conv_2d_network(x,
         tensor holding state features;
     """
     with tf.variable_scope(name, reuse=reuse):
-        #for i in range(conv_2d_num_layers):
         for i, num_filters in enumerate(conv_2d_num_filters):
             x = tf.nn.elu(
                 norm_layer(
@@ -51,15 +51,18 @@ def conv_2d_network(x,
                         collections,
                         reuse
                     ),
-                    scope=name + "_layer_{}".format(i + 1)
+                    scope=name + "_norm_layer_{}".format(i + 1)
                 )
             )
+            if keep_prob is not None:
+                x = tf.nn.dropout(x, keep_prob=keep_prob, name="_layer_{}_with_dropout".format(i + 1))
+
         # A3c/BaseAAC original paper design:
-        #x = tf.nn.elu(conv2d(x, 16, 'conv2d_1', [8, 8], [4, 4], pad, dtype, collections, reuse))
-        #x = tf.nn.elu(conv2d(x, 32, 'conv2d_2', [4, 4], [2, 2], pad, dtype, collections, reuse))
-        #x = tf.nn.elu(
+        # x = tf.nn.elu(conv2d(x, 16, 'conv2d_1', [8, 8], [4, 4], pad, dtype, collections, reuse))
+        # x = tf.nn.elu(conv2d(x, 32, 'conv2d_2', [4, 4], [2, 2], pad, dtype, collections, reuse))
+        # x = tf.nn.elu(
         #   linear(batch_flatten(x), 256, 'conv_2d_dense', normalized_columns_initializer(0.01), reuse=reuse)
-        #)
+        # )
         return x
 
 
@@ -105,6 +108,7 @@ def lstm_network(
         lstm_class=rnn.BasicLSTMCell,
         lstm_layers=(256,),
         static=False,
+        keep_prob=None,
         name='lstm',
         reuse=False,
         **kwargs
@@ -131,7 +135,11 @@ def lstm_network(
         # Define LSTM layers:
         lstm = []
         for size in lstm_layers:
-            lstm += [lstm_class(size)] #, state_is_tuple=True)]
+            layer = lstm_class(size)
+            if keep_prob is not None:
+                layer = tf.nn.rnn_cell.DropoutWrapper(layer, output_keep_prob=keep_prob)
+
+            lstm.append(layer)
 
         lstm = rnn.MultiRNNCell(lstm, state_is_tuple=True)
         # Get time_dimension as [1]-shaped tensor:

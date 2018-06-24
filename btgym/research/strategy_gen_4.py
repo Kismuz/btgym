@@ -133,7 +133,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
         self.channel_H = bt.Sum(self.data.high, - self.data.open)
         self.channel_L = bt.Sum(self.data.low, - self.data.open)
 
-    def get_market_state(self):
+    def get_external_state(self):
 
         x = np.stack(
             [
@@ -153,7 +153,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
         return x_market[:, None, :]
 
-    def get_broker_state(self):
+    def get_internal_state(self):
         x_broker = np.concatenate(
             [
                 np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
@@ -175,8 +175,8 @@ class DevStrat_4_6(BTgymBaseStrategy):
         # Update inner state statistic and compose state:
         self.update_sliding_stat()
 
-        self.state['external'] = self.get_market_state()
-        self.state['internal'] = self.get_broker_state()
+        self.state['external'] = self.get_external_state()
+        self.state['internal'] = self.get_internal_state()
         self.state['action'] = np.asarray(self.sliding_stat['action'])[:, None, None]
         self.state['reward'] = np.asarray(self.sliding_stat['reward'])[:, None, None]
         self.state['metadata'] = self.get_metadata_state()
@@ -316,7 +316,7 @@ class DevStrat_4_7(DevStrat_4_6):
     def __init__(self, **kwargs):
         super(DevStrat_4_7, self).__init__(**kwargs)
 
-    def get_broker_state(self):
+    def get_internal_state(self):
         x_broker = np.stack(
             [
                 self.sliding_stat['broker_value'][-1],
@@ -333,8 +333,8 @@ class DevStrat_4_7(DevStrat_4_6):
         self.update_sliding_stat()
 
         self.state = {
-            'external': self.get_market_state(),
-            'internal': self.get_broker_state(),
+            'external': self.get_external_state(),
+            'internal': self.get_internal_state(),
             'metadata': self.get_metadata_state(),
         }
         return self.state
@@ -494,7 +494,7 @@ class DevStrat_4_8(DevStrat_4_7):
         metadata={},
     )
 
-    def get_broker_state(self):
+    def get_internal_state(self):
         x_broker = np.concatenate(
             [
                 np.asarray(self.sliding_stat['broker_value'])[..., None],
@@ -518,8 +518,8 @@ class DevStrat_4_8(DevStrat_4_7):
         self.update_sliding_stat()
 
         self.state = {
-            'external': self.get_market_state(),
-            'internal': self.get_broker_state(),
+            'external': self.get_external_state(),
+            'internal': self.get_internal_state(),
             'metadata': self.get_metadata_state(),
         }
 
@@ -622,7 +622,7 @@ class DevStrat_4_9(DevStrat_4_7):
         )
         self.data.dim_sma.plotinfo.plot = False
 
-    def get_market_state(self):
+    def get_external_state(self):
 
         x = np.stack(
             [
@@ -649,8 +649,8 @@ class DevStrat_4_9(DevStrat_4_7):
         self.update_sliding_stat()
 
         self.state = {
-            'external': self.get_market_state(),
-            'internal': self.get_broker_state(),
+            'external': self.get_external_state(),
+            'internal': self.get_internal_state(),
             'metadata': self.get_metadata_state(),
         }
 
@@ -730,6 +730,14 @@ class DevStrat_4_10(DevStrat_4_7):
         self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
 
         return self.reward
+
+    def get_state(self):
+        # Update inner state statistic and compose state:
+        self.update_sliding_stat()
+
+        self.state = {key: method() for key, method in self.collection_get_state_methods.items()}
+
+        return self.state
 
 
 class DevStrat_4_11(DevStrat_4_10):
@@ -828,7 +836,7 @@ class DevStrat_4_11(DevStrat_4_10):
         )
         self.data.dim_sma.plotinfo.plot = False
 
-    def get_market_state(self):
+    def get_external_state(self):
 
         x_sma = np.stack(
             [
@@ -847,7 +855,7 @@ class DevStrat_4_11(DevStrat_4_10):
 
         return x[:, None, :]
 
-    def get_broker_state(self):
+    def get_internal_state(self):
 
         x_broker = np.concatenate(
             [
@@ -962,7 +970,7 @@ class DevStrat_4_12(DevStrat_4_11):
         )
         self.data.dim_sma.plotinfo.plot = False
 
-    def get_market_state(self):
+    def get_external_state(self):
 
         x_sma = np.stack(
             [
@@ -977,7 +985,7 @@ class DevStrat_4_12(DevStrat_4_11):
         x = tanh(dx)
         return x[:, None, :]
 
-    def get_broker_state(self):
+    def get_internal_state(self):
 
         x_broker = np.concatenate(
             [
@@ -1011,12 +1019,14 @@ class DevStrat_4_12(DevStrat_4_11):
         # Update inner state statistic and compose state:
         self.update_sliding_stat()
 
-        self.state = {
-            'external': self.get_market_state(),
-            'internal': self.get_broker_state(),
-            'datetime': self.get_datetime_state(),
-            'metadata': self.get_metadata_state(),
-        }
+        self.state = {key: method() for key, method in self.collection_get_state_methods.items()}
+
+        # self.state = {
+        #     'external': self.get_external_state(),
+        #     'internal': self.get_internal_state(),
+        #     'datetime': self.get_datetime_state(),
+        #     'metadata': self.get_metadata_state(),
+        # }
 
         return self.state
 

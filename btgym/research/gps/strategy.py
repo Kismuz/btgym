@@ -2,7 +2,7 @@ import numpy as np
 
 import backtrader as bt
 from btgym.research.strategy_gen_4 import DevStrat_4_12
-from btgym.research.gps.oracle import Oracle
+from btgym.research.gps.oracle import Oracle, Oracle2
 
 from gym import spaces
 from btgym import DictSpace
@@ -40,7 +40,7 @@ class GuidedStrategy_0_0(DevStrat_4_12):
             'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 6), dtype=np.float32),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
             'datetime': spaces.Box(low=0, high=1, shape=(1, 5), dtype=np.float32),
-            'expert': spaces.Box(low=0, high=1, shape=(len(portfolio_actions),), dtype=np.float32),
+            'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -105,6 +105,7 @@ class GuidedStrategy_0_0(DevStrat_4_12):
     def __init__(self, **kwargs):
         super(GuidedStrategy_0_0, self).__init__(**kwargs)
         self.expert = Oracle(action_space=np.arange(len(self.p.portfolio_actions)), **self.p.expert_config)
+        # self.expert = Oracle2(action_space=np.arange(len(self.p.portfolio_actions)), **self.p.expert_config)
         self.expert_actions = None
         self.current_expert_action = None
 
@@ -136,19 +137,19 @@ class GuidedStrategy_0_0(DevStrat_4_12):
 
         return self.current_expert_action
 
-    def get_state(self):
-        # Update inner state statistic and compose state:
-        self.update_sliding_stat()
-
-        self.state = {
-            'external': self.get_market_state(),
-            'internal': self.get_broker_state(),
-            'datetime': self.get_datetime_state(),
-            'expert': self.get_expert_state(),
-            'metadata': self.get_metadata_state(),
-        }
-
-        return self.state
+    # def get_state(self):
+    #     # Update inner state statistic and compose state:
+    #     self.update_sliding_stat()
+    #
+    #     self.state = {
+    #         'external': self.get_external_state(),
+    #         'internal': self.get_internal_state(),
+    #         'datetime': self.get_datetime_state(),
+    #         'expert': self.get_expert_state(),
+    #         'metadata': self.get_metadata_state(),
+    #     }
+    #
+    #     return self.state
 
 
 class ExpertObserver(bt.observer.Observer):

@@ -212,7 +212,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
                                       format(datetime.datetime.fromtimestamp(service_input['timestamp'])) +\
                                   'Hint: check sampling logic consistency.'
 
-                        self.log.warning(message)
+                        self.log.info(message)
 
                     else:
                         self.dataset.global_timestamp = service_input['timestamp']

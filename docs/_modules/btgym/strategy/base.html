@@ -516,7 +516,7 @@
 <span class="sd">        &quot;&quot;&quot;</span></div>
         <span class="c1">#self.log.warning(&#39;Deprecated method. Use __init__  with Super(..., self).__init__(**kwargs) instead.&#39;)</span>
 
-    <span class="k">def</span> <span class="nf">_get_raw_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">get_raw_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Default state observation composer.</span>
 
@@ -551,7 +551,7 @@
 <span class="sd">                Datafeed Lines that are not default to BTgymStrategy should be explicitly defined by</span>
 <span class="sd">                 __init__() or define_datalines().</span>
 
-<span class="sd">            - while iterating, ._get_raw_state() method is called just before this one,</span>
+<span class="sd">            - while iterating, .get_raw_state() method is called just before this one,</span>
 <span class="sd">                so attr. `self.raw_state` is fresh and ready to use.</span>
 
 <span class="sd">            - should update self.state variable</span>

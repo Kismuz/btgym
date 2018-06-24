@@ -313,7 +313,7 @@
 <span class="sd">        &quot;&quot;&quot;</span></div>
         <span class="c1">#self.log.warning(&#39;Deprecated method. Use __init__  with Super(..., self).__init__(**kwargs) instead.&#39;)</span>
 
-    <span class="k">def</span> <span class="nf">_get_raw_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">get_raw_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Default state observation composer.</span>
 <span class="sd">        Returns time-embedded environment state observation as [n,4] numpy matrix, where</span>
@@ -340,7 +340,7 @@
 <span class="sd">        Note1: &#39;data&#39; referes to bt.startegy datafeeds and should be treated as such.</span>
 <span class="sd">        Datafeed Lines that are not default to BTgymStrategy should be explicitly defined in</span>
 <span class="sd">        define_datalines().</span>
-<span class="sd">        NOTE: while iterating, ._get_raw_state() method is called just before this one,</span>
+<span class="sd">        NOTE: while iterating, .get_raw_state() method is called just before this one,</span>
 <span class="sd">        so variable `self.raw_state` is fresh and ready to use.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_state</span>

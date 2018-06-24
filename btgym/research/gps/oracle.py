@@ -164,7 +164,7 @@ class Oracle():
 
         Args:
             episode_data:   np.array of shape [episode_length, values]
-            factor:     scalar
+            factor:         scalar
 
         Returns:
             np.array of median Hi/Lo observations of size [int(episode_length/skip_frame) + 1, 1]
@@ -187,6 +187,129 @@ class Oracle():
 
         # Define HI and Low inside every new bar:
         v_high = np.reshape(episode_data[:,1], [resampled_size, -1]).max(axis=-1)
+        v_low = np.reshape(episode_data[:, 2], [resampled_size, -1]).min(axis=-1)
+
+        # ...and yse Hi/Low mean along time_embedding:
+        data = np.stack([v_high, v_low], axis=-1).mean(axis=-1)
+
+        return data
+
+
+class Oracle2():
+    """
+    [less]Irresponsible financial adviser.
+    """
+
+    def __init__(
+            self,
+            action_space=(0, 1, 2, 3),
+            gamma=1.0,
+            **kwargs
+    ):
+        """
+
+        Args:
+            action_space:       actions to advice: 0 - hold, 1- buy, 2 - sell, 3 - close
+            gamma:              price movement horizon discount, in (0, 1]
+        """
+        self.action_space = action_space
+        self.gamma = gamma
+        self.data = None
+
+    def p_up(self, x, gamma=1.0):
+        """
+        Discounted rise potential
+        """
+        if len(x) == 1:
+            return [0]
+
+        else:
+            p_x_n = self.p_up(x[1:], gamma)
+            delta = x[1] - x[0]
+            p_x = max([delta + max([gamma * p_x_n[0], 0]), 0])
+        return [p_x] + p_x_n
+
+    def p_down(self, x, gamma=1.0):
+        """
+        Discounted fall potential
+        """
+        if len(x) == 1:
+            return [0]
+
+        else:
+            p_x_n = self.p_down(x[1:], gamma)
+            delta = x[1] - x[0]
+            p_x = min([delta + min([gamma * p_x_n[0], 0]), 0])
+        return [p_x] + p_x_n
+
+    def fit(self, episode_data, resampling_factor=1):
+        """
+        Estimates `advised` actions probabilities distribution based on data received.
+
+        Args:
+            episode_data:           1D np.array of unscaled price values in OHL[CV] format
+            resampling_factor:      factor by which to resample given data
+                                    by taking min/max values inside every resampled bar
+
+        Returns:
+             Np.array of size [resampled_data_size, actions_space_size] of probabilities of advised actions,
+             where resampled_data_size = int(len(episode_data) / resampling_factor) + 1/0
+
+        """
+        # Vector of action unsacaled probabilities as future price movements potentials:
+        data = self.resample_data(episode_data, resampling_factor)
+
+        up_p = np.asarray(self.p_up(data, self.gamma))
+        down_p = - np.asarray(self.p_down(data, self.gamma))
+
+        mean_scale = (up_p.max() + down_p.max()) / 2
+
+        up_p /= mean_scale
+        down_p /= mean_scale
+
+        close_p = 1 - (up_p + down_p)
+        close_p[close_p < 0] = 0
+
+        hold_p = 0.2 * close_p
+
+        action_logits = np.stack(
+            [hold_p, up_p, down_p, close_p],
+            axis=-1
+        )
+
+        return action_logits / action_logits.sum(axis=-1)[..., None]
+
+    @staticmethod
+    def resample_data(episode_data, factor=1):
+        """
+        Resamples raw observations according to given skip_frame value
+        and estimates mean value of newly formed bars.
+
+        Args:
+            episode_data:   np.array of shape [episode_length, values]
+            factor:         scalar
+
+        Returns:
+            np.array of median Hi/Lo observations of size [int(episode_length/skip_frame) + 1, 1]
+        """
+        # Define resampled size and [possibly] extend
+        # to complete last bar by padding with values from very last column:
+        resampled_size = int(episode_data.shape[0] / factor)
+        # print('episode_data.shape:', episode_data.shape)
+
+        if episode_data.shape[0] / factor > resampled_size:
+            resampled_size += 1
+            pad_size = resampled_size * factor - episode_data.shape[0]
+            # print('pad_size:', pad_size)
+            episode_data = np.append(
+                episode_data,
+                np.zeros([pad_size, episode_data.shape[-1]]) + episode_data[-1, :][None, :],
+                axis=0
+            )
+        # print('new_episode_data.shape:', episode_data.shape)
+
+        # Define HI and Low inside every new bar:
+        v_high = np.reshape(episode_data[:, 1], [resampled_size, -1]).max(axis=-1)
         v_low = np.reshape(episode_data[:, 2], [resampled_size, -1]).min(axis=-1)
 
         # ...and yse Hi/Low mean along time_embedding:

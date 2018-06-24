@@ -262,6 +262,16 @@ class BTgymBaseStrategy(bt.Strategy):
         self.set_datalines()
         self.log.debug('Kwargs:\n{}\n'.format(str(kwargs)))
 
+        # Set collection of state update methods:
+        self.collection_get_state_methods = {}
+
+        for key in self.p.state_shape.keys():
+            try:
+                self.collection_get_state_methods[key] = getattr(self, 'get_{}_state'.format(key))
+
+            except AttributeError:
+                raise NotImplementedError('Callable get_{}_state.() not found'.format(key))
+
     def prenext(self):
         self.update_sliding_stat()
 
@@ -405,7 +415,7 @@ class BTgymBaseStrategy(bt.Strategy):
         #self.log.warning('Deprecated method. Use __init__  with Super(..., self).__init__(**kwargs) instead.')
         pass
 
-    def _get_raw_state(self):
+    def get_raw_state(self):
         """
         Default state observation composer.
 
@@ -465,7 +475,7 @@ class BTgymBaseStrategy(bt.Strategy):
                 Datafeed Lines that are not default to BTgymStrategy should be explicitly defined by
                  __init__() or define_datalines().
 
-            - while iterating, ._get_raw_state() method is called just before this one,
+            - while iterating, .get_raw_state() method is called just before this one,
                 so attr. `self.raw_state` is fresh and ready to use.
 
             - should update self.state variable

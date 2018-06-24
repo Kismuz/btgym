@@ -28,9 +28,11 @@ class StackedLstmPolicy(BaseAacPolicy):
                  lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
                  lstm_layers=(256, 256),
                  linear_layer_ref=noisy_linear,
+                 dropout_keep_prob=1.0,
                  aux_estimate=False,
                  encode_internal_state=False,
                  static_rnn=False,
+                 shared_p_v=False,
                  **kwargs):
         """
         Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,
@@ -38,27 +40,18 @@ class StackedLstmPolicy(BaseAacPolicy):
         Expects multi-modal observation as array of shape `ob_space`.
 
         Args:
-            ob_space:           dictionary of observation state shapes
-            ac_space:           discrete action space shape (length)
-            rp_sequence_size:   reward prediction sample length
-            lstm_class_ref:     tf.nn.lstm class to use
-            lstm_layers:        tuple of LSTM layers sizes
-            linear_layer_ref:   linear layer class to use
-            aux_estimate:       (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary.
-            **kwargs            not used
+            ob_space:               dictionary of observation state shapes
+            ac_space:               discrete action space shape (length)
+            rp_sequence_size:       reward prediction sample length
+            lstm_class_ref:         tf.nn.lstm class to use
+            lstm_layers:            tuple of LSTM layers sizes
+            linear_layer_ref:       linear layer class to use
+            dropout_keep_prob:      in (0, 1] dropout regularisation parameter
+            aux_estimate:           (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary
+            encode_internal_state:  use encoder over 'internal' part of observation space
+            static_rnn:             (bool), it True - use static rnn graph, dynamic otherwise
+            **kwargs                not used
         """
-        # 1D plug-in:
-        kwargs.update(
-            dict(
-                conv_2d_filter_size=[3, 1],
-                conv_2d_stride=[2, 1],
-                conv_2d_num_filters=[32, 32, 64, 64],
-                pc_estimator_stride=[2, 1],
-                duell_pc_x_inner_shape=(6, 1, 32),  # [6,3,32] if swapping W-C dims
-                duell_pc_filter_size=(4, 1),
-                duell_pc_stride=(2, 1),
-            )
-        )
 
         self.ob_space = ob_space
         self.ac_space = ac_space
@@ -70,6 +63,9 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.callback = {}
         self.encode_internal_state = encode_internal_state
         self.static_rnn = static_rnn
+        self.dropout_keep_prob = dropout_keep_prob
+        assert 0 < self.dropout_keep_prob <= 1, 'Dropout keep_prob value should be in (0, 1]'
+
         self.debug = {}
 
         # Placeholders for obs. state input:
@@ -90,32 +86,64 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         self.debug['on_state_in_keys'] = list(self.on_state_in.keys())
 
-        # Base on-policy AAC network:
-        # Conv. layers:
-        on_aac_x = on_encoded_external= self.state_encoder_class_ref(
-            x=self.on_state_in['external'],
-            ob_space=ob_space['external'],
-            ac_space=ac_space,
-            name='conv1d_external',
-            **kwargs
-        )
-        self.debug['on_state_external_encoded'] = on_aac_x
-        # Aux min/max_loss:
-        if 'raw_state' in list(self.on_state_in.keys()):
-            self.raw_state = self.on_state_in['raw_state']
-            self.state_min_max = tf.nn.elu(
-                linear(
-                    batch_flatten(on_aac_x),
-                    2,
-                    "min_max",
-                    normalized_columns_initializer(0.01)
-                )
-            )
-        else:
-            self.raw_state = None
-            self.state_min_max = None
+        try:
+            if self.train_phase is not None:
+                pass
 
-        # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
+        except AttributeError:
+            self.train_phase = tf.placeholder_with_default(
+                tf.constant(False, dtype=tf.bool),
+                shape=(),
+                name='train_phase_flag_pl'
+            )
+        self.keep_prob = 1.0 - (1.0 - self.dropout_keep_prob) * tf.cast(self.train_phase, tf.float32)
+
+        # Default parameters:
+        default_kwargs = dict(
+            conv_2d_filter_size=[3, 1],
+            conv_2d_stride=[2, 1],
+            conv_2d_num_filters=[32, 32, 64, 64],
+            pc_estimator_stride=[2, 1],
+            duell_pc_x_inner_shape=(6, 1, 32),  # [6,3,32] if swapping W-C dims
+            duell_pc_filter_size=(4, 1),
+            duell_pc_stride=(2, 1),
+            keep_prob=self.keep_prob,
+        )
+        # Insert if not already:
+        for key, default_value in default_kwargs.items():
+            if key not in kwargs.keys():
+                kwargs[key] = default_value
+
+        # Base on-policy AAC network:
+
+        # Separately encode than concatenate all `external` states modes:
+        self.on_aac_x_encoded = {
+            key: tf.layers.flatten(
+                    self.state_encoder_class_ref(
+                        x=self.on_state_in[key],
+                        ob_space=ob_space[key],
+                        ac_space=ac_space,
+                        name='encoded_{}'.format(key),
+                        **kwargs
+                    )
+                )
+            for key in self.on_state_in.keys() if 'external' in key
+        }
+        self.debug['on_state_external_encoded_dict'] = self.on_aac_x_encoded
+
+        on_aac_x = tf.concat(list(self.on_aac_x_encoded.values()), axis=-1, name='on_state_external_encoded')
+
+        self.debug['on_state_external_encoded'] = on_aac_x
+
+        # TODO: for encoder prediction test, output `naive` estimates for logits and value directly from encoder:
+        [self.on_simple_logits, self.on_simple_value, _] = dense_aac_network(
+            tf.layers.flatten(on_aac_x),
+            ac_space,
+            linear_layer_ref=linear_layer_ref,
+            name='aac_dense_simple_pi_v'
+        )
+
+        # Reshape rnn inputs for batch training as: [rnn_batch_dim, rnn_time_dim, flattened_depth]:
         x_shape_dynamic = tf.shape(on_aac_x)
         max_seq_len = tf.cast(x_shape_dynamic[0] / self.on_batch_size, tf.int32)
         x_shape_static = on_aac_x.get_shape().as_list()
@@ -131,12 +159,8 @@ class StackedLstmPolicy(BaseAacPolicy):
                     x=self.on_state_in['internal'],
                     ob_space=ob_space['internal'],
                     ac_space=ac_space,
-                    name='conv1d_internal',
-                    # conv_2d_layer_ref=conv2d_dw,
-                    conv_2d_num_filters=32,
-                    conv_2d_num_layers=2,
-                    conv_2d_filter_size=[3, 1],
-                    conv_2d_stride=[2, 1],
+                    name='encoded_internal',
+                    **kwargs
                 )
                 x_int_shape_static = on_x_internal.get_shape().as_list()
                 on_x_internal = [
@@ -156,6 +180,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         else:
             on_x_internal = []
 
+        # Prepare datetime index if any:
         if 'datetime' in list(self.on_state_in.keys()):
             x_dt_shape_static = self.on_state_in['datetime'].get_shape().as_list()
             on_x_dt = tf.reshape(
@@ -229,13 +254,14 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         self.debug['reshaped_on_x_lstm_1_out'] = rsh_on_x_lstm_1_out
 
-        # Aac policy output and action-sampling function:
-        [self.on_logits, _, self.on_sample] = dense_aac_network(
-            rsh_on_x_lstm_1_out,
-            ac_space,
-            linear_layer_ref=linear_layer_ref,
-            name='aac_dense_pi'
-        )
+        if not shared_p_v:
+            # Aac policy output and action-sampling function:
+            [self.on_logits, _, self.on_sample] = dense_aac_network(
+                rsh_on_x_lstm_1_out,
+                ac_space,
+                linear_layer_ref=linear_layer_ref,
+                name='aac_dense_pi'
+            )
 
         # Second LSTM layer takes concatenated encoded 'external' state, LSTM_1 output,
         # last_action and `internal_state` (if present) tensors:
@@ -269,13 +295,22 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         self.debug['reshaped_on_x_lstm_2_out'] = rsh_on_x_lstm_2_out
 
-        # Aac value function:
-        [_, self.on_vf, _] = dense_aac_network(
-            rsh_on_x_lstm_2_out,
-            ac_space,
-            linear_layer_ref=linear_layer_ref,
-            name='aac_dense_vfn'
-        )
+        if shared_p_v:
+            [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(
+                rsh_on_x_lstm_2_out,
+                ac_space,
+                linear_layer_ref=linear_layer_ref,
+                name='aac_dense_pi_vfn'
+            )
+
+        else:
+            # Aac value function:
+            [_, self.on_vf, _] = dense_aac_network(
+                rsh_on_x_lstm_2_out,
+                ac_space,
+                linear_layer_ref=linear_layer_ref,
+                name='aac_dense_vfn'
+            )
 
         # Meta learning scale/rate [DEPRECATED, remove]:
         self.meta_grads_scale = noisy_linear(
@@ -298,15 +333,21 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.on_lstm_state_out = (self.on_lstm_1_state_out, self.on_lstm_2_state_out)
         self.on_lstm_state_pl_flatten = self.on_lstm_1_state_pl_flatten + self.on_lstm_2_state_pl_flatten
 
-        # Off-policy AAC network (shared):
-        off_aac_x = self.state_encoder_class_ref(
-            x=self.off_state_in['external'],
-            ob_space=ob_space['external'],
-            ac_space=ac_space,
-            name='conv1d_external',
-            reuse=True,
-            **kwargs
-        )
+        self.off_aac_x_encoded = {
+            key: tf.layers.flatten(
+                self.state_encoder_class_ref(
+                    x=self.off_state_in[key],
+                    ob_space=ob_space[key],
+                    ac_space=ac_space,
+                    name='encoded_{}'.format(key),
+                    reuse=True,
+                    **kwargs
+                )
+            )
+            for key in self.off_state_in.keys() if 'external' in key
+        }
+        off_aac_x = tf.concat(list(self.off_aac_x_encoded.values()), axis=-1, name='off_state_external_encoded')
+
         # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
         x_shape_dynamic = tf.shape(off_aac_x)
         max_seq_len = tf.cast(x_shape_dynamic[0] / self.off_batch_size, tf.int32)
@@ -323,13 +364,9 @@ class StackedLstmPolicy(BaseAacPolicy):
                     x=self.off_state_in['internal'],
                     ob_space=ob_space['internal'],
                     ac_space=ac_space,
-                    name='conv1d_internal',
-                    # conv_2d_layer_ref=conv2d_dw,
-                    conv_2d_num_filters=32,
-                    conv_2d_num_layers=2,
-                    conv_2d_filter_size=[3, 1],
-                    conv_2d_stride=[2, 1],
+                    name='encoded_internal',
                     reuse=True,
+                    **kwargs
                 )
                 x_int_shape_static = off_x_internal.get_shape().as_list()
                 off_x_internal = [
@@ -378,14 +415,15 @@ class StackedLstmPolicy(BaseAacPolicy):
         x_shape_static = off_x_lstm_1_out.get_shape().as_list()
         rsh_off_x_lstm_1_out = tf.reshape(off_x_lstm_1_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-        [self.off_logits, _, _] =\
-            dense_aac_network(
-                rsh_off_x_lstm_1_out,
-                ac_space,
-                linear_layer_ref=linear_layer_ref,
-                name='aac_dense_pi',
-                reuse=True
-            )
+        if not shared_p_v:
+            [self.off_logits, _, _] =\
+                dense_aac_network(
+                    rsh_off_x_lstm_1_out,
+                    ac_space,
+                    linear_layer_ref=linear_layer_ref,
+                    name='aac_dense_pi',
+                    reuse=True
+                )
 
         off_stage2_2_input += [off_x_lstm_1_out]
 
@@ -407,14 +445,23 @@ class StackedLstmPolicy(BaseAacPolicy):
         x_shape_static = off_x_lstm_2_out.get_shape().as_list()
         rsh_off_x_lstm_2_out = tf.reshape(off_x_lstm_2_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-        # Aac value function:
-        [_, self.off_vf, _] = dense_aac_network(
-            rsh_off_x_lstm_2_out,
-            ac_space,
-            linear_layer_ref=linear_layer_ref,
-            name='aac_dense_vfn',
-            reuse=True
-        )
+        if shared_p_v:
+            [self.off_logits, self.off_vf, _] = dense_aac_network(
+                rsh_off_x_lstm_2_out,
+                ac_space,
+                linear_layer_ref=linear_layer_ref,
+                name='aac_dense_pi_vfn',
+                reuse=True
+            )
+        else:
+            # Aac value function:
+            [_, self.off_vf, _] = dense_aac_network(
+                rsh_off_x_lstm_2_out,
+                ac_space,
+                linear_layer_ref=linear_layer_ref,
+                name='aac_dense_vfn',
+                reuse=True
+            )
 
         # Inner learning rate:
         self.off_learn_alpha = noisy_linear(
@@ -467,15 +514,21 @@ class StackedLstmPolicy(BaseAacPolicy):
         # `Reward prediction` network.
         self.rp_batch_size = tf.placeholder(tf.int32, name='rp_batch_size')
 
-        # Shared conv. output:
-        rp_x = self.state_encoder_class_ref(
-            x=self.rp_state_in['external'],
-            ob_space=ob_space['external'],
-            ac_space=ac_space,
-            name='conv1d_external',
-            reuse=True,
-            **kwargs
-        )
+        # Shared encoded output:
+        rp_x = {
+            key: tf.layers.flatten(
+                self.state_encoder_class_ref(
+                    x=self.rp_state_in[key],
+                    ob_space=ob_space[key],
+                    ac_space=ac_space,
+                    name='encoded_{}'.format(key),
+                    reuse=True,
+                    **kwargs
+                )
+            )
+            for key in self.rp_state_in.keys() if 'external' in key
+        }
+        rp_x = tf.concat(list(rp_x.values()), axis=-1, name='rp_state_external_encoded')
 
         # Flatten batch-wise:
         rp_x_shape_static = rp_x.get_shape().as_list()
@@ -484,17 +537,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         # RP output:
         self.rp_logits = dense_rp_network(rp_x, linear_layer_ref=linear_layer_ref)
 
-        # Batch-norm related (useless, ignore):
-        try:
-            if self.train_phase is not None:
-                pass
-
-        except AttributeError:
-            self.train_phase = tf.placeholder_with_default(
-                tf.constant(False, dtype=tf.bool),
-                shape=(),
-                name='train_phase_flag_pl'
-            )
+        # Batch-norm related:
         self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         # Add moving averages to save list:
         moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')

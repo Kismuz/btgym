@@ -19,7 +19,7 @@ def guided_aac_loss_def_0_0(pi_actions, expert_actions, name='on_policy/aac', ve
 
         neg_pi_log_prob = tf.nn.softmax_cross_entropy_with_logits_v2(
             logits=pi_actions,
-            labels=expert_actions
+            labels=tf.argmax(expert_actions, axis=-1)
         )
         loss = tf.reduce_mean(neg_pi_log_prob)
 

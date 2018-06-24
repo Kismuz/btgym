@@ -371,7 +371,7 @@ _Notice: will be moved inside project wiki [26.01.18]_
       Pictures can be shown either via matplolib or as pillow.Image(preferred).
     - 'Rendering HowTo' added, 'Basic Settings' example updated.
     - internal changes: env. state divided on `raw_state`  - price data,
-      and `state` - featurized representation. `_get_raw_state()` method added to strategy.
+      and `state` - featurized representation. `get_raw_state()` method added to strategy.
     - new packages requirements: `matplotlib` and `pillow`.
 
 - 25.06.17:

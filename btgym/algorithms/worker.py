@@ -226,7 +226,7 @@ class Worker(multiprocessing.Process):
 
             # Saver-related:
             variables_to_save = [v for v in tf.global_variables() if not 'local' in v.name]
-            local_variables = [v for v in tf.global_variables() if 'local' in v.name]
+            local_variables = [v for v in tf.global_variables() if 'local' in v.name] + tf.local_variables()
             init_op = tf.variables_initializer(variables_to_save)
             local_init_op = tf.variables_initializer(local_variables)
             init_all_op = tf.global_variables_initializer()

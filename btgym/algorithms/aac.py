@@ -1114,7 +1114,7 @@ class BaseAAC(object):
                     pi.on_pi_act_target: on_policy_batch['action'],
                     pi.on_pi_adv_target: on_policy_batch['advantage'],
                     pi.on_pi_r_target: on_policy_batch['r'],
-                    pi.train_phase: is_train,  # Zeroes learn rate, [+ batch_norm]
+                    pi.train_phase: is_train,  # Zeroes learn rate, [+ batch_norm + dropout]
                 }
             )
             if self.use_target_policy and pi_prime is not None:
