@@ -73,6 +73,7 @@ class BTgymBaseData:
             sampling_params=None,
             name='base_data',
             task=0,
+            frozen_time_split=None,
             log_level=WARNING,
             _config_stack=None,
             **kwargs
@@ -260,6 +261,14 @@ class BTgymBaseData:
         self.params.update(self.parsing_params)
         self.params.update(self.sampling_params)
 
+        if frozen_time_split is not None:
+            self.frozen_time_split = datetime.datetime(**frozen_time_split)
+
+        else:
+            self.frozen_time_split = None
+
+        self.frozen_split_timestamp = None
+
     def set_params(self, params_dict):
         """
         Batch attribute setter.
@@ -307,7 +316,15 @@ class BTgymBaseData:
         # Add global timepoints:
         self.start_timestamp = self.data.index[0].timestamp()
         self.final_timestamp = self.data.index[-1].timestamp()
-        self.set_global_timestamp(timestamp)
+
+        if self.frozen_time_split is not None:
+            frozen_index = self.data.index.get_loc(self.frozen_time_split, method='ffill')
+            self.frozen_split_timestamp = self.data.index[frozen_index].timestamp()
+            self.set_global_timestamp(self.frozen_split_timestamp)
+
+        else:
+            self.frozen_split_timestamp = None
+            self.set_global_timestamp(timestamp)
 
         self.log.debug(
             'time stamps start: {}, current: {} final: {}'.format(
@@ -538,7 +555,8 @@ class BTgymBaseData:
                     self.train_interval,
                     b_alpha=b_alpha,
                     b_beta=b_beta,
-                    name='train_' + self.sample_name
+                    name='train_' + self.sample_name,
+                    **kwargs
                 )
 
             else:
@@ -547,7 +565,8 @@ class BTgymBaseData:
                     self.test_interval,
                     b_alpha=1,
                     b_beta=1,
-                    name='test_' + self.sample_name
+                    name='test_' + self.sample_name,
+                    **kwargs
                 )
             self.sample_instance.metadata['type'] = sample_type  # TODO: can move inside sample()
             self.sample_instance.metadata['sample_num'] = self.sample_num
@@ -565,7 +584,10 @@ class BTgymBaseData:
             self,
             sample_type=0,
             timestamp=None,
-            name='random_sample_'
+            name='random_sample_',
+            interval=None,
+            force_interval=False,
+            **kwargs
     ):
         """
         Randomly samples continuous subset of data.
@@ -583,6 +605,9 @@ class BTgymBaseData:
         except (AssertionError, AttributeError) as e:
             self.log.exception('Instance holds no data. Hint: forgot to call .read_csv()?')
             raise AssertionError
+
+        if force_interval:
+            raise NotImplementedError('Force_interval for random sampling not implemented.')
 
         self.log.debug('Maximum sample time duration set to: {}.'.format(self.max_sample_len_delta))
         self.log.debug('Respective number of steps: {}.'.format(self.sample_num_records))
@@ -643,6 +668,7 @@ class BTgymBaseData:
                 new_instance.data = sampled_data
                 new_instance.metadata['type'] = 'random_sample'
                 new_instance.metadata['first_row'] = first_row
+                new_instance.metadata['last_row'] = last_row
 
                 return new_instance
 
@@ -674,7 +700,9 @@ class BTgymBaseData:
             interval,
             b_alpha=1.0,
             b_beta=1.0,
-            name='interval_sample_'
+            name='interval_sample_',
+            force_interval=False,
+            **kwargs
     ):
         """
         Samples continuous subset of data,
@@ -687,6 +715,7 @@ class BTgymBaseData:
             b_alpha:        float > 0, sampling B-distribution alpha param, def=1;
             b_beta:         float > 0, sampling B-distribution beta param, def=1;
             name:           str, sample filename id
+            force_interval: bool,  if true: force exact interval sampling
 
 
         Returns:
@@ -710,6 +739,9 @@ class BTgymBaseData:
                 'Invalid interval arg: expected list or tuple of size 2, got: {}'.format(interval)
             )
             raise AssertionError
+
+        if force_interval:
+            return self._sample_exact_interval(interval, name)
 
         try:
             assert b_alpha > 0 and b_beta > 0
@@ -812,6 +844,7 @@ class BTgymBaseData:
                 new_instance.data = sampled_data
                 new_instance.metadata['type'] = 'interval_sample'
                 new_instance.metadata['first_row'] = first_row
+                new_instance.metadata['last_row'] = last_row
 
                 return new_instance
 
@@ -844,7 +877,9 @@ class BTgymBaseData:
             align_left=False,
             b_alpha=1.0,
             b_beta=1.0,
-            name='interval_sample_'
+            name='interval_sample_',
+            force_interval=False,
+            **kwargs
     ):
         """
         Samples continuous subset of data,
@@ -858,7 +893,7 @@ class BTgymBaseData:
             b_alpha:        float > 0, sampling B-distribution alpha param, def=1;
             b_beta:         float > 0, sampling B-distribution beta param, def=1;
             name:           str, sample filename id
-
+            force_interval: bool,  if true: force exact interval sampling
 
         Returns:
              - BTgymDataset instance such as:
@@ -881,6 +916,9 @@ class BTgymBaseData:
                 'Invalid interval arg: expected list or tuple of size 2, got: {}'.format(interval)
             )
             raise AssertionError
+
+        if force_interval:
+            return self._sample_exact_interval(interval, name)
 
         try:
             assert b_alpha > 0 and b_beta > 0
@@ -984,6 +1022,7 @@ class BTgymBaseData:
                 new_instance.data = sampled_data
                 new_instance.metadata['type'] = 'interval_sample'
                 new_instance.metadata['first_row'] = first_row
+                new_instance.metadata['last_row'] = last_row
 
                 return new_instance
 
@@ -997,6 +1036,52 @@ class BTgymBaseData:
                'Hint: check sampling params / dataset consistency.').format(attempts)
         self.log.error(msg)
         raise RuntimeError(msg)
+
+    def _sample_exact_interval(self, interval, name='interval_sample_', **kwargs):
+        """
+        Samples exactly defined interval.
+
+        Args:
+            interval:   tuple, list or 1d-array of integers of length 2: [lower_row_number, upper_row_number];
+            name:       str, sample filename id
+
+        Returns:
+             BTgymDataset instance.
+
+        """
+        try:
+            assert not self.data.empty
+
+        except (AssertionError, AttributeError) as e:
+            self.log.exception('Instance holds no data. Hint: forgot to call .read_csv()?')
+            raise AssertionError
+
+        try:
+            assert len(interval) == 2
+
+        except AssertionError:
+            self.log.exception(
+                'Invalid interval arg: expected list or tuple of size 2, got: {}'.format(interval)
+            )
+            raise AssertionError
+
+        first_row = interval[0]
+        last_row = interval[-1]
+        sampled_data = self.data[first_row: last_row]
+
+        sample_first_day = self.data[first_row:first_row + 1].index[0]
+
+        new_instance = self.nested_class_ref(**self.nested_params)
+        new_instance.filename = name + 'num_{}_at_{}'.format(self.sample_num, sample_first_day)
+        self.log.info('New sample id: <{}>.'.format(new_instance.filename))
+        new_instance.data = sampled_data
+        new_instance.metadata['type'] = 'interval_sample'
+        new_instance.metadata['first_row'] = first_row
+        new_instance.metadata['last_row'] = last_row
+
+        return new_instance
+
+
 
 
 

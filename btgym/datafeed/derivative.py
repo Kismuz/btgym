@@ -75,6 +75,7 @@ class BTgymDataTrial(BTgymBaseData):
             parsing_params=None,
             sampling_params=None,
             name=None,
+            frozen_time_split=None,
             task=0,
             log_level=WARNING,
             _config_stack=None,
@@ -96,6 +97,7 @@ class BTgymDataTrial(BTgymBaseData):
             parsing_params=parsing_params,
             sampling_params=sampling_params,
             name='Trial',
+            frozen_time_split=frozen_time_split,
             task=task,
             log_level=log_level,
             _config_stack=_config_stack
@@ -124,6 +126,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
             parsing_params=None,
             target_period=None,
             use_target_backshift=False,
+            frozen_time_split=None,
             name='RndDataDomain',
             task=0,
             log_level=WARNING,
@@ -220,6 +223,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
                 sampling_params=episode_params,
                 name='trial',
                 task=task,
+                frozen_time_split=frozen_time_split,
                 log_level=log_level,
                 _config_stack=[episode_config],
             ),
@@ -231,6 +235,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
             sampling_params=trial_params,
             name=name,
             task=task,
+            frozen_time_split=frozen_time_split,
             log_level=log_level,
             _config_stack=[episode_config, trial_config]
         )

@@ -34,6 +34,7 @@ from collections import OrderedDict
 import backtrader as bt
 
 from btgym import BTgymServer, BTgymBaseStrategy, BTgymDataset, BTgymRendering, BTgymDataFeedServer, DictSpace
+from btgym.datafeed.multi import BTgymMultiData
 
 from btgym.rendering import BTgymNullRendering
 
@@ -243,6 +244,13 @@ class BTgymEnv(gym.Env):
         for key in self.params['render'].keys():
             if key in kwargs.keys():
                 _ = kwargs.pop(key)
+
+        # Disable multiply data sources with default engine:
+        if self.engine is None and self.dataset is not None:
+            assert not isinstance(self.dataset, BTgymMultiData),\
+                'Using multiply data streams with default Cerebro class not supported. Specify engine class explicitly.'
+
+
 
         if self.data_master:
             # DATASET preparation, only data_master executes this:

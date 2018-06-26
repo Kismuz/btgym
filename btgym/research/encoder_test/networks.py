@@ -69,7 +69,7 @@ def conv_2d_network_skip(x,
             )
             layers.append(x)
 
-            print('{}.shape = {}'.format(x.name, x.get_shape().as_list()))
+            # print('{}.shape = {}'.format(x.name, x.get_shape().as_list()))
 
         if conv_2d_enable_skip:
             x = tf.concat([tf.layers.flatten(l) for l in layers], axis=-1, name='flattened_encoded_state')

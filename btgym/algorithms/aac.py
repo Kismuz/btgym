@@ -651,6 +651,7 @@ class BaseAAC(object):
         # Set global_step increment equal to observation space batch size:
         obs_space_keys = list(pi.on_state_in.keys())
 
+        # TODO: if 'external' is nested dict:
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
         self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in['external'])[0])

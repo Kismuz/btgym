@@ -194,7 +194,11 @@ class EncoderClassifier(BaseAAC):
 
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
-        self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in['external'])[0])
+        if isinstance(pi.on_state_in['external'], dict):
+            stream = pi.on_state_in['external'][list(pi.on_state_in['external'].keys())[0]]
+        else:
+            stream = pi.on_state_in['external']
+        self.inc_step = self.global_step.assign_add(tf.shape(stream)[0])
 
         train_op = [self.optimizer.apply_gradients(grads_and_vars),  self.accuracy]
 

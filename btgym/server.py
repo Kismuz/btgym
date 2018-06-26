@@ -651,7 +651,13 @@ class BTgymServer(multiprocessing.Process):
             cerebro.broker.set_shortcash(False)
 
             # Convert and add data to engine:
-            cerebro.adddata(episode_sample.to_btfeed())
+            feed = episode_sample.to_btfeed()
+            if isinstance(feed, dict):
+                for key, stream in feed.items():
+                    cerebro.adddata(stream, name=key)
+
+            else:
+                cerebro.adddata(feed)
 
             # Finally:
             episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True)[0]

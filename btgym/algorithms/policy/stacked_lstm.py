@@ -116,19 +116,54 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         # Base on-policy AAC network:
 
-        # Separately encode than concatenate all `external` states modes:
-        self.on_aac_x_encoded = {
-            key: tf.layers.flatten(
-                    self.state_encoder_class_ref(
-                        x=self.on_state_in[key],
-                        ob_space=ob_space[key],
-                        ac_space=ac_space,
-                        name='encoded_{}'.format(key),
-                        **kwargs
+        # Separately encode than concatenate all `external` states modes, jointly encode every stream within mode:
+        self.on_aac_x_encoded = {}
+        for key in self.on_state_in.keys():
+            if 'external' in key:
+                if isinstance(self.on_state_in[key], dict):  # got dictionary of data streams
+                    encoded_streams = {
+                        name: tf.layers.flatten(
+                            self.state_encoder_class_ref(
+                                x=stream,
+                                ob_space=ob_space[key][name],
+                                ac_space=ac_space,
+                                name='encoded_{}'.format(key),
+                                reuse=tf.AUTO_REUSE,  # shared params for all streams in mode
+                                **kwargs
+                            )
+                        )
+                        for name, stream in self.on_state_in[key].items()
+                    }
+                    encoded_mode = tf.concat(
+                        list(encoded_streams.values()),
+                        axis=-1,
+                        name='multi_encoded_{}'.format(key)
                     )
-                )
-            for key in self.on_state_in.keys() if 'external' in key
-        }
+                else:
+                    # Got single data stream:
+                    encoded_mode = tf.layers.flatten(
+                        self.state_encoder_class_ref(
+                            x=self.on_state_in[key],
+                            ob_space=ob_space[key],
+                            ac_space=ac_space,
+                            name='encoded_{}'.format(key),
+                            **kwargs
+                        )
+                    )
+                self.on_aac_x_encoded[key] = encoded_mode
+
+        # self.on_aac_x_encoded = {
+        #     key: tf.layers.flatten(
+        #             self.state_encoder_class_ref(
+        #                 x=self.on_state_in[key],
+        #                 ob_space=ob_space[key],
+        #                 ac_space=ac_space,
+        #                 name='encoded_{}'.format(key),
+        #                 **kwargs
+        #             )
+        #         )
+        #     for key in self.on_state_in.keys() if 'external' in key
+        # }
         self.debug['on_state_external_encoded_dict'] = self.on_aac_x_encoded
 
         on_aac_x = tf.concat(list(self.on_aac_x_encoded.values()), axis=-1, name='on_state_external_encoded')
@@ -312,40 +347,60 @@ class StackedLstmPolicy(BaseAacPolicy):
                 name='aac_dense_vfn'
             )
 
-        # Meta learning scale/rate [DEPRECATED, remove]:
-        self.meta_grads_scale = noisy_linear(
-            rsh_on_x_lstm_2_out, #batch_flatten(on_encoded_external),
-            1,
-            'meta_grads_scale',
-            activation_fn=tf.nn.sigmoid,
-        )
-
-        # Inner learning rate:
-        self.on_learn_alpha = noisy_linear(
-            rsh_on_x_lstm_2_out,  # batch_flatten(on_encoded_external),
-            1,
-            'learn_alpha',
-            activation_fn=tf.nn.sigmoid,
-        )
-
         # Concatenate LSTM placeholders, init. states and context:
         self.on_lstm_init_state = (self.on_lstm_1_init_state, self.on_lstm_2_init_state)
         self.on_lstm_state_out = (self.on_lstm_1_state_out, self.on_lstm_2_state_out)
         self.on_lstm_state_pl_flatten = self.on_lstm_1_state_pl_flatten + self.on_lstm_2_state_pl_flatten
 
-        self.off_aac_x_encoded = {
-            key: tf.layers.flatten(
-                self.state_encoder_class_ref(
-                    x=self.off_state_in[key],
-                    ob_space=ob_space[key],
-                    ac_space=ac_space,
-                    name='encoded_{}'.format(key),
-                    reuse=True,
-                    **kwargs
-                )
-            )
-            for key in self.off_state_in.keys() if 'external' in key
-        }
+        self.off_aac_x_encoded = {}
+        for key in self.off_state_in.keys():
+            if 'external' in key:
+                if isinstance(self.off_state_in[key], dict):  # got dictionary of data streams
+                    encoded_streams = {
+                        name: tf.layers.flatten(
+                            self.state_encoder_class_ref(
+                                x=stream,
+                                ob_space=ob_space[key][name],
+                                ac_space=ac_space,
+                                name='encoded_{}'.format(key),
+                                reuse=True,  # shared params for all streams in mode
+                                **kwargs
+                            )
+                        )
+                        for name, stream in self.off_state_in[key].items()
+                    }
+                    encoded_mode = tf.concat(
+                        list(encoded_streams.values()),
+                        axis=-1,
+                        name='multi_encoded_{}'.format(key)
+                    )
+                else:
+                    # Got single data stream:
+                    encoded_mode = tf.layers.flatten(
+                        self.state_encoder_class_ref(
+                            x=self.off_state_in[key],
+                            ob_space=ob_space[key],
+                            ac_space=ac_space,
+                            name='encoded_{}'.format(key),
+                            reuse=True,
+                            **kwargs
+                        )
+                    )
+                self.off_aac_x_encoded[key] = encoded_mode
+
+        # self.off_aac_x_encoded = {
+        #     key: tf.layers.flatten(
+        #         self.state_encoder_class_ref(
+        #             x=self.off_state_in[key],
+        #             ob_space=ob_space[key],
+        #             ac_space=ac_space,
+        #             name='encoded_{}'.format(key),
+        #             reuse=True,
+        #             **kwargs
+        #         )
+        #     )
+        #     for key in self.off_state_in.keys() if 'external' in key
+        # }
         off_aac_x = tf.concat(list(self.off_aac_x_encoded.values()), axis=-1, name='off_state_external_encoded')
 
         # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
@@ -463,38 +518,30 @@ class StackedLstmPolicy(BaseAacPolicy):
                 reuse=True
             )
 
-        # Inner learning rate:
-        self.off_learn_alpha = noisy_linear(
-            rsh_off_x_lstm_2_out,
-            1,
-            'learn_alpha',
-            activation_fn=tf.nn.sigmoid,
-            reuse=True
-        )
-
         # Concatenate LSTM states:
         self.off_lstm_state_pl_flatten = self.off_lstm_1_state_pl_flatten + self.off_lstm_2_state_pl_flatten
 
-        # Aux1:
-        # `Pixel control` network.
-        #
-        # Define pixels-change estimation function:
-        # Yes, it rather env-specific but for atari case it is handy to do it here, see self.get_pc_target():
-        [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
-            pixel_change_2d_estimator(ob_space['external'], **kwargs)
+        if False:  # TEMP DISABLE
+            # Aux1:
+            # `Pixel control` network.
+            #
+            # Define pixels-change estimation function:
+            # Yes, it rather env-specific but for atari case it is handy to do it here, see self.get_pc_target():
+            [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
+                pixel_change_2d_estimator(ob_space['external'], **kwargs)
 
-        self.pc_batch_size = self.off_batch_size
-        self.pc_time_length = self.off_time_length
+            self.pc_batch_size = self.off_batch_size
+            self.pc_time_length = self.off_time_length
 
-        self.pc_state_in = self.off_state_in
-        self.pc_a_r_in = self.off_a_r_in
-        self.pc_lstm_state_pl_flatten = self.off_lstm_state_pl_flatten
+            self.pc_state_in = self.off_state_in
+            self.pc_a_r_in = self.off_a_r_in
+            self.pc_lstm_state_pl_flatten = self.off_lstm_state_pl_flatten
 
-        # Shared conv and lstm nets, same off-policy batch:
-        pc_x = rsh_off_x_lstm_2_out
+            # Shared conv and lstm nets, same off-policy batch:
+            pc_x = rsh_off_x_lstm_2_out
 
-        # PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:
-        self.pc_q = duelling_pc_network(pc_x, self.ac_space, linear_layer_ref=linear_layer_ref, **kwargs)
+            # PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:
+            self.pc_q = duelling_pc_network(pc_x, self.ac_space, linear_layer_ref=linear_layer_ref, **kwargs)
 
         # Aux2:
         # `Value function replay` network.
@@ -515,19 +562,54 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.rp_batch_size = tf.placeholder(tf.int32, name='rp_batch_size')
 
         # Shared encoded output:
-        rp_x = {
-            key: tf.layers.flatten(
-                self.state_encoder_class_ref(
-                    x=self.rp_state_in[key],
-                    ob_space=ob_space[key],
-                    ac_space=ac_space,
-                    name='encoded_{}'.format(key),
-                    reuse=True,
-                    **kwargs
-                )
-            )
-            for key in self.rp_state_in.keys() if 'external' in key
-        }
+        rp_x = {}
+        for key in self.rp_state_in.keys():
+            if 'external' in key:
+                if isinstance(self.rp_state_in[key], dict):  # got dictionary of data streams
+                    encoded_streams = {
+                        name: tf.layers.flatten(
+                            self.state_encoder_class_ref(
+                                x=stream,
+                                ob_space=ob_space[key][name],
+                                ac_space=ac_space,
+                                name='encoded_{}'.format(key),
+                                reuse=True,  # shared params for all streams in mode
+                                **kwargs
+                            )
+                        )
+                        for name, stream in self.rp_state_in[key].items()
+                    }
+                    encoded_mode = tf.concat(
+                        list(encoded_streams.values()),
+                        axis=-1,
+                        name='multi_encoded_{}'.format(key)
+                    )
+                else:
+                    # Got single data stream:
+                    encoded_mode = tf.layers.flatten(
+                        self.state_encoder_class_ref(
+                            x=self.rp_state_in[key],
+                            ob_space=ob_space[key],
+                            ac_space=ac_space,
+                            name='encoded_{}'.format(key),
+                            reuse=True,
+                            **kwargs
+                        )
+                    )
+                rp_x[key] = encoded_mode
+        # rp_x = {
+        #     key: tf.layers.flatten(
+        #         self.state_encoder_class_ref(
+        #             x=self.rp_state_in[key],
+        #             ob_space=ob_space[key],
+        #             ac_space=ac_space,
+        #             name='encoded_{}'.format(key),
+        #             reuse=True,
+        #             **kwargs
+        #         )
+        #     )
+        #     for key in self.rp_state_in.keys() if 'external' in key
+        # }
         rp_x = tf.concat(list(rp_x.values()), axis=-1, name='rp_state_external_encoded')
 
         # Flatten batch-wise:
