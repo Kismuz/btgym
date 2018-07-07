@@ -99,7 +99,7 @@ class _BTgymAnalyzer(bt.Analyzer):
         # Collect step info:
         self.info_list.append(self.strategy.get_info())
         # Put agent on hold:
-        self.strategy.action = 'hold'
+        self.strategy.action = self.strategy.p.initial_portfolio_action
 
         # Only if it's time to communicate or episode has come to end:
         if self.strategy.iteration % self.strategy.p.skip_frame == 0 or is_done:
@@ -657,7 +657,7 @@ class BTgymServer(multiprocessing.Process):
                     cerebro.adddata(stream, name=key)
 
             else:
-                cerebro.adddata(feed)
+                cerebro.adddata(feed, name='single_data_line')
 
             # Finally:
             episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True)[0]

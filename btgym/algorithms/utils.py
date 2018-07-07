@@ -5,6 +5,8 @@ from tensorflow.python.util.nest import flatten as flatten_nested
 from tensorflow.python.util.nest import assert_same_structure
 from tensorflow.contrib.rnn import LSTMStateTuple
 
+from gym.spaces import Discrete, Dict
+
 
 def rnn_placeholders(state):
     """
@@ -47,6 +49,28 @@ def nested_placeholders(ob_space, batch_dim=None, name='nested'):
     else:
         out = tf.placeholder(tf.float32, [batch_dim] + list(ob_space), name + '_pl')
         return out
+
+
+def nested_discrete_gym_shape(ac_space):
+    """
+    Given instance of gym.spaces.Dict holding base  gym.spaces.Discrete,
+    returns nested dictionary of  spaces lengths ( dict of gym.spaces.Discrete.n)
+    This util is here due to fact in practice we need .n attr of discrete space rather than .shape, which is always ()
+
+    Args:
+        ac_space: instance of gym.spaces.Dict
+
+    Returns:
+        nested dictionary of lengths
+    """
+    if isinstance(ac_space, Dict):
+        return {key: nested_discrete_gym_shape(space) for key, space in ac_space.spaces.items()}
+
+    elif isinstance(ac_space, Discrete):
+        return ac_space.n
+
+    else:
+        raise TypeError('Expected gym.spaces.Dict or gym.spaces.Discrete, got: {}'.format(ac_space))
 
 
 def flat_placeholders(ob_space, batch_dim=None, name='flt'):

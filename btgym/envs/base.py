@@ -22,13 +22,11 @@ import sys
 import time
 import zmq
 import os
-import itertools
-# import psutil
+import copy
 import numpy as np
 import gym
-from gym import error, spaces
-#from gym import utils
-#from gym.utils import seeding, closer
+from gym import spaces
+
 from collections import OrderedDict
 
 import backtrader as bt
@@ -165,7 +163,7 @@ class BTgymEnv(gym.Env):
 
             # Backtrader engine mandatory parameters:
             engine=dict(
-                start_cash=10.0,  # initial trading capital.
+                start_cash=100.0,  # initial trading capital.
                 broker_commission=0.001,  # trade execution commission, default is 0.1% of operation value.
                 fixed_stake=10,  # single trade stake is fixed type by def.
             ),
@@ -173,7 +171,7 @@ class BTgymEnv(gym.Env):
             dataset=dict(
                 filename=None,
             ),
-            strategy =dict(
+            strategy=dict(
                 state_shape=dict(),
             ),
             render=dict(),
@@ -187,7 +185,7 @@ class BTgymEnv(gym.Env):
             # observation space state min/max values,
             # For `raw_state' - absolute min/max values from BTgymDataset will be used.
             state_shape=dict(
-                raw_state=spaces.Box(
+                raw=spaces.Box(
                     shape=(10, 4),
                     low=-100,
                     high=100,
@@ -245,12 +243,12 @@ class BTgymEnv(gym.Env):
             if key in kwargs.keys():
                 _ = kwargs.pop(key)
 
-        # Disable multiply data sources with default engine:
-        if self.engine is None and self.dataset is not None:
-            assert not isinstance(self.dataset, BTgymMultiData),\
-                'Using multiply data streams with default Cerebro class not supported. Specify engine class explicitly.'
+        # Disable multiply data streams (multi-assets):
+        assert not isinstance(self.dataset, BTgymMultiData),\
+            'Using multiply data streams with base BTgymEnv class not supported. Use designated class.'
 
-
+        # Only single asset data-line is supported by base class:
+        self.assets = ['base_data_line']
 
         if self.data_master:
             # DATASET preparation, only data_master executes this:
@@ -288,8 +286,8 @@ class BTgymEnv(gym.Env):
         self.log.info('Connecting data_server...')
         self._start_data_server()
         self.log.info('...done.')
-        # ENGINE preparation:
 
+        # ENGINE preparation:
         # Update params -3: pull engine-related kwargs, remove used:
         for key in self.params['engine'].keys():
             if key in kwargs.keys():
@@ -348,13 +346,18 @@ class BTgymEnv(gym.Env):
         for key, value in self.engine.strats[0][0][2].items():
             self.params['strategy'][key] = value
 
+        self.server_actions = {name: self.params['strategy']['portfolio_actions'] for name in self.assets}
+
+        self.params['strategy']['initial_action'] = self.get_initial_action()
+        self.params['strategy']['initial_portfolio_action'] = self.get_initial_portfolio_action()
+
         # ... Push it all back (don't ask):
         for key, value in  self.params['strategy'].items():
             self.engine.strats[0][0][2][key] = value
 
         # For 'raw_state' min/max values,
         # the only way is to infer from raw Dataset price values (we already got those from data_server):
-        if 'raw_state' in self.params['strategy']['state_shape'].keys():
+        if 'raw' in self.params['strategy']['state_shape'].keys():
             # Exclude 'volume' from columns we count:
             self.dataset_columns.remove('volume')
 
@@ -363,35 +366,36 @@ class BTgymEnv(gym.Env):
             #print('self.engine.strats[0][0][0].params:', self.engine.strats[0][0][0].params._gettuple())
 
             # Override with absolute price min and max values:
-            self.params['strategy']['state_shape']['raw_state'].low =\
-                self.engine.strats[0][0][2]['state_shape']['raw_state'].low =\
-                np.zeros(self.params['strategy']['state_shape']['raw_state'].shape) +\
+            self.params['strategy']['state_shape']['raw'].low =\
+                self.engine.strats[0][0][2]['state_shape']['raw'].low =\
+                np.zeros(self.params['strategy']['state_shape']['raw'].shape) +\
                 self.dataset_stat.loc['min', self.dataset_columns].min()
 
-            self.params['strategy']['state_shape']['raw_state'].high = \
-                self.engine.strats[0][0][2]['state_shape']['raw_state'].high = \
-                np.zeros(self.params['strategy']['state_shape']['raw_state'].shape) + \
+            self.params['strategy']['state_shape']['raw'].high = \
+                self.engine.strats[0][0][2]['state_shape']['raw'].high = \
+                np.zeros(self.params['strategy']['state_shape']['raw'].shape) + \
                 self.dataset_stat.loc['max', self.dataset_columns].max()
 
-            self.log.info('Inferring `state_raw` high/low values form dataset: {:.6f} / {:.6f}.'.
+            self.log.info('Inferring `state[raw]` high/low values form dataset: {:.6f} / {:.6f}.'.
                           format(self.dataset_stat.loc['min', self.dataset_columns].min(),
                                  self.dataset_stat.loc['max', self.dataset_columns].max()))
 
         # Set observation space shape from engine/strategy parameters:
-        self.observation_space = DictSpace(self.params['strategy']['state_shape'])
+        self.observation_space = spaces.Dict(self.params['strategy']['state_shape'])
 
         self.log.debug('Obs. shape: {}'.format(self.observation_space.spaces))
         #self.log.debug('Obs. min:\n{}\nmax:\n{}'.format(self.observation_space.low, self.observation_space.high))
 
-        # Set action space and corresponding server messages:
-        self.action_space = spaces.Discrete(len(self.params['strategy']['portfolio_actions']))
-        self.server_actions = self.params['strategy']['portfolio_actions']
+        # Set action space (one-key dict for this class) and corresponding server messages:
+        self.action_space = spaces.Dict(
+            {key: spaces.Discrete(len(self.params['strategy']['portfolio_actions'])) for key in self.assets}
+        )
+        # self.server_actions = self.params['strategy']['portfolio_actions']
 
         # Finally:
         self.server_response = None
         self.env_response = None
 
-        #if not self.data_master:
         self._start_server()
         self.closed = False
 
@@ -613,6 +617,12 @@ class BTgymEnv(gym.Env):
 
         return response
 
+    def get_initial_action(self):
+        return {key: 0 for key in self.assets}
+
+    def get_initial_portfolio_action(self):
+        return {key: self.server_actions[key][0] for key in self.assets}
+
     def reset(self, **kwargs):
         """
         Implementation of OpenAI Gym env.reset method. Starts new episode. Episode data are sampled
@@ -672,7 +682,7 @@ class BTgymEnv(gym.Env):
                 message={'ctrl': '_reset', 'kwargs': kwargs}
             )
             # Get initial environment response:
-            self.env_response = self.step(0)
+            self.env_response = self.step(self.get_initial_action())
 
             # Check (once) if it is really (o,r,d,i) tuple:
             self._assert_response(self.env_response)
@@ -717,6 +727,59 @@ class BTgymEnv(gym.Env):
             raise ChildProcessError(msg)
 
     def step(self, action):
+        """
+        Implementation of OpenAI Gym env.step() method.
+        Makes a step in the environment.
+
+        Args:
+            action:     int or dict, action compatible to env.action_space
+
+        Returns:
+            tuple (Observation, Reward, Info, Done)
+
+        """
+        # If we got int as action - try to treat it as an action for single-valued action space dict:
+        if isinstance(action, int) and len(list(self.action_space.spaces.keys())) == 1:
+            a = copy.deepcopy(action)
+            action = {key: a for key in self.action_space.spaces.keys()}
+
+        # Are you in the list, ready to go and all that?
+        if self.action_space.contains(action)\
+            and not self._closed\
+            and (self.socket is not None)\
+            and not self.socket.closed:
+            pass
+
+        else:
+            msg = (
+                '\nAt least one of these is true:\n' +
+                'Action error: (space is {}, action sent is {}): {}\n' +
+                'Environment closed: {}\n' +
+                'Network error [socket doesnt exists or closed]: {}\n' +
+                'Hint: forgot to call reset()?'
+            ).format(
+                self.action_space, action, not self.action_space.contains(action),
+                self._closed,
+                not self.socket or self.socket.closed,
+            )
+            self.log.exception(msg)
+            raise AssertionError(msg)
+
+        # Send action (as dict of strings) to backtrader engine, receive environment response:
+        env_response = self._comm_with_timeout(
+            socket=self.socket,
+            message={'action': {key: self.server_actions[key][value] for key, value in action.items()}}
+        )
+        if not env_response['status'] in 'ok':
+            msg = '.step(): server unreachable with status: <{}>.'.format(env_response['status'])
+            self.log.error(msg)
+            raise ConnectionError(msg)
+
+        self.env_response = env_response ['message']
+
+        return self.env_response
+
+    def ___step(self, action):
         """
         Implementation of OpenAI Gym env.step() method.
         Makes a step in the environment.

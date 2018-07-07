@@ -36,7 +36,7 @@ class BTgymBaseStrategy(bt.Strategy):
     """
     Controls Environment inner dynamics and backtesting logic. Provides gym'my (State, Action, Reward, Done, Info) data.
     Any State, Reward and Info computation logic can be implemented by subclassing BTgymStrategy and overriding
-    get_state(), get_reward(), get_info(), is_done() and set_datalines() methods.
+    get_[mode]_state(), get_reward(), get_info(), is_done() and set_datalines() methods.
     One can always go deeper and override __init__ () and next() methods for desired
     server cerebro engine behaviour, including order execution logic etc.
 
@@ -68,7 +68,7 @@ class BTgymBaseStrategy(bt.Strategy):
         # observation space state min/max values,
         # For `raw_state' (default) - absolute min/max values from BTgymDataset will be used.
         state_shape={
-            'raw_state': spaces.Box(
+            'raw': spaces.Box(
                 shape=(time_dim, 4),
                 low=0, # will get overridden.
                 high=0,
@@ -124,6 +124,9 @@ class BTgymBaseStrategy(bt.Strategy):
         trial_metadata=None,
         portfolio_actions=portfolio_actions,
         skip_frame=skip_frame,
+        order_size=None,
+        initial_action=None,
+        initial_portfolio_action=None,
     )
 
     def __init__(self, **kwargs):
@@ -175,8 +178,8 @@ class BTgymBaseStrategy(bt.Strategy):
         self.is_done = False
         self.is_done_enabled = False
         self.steps_till_is_done = 2  # extra steps to make when episode terminal conditions are met
-        self.action = 'hold'
-        self.last_action = 'hold'
+        self.action = self.p.initial_portfolio_action
+        self.last_action = self.p.initial_portfolio_action
         self.reward = 0
         self.order = None
         self.order_failed = 0
@@ -193,6 +196,24 @@ class BTgymBaseStrategy(bt.Strategy):
             self.env.broker.startingcash / (self.p.drawdown_call + self.p.target_call) * 100
 
         self.target_value = self.env.broker.startingcash * (1 + self.p.target_call / 100)
+
+        # Try to define stake, if no self.p.order_size dict has been set:
+        if self.p.order_size is None:
+            # If no order size has been set for every data_line,
+            # try to infer stake size from sizer set by bt.Cerebro.addsizer() method:
+            try:
+                assert len(list(self.env.sizers.values())) == 1
+                env_sizer_params = list(self.env.sizers.values())[0][-1]  # pull dict of outer set sizer params
+                assert 'stake' in env_sizer_params.keys()
+
+            except (AssertionError, KeyError) as e:
+                self.log.warning(
+                    'Sizer stake is not set neither via strategy.param.order_size nor via bt.Cerebro.addsizer() method;\
+                    using defult stake_size=1 fo every data_line.'
+                )
+                env_sizer_params = {'stake': 1}
+
+            self.p.order_size = {data._name: env_sizer_params['stake'] for data in self.datas}
 
         self.trade_just_closed = False
         self.trade_result = 0
@@ -228,7 +249,7 @@ class BTgymBaseStrategy(bt.Strategy):
             'timestamp': np.asarray(self.time_stamp, dtype=np.float64)
         }
         self.state = {
-            'raw_state': None,
+            'raw': None,
             'metadata': None
         }
 
@@ -241,7 +262,7 @@ class BTgymBaseStrategy(bt.Strategy):
         self.log.debug('can_increment_global_time: {}'.format(self.can_increment_global_time))
 
         # Sliding staistics accumulators, globally normalized last `avg_perod` values,
-        # so it's a bit more efficient than use bt.Observers:
+        # so it's a bit more comp. efficient than use bt.Observers:
         sliding_datalines = [
             'broker_cash',
             'broker_value',
@@ -253,7 +274,7 @@ class BTgymBaseStrategy(bt.Strategy):
             'unrealized_pnl',
             'max_unrealized_pnl',
             'min_unrealized_pnl',
-            'action',
+            # 'action',
             'reward',
         ]
         self.sliding_stat = {key: deque(maxlen=self.avg_period) for key in sliding_datalines}
@@ -262,15 +283,18 @@ class BTgymBaseStrategy(bt.Strategy):
         self.set_datalines()
         self.log.debug('Kwargs:\n{}\n'.format(str(kwargs)))
 
-        # Set collection of state update methods:
+        # Here we define collection dictionary looking for methods for estimating state, one method for one mode,
+        # should be named .get_[mode_name]_state():
         self.collection_get_state_methods = {}
-
         for key in self.p.state_shape.keys():
             try:
                 self.collection_get_state_methods[key] = getattr(self, 'get_{}_state'.format(key))
 
             except AttributeError:
                 raise NotImplementedError('Callable get_{}_state.() not found'.format(key))
+
+        self.log.warning('data[0]_name: {}'.format(self.datas[0]._name))
+        self.log.warning('stake size: {}'.format(self.p.order_size))
 
     def prenext(self):
         self.update_sliding_stat()
@@ -379,32 +403,32 @@ class BTgymBaseStrategy(bt.Strategy):
         stat['unrealized_pnl'].append(
             (current_value - self.realized_broker_value) * self.broker_value_normalizer
         )
-        stat['action'].append(self.action_norm(self.last_action))
+        #stat['action'].append(self.action_norm(self.last_action))
         stat['reward'].append(self.reward)
 
         #print(stat['episode_step'])
 
-    def action_one_hot(self, action):
-        """
-        Returns one-hot encoding for action.
-        """
-        try:
-            one_hot = np.zeros(len(self.p.portfolio_actions))
-            one_hot[self.p.portfolio_actions.index(action)] = 1
-            return one_hot
-
-        except ValueError:
-            raise ValueError('Got action: <{}>, expected: <{}> '.format(self.action, self.p.portfolio_actions))
-
-    def action_norm(self, action):
-        """
-        Returns normalized in [0,1] real-valued encoding for action.
-        """
-        try:
-            return self.p.portfolio_actions.index(action) / (len(self.p.portfolio_actions) - 1)
-
-        except ValueError:
-            raise ValueError('Got action: <{}>, expected: <{}> '.format(self.action, self.p.portfolio_actions))
+    # def action_one_hot(self, action):
+    #     """
+    #     Returns one-hot encoding for action.
+    #     """
+    #     try:
+    #         one_hot = np.zeros(len(self.p.portfolio_actions))
+    #         one_hot[self.p.portfolio_actions.index(action)] = 1
+    #         return one_hot
+    #
+    #     except ValueError:
+    #         raise ValueError('Got action: <{}>, expected: <{}> '.format(self.action, self.p.portfolio_actions))
+    #
+    # def action_norm(self, action):
+    #     """
+    #     Returns normalized in [0,1] real-valued encoding for action.
+    #     """
+    #     try:
+    #         return self.p.portfolio_actions.index(action) / (len(self.p.portfolio_actions) - 1)
+    #
+    #     except ValueError:
+    #         raise ValueError('Got action: <{}>, expected: <{}> '.format(self.action, self.p.portfolio_actions))
 
     def set_datalines(self):
         """
@@ -464,7 +488,7 @@ class BTgymBaseStrategy(bt.Strategy):
 
         return self.time_stamp
 
-    def get_state(self):
+    def __get_state(self):
         """
         Override this method, define necessary calculations and return arbitrary shaped tensor.
         It's option either to compute entire featurized environment state or just pass raw price data
@@ -480,9 +504,34 @@ class BTgymBaseStrategy(bt.Strategy):
 
             - should update self.state variable
         """
-        #self.update_sliding_stat()
-        self.state['raw_state'] = self.raw_state  # using attr <-- method called by server.Analyzer
+        self.update_sliding_stat()
+        self.state['raw'] = self.raw_state  # using attr <-- method called by server.Analyzer
         self.state['metadata'] = self.get_metadata_state()
+        return self.state
+
+    def get_state(self):
+        """
+        Collects estimated values for every mode of observation space by calling methods from
+        `collection_get_state_methods` dictionary.
+        As a rule, this method should not be modified, override or implement correspondig get_[mode]_state() methods,
+        defining necessary calculations and return arbitrary shaped tensors for every space mode.
+
+        Note:
+            - 'data' referes to bt.startegy datafeeds and should be treated as such.
+                Datafeed Lines that are not default to BTgymStrategy should be explicitly defined by
+                 __init__() or define_datalines().
+        """
+        # Update inner state statistic and compose state:
+        self.update_sliding_stat()
+
+        self.state = {key: method() for key, method in self.collection_get_state_methods.items()}
+        # Above line is generalisation of, say:
+        # self.state = {
+        #     'external': self.get_external_state(),
+        #     'internal': self.get_internal_state(),
+        #     'datetime': self.get_datetime_state(),
+        #     'metadata': self.get_metadata_state(),
+        # }
         return self.state
 
     def get_reward(self):
@@ -628,26 +677,50 @@ class BTgymBaseStrategy(bt.Strategy):
             self.order_failed += 1
         self.order = None
 
+    # def next(self):
+    #     """
+    #     Default implementation.
+    #     Defines one step environment routine for server 'Episode mode';
+    #     At least, it should handle order execution logic according to action received.
+    #     """
+    #
+    #     self.log.warning('action: {}'.format(self.action))
+    #
+    #     # Simple action-to-order logic:
+    #     if self.action == 'hold' or self.order or self.is_done_enabled:
+    #         pass
+    #     elif self.action == 'buy':
+    #         self.order = self.buy()
+    #         self.broker_message = 'New BUY created; ' + self.broker_message
+    #     elif self.action == 'sell':
+    #         self.order = self.sell()
+    #         self.broker_message = 'New SELL created; ' + self.broker_message
+    #     elif self.action == 'close':
+    #         self.order = self.close()
+    #         self.broker_message = 'New CLOSE created; ' + self.broker_message
+    #
+    #     #print('next_call, iteration:', self.iteration)
+
     def next(self):
         """
         Default implementation.
         Defines one step environment routine for server 'Episode mode';
         At least, it should handle order execution logic according to action received.
+        Multiply data lines/action space are supported.
         """
-        # Simple action-to-order logic:
-        if self.action == 'hold' or self.order or self.is_done_enabled:
-            pass
-        elif self.action == 'buy':
-            self.order = self.buy()
-            self.broker_message = 'New BUY created; ' + self.broker_message
-        elif self.action == 'sell':
-            self.order = self.sell()
-            self.broker_message = 'New SELL created; ' + self.broker_message
-        elif self.action == 'close':
-            self.order = self.close()
-            self.broker_message = 'New CLOSE created; ' + self.broker_message
-
-        #print('next_call, iteration:', self.iteration)
+        for key, action in self.action.items():
+            # Simple action-to-order logic:
+            if action == 'hold' or self.is_done_enabled:
+                pass
+            elif action == 'buy':
+                self.order = self.buy(data=key, size=self.p.order_size[key])
+                self.broker_message = 'new {}_BUY created; '.format(key) + self.broker_message
+            elif action == 'sell':
+                self.order = self.sell(data=key, size=self.p.order_size[key])
+                self.broker_message = 'new {}_SELL created; '.format(key) + self.broker_message
+            elif action == 'close':
+                self.order = self.close(data=key)
+                self.broker_message = 'new {}_CLOSE created; '.format(key) + self.broker_message
 
         # Somewhere after this point, server-side _BTgymAnalyzer() is exchanging information with environment wrapper,
         # obtaining <self.action> , composing and sending <state,reward,done,info> etc... never mind.

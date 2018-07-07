@@ -26,7 +26,8 @@ from .datafeed import BTgymDataset, BTgymRandomDataDomain, BTgymSequentialDataDo
 from .datafeed import DataSampleConfig, EnvResetConfig
 from .dataserver import BTgymDataFeedServer
 from .rendering import BTgymRendering
-from .envs.backtrader import BTgymEnv
+from .envs.base import BTgymEnv
+from btgym.envs.multidiscrete import MultiDiscreteEnv
 
 register(
     id='backtrader-v0000',

@@ -189,6 +189,8 @@ class BTgymBaseData:
             self.sampling_params = sampling_params
 
         self.name = name
+        # String will be used as key name for bt_feed data-line:
+        self.data_name = 'base_data_line'
         self.task = task
         self.log_level = log_level
 
@@ -477,7 +479,7 @@ class BTgymBaseData:
         Performs BTgymData-->bt.feed conversion.
 
         Returns:
-             bt.datafeed instance.
+             dict of type: {data_line_name: bt.datafeed instance}.
         """
         try:
             assert not self.data.empty
@@ -493,7 +495,7 @@ class BTgymBaseData:
                 openinterest=self.openinterest
             )
             btfeed.numrecords = self.data.shape[0]
-            return btfeed
+            return {self.data_name: btfeed}
 
         except (AssertionError, AttributeError) as e:
             msg = 'Instance holds no data. Hint: forgot to call .read_csv()?'

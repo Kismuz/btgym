@@ -155,6 +155,7 @@ class GuidedStrategy_0_0(DevStrat_4_12):
 class ExpertObserver(bt.observer.Observer):
     """
     Keeps track of expert-advised actions.
+    Single data_feed.
     """
 
     lines = ('buy', 'sell', 'hold', 'close')

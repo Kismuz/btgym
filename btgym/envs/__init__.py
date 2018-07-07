@@ -17,4 +17,5 @@
 #
 ###############################################################################
 
-from btgym.envs.backtrader import BTgymEnv
+from btgym.envs.base import BTgymEnv
+from btgym.envs.multidiscrete import MultiDiscreteEnv

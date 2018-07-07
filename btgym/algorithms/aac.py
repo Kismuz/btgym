@@ -31,8 +31,8 @@ from btgym.algorithms.runner import BaseEnvRunnerFn, RunnerThread
 from btgym.algorithms.math_utils import log_uniform
 from btgym.algorithms.nn.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def, ppo_loss_def
 from btgym.algorithms.utils import feed_dict_rnn_context, feed_dict_from_nested, batch_stack
-from btgym.spaces import DictSpace as ObSpace  # now can simply be gym.Dict
-
+# from btgym.spaces import DictSpace as BaseSpace  # now can simply be gym.Dict
+from gym.spaces import Dict as BaseSpace
 
 class BaseAAC(object):
     """
@@ -234,12 +234,22 @@ class BaseAAC(object):
             self.ref_env = self.env_list[0]  # reference instance to get obs shapes etc.
 
             try:
-                assert isinstance(self.ref_env.observation_space, ObSpace)
+                assert isinstance(self.ref_env.observation_space, BaseSpace)
 
             except AssertionError:
                 self.log.exception(
                     'expected environment observation space of type {}, got: {}'.\
-                    format(ObSpace, type(self.ref_env.observation_space))
+                    format(BaseSpace, type(self.ref_env.observation_space))
+                )
+                raise AssertionError
+
+            try:
+                assert isinstance(self.ref_env.action_space, BaseSpace)
+
+            except AssertionError:
+                self.log.exception(
+                    'expected environment observation space of type {}, got: {}'.\
+                    format(BaseSpace, type(self.ref_env.action_space))
                 )
                 raise AssertionError
 
@@ -383,8 +393,8 @@ class BaseAAC(object):
             # Update policy configuration
             self.policy_kwargs.update(
                 {
-                    'ob_space': self.ref_env.observation_space.shape,
-                    'ac_space': self.ref_env.action_space.n,
+                    'ob_space': self.ref_env.observation_space,
+                    'ac_space': self.ref_env.action_space,
                     'rp_sequence_size': self.rp_sequence_size,
                     'aux_estimate': self.use_any_aux_tasks,
                     'static_rnn': self.time_flat,

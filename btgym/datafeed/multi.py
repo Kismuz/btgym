@@ -192,7 +192,15 @@ class BTgymMultiData:
         return sample
 
     def to_btfeed(self):
-        return {key: stream.to_btfeed() for key, stream in self.data.items()}
+        feed = {}
+        for key, stream in self.data.items():
+            # Get single-dataline btfeed dict:
+            feed_dict = stream.to_btfeed()
+            assert len(list(feed_dict.keys())) == 1, \
+                'Expected base datafeed dictionary contain single data_line, got: {}'.format(feed_dict)
+            # Rename every base btfeed according to data_config keys:
+            feed[key] = feed_dict[list(feed_dict.keys())[0]]
+        return feed
 
 
 

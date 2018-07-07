@@ -236,6 +236,8 @@ class CasualConvStrategy_0(CasualConvStrategy):
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
+        initial_action=None,
+        initial_portfolio_action=None,
         skip_frame=skip_frame,
         state_ext_scale=state_ext_scale,  # EURUSD
         state_int_scale=1.0,
@@ -375,6 +377,8 @@ class CasualConvStrategy_1(CasualConvStrategy_0):
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
+        initial_action=None,
+        initial_portfolio_action=None,
         skip_frame=skip_frame,
         state_ext_scale=state_ext_scale,  # EURUSD
         state_int_scale=1.0,
@@ -461,14 +465,11 @@ class CasualConvStrategy_1(CasualConvStrategy_0):
 
 class CasualConvStrategyMulti(CasualConvStrategy_0):
     """
-    CWT. again.
+    CWT. again. Multiply data streams (assets)
     """
     # Time embedding period:
-    # time_dim = 512
-    # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
     # NOTE_2: should be power of 2 if using casual conv. state encoder
     time_dim = 128
-    # time_dim = 32
 
     # Periods for estimating signal features,
     # note: here number of feature channels is doubled due to fact Hi/Low values computed for each period specified:
@@ -496,17 +497,23 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
 
     reward_scale = 1  # reward multiplicator
 
-    num_features = 16
+    num_features = 16  # TODO: 8? (was: 16)
 
     cwt_signal_scale = 3e3  # first gradient scaling [scalar]
-    cwt_lower_bound = 3.0   # CWT scales
-    cwt_upper_bound = 90.0
+    cwt_lower_bound = 4.0   # CWT scales  TODO: 8.? (was : 3.)
+    cwt_upper_bound = 100.0
 
     state_ext_scale = {
-        'eurusd': np.linspace(1, 3, num=num_features),
-        'eurgbp': np.linspace(1, 3, num=num_features),
-        'eurchf': np.linspace(1, 3, num=num_features),
-        'eurgpy': np.linspace(1, 3, num=num_features),
+        'eurusd': np.linspace(1, 2, num=num_features),
+        'eurgbp': np.linspace(1, 2, num=num_features),
+        'eurchf': np.linspace(1, 2, num=num_features),
+        'eurgpy': np.linspace(5e-3, 1e-2, num=num_features),
+    }
+    order_size = {
+        'eurusd': 1000,
+        'eurgbp': 1000,
+        'eurchf': 1000,
+        'eurgpy': 1000,
     }
 
     params = dict(
@@ -524,8 +531,14 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
             ),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
             'datetime': spaces.Box(low=0, high=1, shape=(1, 5), dtype=np.float32),
-            'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
-            # TODO: change inheritance!
+            'expert': DictSpace(
+                {
+                    'eurusd': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+                    'eurgbp': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+                    'eurchf': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+                    'eurgpy': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+                }
+            ),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -570,6 +583,9 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
+        initial_action=None,
+        initial_portfolio_action=None,
+        order_size=order_size,
         skip_frame=skip_frame,
         state_ext_scale=state_ext_scale,  # EURUSD
         state_int_scale=1.0,
@@ -590,11 +606,48 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
         # Define CWT scales:
         self.cwt_width = np.linspace(self.p.cwt_lower_bound, self.p.cwt_upper_bound, self.num_channels)
 
+        # print('p: ', dir(self.p))
+
+    def nextstart(self):
+        """
+        Overrides base method augmenting it with estimating expert actions before actual episode starts.
+        """
+        # This value shows how much episode records we need to spend
+        # to estimate first environment observation:
+        self.inner_embedding = self.data.close.buflen()
+        self.log.info('Inner time embedding: {}'.format(self.inner_embedding))
+
+        # Now when we know exact maximum possible episode length -
+        #  can extract relevant episode data and make expert predictions:
+        # data = self.datas[0].p.dataname.as_matrix()[self.inner_embedding:, :]
+        data = {d._name : d.p.dataname.as_matrix()[self.inner_embedding:, :] for d in self.datas}
+
+        # Note: need to form sort of environment 'custom candels' by taking min and max price values over every
+        # skip_frame period; this is done inside Oracle class;
+        # TODO: shift actions forward to eliminate one-point prediction lag?
+        # expert_actions is a matrix representing discrete distribution over actions probabilities
+        # of size [max_env_steps, action_space_size]:
+
+        # self.expert_actions = self.expert.fit(episode_data=data, resampling_factor=self.p.skip_frame)
+
+        self.expert_actions = {
+            key: self.expert.fit(episode_data=line, resampling_factor=self.p.skip_frame)
+            for key, line in data.items()
+        }
+
+    def get_expert_state(self):
+        # self.current_expert_action = self.expert_actions[self.env_iteration]
+        self.current_expert_action = {
+            key: line[self.env_iteration] for key, line in self.expert_actions.items()
+        }
+
+        return self.current_expert_action
+
     def set_datalines(self):
         self.data_streams = {
             stream._name: stream for stream in self.datas
         }
-        self.data = self.data_streams[self.p.base_dataline]
+        self.data = self.data_streams[self.p.base_dataline] # TODO: ??!!
 
         self.data.dim_sma = btind.SimpleMovingAverage(
             self.data,
@@ -632,3 +685,53 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
 
         # return out_x[:, None, :]
         return out_x[:, None, :]
+
+    def notify_order(self, order):
+        """
+        TODO: multi datas?
+        """
+        if order.status in [order.Submitted, order.Accepted]:
+            # Buy/Sell order submitted/accepted to/by broker - Nothing to do
+            return
+        # Check if an order has been completed
+        # Attention: broker could reject order if not enough cash
+        if order.status in [order.Completed]:
+            if order.isbuy():
+                self.broker_message = 'BUY executed,\nPrice: {:.5f}, Cost: {:.4f}, Comm: {:.4f}'. \
+                    format(order.executed.price,
+                           order.executed.value,
+                           order.executed.comm)
+                self.buyprice = order.executed.price
+                self.buycomm = order.executed.comm
+
+            else:  # Sell
+                self.broker_message = 'SELL executed,\nPrice: {:.5f}, Cost: {:.4f}, Comm: {:.4f}'. \
+                    format(order.executed.price,
+                           order.executed.value,
+                           order.executed.comm)
+            self.bar_executed = len(self)
+
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            self.broker_message = 'ORDER FAILED with status: ' + str(order.getstatusname())
+            # Rise order_failed flag until get_reward() will [hopefully] use and reset it:
+            self.order_failed += 1
+        self.order = None
+
+    # def next(self):
+    #     """
+    #     Multiply data lines implementation.
+    #     """
+    #     # print('action-> ', self.action)
+    #     for key, action in self.action.items():
+    #         # Simple action-to-order logic:
+    #         if action == 'hold' or self.is_done_enabled:
+    #             pass
+    #         elif action == 'buy':
+    #             self.order = self.buy(data=key, size=self.p.order_size[key])
+    #             self.broker_message = 'new {}_BUY created; '.format(key) + self.broker_message
+    #         elif action == 'sell':
+    #             self.order = self.sell(data=key, size=self.p.order_size[key])
+    #             self.broker_message = 'new {}_SELL created; '.format(key) + self.broker_message
+    #         elif action == 'close':
+    #             self.order = self.close(data=key)
+    #             self.broker_message = 'new {}_CLOSE created; '.format(key) + self.broker_message

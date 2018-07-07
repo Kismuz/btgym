@@ -131,17 +131,28 @@ class EncoderClassifier(BaseAAC):
             else:
                 class_logits = pi.on_simple_logits
 
-            class_loss = tf.reduce_mean(
-                tf.nn.softmax_cross_entropy_with_logits_v2(
-                    labels=pi.expert_actions,#oracle_labels,
-                    logits=class_logits,
-                )
+
+            # class_loss = tf.reduce_mean(
+            #     tf.nn.softmax_cross_entropy_with_logits_v2(
+            #         labels=pi.expert_actions,#oracle_labels,
+            #         logits=class_logits,
+            #     )
+            # )
+
+            class_loss = tf.losses.mean_squared_error(
+                labels=pi.expert_actions[..., 1:3],
+                predictions=tf.nn.softmax(class_logits)[..., 1:3],
             )
             entropy = tf.reduce_mean(cat_entropy(class_logits))
 
+            # self.accuracy = tf.metrics.accuracy(
+            #     labels=tf.argmax(pi.expert_actions, axis=-1),
+            #     predictions=tf.argmax(class_logits, axis=-1)
+            # )
+
             self.accuracy = tf.metrics.accuracy(
-                labels=tf.argmax(pi.expert_actions, axis=-1),
-                predictions=tf.argmax(class_logits, axis=-1)
+                labels=tf.argmax(pi.expert_actions[..., 1:3], axis=-1),
+                predictions=tf.argmax(class_logits[..., 1:3], axis=-1)
             )
 
             model_summaries = [
