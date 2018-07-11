@@ -14,6 +14,8 @@ from gym.spaces import Discrete, Dict
 from btgym.algorithms.nn.networks import *
 from btgym.algorithms.utils import *
 from btgym.datafeed.base import EnvResetConfig
+from btgym.spaces import DictSpace, ActionDictSpace
+from gym.spaces import Discrete
 
 
 class BaseAacPolicy(object):
@@ -33,16 +35,16 @@ class BaseAacPolicy(object):
                  rp_sequence_size,
                  lstm_class=rnn.BasicLSTMCell,
                  lstm_layers=(256,),
-                 aux_estimate=True,
+                 aux_estimate=False,
                  **kwargs):
         """
         Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,
         reward and state 'pixel_change' predictions.
-        Expects uni-modal observation as array of shape `ob_space`.
+        Expects multi-modal observation as array of shape `ob_space`.
 
         Args:
-            ob_space:           instance of gym.spaces.Dict
-            ac_space:           instance of gym.spaces.Dict or gym.spaces.Discrete
+            ob_space:           instance of btgym.spaces.DictSpace
+            ac_space:           instance of btgym.spaces.ActionDictSpace
             rp_sequence_size:   reward prediction sample length
             lstm_class:         tf.nn.lstm class
             lstm_layers:        tuple of LSTM layers sizes
@@ -50,16 +52,15 @@ class BaseAacPolicy(object):
             time_flat:          bool, if True - use static rnn, dynamic otherwise
             **kwargs            not used
         """
-        # Get dictionary of observation state shapes from environment observation space:
-        assert isinstance(ob_space, Dict), \
-            'Expected observation space be instance of gym.spaces.Dict, got: {}'.format(ob_space)
-        self.ob_space_shape = ob_space.shape
+        assert isinstance(ob_space, DictSpace), \
+            'Expected observation space be instance of btgym.spaces.DictSpace, got: {}'.format(ob_space)
+        self.ob_space = ob_space
 
-        # Get dictionary of discrete action lengths from action space:
-        assert isinstance(ac_space, Dict), \
-            'Expected action space be instance of gym.spaces.Dict, got: {}'.format(ac_space)
+        assert isinstance(ac_space, ActionDictSpace), \
+            'Expected action space be instance of btgym.spaces.ActionDictSpace, got: {}'.format(ac_space)
 
-        self.ac_space_shape = nested_discrete_gym_shape(ac_space)
+        assert ac_space.base_space == Discrete, \
+            'Base policy restricted to gym.spaces.Discrete base action spaces, got: {}'.format(ac_space.base_space)
 
         self.ac_space = ac_space
         self.rp_sequence_size = rp_sequence_size
@@ -69,13 +70,24 @@ class BaseAacPolicy(object):
         self.callback = {}
 
         # Placeholders for obs. state input:
-        self.on_state_in = nested_placeholders(self.ob_space_shape, batch_dim=None, name='on_policy_state_in')
-        self.off_state_in = nested_placeholders(self.ob_space_shape, batch_dim=None, name='off_policy_state_in_pl')
-        self.rp_state_in = nested_placeholders(self.ob_space_shape, batch_dim=None, name='rp_state_in')
+        self.on_state_in = nested_placeholders(self.ob_space.shape, batch_dim=None, name='on_policy_state_in')
+        self.off_state_in = nested_placeholders(self.ob_space.shape, batch_dim=None, name='off_policy_state_in_pl')
+        self.rp_state_in = nested_placeholders(self.ob_space.shape, batch_dim=None, name='rp_state_in')
 
-        # Placeholders for concatenated action [one-hot] and reward [scalar]:
-        self.on_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='on_policy_action_reward_in_pl')
-        self.off_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='off_policy_action_reward_in_pl')
+        # Placeholders for previous step action[multi-categorical vector encoding]  and reward [scalar]:
+        self.on_last_a_in = tf.placeholder(
+            tf.float32,
+            [None, self.ac_space.tensor_shape[0]],
+            name='on_policy_last_action_in_pl'
+        )
+        self.on_last_reward_in = tf.placeholder(tf.float32, [None], name='on_policy_last_reward_in_pl')
+
+        self.off_last_a_in = tf.placeholder(
+            tf.float32,
+            [None, self.ac_space.tensor_shape[0]],
+            name='off_policy_last_action_in_pl'
+        )
+        self.off_last_reward_in = tf.placeholder(tf.float32, [None], name='off_policy_last_reward_in_pl')
 
         # Placeholders for rnn batch and time-step dimensions:
         self.on_batch_size = tf.placeholder(tf.int32, name='on_policy_batch_size')
@@ -96,18 +108,29 @@ class BaseAacPolicy(object):
             )
         # Base on-policy AAC network:
         # Conv. layers:
-        on_aac_x = conv_2d_network(self.on_state_in['external'], self.ob_space_shape['external'], ac_space, **kwargs)
+        on_aac_x = conv_2d_network(self.on_state_in['external'], self.ob_space.shape['external'], ac_space, **kwargs)
 
         # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
         x_shape_dynamic = tf.shape(on_aac_x)
         max_seq_len = tf.cast(x_shape_dynamic[0] / self.on_batch_size, tf.int32)
         x_shape_static = on_aac_x.get_shape().as_list()
 
-        on_a_r_in = tf.reshape(self.on_a_r_in, [self.on_batch_size, max_seq_len, ac_space + 1])
+        on_last_action_in = tf.reshape(
+            self.on_last_a_in,
+            [self.on_batch_size, max_seq_len, self.ac_space.tensor_shape[0]]
+        )
+        on_r_in = tf.reshape(self.on_last_reward_in, [self.on_batch_size, max_seq_len, 1])
+
         on_aac_x = tf.reshape( on_aac_x, [self.on_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
 
-        # Feed last action_reward [, internal obs. state] into LSTM along with external state features:
-        on_stage2_input = [on_aac_x, on_a_r_in]
+        # print('*** POLICY DEBUG ***')
+        # print('self.on_last_a_in :', self.on_last_a_in)
+        # print('on_last_action_in: ', on_last_action_in)
+        # print('on_r_in: ', on_r_in)
+        # print('on_aac_x: ', on_aac_x)
+
+        # Feed last action, reward [, internal obs. state] into LSTM along with external state features:
+        on_stage2_input = [on_aac_x, on_last_action_in, on_r_in]
 
         if 'internal' in list(self.on_state_in.keys()):
             x_int_shape_static = self.on_state_in['internal'].get_shape().as_list()
@@ -118,6 +141,8 @@ class BaseAacPolicy(object):
             on_stage2_input.append(x_int)
 
         on_aac_x = tf.concat(on_stage2_input, axis=-1)
+
+        print('on_stage2_input->on_aac_x: ', on_aac_x)
 
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
         [on_x_lstm_out, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
@@ -132,21 +157,26 @@ class BaseAacPolicy(object):
         x_shape_static = on_x_lstm_out.get_shape().as_list()
         on_x_lstm_out = tf.reshape(on_x_lstm_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-        # Aac policy and value outputs and action-sampling function:
-        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(on_x_lstm_out, ac_space)
+        # Aac policy and value outputs and action-sampling function wrapped in dictionary:
+        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(on_x_lstm_out, self.ac_space.depth)
 
         # Off-policy AAC network (shared):
-        off_aac_x = conv_2d_network(self.off_state_in['external'], self.ob_space_shape['external'], ac_space, reuse=True, **kwargs)
+        off_aac_x = conv_2d_network(self.off_state_in['external'], self.ob_space.shape['external'], ac_space, reuse=True, **kwargs)
 
         # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
         x_shape_dynamic = tf.shape(off_aac_x)
         max_seq_len = tf.cast(x_shape_dynamic[0] / self.off_batch_size, tf.int32)
         x_shape_static = off_aac_x.get_shape().as_list()
 
-        off_a_r_in = tf.reshape(self.off_a_r_in, [self.off_batch_size, max_seq_len, ac_space + 1])
+        off_action_in = tf.reshape(
+            self.off_last_a_in,
+            [self.off_batch_size, max_seq_len, self.ac_space.tensor_shape[0]]
+        )
+        off_r_in = tf.reshape(self.off_last_reward_in, [self.off_batch_size, max_seq_len, 1])  # reward is scalar
+
         off_aac_x = tf.reshape( off_aac_x, [self.off_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
 
-        off_stage2_input = [off_aac_x, off_a_r_in]
+        off_stage2_input = [off_aac_x, off_action_in, off_r_in]
 
         if 'internal' in list(self.off_state_in.keys()):
             x_int_shape_static = self.off_state_in['internal'].get_shape().as_list()
@@ -165,27 +195,31 @@ class BaseAacPolicy(object):
         x_shape_static = off_x_lstm_out.get_shape().as_list()
         off_x_lstm_out = tf.reshape(off_x_lstm_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-        [self.off_logits, self.off_vf, _] =\
-            dense_aac_network(off_x_lstm_out, ac_space, reuse=True)
+        # Off policy dense:
+        [self.off_logits, self.off_vf, _] = dense_aac_network(off_x_lstm_out, self.ac_space.depth, reuse=True)
 
         # Aux1: `Pixel control` network:
         # Define pixels-change estimation function:
         # Yes, it rather env-specific but for atari case it is handy to do it here, see self.get_pc_target():
         [self.pc_change_state_in, self.pc_change_last_state_in, self.pc_target] =\
-            pixel_change_2d_estimator(self.ob_space_shape['external'], **kwargs)
+            pixel_change_2d_estimator(self.ob_space.shape['external'], **kwargs)
 
         self.pc_batch_size = self.off_batch_size
         self.pc_time_length = self.off_time_length
 
         self.pc_state_in = self.off_state_in
-        self.pc_a_r_in = self.off_a_r_in
+        #self.pc_a_r_in = self.off_last_action_in
+        self.pc_last_a_in = self.off_last_a_in
+        self.pc_last_reward_in = self.off_last_reward_in
         self.pc_lstm_state_pl_flatten = self.off_lstm_state_pl_flatten
 
         # Shared conv and lstm nets, same off-policy batch:
         pc_x = off_x_lstm_out
 
         # PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:
-        self.pc_q = duelling_pc_network(pc_x, self.ac_space, **kwargs)
+        # Restricted to single action space:
+        act_space = self.ac_space.tensor_shape[0]
+        self.pc_q = duelling_pc_network(pc_x, act_space, **kwargs)
 
         # Aux2: `Value function replay` network:
         # VR network is fully shared with ppo network but with `value` only output:
@@ -194,7 +228,9 @@ class BaseAacPolicy(object):
         self.vr_time_length = self.off_time_length
 
         self.vr_state_in = self.off_state_in
-        self.vr_a_r_in = self.off_a_r_in
+        #self.vr_a_r_in = self.off_last_action_in
+        self.vr_last_a_in = self.off_last_a_in
+        self.vr_last_reward_in = self.off_last_reward_in
 
         self.vr_lstm_state_pl_flatten = self.off_lstm_state_pl_flatten
         self.vr_value = self.off_vf
@@ -203,7 +239,7 @@ class BaseAacPolicy(object):
         self.rp_batch_size = tf.placeholder(tf.int32, name='rp_batch_size')
 
         # Shared conv. output:
-        rp_x = conv_2d_network(self.rp_state_in['external'], self.ob_space_shape['external'], ac_space, reuse=True, **kwargs)
+        rp_x = conv_2d_network(self.rp_state_in['external'], self.ob_space.shape['external'], ac_space, reuse=True, **kwargs)
 
         # Flatten batch-wise:
         rp_x_shape_static = rp_x.get_shape().as_list()
@@ -237,14 +273,15 @@ class BaseAacPolicy(object):
         sess = tf.get_default_session()
         return sess.run(self.on_lstm_init_state)
 
-    def act(self, observation, lstm_state, action_reward):
+    def act(self, observation, lstm_state, last_action, last_reward):
         """
         Predicts action.
 
         Args:
             observation:    dictionary containing single observation
             lstm_state:     lstm context value
-            action_reward:  concatenated last action-reward value
+            last_action:    action value from previous step
+            last_reward:    reward value previous step
 
         Returns:
             Action [one-hot], actions logits, V-fn value, output RNN state
@@ -254,7 +291,8 @@ class BaseAacPolicy(object):
         feeder.update(feed_dict_from_nested(self.on_state_in, observation, expand_batch=True))
         feeder.update(
             {
-                self.on_a_r_in: [action_reward],
+                self.on_last_a_in: last_action,
+                self.on_last_reward_in: last_reward,
                 self.on_batch_size: 1,
                 self.on_time_length: 1,
                 self.train_phase: False
@@ -266,14 +304,15 @@ class BaseAacPolicy(object):
         #print('ops:', [self.on_sample, self.on_vf, self.on_lstm_state_out])
         return sess.run([self.on_sample, self.on_logits, self.on_vf, self.on_lstm_state_out], feeder)
 
-    def get_value(self, observation, lstm_state, action_reward):
+    def get_value(self, observation, lstm_state, last_action, last_reward):
         """
         Estimates policy V-function.
 
         Args:
             observation:    single observation value
             lstm_state:     lstm context value
-            action_reward:  concatenated last action-reward value
+            last_action:    action value from previous step
+            last_reward:    reward value from previous step
 
         Returns:
             V-function value
@@ -283,7 +322,8 @@ class BaseAacPolicy(object):
         feeder.update(feed_dict_from_nested(self.on_state_in, observation, expand_batch=True))
         feeder.update(
             {
-                self.on_a_r_in: [action_reward],
+                self.on_last_a_in: last_action,
+                self.on_last_reward_in: last_reward,
                 self.on_batch_size: 1,
                 self.on_time_length: 1,
                 self.train_phase: False

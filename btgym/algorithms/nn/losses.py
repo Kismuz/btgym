@@ -176,7 +176,7 @@ def pc_loss_def(actions, targets, pi_pc_q, name='_pc_', verbose=False):
         # Get Q-value features for actions been taken and define loss:
         pc_action_reshaped = tf.reshape(actions, [-1, 1, 1, tf.shape(actions)[-1]])
         pc_q_action = tf.multiply(pi_pc_q, pc_action_reshaped)
-        pc_q_action = tf.reduce_sum(pc_q_action, axis=-1, keep_dims=False)
+        pc_q_action = tf.reduce_sum(pc_q_action, axis=-1, keepdims=False)
 
         batch_size = tf.shape(targets)[0]
         loss = tf.reduce_sum(tf.square(targets - pc_q_action)) / tf.cast(batch_size, tf.float32)

@@ -19,7 +19,7 @@
 
 from gym.envs.registration import register
 
-from .spaces import DictSpace
+from .spaces import DictSpace, ActionDictSpace
 from .strategy import BTgymBaseStrategy
 from .server import BTgymServer
 from .datafeed import BTgymDataset, BTgymRandomDataDomain, BTgymSequentialDataDomain

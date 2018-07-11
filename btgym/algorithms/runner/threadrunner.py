@@ -37,7 +37,8 @@ class RunnerThread(threading.Thread):
                  ep_summary,
                  runner_fn_ref=BaseEnvRunnerFn,
                  memory_config=None,
-                 log_level=WARNING, ):
+                 log_level=WARNING,
+                 **kwargs):
         """
 
         Args:

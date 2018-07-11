@@ -41,6 +41,8 @@ class BTgymBaseStrategy(bt.Strategy):
     server cerebro engine behaviour, including order execution logic etc.
 
     Note:
+        - base class supports single asset iteration via default data_line named 'base_data_line', see derived classes
+          multi-asset support
         - bt.observers.DrawDown observer will be automatically added to BTgymStrategy instance at runtime.
         - Since it is bt.Strategy subclass, refer to https://www.backtrader.com/docu/strategy.html for more information.
     """
@@ -163,7 +165,7 @@ class BTgymBaseStrategy(bt.Strategy):
                     skip_frame=1
         """
         try:
-            self.time_dim = self.p.state_shape['raw_state'].shape[0]
+            self.time_dim = self.p.state_shape['raw'].shape[0]
         except KeyError:
             pass
 
@@ -262,7 +264,7 @@ class BTgymBaseStrategy(bt.Strategy):
         self.log.debug('can_increment_global_time: {}'.format(self.can_increment_global_time))
 
         # Sliding staistics accumulators, globally normalized last `avg_perod` values,
-        # so it's a bit more comp. efficient than use bt.Observers:
+        # so it's a bit more comp. efficient than use of bt.Observers:
         sliding_datalines = [
             'broker_cash',
             'broker_value',
@@ -286,6 +288,9 @@ class BTgymBaseStrategy(bt.Strategy):
         # Here we define collection dictionary looking for methods for estimating state, one method for one mode,
         # should be named .get_[mode_name]_state():
         self.collection_get_state_methods = {}
+
+        # print('self.p.state_shape:\n', self.p.state_shape)
+
         for key in self.p.state_shape.keys():
             try:
                 self.collection_get_state_methods[key] = getattr(self, 'get_{}_state'.format(key))
@@ -293,8 +298,8 @@ class BTgymBaseStrategy(bt.Strategy):
             except AttributeError:
                 raise NotImplementedError('Callable get_{}_state.() not found'.format(key))
 
-        self.log.warning('data[0]_name: {}'.format(self.datas[0]._name))
-        self.log.warning('stake size: {}'.format(self.p.order_size))
+        self.log.debug('data[0]_name: {}'.format(self.datas[0]._name))
+        self.log.debug('stake size: {}'.format(self.p.order_size))
 
     def prenext(self):
         self.update_sliding_stat()
@@ -326,7 +331,7 @@ class BTgymBaseStrategy(bt.Strategy):
             - normalized profit/loss for current opened trade (unrealized p/l);
             - normalized best possible up to present point unrealized result for current opened trade;
             - normalized worst possible up to present point unrealized result for current opened trade;
-            - one hot encoding for actions received;
+            - DELETED: one hot encoding for actions received;
             - rewards received (based on self.reward variable values);
         """
         stat = self.sliding_stat
@@ -436,7 +441,6 @@ class BTgymBaseStrategy(bt.Strategy):
         Any other custom data lines, indicators, etc. should be explicitly defined by overriding this method.
         Invoked once by Strategy.__init__().
         """
-        #self.log.warning('Deprecated method. Use __init__  with Super(..., self).__init__(**kwargs) instead.')
         pass
 
     def get_raw_state(self):
@@ -487,27 +491,6 @@ class BTgymBaseStrategy(bt.Strategy):
         self.time_stamp = self._get_time().timestamp()
 
         return self.time_stamp
-
-    def __get_state(self):
-        """
-        Override this method, define necessary calculations and return arbitrary shaped tensor.
-        It's option either to compute entire featurized environment state or just pass raw price data
-        to RL algorithm featurizer module.
-
-        Note:
-            - 'data' referes to bt.startegy datafeeds and should be treated as such.
-                Datafeed Lines that are not default to BTgymStrategy should be explicitly defined by
-                 __init__() or define_datalines().
-
-            - while iterating, .get_raw_state() method is called just before this one,
-                so attr. `self.raw_state` is fresh and ready to use.
-
-            - should update self.state variable
-        """
-        self.update_sliding_stat()
-        self.state['raw'] = self.raw_state  # using attr <-- method called by server.Analyzer
-        self.state['metadata'] = self.get_metadata_state()
-        return self.state
 
     def get_state(self):
         """
@@ -649,6 +632,7 @@ class BTgymBaseStrategy(bt.Strategy):
     def notify_order(self, order):
         """
         Shamelessly taken from backtrader tutorial.
+        TODO: better multi data support
         """
         if order.status in [order.Submitted, order.Accepted]:
             # Buy/Sell order submitted/accepted to/by broker - Nothing to do

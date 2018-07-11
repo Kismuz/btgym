@@ -31,8 +31,9 @@ from btgym.algorithms.runner import BaseEnvRunnerFn, RunnerThread
 from btgym.algorithms.math_utils import log_uniform
 from btgym.algorithms.nn.losses import value_fn_loss_def, rp_loss_def, pc_loss_def, aac_loss_def, ppo_loss_def
 from btgym.algorithms.utils import feed_dict_rnn_context, feed_dict_from_nested, batch_stack
-# from btgym.spaces import DictSpace as BaseSpace  # now can simply be gym.Dict
-from gym.spaces import Dict as BaseSpace
+from btgym.spaces import DictSpace as BaseObSpace
+from btgym.spaces import ActionDictSpace as BaseAcSpace
+
 
 class BaseAAC(object):
     """
@@ -234,22 +235,22 @@ class BaseAAC(object):
             self.ref_env = self.env_list[0]  # reference instance to get obs shapes etc.
 
             try:
-                assert isinstance(self.ref_env.observation_space, BaseSpace)
+                assert isinstance(self.ref_env.observation_space, BaseObSpace)
 
             except AssertionError:
                 self.log.exception(
                     'expected environment observation space of type {}, got: {}'.\
-                    format(BaseSpace, type(self.ref_env.observation_space))
+                    format(BaseObSpace, type(self.ref_env.observation_space))
                 )
                 raise AssertionError
 
             try:
-                assert isinstance(self.ref_env.action_space, BaseSpace)
+                assert isinstance(self.ref_env.action_space, BaseAcSpace)
 
             except AssertionError:
                 self.log.exception(
                     'expected environment observation space of type {}, got: {}'.\
-                    format(BaseSpace, type(self.ref_env.action_space))
+                    format(BaseAcSpace, type(self.ref_env.action_space))
                 )
                 raise AssertionError
 
@@ -529,7 +530,7 @@ class BaseAAC(object):
         with tf.name_scope(name):
             # On-policy AAC loss definition:
             pi.on_pi_act_target = tf.placeholder(
-                tf.float32, [None, self.ref_env.action_space.n], name="on_policy_action_pl"
+                tf.float32, [None, self.ref_env.action_space.tensor_shape[0]], name="on_policy_action_pl"
             )
             pi.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
             pi.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
@@ -554,7 +555,7 @@ class BaseAAC(object):
 
             # Off-policy losses:
             pi.off_pi_act_target = tf.placeholder(
-                tf.float32, [None, self.ref_env.action_space.n], name="off_policy_action_pl")
+                tf.float32, [None, self.ref_env.action_space.tensor_shape[0]], name="off_policy_action_pl")
             pi.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
             pi.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
 
@@ -577,7 +578,7 @@ class BaseAAC(object):
 
             if self.use_pixel_control:
                 # Pixel control loss:
-                pi.pc_action = tf.placeholder(tf.float32, [None, self.ref_env.action_space.n], name="pc_action")
+                pi.pc_action = tf.placeholder(tf.float32, [None, self.ref_env.action_space.tensor_shape[0]], name="pc_action")
                 pi.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
 
                 pc_loss, pc_summaries = self.pc_loss(
@@ -687,8 +688,7 @@ class BaseAAC(object):
                         #tf.summary.scalar("learn_rate", self.train_learn_rate),
                         tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
                         tf.summary.scalar("total_loss", self.loss),
-                        #tf.summary.histogram('roll_reward', self.local_network.on_a_r_in[:, -1]),  # TODO!
-                        tf.summary.scalar('roll_reward', tf.reduce_mean(self.local_network.on_a_r_in[:, -1])),
+                        tf.summary.scalar('roll_reward', tf.reduce_mean(self.local_network.on_last_reward_in)),
                         tf.summary.histogram('advantage', self.local_network.on_pi_adv_target),
                         tf.summary.scalar('roll_advantage',tf.reduce_mean(self.local_network.on_pi_adv_target)),
                     ]
@@ -1034,7 +1034,8 @@ class BaseAAC(object):
                 {
                     pi.vr_batch_size: batch['batch_size'],
                     pi.vr_time_length: batch['time_steps'],
-                    pi.vr_a_r_in: batch['last_action_reward'],
+                    pi.vr_last_a_in: batch['last_action'],
+                    pi.vr_last_reward_in: batch['last_reward'],
                     pi.vr_target: batch['r']
                 }
             )
@@ -1055,7 +1056,8 @@ class BaseAAC(object):
                 feed_dict_rnn_context(pi.pc_lstm_state_pl_flatten, batch['context']))
             feeder.update(
                 {
-                    pi.pc_a_r_in: batch['last_action_reward'],
+                    pi.pc_last_a_in: batch['last_action'],
+                    pi.pc_last_reward_in: batch['last_reward'],
                     pi.pc_action: batch['action'],
                     pi.pc_target: batch['pixel_change']
                 }
@@ -1119,7 +1121,8 @@ class BaseAAC(object):
             )
             feed_dict.update(
                 {
-                    pi.on_a_r_in: on_policy_batch['last_action_reward'],
+                    pi.on_last_a_in: on_policy_batch['last_action'],
+                    pi.on_last_reward_in: on_policy_batch['last_reward'],
                     pi.on_batch_size: on_policy_batch['batch_size'],
                     pi.on_time_length: on_policy_batch['time_steps'],
                     pi.on_pi_act_target: on_policy_batch['action'],
@@ -1139,7 +1142,9 @@ class BaseAAC(object):
                     {
                         pi_prime.on_batch_size: on_policy_batch['batch_size'],
                         pi_prime.on_time_length: on_policy_batch['time_steps'],
-                        pi_prime.on_a_r_in: on_policy_batch['last_action_reward']
+                        pi_prime.on_last_a_in: on_policy_batch['last_action'],
+                        pi_prime.on_last_reward_in: on_policy_batch['last_reward'],
+                        # TODO: pi prime train phase?
                     }
                 )
         if (self.use_any_aux_tasks or self.use_off_policy_aac) and off_policy_batch is not None:
@@ -1149,7 +1154,8 @@ class BaseAAC(object):
                 feed_dict_rnn_context(pi.off_lstm_state_pl_flatten, off_policy_batch['context']))
             off_policy_feed_dict.update(
                 {
-                    pi.off_a_r_in: off_policy_batch['last_action_reward'],
+                    pi.off_last_a_in: off_policy_batch['last_action'],
+                    pi.off_last_reward_in: off_policy_batch['last_reward'],
                     pi.off_batch_size: off_policy_batch['batch_size'],
                     pi.off_time_length: off_policy_batch['time_steps'],
                     pi.off_pi_act_target: off_policy_batch['action'],
@@ -1165,7 +1171,8 @@ class BaseAAC(object):
                     {
                         pi_prime.off_batch_size: off_policy_batch['batch_size'],
                         pi_prime.off_time_length: off_policy_batch['time_steps'],
-                        pi_prime.off_a_r_in: off_policy_batch['last_action_reward']
+                        pi_prime.off_last_a_in: off_policy_batch['last_action'],
+                        pi_prime.off_last_reward_in: off_policy_batch['last_reward'],
                     }
                 )
                 off_policy_feed_dict.update(

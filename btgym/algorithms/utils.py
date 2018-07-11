@@ -7,6 +7,8 @@ from tensorflow.contrib.rnn import LSTMStateTuple
 
 from gym.spaces import Discrete, Dict
 
+from itertools import product
+
 
 def rnn_placeholders(state):
     """
@@ -43,7 +45,7 @@ def nested_placeholders(ob_space, batch_dim=None, name='nested'):
     Returns:
         nested dictionary of placeholders
     """
-    if isinstance(ob_space,dict):
+    if isinstance(ob_space, dict):
         out = {key: nested_placeholders(value, batch_dim, name + '_' + key) for key, value in ob_space.items()}
         return out
     else:
@@ -54,8 +56,9 @@ def nested_placeholders(ob_space, batch_dim=None, name='nested'):
 def nested_discrete_gym_shape(ac_space):
     """
     Given instance of gym.spaces.Dict holding base  gym.spaces.Discrete,
-    returns nested dictionary of  spaces lengths ( dict of gym.spaces.Discrete.n)
-    This util is here due to fact in practice we need .n attr of discrete space rather than .shape, which is always ()
+    returns nested dictionary of  spaces depths ( =dict of gym.spaces.Discrete.n)
+    This util is here due to fact in practice we need .n attr of discrete space [as cat. encoding depth]
+     rather than .shape, which is always ()
 
     Args:
         ac_space: instance of gym.spaces.Dict
@@ -67,7 +70,7 @@ def nested_discrete_gym_shape(ac_space):
         return {key: nested_discrete_gym_shape(space) for key, space in ac_space.spaces.items()}
 
     elif isinstance(ac_space, Discrete):
-        return ac_space.n
+        return (ac_space.n,)
 
     else:
         raise TypeError('Expected gym.spaces.Dict or gym.spaces.Discrete, got: {}'.format(ac_space))

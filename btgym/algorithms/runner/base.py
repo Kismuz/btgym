@@ -3,18 +3,22 @@ import numpy as np
 from btgym.algorithms.rollout import Rollout
 from btgym.algorithms.memory import _DummyMemory
 
-def BaseEnvRunnerFn(sess,
-                    env,
-                    policy,
-                    task,
-                    rollout_length,
-                    summary_writer,
-                    episode_summary_freq,
-                    env_render_freq,
-                    atari_test,
-                    ep_summary,
-                    memory_config,
-                    log):
+
+def BaseEnvRunnerFn(
+    sess,
+    env,
+    policy,
+    task,
+    rollout_length,
+    summary_writer,
+    episode_summary_freq,
+    env_render_freq,
+    atari_test,
+    ep_summary,
+    memory_config,
+    log,
+    **kwargs
+):
     """
     Default function defining runtime logic of the thread runner.
     In brief, it constantly keeps on running
@@ -53,10 +57,8 @@ def BaseEnvRunnerFn(sess,
     length = 0
     local_episode = 0
     reward_sum = 0
-    last_action = np.zeros(env.action_space.n)
-    last_action[0] = 1
-    last_reward = 0.0
-    last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
+    last_action = env.action_space.action_to_vec(env.get_initial_action())
+    last_reward = np.asarray(0.0)
 
     # Summary averages accumulators:
     total_r = []
@@ -73,12 +75,18 @@ def BaseEnvRunnerFn(sess,
         terminal_end = False
         rollout = Rollout()
 
-        action, _, value_, context = policy.act(last_state, last_context, last_action_reward)
-
+        action_one_hot, _, value_, context = policy.act(
+            last_state,
+            last_context,
+            last_action[None, ...],
+            last_reward[None, ...]
+        )
+        # Convert action to vector:
+        action = env.action_space.cat_to_vec(action_one_hot.argmax())
         #log.debug('*: A: {}, V: {}, step: {} '.format(action, value_, length))
 
-        # argmax to convert from one-hot:
-        state, reward, terminal, info = env.step(action.argmax())
+        # Make a step, convertin action vector to dict:
+        state, reward, terminal, info = env.step(env.action_space.vec_to_action(action))
 
         # Partially collect first experience of rollout:
         last_experience = {
@@ -89,7 +97,8 @@ def BaseEnvRunnerFn(sess,
             'value': value_,
             'terminal': terminal,
             'context': last_context,
-            'last_action_reward': last_action_reward,
+            'last_action': last_action,
+            'last_reward': last_reward,
         }
         # Execute user-defined callbacks to policy, if any:
         for key, callback in policy.callback.items():
@@ -101,17 +110,26 @@ def BaseEnvRunnerFn(sess,
         last_context = context
         last_action = action
         last_reward = reward
-        last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
 
         for roll_step in range(1, rollout_length):
             if not terminal:
                 # Continue adding experiences to rollout:
-                action, _, value_, context = policy.act(last_state, last_context, last_action_reward)
+                action_one_hot, _, value_, context = policy.act(
+                    last_state,
+                    last_context,
+                    last_action[None, ...],
+                    last_reward[None, ...]
+                )
+                action = env.action_space.cat_to_vec(action_one_hot.argmax())
+                state, reward, terminal, info = env.step(env.action_space.vec_to_action(action))
 
-                #log.debug('A: {}, V: {}, step: {} '.format(action, value_, length))
-
-                # Argmax to convert from one-hot:
-                state, reward, terminal, info = env.step(action.argmax())
+                # print(
+                #     'RUNNER: one_hot: {}, vec: {}, dict: {}'.format(
+                #         action_one_hot,
+                #         action,
+                #         env.action_space.vec_to_action(action)
+                #     )
+                # )
 
                 # Partially collect next experience:
                 experience = {
@@ -122,7 +140,8 @@ def BaseEnvRunnerFn(sess,
                     'value': value_,
                     'terminal': terminal,
                     'context': last_context,
-                    'last_action_reward': last_action_reward,
+                    'last_action': last_action,
+                    'last_reward': last_reward,
                     #'pixel_change': 0 #policy.get_pc_target(state, last_state),
                 }
                 for key, callback in policy.callback.items():
@@ -140,7 +159,6 @@ def BaseEnvRunnerFn(sess,
                 last_context = context
                 last_action = action
                 last_reward = reward
-                last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
                 last_experience = experience
 
             if terminal:
@@ -219,10 +237,8 @@ def BaseEnvRunnerFn(sess,
                 last_context = policy.get_initial_features(state=last_state, context=last_context)
                 length = 0
                 reward_sum = 0
-                last_action = np.zeros(env.action_space.n)
-                last_action[0] = 1
-                last_reward = 0.0
-                last_action_reward = np.concatenate([last_action, np.asarray([last_reward])], axis=-1)
+                last_action = env.action_space.action_to_vec(env.get_initial_action())
+                last_reward = np.asarray(0.0)
 
                 # Increment global and local episode counts:
                 sess.run(policy.inc_episode)
@@ -234,7 +250,7 @@ def BaseEnvRunnerFn(sess,
         if not terminal_end:
             # Bootstrap:
             last_experience['r'] = np.asarray(
-                [policy.get_value(last_state, last_context, last_action_reward)]
+                [policy.get_value(last_state, last_context, last_action[None, ...], last_reward[None, ...])]
             )
 
         else:

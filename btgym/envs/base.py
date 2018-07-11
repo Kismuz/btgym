@@ -31,7 +31,8 @@ from collections import OrderedDict
 
 import backtrader as bt
 
-from btgym import BTgymServer, BTgymBaseStrategy, BTgymDataset, BTgymRendering, BTgymDataFeedServer, DictSpace
+from btgym import BTgymServer, BTgymBaseStrategy, BTgymDataset, BTgymRendering, BTgymDataFeedServer
+from btgym import DictSpace, ActionDictSpace
 from btgym.datafeed.multi import BTgymMultiData
 
 from btgym.rendering import BTgymNullRendering
@@ -381,16 +382,16 @@ class BTgymEnv(gym.Env):
                                  self.dataset_stat.loc['max', self.dataset_columns].max()))
 
         # Set observation space shape from engine/strategy parameters:
-        self.observation_space = spaces.Dict(self.params['strategy']['state_shape'])
+        self.observation_space = DictSpace(self.params['strategy']['state_shape'])
 
         self.log.debug('Obs. shape: {}'.format(self.observation_space.spaces))
         #self.log.debug('Obs. min:\n{}\nmax:\n{}'.format(self.observation_space.low, self.observation_space.high))
 
         # Set action space (one-key dict for this class) and corresponding server messages:
-        self.action_space = spaces.Dict(
-            {key: spaces.Discrete(len(self.params['strategy']['portfolio_actions'])) for key in self.assets}
+        self.action_space = ActionDictSpace(
+            base_actions=self.params['strategy']['portfolio_actions'],
+            assets=self.assets
         )
-        # self.server_actions = self.params['strategy']['portfolio_actions']
 
         # Finally:
         self.server_response = None
@@ -766,9 +767,11 @@ class BTgymEnv(gym.Env):
             raise AssertionError(msg)
 
         # Send action (as dict of strings) to backtrader engine, receive environment response:
+        action_as_dict = {key: self.server_actions[key][value] for key, value in action.items()}
+        print('step: ', action, action_as_dict)
         env_response = self._comm_with_timeout(
             socket=self.socket,
-            message={'action': {key: self.server_actions[key][value] for key, value in action.items()}}
+            message={'action': action_as_dict}
         )
         if not env_response['status'] in 'ok':
             msg = '.step(): server unreachable with status: <{}>.'.format(env_response['status'])

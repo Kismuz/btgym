@@ -171,21 +171,24 @@ def lstm_network(
     return x_out, lstm_init_state, state_out, lstm_state_pl_flatten
 
 
-def dense_aac_network(x, ac_space, name='dense_aac', linear_layer_ref=noisy_linear, reuse=False):
+def dense_aac_network(x, ac_space_depth, name='dense_aac', linear_layer_ref=noisy_linear, reuse=False):
     """
     Stage3 network: from LSTM flattened output to advantage actor-critic.
 
     Returns:
-        logits tensor
-        value function tensor
-        action sampling function.
+        dictionary containg tuples:
+            logits tensor
+            value function tensor
+            action sampling function.
+        for every space in ac_space_shape dictionary
     """
+
     with tf.variable_scope(name, reuse=reuse):
         # Center-logits:
         logits = norm_layer(
             linear_layer_ref(
                 x=x,
-                size=ac_space,
+                size=ac_space_depth,
                 name='action',
                 initializer=normalized_columns_initializer(0.01),
                 reuse=reuse
@@ -193,14 +196,6 @@ def dense_aac_network(x, ac_space, name='dense_aac', linear_layer_ref=noisy_line
             center=True,
             scale=False,
         )
-
-        # logits = linear_layer_ref(
-        #     x=x,
-        #     size=ac_space,
-        #     name='action',
-        #     initializer=normalized_columns_initializer(0.01),
-        #     reuse=reuse
-        # )
 
         vf = tf.reshape(
             linear_layer_ref(
@@ -212,7 +207,9 @@ def dense_aac_network(x, ac_space, name='dense_aac', linear_layer_ref=noisy_line
             ),
             [-1]
         )
-        sample = categorical_sample(logits, ac_space)[0, :]
+        sample = categorical_sample(logits=logits, depth=ac_space_depth)[0, :]
+
+
 
     return logits, vf, sample
 

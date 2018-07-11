@@ -29,8 +29,7 @@ import numpy as np
 from gym import spaces
 import backtrader as bt
 
-from btgym import BTgymRendering #, DictSpace
-from btgym.datafeed.multi import BTgymMultiData
+from btgym import BTgymRendering, DictSpace, ActionDictSpace
 
 from btgym.rendering import BTgymNullRendering
 
@@ -41,6 +40,105 @@ class MultiDiscreteEnv(BTgymEnv):
     """
     OpenAI Gym API shell for Backtrader backtesting/trading library with multiply data streams (assets) support.
     Action space is dictionary of discrete actions for every asset.
+
+    Multi-asset setup explanation:
+
+        1. This environment expects Dataset to be instance of btgym.datafeed.multi.BTgymMultiData, which sets
+        number,  specifications and sampling synchronisation for historic data for all assets
+        one want to trade jointly.
+
+        2. Internally every episodic asset data is converted to single bt.feed and added to environment strategy
+        as separate named data-line (see backtrader docs for extensive explanation of data-lines concept). Strategy is
+        expected to properly handle all received data-lines.
+
+        3. btgym.spaces.ActionDictSpace and order execution. Strategy expects to receive separate action
+        for every asset in form of dictionary: {data_line_name_1: action, ..., data_line_name_K: action}
+        for K assets added, and issues orders for all assets within a single strategy step.
+        TODO: refine order execution control, see: https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1
+        It is supposed that actions are discrete [for this environment] and same for every asset.
+        Base actions are set by strategy.params.portfolio_actions, default is: ('hold', 'buy', 'sell', 'close') which
+        equals to gym.spaces.Discrete with depth N=4 (~number of actions: 0, 1, 2, 3). That is, for K assets environment
+        action space will be a shallow dictionary (DictSpace) of discrete spaces:
+        {data_line_name_1: gym.spaces.Discrete(N), ..., data_line_name_K: gym.spaces.Discrete(N)}
+
+            Example:
+
+                if datalines added via BTgymMultiData are: ['eurchf', 'eurgbp', 'eurgpy', 'eurusd'],
+                and base asset actions are ['hold', 'buy', 'sell', 'close'], than:
+
+                env.action.space will be:
+                    DictSpace(
+                        {
+                            'eurchf': gym.spaces.Discrete(4),
+                            'eurgbp': gym.spaces.Discrete(4),
+                            'eurgpy': gym.spaces.Discrete(4),
+                            'eurusd': gym.spaces.Discrete(4),
+                        }
+                    )
+                single environment action instance (as seen inside strategy):
+                    {
+                        'eurchf': 'hold',
+                        'eurgbp': 'buy',
+                        'eurgpy': 'hold',
+                        'eurusd': 'close',
+                    }
+                corresponding action integer encoding as passed to environment via .step():
+                    {
+                        'eurchf': 0,
+                        'eurgbp': 1,
+                        'eurgpy': 0,
+                        'eurusd': 3,
+                    }
+                vector of integers (categorical):
+                    (0, 1, 0, 3)
+
+        4. Environment actions cardinality and encoding. Note that total set of environment actions for K assets
+        and N base actions is a cartesian product of K sets of N elements each. It can be encoded as vector of integers,
+        single scalar or one-hot. As cardinality skyrockets with K, this `multi-discrete' action setup is only suited
+        for small number of assets.
+
+            Example:
+
+                Setup with 4 assets and 4 base actions [hold, buy, sell, close] spawns total of 256 possible
+                environment actions expressed by single integer in [0, 255] or 256-depth one-hot encoding:
+                    vector str :                            vector int:     int:   one_hot:
+                    ('hold', 'hold', 'hold', 'hold')     -> (0, 0, 0, 0) -> 0   -> 000.....0
+                    ('hold', 'hold', 'hold', 'buy')      -> (0, 0, 0, 1) -> 1   -> 010.....0
+                    ...         ...         ...
+                    ('close', 'close', 'close', 'sell')  -> (3, 3, 3, 2) -> 254 -> 0.....010
+                    ('close', 'close', 'close', 'close') -> (3, 3, 3, 3) -> 255 -> 0.....001
+
+        On algorithms side, there is some weirdness with encodings as we jump forth and back between
+        dictionary of categorical encodings, vector of categorical encodings, integer action number and one-hot encoding.
+        As a rule, environment and strategy operates with dictionary of either string name of action or integer
+        encodings while algorithm policy operates with either vector of cat. encodings or one-hot encoding.
+
+        5. Observation space: is nested DictSpace, where 'external' part part of space should hold specifications for
+        every asset added.
+
+            Example:
+
+                if datalines added via BTgymMultiData are:
+                    'eurchf', 'eurgbp', 'eurgpy', 'eurusd';
+
+                environment observation space should be DictSpace:
+                 {
+                    'raw': spaces.Box(low=-1000, high=1000, shape=(128, 4), dtype=np.float32),
+                    'external': DictSpace(
+                        {
+                            'eurusd': spaces.Box(low=-1000, high=1000, shape=(128, 1, num_features), dtype=np.float32),
+                            'eurgbp': spaces.Box(low=-1000, high=1000, shape=(128, 1, num_features), dtype=np.float32),
+                            'eurchf': spaces.Box(low=-1000, high=1000, shape=(128, 1, num_features), dtype=np.float32),
+                            'eurgpy': spaces.Box(low=-1000, high=1000, shape=(128, 1, num_features), dtype=np.float32),
+                        }
+                    ),
+                    'internal': spaces.Box(...),
+                    'datetime': spaces.Box(...),
+                    'metadata': DictSpace(...)
+                }
+                refer to strategies declarations for full code.
+
+        6. Action space [multi-continious]: NotImplementedYet
     """
 
     # Datafeed Server management:
@@ -240,17 +338,16 @@ class MultiDiscreteEnv(BTgymEnv):
                                  self.dataset_stat.loc['max', self.dataset_columns].max()))
 
         # Set observation space shape from engine/strategy parameters:
-        self.observation_space = spaces.Dict(self.params['strategy']['state_shape'])
+        self.observation_space = DictSpace(self.params['strategy']['state_shape'])
 
         self.log.debug('Obs. shape: {}'.format(self.observation_space.spaces))
 
         # Set action space and corresponding server messages:
-        self.action_space = spaces.Dict(
-            {
-                name: spaces.Discrete(len(self.params['strategy']['portfolio_actions']))
-                for name in self.assets
-            }
+        self.action_space = ActionDictSpace(
+            base_actions=self.params['strategy']['portfolio_actions'],
+            assets=self.assets
         )
+
         self.log.debug('Act. space shape: {}'.format(self.action_space.spaces))
 
         # Finally:

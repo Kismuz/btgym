@@ -717,21 +717,3 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
             self.order_failed += 1
         self.order = None
 
-    # def next(self):
-    #     """
-    #     Multiply data lines implementation.
-    #     """
-    #     # print('action-> ', self.action)
-    #     for key, action in self.action.items():
-    #         # Simple action-to-order logic:
-    #         if action == 'hold' or self.is_done_enabled:
-    #             pass
-    #         elif action == 'buy':
-    #             self.order = self.buy(data=key, size=self.p.order_size[key])
-    #             self.broker_message = 'new {}_BUY created; '.format(key) + self.broker_message
-    #         elif action == 'sell':
-    #             self.order = self.sell(data=key, size=self.p.order_size[key])
-    #             self.broker_message = 'new {}_SELL created; '.format(key) + self.broker_message
-    #         elif action == 'close':
-    #             self.order = self.close(data=key)
-    #             self.broker_message = 'new {}_CLOSE created; '.format(key) + self.broker_message

@@ -57,8 +57,6 @@ class DevStrat_4_6(BTgymBaseStrategy):
             {
                 'external': spaces.Box(low=-1, high=1, shape=(time_dim, 1, 3), dtype=np.float32),
                 'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
-                'action': spaces.Box(low=0, high=1, shape=(avg_period, 1, 1), dtype=np.float32),
-                'reward': spaces.Box(low=-1, high=1, shape=(avg_period, 1, 1), dtype=np.float32),
                 'metadata': DictSpace(
                     {
                         'type': spaces.Box(
@@ -172,18 +170,18 @@ class DevStrat_4_6(BTgymBaseStrategy):
         )
         return x_broker[:, None, :]
 
-    def get_state(self):
+    # def get_state(self):
+    #
+    #     # Update inner state statistic and compose state:
+    #     self.update_sliding_stat()
+    #
+    #     self.state['external'] = self.get_external_state()
+    #     self.state['internal'] = self.get_internal_state()
+    #     self.state['action'] = np.asarray(self.sliding_stat['action'])[:, None, None]
+    #     self.state['reward'] = np.asarray(self.sliding_stat['reward'])[:, None, None]
+    #     self.state['metadata'] = self.get_metadata_state()
 
-        # Update inner state statistic and compose state:
-        self.update_sliding_stat()
-
-        self.state['external'] = self.get_external_state()
-        self.state['internal'] = self.get_internal_state()
-        self.state['action'] = np.asarray(self.sliding_stat['action'])[:, None, None]
-        self.state['reward'] = np.asarray(self.sliding_stat['reward'])[:, None, None]
-        self.state['metadata'] = self.get_metadata_state()
-
-        return self.state
+        # return self.state
 
     def get_reward(self):
         """
