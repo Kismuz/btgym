@@ -93,6 +93,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html">Package Description</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#problem-definition">Problem definition</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#data-flow-structure">Data flow structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework-description">A3C framework description</a></li>
@@ -275,7 +276,7 @@
 
 <span class="sd">                Setup with 4 assets and 4 base actions [hold, buy, sell, close] spawns total of 256 possible</span>
 <span class="sd">                environment actions expressed by single integer in [0, 255] or binary encoding:</span>
-<span class="sd">                    vector str :                            vector int:     int:   binary:</span>
+<span class="sd">                    vector str :                            vector:         int:   binary:</span>
 <span class="sd">                    (&#39;hold&#39;, &#39;hold&#39;, &#39;hold&#39;, &#39;hold&#39;)     -&gt; (0, 0, 0, 0) -&gt; 0   -&gt; 00000000</span>
 <span class="sd">                    (&#39;hold&#39;, &#39;hold&#39;, &#39;hold&#39;, &#39;buy&#39;)      -&gt; (0, 0, 0, 1) -&gt; 1   -&gt; 00000001</span>
 <span class="sd">                    ...         ...         ...</span>

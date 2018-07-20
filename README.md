@@ -101,7 +101,7 @@ from btgym import BTgymEnv
 MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
                          episode_duration={'days': 2, 'hours': 23, 'minutes': 55},
                          drawdown_call=50,
-                         state_shape=dict(raw_state=spaces.Box(low=0,high=1,shape=(30,4))),
+                         state_shape=dict(raw=spaces.Box(low=0,high=1,shape=(30,4))),
                          port=5555,
                          verbose=1,
                          )
@@ -217,14 +217,14 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
         - **continious actions** space via PortfolioEnv which is closely related to
           contionious portfolio optimisation problem setup;
             - description and docs:
-                - [MultiDataFeed]
-                - [ActionSpace]
-                - [DiscreteEnv]
-                - [PortfolioEnv]
+                - **MultiDataFeed:** https://kismuz.github.io/btgym/btgym.datafeed.html#btgym.datafeed.multi.BTgymMultiData
+                - **ActionSpace:** https://kismuz.github.io/btgym/btgym.html#btgym.spaces.ActionDictSpace
+                - **MultiDiscreteEnv:** https://kismuz.github.io/btgym/btgym.envs.html#btgym.envs.multidiscrete.MultiDiscreteEnv
+                - **PortfolioEnv:** https://kismuz.github.io/btgym/btgym.envs.html#btgym.envs.portfolio.PortfolioEnv
 
             - examples:
-                - [DiscreteEnv]
-                - [PortfolioEnv]
+                - **MultiDiscreteEnv:** https://github.com/Kismuz/btgym/blob/master/examples/multi_discrete_setup_intro.ipynb
+                - **PortfolioEnv:** https://github.com/Kismuz/btgym/blob/master/examples/portfolio_setup_BETA.ipynb
         - **Notes on multi-asset setup**:
             - adding these features forced substantial package redesign;
               expect bugs, some backward incompatibility, broken examples etc - please report;

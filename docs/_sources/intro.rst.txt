@@ -101,7 +101,7 @@ Maximum environment flexibility is achieved by explicitly defining and passing `
 
     MyCerebro = bt.Cerebro()
     MyCerebro.addstrategy(BTgymStrategy,
-                          state_shape={'raw_state': spaces.Box(low=0,high=1,shape=(20,4))},
+                          state_shape={'raw': spaces.Box(low=0,high=1,shape=(20,4))},
                           skip_frame=5,
                           state_low=None,
                           state_high=None,
@@ -126,6 +126,40 @@ Maximum environment flexibility is achieved by explicitly defining and passing `
                              verbose=1,
                              )
 
+
+Problem definition
+------------------
+
+- **Discrete actions setup:**
+   consider setup with one riskless asset acting as broker account cash and K (by default - one) risky assets.
+   For every risky asset there exists track of historic price records referred as `data-line`.
+   Apart from assets data lines there [optionally] exists number of exogenous data lines holding some
+   information and statistics, e.g. economic indexes, encoded news, macroeconomic indicators, weather forecasts
+   etc. which are considered relevant to decision-making.
+   It is supposed for this setup that:
+      1. there is no interest rates for any asset;
+      2. broker actions are fixed-size market orders (`buy`, `sell`, `close`); short selling is permitted;
+      3. transaction costs are modelled via broker commission;
+      4. 'market liquidity' and 'capital impact' assumptions are met;
+      6. time indexes match for all data lines provided;
+
+- The problem is modelled as discrete-time finite-horizon partially observable Markov decision process for equity/currency trading:
+    - *for every asset* traded agent action space is discrete `(0: `hold` [do nothing], 1:`buy`, 2: `sell`, 3:`close` [position])`;
+    - environment is episodic: maximum  episode duration and episode termination conditions
+      are set;
+    - for every timestep of the episode agent is given environment state observation as tensor of last
+      `m` time-embedded preprocessed values for every data-line included and emits actions according some stochastic policy.
+    - agent's goal is to maximize expected cumulative capital by learning optimal policy;
+
+- **Continuous actions setup[BETA]:**
+   this setup closely relates to continuous portfolio optimisation problem definition;
+   it differs from setup above in:
+      1. base broker actions are real numbers: `a[i] in [0,1], 0<=i<=K, SUM{a[i]} = 1`  for `K` risky assets added;
+         each action is a market target order to adjust portfolio to get share `a[i]*100%` for `i`-th  asset;
+      2. entire single-step broker action is dictionary of form:
+         `{cash_name: a[0], asset_name_1: a[1], ..., asset_name_K: a[K]}`;
+      3. short selling is not permitted;
+- For RL it implies having continuous action space as `K+1` dim vector.
 
 Environment engine description
 ------------------------------

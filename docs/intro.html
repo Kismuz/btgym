@@ -94,6 +94,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Package Description</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#installation">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#problem-definition">Problem definition</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#environment-engine-description">Environment engine description</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#data-flow-structure">Data flow structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#a3c-framework-description">A3C framework description</a></li>
@@ -273,7 +274,7 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
 
 <span class="n">MyCerebro</span> <span class="o">=</span> <span class="n">bt</span><span class="o">.</span><span class="n">Cerebro</span><span class="p">()</span>
 <span class="n">MyCerebro</span><span class="o">.</span><span class="n">addstrategy</span><span class="p">(</span><span class="n">BTgymStrategy</span><span class="p">,</span>
-                      <span class="n">state_shape</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;raw_state&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">high</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">4</span><span class="p">))},</span>
+                      <span class="n">state_shape</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;raw&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">high</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">4</span><span class="p">))},</span>
                       <span class="n">skip_frame</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
                       <span class="n">state_low</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                       <span class="n">state_high</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -299,6 +300,62 @@ I have no idea what kind of algorithm and setup will solve it [if any]. Explore 
                          <span class="p">)</span>
 </pre></div>
 </div>
+</div>
+<div class="section" id="problem-definition">
+<h1>Problem definition<a class="headerlink" href="#problem-definition" title="Permalink to this headline">¶</a></h1>
+<ul>
+<li><dl class="first docutils">
+<dt><strong>Discrete actions setup:</strong></dt>
+<dd><p class="first">consider setup with one riskless asset acting as broker account cash and K (by default - one) risky assets.
+For every risky asset there exists track of historic price records referred as <cite>data-line</cite>.
+Apart from assets data lines there [optionally] exists number of exogenous data lines holding some
+information and statistics, e.g. economic indexes, encoded news, macroeconomic indicators, weather forecasts
+etc. which are considered relevant to decision-making.
+It is supposed for this setup that:</p>
+<blockquote class="last">
+<div><ol class="arabic simple">
+<li>there is no interest rates for any asset;</li>
+<li>broker actions are fixed-size market orders (<cite>buy</cite>, <cite>sell</cite>, <cite>close</cite>); short selling is permitted;</li>
+<li>transaction costs are modelled via broker commission;</li>
+</ol>
+<p>4. ‘market liquidity’ and ‘capital impact’ assumptions are met;
+6. time indexes match for all data lines provided;</p>
+</div></blockquote>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>The problem is modelled as discrete-time finite-horizon partially observable Markov decision process for equity/currency trading:</dt>
+<dd><ul class="first last simple">
+<li><em>for every asset</em> traded agent action space is discrete <cite>(0: `hold</cite> [do nothing], 1:<cite>buy</cite>, 2: <cite>sell</cite>, 3:<cite>close</cite> [position])`;</li>
+<li>environment is episodic: maximum  episode duration and episode termination conditions
+are set;</li>
+<li>for every timestep of the episode agent is given environment state observation as tensor of last
+<cite>m</cite> time-embedded preprocessed values for every data-line included and emits actions according some stochastic policy.</li>
+<li>agent’s goal is to maximize expected cumulative capital by learning optimal policy;</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>Continuous actions setup[BETA]:</strong></dt>
+<dd><p class="first">this setup closely relates to continuous portfolio optimisation problem definition;
+it differs from setup above in:</p>
+<blockquote class="last">
+<div><ol class="arabic simple">
+<li>base broker actions are real numbers: <cite>a[i] in [0,1], 0&lt;=i&lt;=K, SUM{a[i]} = 1</cite>  for <cite>K</cite> risky assets added;
+each action is a market target order to adjust portfolio to get share <cite>a[i]*100%</cite> for <cite>i</cite>-th  asset;</li>
+<li>entire single-step broker action is dictionary of form:
+<cite>{cash_name: a[0], asset_name_1: a[1], …, asset_name_K: a[K]}</cite>;</li>
+<li>short selling is not permitted;</li>
+</ol>
+</div></blockquote>
+</dd>
+</dl>
+</li>
+<li><p class="first">For RL it implies having continuous action space as <cite>K+1</cite> dim vector.</p>
+</li>
+</ul>
 </div>
 <div class="section" id="environment-engine-description">
 <h1>Environment engine description<a class="headerlink" href="#environment-engine-description" title="Permalink to this headline">¶</a></h1>
