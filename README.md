@@ -206,7 +206,7 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
  
 ### <a name="news"></a>[News and updates:](#title)
 
-- xx.07.2018: Major update to package:
+- 20.07.2018: major update to package:
     - enchancements to agent architecture:
         - casual convolution state encoder with attention for LSTM agent;
         - dropout regularization added;
