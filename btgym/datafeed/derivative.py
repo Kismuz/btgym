@@ -36,6 +36,7 @@ class BTgymEpisode(BTgymBaseData):
             parsing_params=None,
             sampling_params=None,
             name=None,
+            data_names=('default_asset',),
             task=0,
             log_level=WARNING,
             _config_stack=None,
@@ -47,6 +48,7 @@ class BTgymEpisode(BTgymBaseData):
             sampling_params=None,
             name='episode',
             task=task,
+            data_names=data_names,
             log_level=log_level,
             _config_stack=_config_stack
         )
@@ -75,6 +77,7 @@ class BTgymDataTrial(BTgymBaseData):
             parsing_params=None,
             sampling_params=None,
             name=None,
+            data_names=('default_asset',),
             frozen_time_split=None,
             task=0,
             log_level=WARNING,
@@ -97,6 +100,7 @@ class BTgymDataTrial(BTgymBaseData):
             parsing_params=parsing_params,
             sampling_params=sampling_params,
             name='Trial',
+            data_names=data_names,
             frozen_time_split=frozen_time_split,
             task=task,
             log_level=log_level,
@@ -129,6 +133,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
             frozen_time_split=None,
             name='RndDataDomain',
             task=0,
+            data_names=('default_asset',),
             log_level=WARNING,
     ):
         """
@@ -236,6 +241,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
             name=name,
             task=task,
             frozen_time_split=frozen_time_split,
+            data_names=data_names,
             log_level=log_level,
             _config_stack=[episode_config, trial_config]
         )
@@ -283,6 +289,7 @@ class BTgymDataset(BTgymRandomDataDomain):
             parsing_params=None,
             target_period=None,
             name='SimpleDataSet',
+            data_names=('default_asset',),
             log_level=WARNING,
             **kwargs
     ):
@@ -353,6 +360,7 @@ class BTgymDataset(BTgymRandomDataDomain):
             episode_params=episode_params,
             target_period=target_period,
             name=name,
+            data_names=data_names,
             log_level=log_level,
         )
 

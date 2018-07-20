@@ -60,30 +60,36 @@ class Rollout(dict):
         else:
             top = False
 
-        if isinstance(values, dict):
-            for key, value in values.items():
-                if key not in _struct.keys():
-                    _struct[key] = {}
-                _struct[key] =self.add(value, _struct[key])
+        try:
+            if isinstance(values, dict):
+                for key, value in values.items():
+                    if key not in _struct.keys():
+                        _struct[key] = {}
+                    _struct[key] = self.add(value, _struct[key])
 
-        elif isinstance(values, tuple):
-            if not isinstance(_struct, tuple):
-                _struct = ['empty' for entry in values]
-            _struct = tuple([self.add(*pair) for pair in zip(values, _struct)])
+            elif isinstance(values, tuple):
+                if not isinstance(_struct, tuple):
+                    _struct = ['empty' for entry in values]
+                _struct = tuple([self.add(*pair) for pair in zip(values, _struct)])
 
-        elif isinstance(values, LSTMStateTuple):
-            if not isinstance(_struct, LSTMStateTuple):
-                _struct = LSTMStateTuple(0, 0)
-            c = self.add(values[0], _struct[0])
-            h = self.add(values[1], _struct[1])
-            _struct = LSTMStateTuple(c, h)
-
-        else:
-            if isinstance(_struct, list):
-                _struct += [values]
+            elif isinstance(values, LSTMStateTuple):
+                if not isinstance(_struct, LSTMStateTuple):
+                    _struct = LSTMStateTuple(0, 0)
+                c = self.add(values[0], _struct[0])
+                h = self.add(values[1], _struct[1])
+                _struct = LSTMStateTuple(c, h)
 
             else:
-                _struct = [values]
+                if isinstance(_struct, list):
+                    _struct += [values]
+
+                else:
+                    _struct = [values]
+
+        except:
+            print('values:\n', values)
+            print('_struct:\n', _struct)
+            raise RuntimeError
 
         if not top:
             return _struct

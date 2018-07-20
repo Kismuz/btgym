@@ -207,6 +207,7 @@
                     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;conv2d&#39;</span><span class="p">,</span>
                     <span class="n">collections</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                     <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">keep_prob</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                     <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Stage1 network: from preprocessed 2D input to estimated features.</span>
@@ -216,7 +217,6 @@
 <span class="sd">        tensor holding state features;</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
-        <span class="c1">#for i in range(conv_2d_num_layers):</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">num_filters</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">conv_2d_num_filters</span><span class="p">):</span>
             <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">(</span>
                 <span class="n">norm_layer</span><span class="p">(</span>
@@ -231,15 +231,18 @@
                         <span class="n">collections</span><span class="p">,</span>
                         <span class="n">reuse</span>
                     <span class="p">),</span>
-                    <span class="n">scope</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;_layer_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="n">scope</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;_norm_layer_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
                 <span class="p">)</span>
             <span class="p">)</span>
+            <span class="k">if</span> <span class="n">keep_prob</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">dropout</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">keep_prob</span><span class="o">=</span><span class="n">keep_prob</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;_layer_</span><span class="si">{}</span><span class="s2">_with_dropout&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
         <span class="c1"># A3c/BaseAAC original paper design:</span>
-        <span class="c1">#x = tf.nn.elu(conv2d(x, 16, &#39;conv2d_1&#39;, [8, 8], [4, 4], pad, dtype, collections, reuse))</span>
-        <span class="c1">#x = tf.nn.elu(conv2d(x, 32, &#39;conv2d_2&#39;, [4, 4], [2, 2], pad, dtype, collections, reuse))</span>
-        <span class="c1">#x = tf.nn.elu(</span>
+        <span class="c1"># x = tf.nn.elu(conv2d(x, 16, &#39;conv2d_1&#39;, [8, 8], [4, 4], pad, dtype, collections, reuse))</span>
+        <span class="c1"># x = tf.nn.elu(conv2d(x, 32, &#39;conv2d_2&#39;, [4, 4], [2, 2], pad, dtype, collections, reuse))</span>
+        <span class="c1"># x = tf.nn.elu(</span>
         <span class="c1">#   linear(batch_flatten(x), 256, &#39;conv_2d_dense&#39;, normalized_columns_initializer(0.01), reuse=reuse)</span>
-        <span class="c1">#)</span>
+        <span class="c1"># )</span>
         <span class="k">return</span> <span class="n">x</span></div>
 
 
@@ -253,7 +256,8 @@
                     <span class="n">pad</span><span class="o">=</span><span class="s2">&quot;SAME&quot;</span><span class="p">,</span>
                     <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
                     <span class="n">collections</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                    <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+                    <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Stage1 network: from preprocessed 1D input to estimated features.</span>
 <span class="sd">    Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.</span>
@@ -283,6 +287,8 @@
         <span class="n">lstm_sequence_length</span><span class="p">,</span>
         <span class="n">lstm_class</span><span class="o">=</span><span class="n">rnn</span><span class="o">.</span><span class="n">BasicLSTMCell</span><span class="p">,</span>
         <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,),</span>
+        <span class="n">static</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">keep_prob</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">name</span><span class="o">=</span><span class="s1">&#39;lstm&#39;</span><span class="p">,</span>
         <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
@@ -298,15 +304,22 @@
 <span class="sd">         lstm flattened feed placeholders as tuple.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
-        <span class="c1"># Flatten, add action/reward and expand with fake [time] batch? dim to feed LSTM bank:</span>
-        <span class="c1">#x = tf.concat([x, a_r] ,axis=-1)</span>
-        <span class="c1">#x = tf.concat([batch_flatten(x), a_r], axis=-1)</span>
-        <span class="c1">#x = tf.expand_dims(x, [0])</span>
+        <span class="c1"># Prepare rnn type:</span>
+        <span class="k">if</span> <span class="n">static</span><span class="p">:</span>
+            <span class="n">rnn_net</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">static_rnn</span>
+            <span class="c1"># Remove time dimension (suppose always get one) and wrap to list:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]]</span>
 
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rnn_net</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">dynamic_rnn</span>
         <span class="c1"># Define LSTM layers:</span>
         <span class="n">lstm</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">lstm_layers</span><span class="p">:</span>
-            <span class="n">lstm</span> <span class="o">+=</span> <span class="p">[</span><span class="n">lstm_class</span><span class="p">(</span><span class="n">size</span><span class="p">)]</span> <span class="c1">#, state_is_tuple=True)]</span>
+            <span class="n">layer</span> <span class="o">=</span> <span class="n">lstm_class</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">keep_prob</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">layer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">rnn_cell</span><span class="o">.</span><span class="n">DropoutWrapper</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">output_keep_prob</span><span class="o">=</span><span class="n">keep_prob</span><span class="p">)</span>
+
+            <span class="n">lstm</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span>
 
         <span class="n">lstm</span> <span class="o">=</span> <span class="n">rnn</span><span class="o">.</span><span class="n">MultiRNNCell</span><span class="p">(</span><span class="n">lstm</span><span class="p">,</span> <span class="n">state_is_tuple</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="c1"># Get time_dimension as [1]-shaped tensor:</span>
@@ -317,33 +330,45 @@
         <span class="n">lstm_state_pl</span> <span class="o">=</span> <span class="n">rnn_placeholders</span><span class="p">(</span><span class="n">lstm</span><span class="o">.</span><span class="n">zero_state</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
         <span class="n">lstm_state_pl_flatten</span> <span class="o">=</span> <span class="n">flatten_nested</span><span class="p">(</span><span class="n">lstm_state_pl</span><span class="p">)</span>
 
-        <span class="n">lstm_outputs</span><span class="p">,</span> <span class="n">lstm_state_out</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">dynamic_rnn</span><span class="p">(</span>
-            <span class="n">lstm</span><span class="p">,</span>
-            <span class="n">x</span><span class="p">,</span>
+        <span class="c1"># print(&#39;rnn_net: &#39;, rnn_net)</span>
+
+        <span class="n">lstm_outputs</span><span class="p">,</span> <span class="n">lstm_state_out</span> <span class="o">=</span> <span class="n">rnn_net</span><span class="p">(</span>
+            <span class="n">cell</span><span class="o">=</span><span class="n">lstm</span><span class="p">,</span>
+            <span class="n">inputs</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
             <span class="n">initial_state</span><span class="o">=</span><span class="n">lstm_state_pl</span><span class="p">,</span>
             <span class="n">sequence_length</span><span class="o">=</span><span class="n">lstm_sequence_length</span><span class="p">,</span>
-            <span class="n">time_major</span><span class="o">=</span><span class="kc">False</span>
         <span class="p">)</span>
-        <span class="c1">#x_out = tf.reshape(lstm_outputs, [-1, lstm_layers[-1]])</span>
-        <span class="n">x_out</span> <span class="o">=</span> <span class="n">lstm_outputs</span>
-    <span class="k">return</span> <span class="n">x_out</span><span class="p">,</span> <span class="n">lstm_init_state</span><span class="p">,</span> <span class="n">lstm_state_out</span><span class="p">,</span> <span class="n">lstm_state_pl_flatten</span></div>
+
+        <span class="c1"># print(&#39;\nlstm_outputs: &#39;, lstm_outputs)</span>
+        <span class="c1"># print(&#39;\nlstm_state_out:&#39;, lstm_state_out)</span>
+
+        <span class="c1"># Unwrap and expand:</span>
+        <span class="k">if</span> <span class="n">static</span><span class="p">:</span>
+            <span class="n">x_out</span> <span class="o">=</span> <span class="n">lstm_outputs</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">x_out</span> <span class="o">=</span> <span class="n">lstm_outputs</span>
+        <span class="n">state_out</span> <span class="o">=</span> <span class="n">lstm_state_out</span>
+    <span class="k">return</span> <span class="n">x_out</span><span class="p">,</span> <span class="n">lstm_init_state</span><span class="p">,</span> <span class="n">state_out</span><span class="p">,</span> <span class="n">lstm_state_pl_flatten</span></div>
 
 
-<div class="viewcode-block" id="dense_aac_network"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.networks.dense_aac_network">[docs]</a><span class="k">def</span> <span class="nf">dense_aac_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;dense_aac&#39;</span><span class="p">,</span> <span class="n">linear_layer_ref</span><span class="o">=</span><span class="n">noisy_linear</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="dense_aac_network"><a class="viewcode-back" href="../../../../btgym.algorithms.nn.html#btgym.algorithms.nn.networks.dense_aac_network">[docs]</a><span class="k">def</span> <span class="nf">dense_aac_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ac_space_depth</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;dense_aac&#39;</span><span class="p">,</span> <span class="n">linear_layer_ref</span><span class="o">=</span><span class="n">noisy_linear</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Stage3 network: from LSTM flattened output to advantage actor-critic.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        logits tensor</span>
-<span class="sd">        value function tensor</span>
-<span class="sd">        action sampling function.</span>
+<span class="sd">        dictionary containg tuples:</span>
+<span class="sd">            logits tensor</span>
+<span class="sd">            value function tensor</span>
+<span class="sd">            action sampling function.</span>
+<span class="sd">        for every space in ac_space_shape dictionary</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
         <span class="c1"># Center-logits:</span>
         <span class="n">logits</span> <span class="o">=</span> <span class="n">norm_layer</span><span class="p">(</span>
             <span class="n">linear_layer_ref</span><span class="p">(</span>
                 <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
-                <span class="n">size</span><span class="o">=</span><span class="n">ac_space</span><span class="p">,</span>
+                <span class="n">size</span><span class="o">=</span><span class="n">ac_space_depth</span><span class="p">,</span>
                 <span class="n">name</span><span class="o">=</span><span class="s1">&#39;action&#39;</span><span class="p">,</span>
                 <span class="n">initializer</span><span class="o">=</span><span class="n">normalized_columns_initializer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">),</span>
                 <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span>
@@ -351,14 +376,6 @@
             <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">scale</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="p">)</span>
-
-        <span class="c1"># logits = linear_layer_ref(</span>
-        <span class="c1">#     x=x,</span>
-        <span class="c1">#     size=ac_space,</span>
-        <span class="c1">#     name=&#39;action&#39;,</span>
-        <span class="c1">#     initializer=normalized_columns_initializer(0.01),</span>
-        <span class="c1">#     reuse=reuse</span>
-        <span class="c1"># )</span>
 
         <span class="n">vf</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
             <span class="n">linear_layer_ref</span><span class="p">(</span>
@@ -370,7 +387,9 @@
             <span class="p">),</span>
             <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="p">)</span>
-        <span class="n">sample</span> <span class="o">=</span> <span class="n">categorical_sample</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">ac_space</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="n">categorical_sample</span><span class="p">(</span><span class="n">logits</span><span class="o">=</span><span class="n">logits</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="n">ac_space_depth</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+
+
 
     <span class="k">return</span> <span class="n">logits</span><span class="p">,</span> <span class="n">vf</span><span class="p">,</span> <span class="n">sample</span></div>
 

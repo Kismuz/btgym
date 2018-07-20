@@ -1,0 +1,721 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.envs.portfolio &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>btgym.envs.portfolio</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for btgym.envs.portfolio</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2017 Andrew Muzikin, muzikinae@gmail.com</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">###############################################################################</span>
+
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span><span class="p">,</span> <span class="n">WARNING</span><span class="p">,</span> <span class="n">NOTICE</span><span class="p">,</span> <span class="n">INFO</span><span class="p">,</span> <span class="n">DEBUG</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<span class="kn">import</span> <span class="nn">backtrader</span> <span class="k">as</span> <span class="nn">bt</span>
+
+<span class="kn">from</span> <span class="nn">btgym</span> <span class="k">import</span> <span class="n">BTgymRendering</span><span class="p">,</span> <span class="n">DictSpace</span><span class="p">,</span> <span class="n">ActionDictSpace</span>
+
+<span class="kn">from</span> <span class="nn">btgym.rendering</span> <span class="k">import</span> <span class="n">BTgymNullRendering</span>
+
+<span class="kn">from</span> <span class="nn">btgym.envs.base</span> <span class="k">import</span> <span class="n">BTgymEnv</span>
+
+
+<div class="viewcode-block" id="PortfolioEnv"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.portfolio.PortfolioEnv">[docs]</a><span class="k">class</span> <span class="nc">PortfolioEnv</span><span class="p">(</span><span class="n">BTgymEnv</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        OpenAI Gym API shell for Backtrader backtesting/trading library with multiply assets support.</span>
+<span class="sd">        Action space is dictionary of contionious  actions for every asset.</span>
+<span class="sd">        This setup closely relates to continuous portfolio optimisation problem definition.</span>
+
+<span class="sd">        Multi-asset setup explanation:</span>
+<span class="sd">            0. Problem definition.</span>
+<span class="sd">            Consider setup with one riskless asset acting as broker account cash and K (by default - one) risky assets.</span>
+<span class="sd">            For every risky asset there exists track of historic price records referred as `data-line`.</span>
+<span class="sd">            Apart from assets data lines there possibly exists number of exogenous data lines holding some</span>
+<span class="sd">            information and statistics, e.g. economic indexes, encoded news, macroeconomic indicators, weather forecasts</span>
+<span class="sd">            etc. which are considered relevant and valuable for decision-making.</span>
+<span class="sd">            It is supposed for this setup that:</span>
+<span class="sd">            i. there is no interest rate for base (riskless) asset;</span>
+<span class="sd">            ii. short selling is not permitted;</span>
+<span class="sd">            iii. transaction costs are modelled via broker commission;</span>
+<span class="sd">            iv. &#39;market liquidity&#39; and &#39;capital impact&#39; assumptions are met;</span>
+<span class="sd">            v. time indexes match for all data lines provided;</span>
+
+<span class="sd">            1. Assets and datalines.</span>
+<span class="sd">            This environment expects Dataset to be instance of `btgym.datafeed.multi.BTgymMultiData`, which sets</span>
+<span class="sd">            number,  specifications and sampling synchronisation for historic data for all assets and data lines.</span>
+
+<span class="sd">            Namely, one should define data_config dictionary of `data lines` and list of `assets`.</span>
+<span class="sd">            `data_config` specifies all data sources used by strategy, while `assets` defines subset of `data lines`</span>
+<span class="sd">            which is supposed to hold historic data for risky portfolio assets.</span>
+
+<span class="sd">            Internally every episodic asset data is converted to single bt.feed and added to environment strategy</span>
+<span class="sd">            as separate named data_line (see backtrader docs for extensive explanation of data_lines concept).</span>
+<span class="sd">            Every non-asset data line as also added as bt.feed with difference that it is not &#39;tradable&#39; i.e. it is</span>
+<span class="sd">            impossible to issue trade orders on such line.</span>
+<span class="sd">            Strategy is expected to properly handle all received data-lines.</span>
+
+<span class="sd">                Example::</span>
+
+<span class="sd">                    1. Four data streams added via Dataset.data_config,</span>
+<span class="sd">                       portfolio consists of four assets, added via strategy_params, cash is EUR:</span>
+
+<span class="sd">                        data_config = {</span>
+<span class="sd">                            &#39;usd&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURUSD_M1_2017.csv&#39;},</span>
+<span class="sd">                            &#39;gbp&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURGBP_M1_2017.csv&#39;},</span>
+<span class="sd">                            &#39;jpy&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURJPY_M1_2017.csv&#39;},</span>
+<span class="sd">                            &#39;chf&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURCHF_M1_2017.csv&#39;},</span>
+<span class="sd">                        }</span>
+<span class="sd">                        cash_name = &#39;eur&#39;</span>
+<span class="sd">                        assets_names = [&#39;usd&#39;, &#39;gbp&#39;, &#39;jpy&#39;, &#39;chf&#39;]</span>
+
+<span class="sd">                    2. Three streams added, only two of them form portfolio; DXY stream is `decision-making` only:</span>
+<span class="sd">                        data_config = {</span>
+<span class="sd">                            &#39;usd&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURUSD_M1_2017.csv&#39;},</span>
+<span class="sd">                            &#39;gbp&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURGBP_M1_2017.csv&#39;},</span>
+<span class="sd">                            &#39;​DXY&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_DXY_M1_2017.csv&#39;},</span>
+<span class="sd">                        }</span>
+<span class="sd">                        cash_name = &#39;eur&#39;</span>
+<span class="sd">                        assets_names = [&#39;usd&#39;, &#39;gbp&#39;]</span>
+
+
+<span class="sd">            2. btgym.spaces.ActionDictSpace and order execution.</span>
+<span class="sd">            ActionDictSpace is an extension of OpenAI Gym DictSpace providing domain-specific functionality.</span>
+<span class="sd">            Strategy expects to receive separate action for every K+1 asset in form of dictionary:</span>
+<span class="sd">            `{cash_name: a[0], asset_name_1: a[1], ..., asset_name_K: a[K]}` for K risky assets added,</span>
+<span class="sd">            where base actions are real numbers: `a[i] in [0,1], 0&lt;=i&lt;=K, SUM{a[i]} = 1`. Whole action should be</span>
+<span class="sd">            interpreted as order to adjust portfolio to have share `a[i] * 100% for i-th  asset`.</span>
+
+<span class="sd">            Therefore, base actions are gym.spaces.Box and for K assets environment action space will be a shallow</span>
+<span class="sd">            DictSpace of K+1 continuous spaces: `{cash_name: gym.spaces.Box(low=0, high=1),</span>
+<span class="sd">            asset_name_1: gym.spaces.Box(low=0, high=1), ..., asset_name_K: gym.spaces.Box(low=0, high=1)}`</span>
+
+<span class="sd">            3. TODO: refine order execution control, see: https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1</span>
+
+<span class="sd">                Example::</span>
+
+<span class="sd">                    if cash asset is &#39;eur&#39;,</span>
+<span class="sd">                    risky assets added are: [&#39;chf&#39;, &#39;gbp&#39;, &#39;gpy&#39;, &#39;usd&#39;],</span>
+<span class="sd">                    and data lines added via BTgymMultiData are:</span>
+<span class="sd">                    {</span>
+<span class="sd">                        &#39;chf&#39;: eurchf_hist_data_source,</span>
+<span class="sd">                        &#39;gbp&#39;, eurgbp_hist_data_source,</span>
+<span class="sd">                        &#39;jpy&#39;, eurgpy_hist_data_source,</span>
+<span class="sd">                        &#39;usd&#39;, eurusd_hist_data_source,</span>
+<span class="sd">                    },</span>
+<span class="sd">                    than:</span>
+
+<span class="sd">                    env.action.space will be:</span>
+<span class="sd">                        DictSpace(</span>
+<span class="sd">                            {</span>
+<span class="sd">                                &#39;eur&#39;: gym.spaces.Box(low=0, high=1, dtype=np.float32),</span>
+<span class="sd">                                &#39;chf&#39;: gym.spaces.Box(low=0, high=1, dtype=np.float32),</span>
+<span class="sd">                                &#39;gbp&#39;: gym.spaces.Box(low=0, high=1, dtype=np.float32),</span>
+<span class="sd">                                &#39;jpy&#39;: gym.spaces.Box(low=0, high=1, dtype=np.float32),</span>
+<span class="sd">                                &#39;usd&#39;: gym.spaces.Box(low=0, high=1, dtype=np.float32),</span>
+<span class="sd">                            }</span>
+<span class="sd">                        )</span>
+
+<span class="sd">                    single environment action instance (as seen inside strategy or passed to environment via .step()):</span>
+<span class="sd">                        {</span>
+<span class="sd">                            &#39;eur&#39;: 0.3</span>
+<span class="sd">                            &#39;chf&#39;: 0.1,</span>
+<span class="sd">                            &#39;gbp&#39;: 0.1,</span>
+<span class="sd">                            &#39;jpy&#39;: 0.2,</span>
+<span class="sd">                            &#39;usd&#39;: 0.3,</span>
+<span class="sd">                        }</span>
+
+<span class="sd">                    or vector (unlike multi-asset discrete setup, there is no binary/one hot encoding):</span>
+<span class="sd">                        (0.3, 0.1, 0.1, 0.2, 0.3)</span>
+
+<span class="sd">                    which says to broker: &quot;... adjust positions to get 30% in base EUR asset (cash), and amounts of</span>
+<span class="sd">                    10%, 10%, 20% and 30% off current portfolio value in CHF, GBP, JPY respectively&quot;.</span>
+
+<span class="sd">                    Note that under the hood broker uses `order_target_percent` for every risky asset and can issue</span>
+<span class="sd">                    &#39;sell&#39;, &#39;buy&#39; or &#39;close&#39; orders depending on positive/negative difference of current to desired</span>
+<span class="sd">                    share of asset.</span>
+
+<span class="sd">            3. Observation space: is nested DictSpace, where &#39;external&#39; part part of space should hold specifications</span>
+<span class="sd">            for every data line added (note that cash asset does not have it&#39;s own data line).</span>
+
+<span class="sd">                Example::</span>
+
+<span class="sd">                    if data lines added via BTgymMultiData are:</span>
+<span class="sd">                        &#39;chf&#39;, &#39;gbp&#39;, &#39;jpy&#39;, &#39;usd&#39;;</span>
+
+<span class="sd">                    environment observation space can be DictSpace:</span>
+<span class="sd">                     {</span>
+<span class="sd">                        &#39;external&#39;: DictSpace(</span>
+<span class="sd">                            {</span>
+<span class="sd">                                &#39;usd&#39;: spaces.Box(low=-1000, high=1000, shape=(128, 1, num_features), dtype=np.float32),</span>
+<span class="sd">                                &#39;gbp&#39;: spaces.Box(low=-1000, high=1000, shape=(128, 1, num_features), dtype=np.float32),</span>
+<span class="sd">                                &#39;chf&#39;: spaces.Box(low=-1000, high=1000, shape=(128, 1, num_features), dtype=np.float32),</span>
+<span class="sd">                                &#39;jpy&#39;: spaces.Box(low=-1000, high=1000, shape=(128, 1, num_features), dtype=np.float32),</span>
+<span class="sd">                            }</span>
+<span class="sd">                        ),</span>
+<span class="sd">                        &#39;raw&#39;: spaces.Box(...),</span>
+<span class="sd">                        &#39;internal&#39;: spaces.Box(...),</span>
+<span class="sd">                        &#39;datetime&#39;: spaces.Box(...),</span>
+<span class="sd">                        &#39;metadata&#39;: DictSpace(...)</span>
+<span class="sd">                    }</span>
+
+<span class="sd">                    refer to strategies declarations for full code.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+    <span class="c1"># Datafeed Server management:</span>
+    <span class="n">data_master</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">data_network_address</span> <span class="o">=</span> <span class="s1">&#39;tcp://127.0.0.1:&#39;</span>  <span class="c1"># using localhost.</span>
+    <span class="n">data_port</span> <span class="o">=</span> <span class="mi">4999</span>
+    <span class="n">data_server</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">data_server_pid</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">data_context</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">data_socket</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">data_server_response</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Dataset:</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># BTgymDataset instance.</span>
+    <span class="n">dataset_stat</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Backtrader engine:</span>
+    <span class="n">engine</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># bt.Cerbro subclass for server to execute.</span>
+
+    <span class="c1"># Strategy:</span>
+    <span class="n">strategy</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># strategy to use if no &lt;engine&gt; class been passed.</span>
+
+    <span class="c1"># Server and network:</span>
+    <span class="n">server</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Server process.</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># ZMQ context.</span>
+    <span class="n">socket</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># ZMQ socket, client side.</span>
+    <span class="n">port</span> <span class="o">=</span> <span class="mi">5500</span>  <span class="c1"># network port to use.</span>
+    <span class="n">network_address</span> <span class="o">=</span> <span class="s1">&#39;tcp://127.0.0.1:&#39;</span>  <span class="c1"># using localhost.</span>
+    <span class="n">ctrl_actions</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_done&#39;</span><span class="p">,</span> <span class="s1">&#39;_reset&#39;</span><span class="p">,</span> <span class="s1">&#39;_stop&#39;</span><span class="p">,</span> <span class="s1">&#39;_getstat&#39;</span><span class="p">,</span> <span class="s1">&#39;_render&#39;</span><span class="p">)</span>  <span class="c1"># server control messages.</span>
+    <span class="n">server_response</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Connection timeout:</span>
+    <span class="n">connect_timeout</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># server connection timeout in seconds.</span>
+    <span class="c1"># connect_timeout_step = 0.01  # time between retries in seconds.</span>
+
+    <span class="c1"># Rendering:</span>
+    <span class="n">render_enabled</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">render_modes</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;human&#39;</span><span class="p">,</span> <span class="s1">&#39;episode&#39;</span><span class="p">,</span> <span class="p">]</span>
+    <span class="c1"># `episode` - plotted episode results.</span>
+    <span class="c1"># `human` - raw_state observation in conventional human-readable format.</span>
+    <span class="c1">#  &lt;obs_space_key&gt; - rendering of arbitrary state presented in observation_space with same key.</span>
+
+    <span class="n">renderer</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Rendering support.</span>
+    <span class="n">rendered_rgb</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># Keep last rendered images for each mode.</span>
+
+    <span class="c1"># Logging and id:</span>
+    <span class="n">log</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">log_level</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># logbook level: NOTICE, WARNING, INFO, DEBUG etc. or its integer equivalent;</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># verbosity mode, valid only if no `log_level` arg has been provided:</span>
+    <span class="c1"># 0 - WARNING, 1 - INFO, 2 - DEBUG.</span>
+    <span class="n">task</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">asset_names</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;default_asset&#39;</span><span class="p">,)</span>
+    <span class="n">data_lines_names</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;default_asset&#39;</span><span class="p">,)</span>
+    <span class="n">cash_name</span> <span class="o">=</span> <span class="s1">&#39;default_cash&#39;</span>
+
+    <span class="n">closed</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">engine</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This class requires dataset, strategy, engine instances to be passed explicitly.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dataset(btgym.datafeed):                        BTgymDataDomain instance;</span>
+<span class="sd">            engine(bt.Cerebro):                             environment simulation engine, any bt.Cerebro subclass,</span>
+
+<span class="sd">        Keyword Args:</span>
+<span class="sd">            network_address=`tcp://127.0.0.1:` (str):       BTGym_server address.</span>
+<span class="sd">            port=5500 (int):                                network port to use for server - API_shell communication.</span>
+<span class="sd">            data_master=True (bool):                        let this environment control over data_server;</span>
+<span class="sd">            data_network_address=`tcp://127.0.0.1:` (str):  data_server address.</span>
+<span class="sd">            data_port=4999 (int):                           network port to use for server -- data_server communication.</span>
+<span class="sd">            connect_timeout=60 (int):                       server connection timeout in seconds.</span>
+<span class="sd">            render_enabled=True (bool):                     enable rendering for this environment;</span>
+<span class="sd">            render_modes=[&#39;human&#39;, &#39;episode&#39;] (list):       `episode` - plotted episode results;</span>
+<span class="sd">                                                            `human` - raw_state observation.</span>
+<span class="sd">            **render_args (any):                            any render-related args, passed through to renderer class.</span>
+<span class="sd">            verbose=0 (int):                                verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}</span>
+<span class="sd">            log_level=None (int):                           logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},</span>
+<span class="sd">                                                            overrides `verbose` arg;</span>
+<span class="sd">            log=None (logbook.Logger):                      external logbook logger,</span>
+<span class="sd">                                                            overrides `log_level` and `verbose` args.</span>
+<span class="sd">            task=0 (int):                                   environment id</span>
+
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">engine</span>
+        <span class="c1"># Parameters and default values:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">engine</span><span class="o">=</span><span class="p">{},</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="p">{},</span>
+            <span class="n">strategy</span><span class="o">=</span><span class="p">{},</span>
+            <span class="n">render</span><span class="o">=</span><span class="p">{},</span>
+        <span class="p">)</span>
+        <span class="c1"># Update self attributes, remove used kwargs:</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;render.modes&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_modes</span><span class="p">}</span>
+
+        <span class="c1"># Logging and verbosity control:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">log_levels</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">NOTICE</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">INFO</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">DEBUG</span><span class="p">)]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">WARNING</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">log_levels</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTgymPortfolioShell_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+
+        <span class="c1"># Network parameters:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network_address</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_port</span><span class="p">)</span>
+
+        <span class="c1"># Set server rendering:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_enabled</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">renderer</span> <span class="o">=</span> <span class="n">BTgymRendering</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;render.modes&#39;</span><span class="p">],</span> <span class="n">log_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">renderer</span> <span class="o">=</span> <span class="n">BTgymNullRendering</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Rendering disabled. Call to render() will return null-plug image.&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Append logging:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span>
+
+        <span class="c1"># Update params -1: pull from renderer, remove used kwargs:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;render&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;render&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">_</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+        <span class="c1"># self.assets = list(self.dataset.assets)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+            <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Dataset instance shoud be provided for data_master environment.&#39;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+            <span class="c1"># Append logging:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">set_logger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+
+            <span class="c1"># Update params -2: pull from dataset, remove used kwargs:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;dataset&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;dataset&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">_</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+        <span class="c1"># Connect/Start data server (and get dataset statistic):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Connecting data_server...&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_data_server</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;...done.&#39;</span><span class="p">)</span>
+        <span class="c1"># After starting data-server we have self.assets attribute, dataset statisitc etc. filled.</span>
+
+        <span class="c1"># Define observation space shape, minimum / maximum values and agent action space.</span>
+        <span class="c1"># Retrieve values from configured engine or...</span>
+
+        <span class="c1"># ...Update params -4:</span>
+        <span class="c1"># Pull strategy defaults to environment params dict :</span>
+        <span class="k">for</span> <span class="n">t_key</span><span class="p">,</span> <span class="n">t_value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">_gettuple</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="n">t_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">t_value</span>
+
+        <span class="c1"># Update it with values from strategy &#39;passed-to params&#39;:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;asset_names&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cash_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;cash_name&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;initial_action&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_initial_action</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;initial_portfolio_action&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_initial_action</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">server_actions</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;portfolio_actions&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">)</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_lines_names</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Assets names should be subset of data_lines names, but got: assets: </span><span class="si">{}</span><span class="s1">, data_lines: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">),</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_lines_names</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;portfolio_actions&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s1">&#39;For continious action space strategy.params[`portfolio_actions`] should be `None`, corrected.&#39;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;portfolio_actions&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># ... Push it all back (don&#39;t ask):</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c1"># For &#39;raw_state&#39; min/max values,</span>
+        <span class="c1"># the only way is to infer from raw Dataset price values (we already got those from data_server):</span>
+        <span class="k">if</span> <span class="s1">&#39;raw_state&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="c1"># Exclude &#39;volume&#39; from columns we count:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;volume&#39;</span><span class="p">)</span>
+
+            <span class="c1"># print(self.params[&#39;strategy&#39;])</span>
+            <span class="c1"># print(&#39;self.engine.strats[0][0][2]:&#39;, self.engine.strats[0][0][2])</span>
+            <span class="c1"># print(&#39;self.engine.strats[0][0][0].params:&#39;, self.engine.strats[0][0][0].params._gettuple())</span>
+
+            <span class="c1"># Override with absolute price min and max values:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">low</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">low</span> <span class="o">=</span> \
+                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">high</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">high</span> <span class="o">=</span> \
+                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw_state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Inferring `state_raw` high/low values form dataset: </span><span class="si">{:.6f}</span><span class="s1"> / </span><span class="si">{:.6f}</span><span class="s1">.&#39;</span><span class="o">.</span>
+                          <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
+                                 <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()))</span>
+
+        <span class="c1"># Set observation space shape from engine/strategy parameters:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">observation_space</span> <span class="o">=</span> <span class="n">DictSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Obs. shape: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">spaces</span><span class="p">))</span>
+
+        <span class="c1"># Set action space and corresponding server messages:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span> <span class="o">=</span> <span class="n">ActionDictSpace</span><span class="p">(</span>
+            <span class="n">base_actions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;portfolio_actions&#39;</span><span class="p">],</span>  <span class="c1"># None</span>
+            <span class="n">assets</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cash_name</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Act. space shape: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">spaces</span><span class="p">))</span>
+
+        <span class="c1"># Finally:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># if not self.data_master:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_server</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">closed</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Environment is ready.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_initial_action</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="n">asset</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mf">0.0</span><span class="p">])</span> <span class="k">for</span> <span class="n">asset</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">}</span>
+        <span class="n">action</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cash_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mf">1.0</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">action</span>
+
+<div class="viewcode-block" id="PortfolioEnv.step"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.portfolio.PortfolioEnv.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implementation of OpenAI Gym env.step() method.</span>
+<span class="sd">        Makes a step in the environment.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action:     int or dict, action compatible to env.action_space</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple (Observation, Reward, Info, Done)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Are you in the list, ready to go and all that?</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">action</span><span class="p">)</span> \
+                <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> \
+                <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> \
+                <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">closed</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">At least one of these is true:</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;Action error: (space is </span><span class="si">{}</span><span class="s1">, action sent is </span><span class="si">{}</span><span class="s1">): </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;Environment closed: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;Network error [socket doesnt exists or closed]: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;Hint: forgot to call reset()?&#39;</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">action</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">,</span>
+                <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">closed</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="c1"># print(&#39;step: &#39;, action, action_as_dict)</span>
+        <span class="n">env_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+            <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="n">action</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">env_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;.step(): server unreachable with status: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">env_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span> <span class="o">=</span> <span class="n">env_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span></div></div>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

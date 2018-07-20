@@ -10,7 +10,6 @@ btgym\.datafeed\.base module
     :private-members:
 
 
-
 btgym\.datafeed\.derivative module
 ----------------------------------
 
@@ -18,10 +17,16 @@ btgym\.datafeed\.derivative module
     :members:
 
 
-btgym\.datafeed\.stateful module
---------------------------------
+btgym\.datafeed\.casual module
+------------------------------
 
-.. automodule:: btgym.datafeed.stateful
+.. automodule:: btgym.datafeed.casual
     :members:
 
+
+btgym\.datafeed\.multi module
+------------------------------
+
+.. automodule:: btgym.datafeed.multi
+    :members:
 

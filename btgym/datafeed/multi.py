@@ -21,24 +21,39 @@ class BTgymMultiData:
             data_class_ref=None,
             data_config=None,
             name='multi_data',
+            data_names=None,
             task=0,
             log_level=WARNING,
             **kwargs
     ):
         """
-
         Args:
             data_class_ref:         one of BTgym single-stream datafeed classes
-            data_config:        nested dictionary of individual data streams such as:
-                                    data_config={
-                                        data_name_1: {
-                                            filename: [source csv filename string or list of strings],
-                                            config: {dict of individual stream config. params}
-                                        },
-                                        ...,
-                                        data_name_n : {...}
-                                    }
-            kwargs:             shared parameters for all data streams
+            data_config:            nested dictionary of individual data streams sources, see notes below.
+
+            kwargs:                 shared parameters for all data streams, see base dataclass
+
+        Notes:
+            `Data_config` specifies all data sources consumed by strategy::
+
+                data_config = {
+                    data_line_name_0: {
+                        filename: [source csv filename string or list of strings],
+                        [config: {optional dict of individual stream config. params},]
+                    },
+                    ...,
+                    data_line_name_n : {...}
+                }
+
+        Example::
+
+            data_config = {
+                'usd': {'filename': '.../DAT_ASCII_EURUSD_M1_2017.csv'},
+                'gbp': {'filename': '.../DAT_ASCII_EURGBP_M1_2017.csv'},
+                'jpy': {'filename': '.../DAT_ASCII_EURJPY_M1_2017.csv'},
+                'chf': {'filename': '.../DAT_ASCII_EURCHF_M1_2017.csv'},
+            }
+            It is user responsibility to correctly choose historic data conversion rates wrt cash currency (here - EUR).
         """
         self.data_class_ref = data_class_ref
         if data_config is None:
@@ -62,6 +77,19 @@ class BTgymMultiData:
         StreamHandler(sys.stdout).push_application()
         self.log = Logger('{}_{}'.format(self.name, self.task), level=self.log_level)
 
+        if data_names is None:
+            # Infer from data configuration (at top-level):
+            self.data_names = list(self.data_config.keys())
+
+        else:
+            self.data_names = data_names
+        try:
+            assert len(self.data_names) > 0, 'At least one data_line should be provided'
+
+        except AssertionError:
+            self.log.error('At least one data_line should be provided')
+            raise ValueError
+
         # Make dictionary of single-stream datasets:
         self.data = {}
         for key, stream in self.data_config.items():
@@ -73,6 +101,7 @@ class BTgymMultiData:
 
             self.data[key] = self.data_class_ref(
                 filename=stream['filename'],
+                data_names=(key,),
                 task=task,
                 name='{}_{}'.format(name, key),
                 log_level=log_level,
@@ -178,7 +207,12 @@ class BTgymMultiData:
         master_sample = self.master_data.sample(**kwargs)
 
         # Prepare empty instance of multistream data:
-        sample = BTgymMultiData(task=self.task, log_level=self.log_level, name='sub_' + self.name)
+        sample = BTgymMultiData(
+            data_names=self.data_names,
+            task=self.task,
+            log_level=self.log_level,
+            name='sub_' + self.name,
+        )
         sample.metadata = copy.deepcopy(master_sample.metadata)
 
         kwargs['interval'] = [sample.metadata['first_row'], sample.metadata['last_row']]

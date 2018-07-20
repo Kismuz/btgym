@@ -80,6 +80,11 @@ class DevStrat_2_0(DevStrat_4_10):
                 }
             )
         },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,

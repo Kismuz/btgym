@@ -184,7 +184,8 @@
 <dt id="btgym.dataserver.BTgymDataFeedServer">
 <em class="property">class </em><code class="descclassname">btgym.dataserver.</code><code class="descname">BTgymDataFeedServer</code><span class="sig-paren">(</span><em>dataset=None</em>, <em>network_address=None</em>, <em>log_level=None</em>, <em>task=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/dataserver.html#BTgymDataFeedServer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.dataserver.BTgymDataFeedServer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Data provider server class.
-Enables efficient data sampling for asynchronous multiply BTgym environments execution.</p>
+Enables efficient data sampling for asynchronous multiply BTgym environments execution.
+Manages global back-testing time.</p>
 <p>Configures data server instance.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -204,7 +205,7 @@ Enables efficient data sampling for asynchronous multiply BTgym environments exe
 <dt id="btgym.dataserver.BTgymDataFeedServer.get_data">
 <code class="descname">get_data</code><span class="sig-paren">(</span><em>sample_config=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/dataserver.html#BTgymDataFeedServer.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.dataserver.BTgymDataFeedServer.get_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get Trial sample according to parameters received.
-If no parameters being passed - just makes and stores pre-sample.</p>
+If no parameters being passed - makes sample with default parameters.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -214,17 +215,10 @@ If no parameters being passed - just makes and stores pre-sample.</p>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">if <cite>sample_params</cite> arg has been passed and dataset is ready
 None:       otherwise</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="btgym.datafeed.html#btgym.datafeed.stateful.BTgymSequentialDataDomain.sample" title="btgym.datafeed.stateful.BTgymSequentialDataDomain.sample">sample</a></td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="btgym.datafeed.html#btgym.datafeed.casual.BTgymCasualTrial.sample" title="btgym.datafeed.casual.BTgymCasualTrial.sample">sample</a></td>
 </tr>
 </tbody>
 </table>
-<p class="rubric">Notes</p>
-<p>Some heuristic used here to enable parallelism: as training usually requires long series of similar samples,
-we pre-sample data with most probable parameters;
-first guessed sample gets type =`Train`, b_alpha=1, b_beta=1, and subsequent ones get actual
-sampling params of previous accepted sample. If newly received parameters doesnt match pre-sampled ones -
-we discard our guess and sample again with actual params.
-TODO: should be switched off if using decaying <cite>b_alpha</cite> and <cite>b_beta</cite> params.</p>
 </dd></dl>
 
 <dl class="method">
@@ -311,8 +305,22 @@ Intended for serving requests from data_slave environment.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">dict containing trial instance, d_set statistic and origin key; dict containing ‘cntrl’ response if master
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">dict containing trial instance, d_set statistic and origin key; dict containing ‘ctrl’ response if master
 d_set is not ready;</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.server.BTgymServer.get_global_time">
+<code class="descname">get_global_time</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/server.html#BTgymServer.get_global_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.server.BTgymServer.get_global_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Asks dataserver for current dataset global_time.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">POSIX timestamp</td>
 </tr>
 </tbody>
 </table>
@@ -331,8 +339,8 @@ d_set is not ready;</td>
 <span id="btgym-spaces-module"></span><h1>btgym.spaces module<a class="headerlink" href="#module-btgym.spaces" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="btgym.spaces.DictSpace">
-<em class="property">class </em><code class="descclassname">btgym.spaces.</code><code class="descname">DictSpace</code><span class="sig-paren">(</span><em>spaces</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#DictSpace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.DictSpace" title="Permalink to this definition">¶</a></dt>
-<dd><p>Temporal Wrapper for gym Dict space. Adds support for .shape attribute.
+<em class="property">class </em><code class="descclassname">btgym.spaces.</code><code class="descname">DictSpace</code><span class="sig-paren">(</span><em>spaces_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#DictSpace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.DictSpace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wrapper for gym.spaces.Dict class. Adds support for .shape attribute.
 Defines space as nested dictionary of simpler gym spaces.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -342,6 +350,104 @@ Defines space as nested dictionary of simpler gym spaces.</p>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.spaces.ActionDictSpace">
+<em class="property">class </em><code class="descclassname">btgym.spaces.</code><code class="descname">ActionDictSpace</code><span class="sig-paren">(</span><em>assets</em>, <em>base_actions=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#ActionDictSpace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.ActionDictSpace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extension of OpenAI Gym DictSpace providing additional domain-specific functionality.
+Action space for btgym environments as shallow dictionary of discrete or continuous spaces.
+Defines several handy attributes and encoding conversion methods.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>base_actions</strong> – None or iterable of base asset discrete actions;
+if no actions provided - continuous 1D base action space is set in [0,1] interval.</li>
+<li><strong>assets</strong> – iterable of assets names</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="btgym.spaces.ActionDictSpace.get_initial_action">
+<code class="descname">get_initial_action</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#ActionDictSpace.get_initial_action"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.ActionDictSpace.get_initial_action" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">‘do nothing’ action as OrderedDict (for discrete spaces)
+‘put all in cash’ action as OrderedDict (for continuous actions)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.spaces.ActionDictSpace.encode">
+<code class="descname">encode</code><span class="sig-paren">(</span><em>action</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#ActionDictSpace.encode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.ActionDictSpace.encode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given action returns it’s encoding.
+Encoding method depends on type of base actions:
+- if base actions defined are discrete (gym.spaces.Discrete), binary encoding is used;
+- if base actions defined are continuous(gym.spaces.Box),</p>
+<blockquote>
+<div>encoding is translating shallow dictionary to vector of same values and back</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>action</strong> – action from this space (shallow dictionary)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">1D array of floats in [0, 1]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.spaces.ActionDictSpace.decode">
+<code class="descname">decode</code><span class="sig-paren">(</span><em>code</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#ActionDictSpace.decode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.ActionDictSpace.decode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given code returns action.
+Encoding method depends on type of base actions:
+- if base actions defined are discrete (gym.spaces.Discrete), binary encoding is used;
+- if base actions defined are continuous(gym.spaces.Box),</p>
+<blockquote>
+<div>encoding is translating shallow dictionary to vector of same values and back</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>code</strong> – 1D array of floats in [0, 1]</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">action from this space (shallow dictionary)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.spaces.ActionDictSpace.one_hot_encode">
+<code class="descname">one_hot_encode</code><span class="sig-paren">(</span><em>action</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/spaces.html#ActionDictSpace.one_hot_encode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.spaces.ActionDictSpace.one_hot_encode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given action returns it’s encoding.
+Encoding method depends on type of base actions:
+- if base actions defined are discrete (gym.spaces.Discrete), one_hot encoding is used;
+- if base actions defined are continuous(gym.spaces.Box),</p>
+<blockquote>
+<div>encoding is translating shallow dictionary to vector of same values and back</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>action</strong> – action from this space (shallow dictionary)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">1D array of floats in [0, 1]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </dd></dl>
 
 </div>

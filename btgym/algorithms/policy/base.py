@@ -1,4 +1,4 @@
-# Asynchronous implementation of Proximal Policy Optimization algorithm.
+# Asynchronous implementation of a3c/ppo algorithm.
 # paper:
 # https://arxiv.org/pdf/1707.06347.pdf
 #
@@ -13,6 +13,7 @@ from gym.spaces import Discrete, Dict
 
 from btgym.algorithms.nn.networks import *
 from btgym.algorithms.utils import *
+from btgym.algorithms.math_utils import sample_dp, softmax
 from btgym.datafeed.base import EnvResetConfig
 from btgym.spaces import DictSpace, ActionDictSpace
 from gym.spaces import Discrete
@@ -35,6 +36,7 @@ class BaseAacPolicy(object):
                  rp_sequence_size,
                  lstm_class=rnn.BasicLSTMCell,
                  lstm_layers=(256,),
+                 action_dp_alpha=200.0,
                  aux_estimate=False,
                  **kwargs):
         """
@@ -66,6 +68,7 @@ class BaseAacPolicy(object):
         self.rp_sequence_size = rp_sequence_size
         self.lstm_class = lstm_class
         self.lstm_layers = lstm_layers
+        self.action_dp_alpha = action_dp_alpha
         self.aux_estimate = aux_estimate
         self.callback = {}
 
@@ -77,14 +80,14 @@ class BaseAacPolicy(object):
         # Placeholders for previous step action[multi-categorical vector encoding]  and reward [scalar]:
         self.on_last_a_in = tf.placeholder(
             tf.float32,
-            [None, self.ac_space.tensor_shape[0]],
+            [None, self.ac_space.encoded_depth],
             name='on_policy_last_action_in_pl'
         )
         self.on_last_reward_in = tf.placeholder(tf.float32, [None], name='on_policy_last_reward_in_pl')
 
         self.off_last_a_in = tf.placeholder(
             tf.float32,
-            [None, self.ac_space.tensor_shape[0]],
+            [None, self.ac_space.encoded_depth],
             name='off_policy_last_action_in_pl'
         )
         self.off_last_reward_in = tf.placeholder(tf.float32, [None], name='off_policy_last_reward_in_pl')
@@ -117,7 +120,7 @@ class BaseAacPolicy(object):
 
         on_last_action_in = tf.reshape(
             self.on_last_a_in,
-            [self.on_batch_size, max_seq_len, self.ac_space.tensor_shape[0]]
+            [self.on_batch_size, max_seq_len, self.ac_space.encoded_depth]
         )
         on_r_in = tf.reshape(self.on_last_reward_in, [self.on_batch_size, max_seq_len, 1])
 
@@ -142,7 +145,7 @@ class BaseAacPolicy(object):
 
         on_aac_x = tf.concat(on_stage2_input, axis=-1)
 
-        print('on_stage2_input->on_aac_x: ', on_aac_x)
+        # print('on_stage2_input->on_aac_x: ', on_aac_x)
 
         # LSTM layer takes conv. features and concatenated last action_reward tensor:
         [on_x_lstm_out, self.on_lstm_init_state, self.on_lstm_state_out, self.on_lstm_state_pl_flatten] =\
@@ -157,8 +160,8 @@ class BaseAacPolicy(object):
         x_shape_static = on_x_lstm_out.get_shape().as_list()
         on_x_lstm_out = tf.reshape(on_x_lstm_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-        # Aac policy and value outputs and action-sampling function wrapped in dictionary:
-        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(on_x_lstm_out, self.ac_space.depth)
+        # Aac policy and value outputs and action-sampling function:
+        [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(on_x_lstm_out, self.ac_space.one_hot_depth)
 
         # Off-policy AAC network (shared):
         off_aac_x = conv_2d_network(self.off_state_in['external'], self.ob_space.shape['external'], ac_space, reuse=True, **kwargs)
@@ -170,7 +173,7 @@ class BaseAacPolicy(object):
 
         off_action_in = tf.reshape(
             self.off_last_a_in,
-            [self.off_batch_size, max_seq_len, self.ac_space.tensor_shape[0]]
+            [self.off_batch_size, max_seq_len, self.ac_space.encoded_depth]
         )
         off_r_in = tf.reshape(self.off_last_reward_in, [self.off_batch_size, max_seq_len, 1])  # reward is scalar
 
@@ -196,7 +199,7 @@ class BaseAacPolicy(object):
         off_x_lstm_out = tf.reshape(off_x_lstm_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
         # Off policy dense:
-        [self.off_logits, self.off_vf, _] = dense_aac_network(off_x_lstm_out, self.ac_space.depth, reuse=True)
+        [self.off_logits, self.off_vf, _] = dense_aac_network(off_x_lstm_out, self.ac_space.one_hot_depth, reuse=True)
 
         # Aux1: `Pixel control` network:
         # Define pixels-change estimation function:
@@ -218,7 +221,7 @@ class BaseAacPolicy(object):
 
         # PC duelling Q-network, outputs [None, 20, 20, ac_size] Q-features tensor:
         # Restricted to single action space:
-        act_space = self.ac_space.tensor_shape[0]
+        act_space = self.ac_space.one_hot_depth
         self.pc_q = duelling_pc_network(pc_x, act_space, **kwargs)
 
         # Aux2: `Value function replay` network:
@@ -284,7 +287,7 @@ class BaseAacPolicy(object):
             last_reward:    reward value previous step
 
         Returns:
-            Action [one-hot], actions logits, V-fn value, output RNN state
+            Action as dictionary of several action encodings, actions logits, V-fn value, output RNN state
         """
         sess = tf.get_default_session()
         feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
@@ -298,11 +301,33 @@ class BaseAacPolicy(object):
                 self.train_phase: False
             }
         )
-        #print('feeder keys:')
-        #for k in feeder.keys():
-        #    print('key: {}, type: <{}>'.format(k, type(feeder[k])))
-        #print('ops:', [self.on_sample, self.on_vf, self.on_lstm_state_out])
-        return sess.run([self.on_sample, self.on_logits, self.on_vf, self.on_lstm_state_out], feeder)
+        # action_one_hot, logits, value, context = sess.run(
+        #     [self.on_sample, self.on_logits, self.on_vf, self.on_lstm_state_out],
+        #     feeder
+        # )
+        # return action_one_hot, logits, value, context
+        logits, value, context = sess.run([self.on_logits, self.on_vf, self.on_lstm_state_out], feeder)
+
+        if self.ac_space.is_discrete:
+            # Use multinomial to get sample (discrete):
+            sample = np.random.multinomial(1, softmax(logits[0, ...]))
+            sample = self.ac_space._cat_to_vec(np.argmax(sample))
+
+        else:
+            # Use DP to get sample (continuous):
+            sample = sample_dp(logits[0, ...], alpha=self.action_dp_alpha)
+
+        # Get all needed action encodings:
+        action = self.ac_space._vec_to_action(sample)
+        one_hot = self.ac_space._vec_to_one_hot(sample)
+        action_pack = {
+            'environment': action,
+            'encoded': self.ac_space.encode(action),
+            'one_hot': one_hot,
+        }
+        # print('action_pack: ', action_pack)
+
+        return action_pack, logits, value, context
 
     def get_value(self, observation, lstm_state, last_action, last_reward):
         """
@@ -370,6 +395,7 @@ class Aac1dPolicy(BaseAacPolicy):
                  rp_sequence_size,
                  lstm_class=rnn.BasicLSTMCell,
                  lstm_layers=(256,),
+                 action_dp_alpha=200.0,
                  aux_estimate=True,
                  **kwargs):
         """
@@ -402,6 +428,7 @@ class Aac1dPolicy(BaseAacPolicy):
             rp_sequence_size,
             lstm_class,
             lstm_layers,
+            action_dp_alpha,
             aux_estimate,
             **kwargs
         )

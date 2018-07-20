@@ -197,12 +197,35 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Keeps track of position size.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">lines</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;exposure&#39;</span><span class="p">,)</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;abs_sum_exposure&#39;</span><span class="p">,)</span>
     <span class="n">plotinfo</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">subplot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">plotname</span><span class="o">=</span><span class="s1">&#39;Position&#39;</span><span class="p">)</span>
-    <span class="n">plotlines</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">exposure</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">marker</span><span class="o">=</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">fillstyle</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">))</span>
+    <span class="n">plotlines</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">abs_sum_exposure</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">marker</span><span class="o">=</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">fillstyle</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">))</span>
 
     <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">exposure</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_owner</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">size</span></div>
+        <span class="c1"># self.lines.exposure[0] = self._owner.position.size</span>
+        <span class="c1"># for d in self._owner.datas:</span>
+        <span class="c1">#     print(d._name, self._owner.getposition(data=d._name))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">abs_sum_exposure</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="nb">abs</span><span class="p">(</span><span class="n">pos</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_owner</span><span class="o">.</span><span class="n">positions</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span></div>
+
+
+<span class="c1"># class MultiPosition(bt.observer.Observer):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     Keeps track of position size.</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     lines = ()</span>
+<span class="c1">#     plotinfo = dict(plot=True, subplot=True, plotname=&#39;Position&#39;)</span>
+<span class="c1">#     plotlines = {}</span>
+<span class="c1">#</span>
+<span class="c1">#     def __init__(self, **kwargs):</span>
+<span class="c1">#         self.lines = [&#39;{}_exposure&#39;.format(name) for name in self._owner.getdatanames()]</span>
+<span class="c1">#         self.plotlines = {</span>
+<span class="c1">#             line: dict(marker=&#39;.&#39;, markersize=1.0, color=&#39;blue&#39;, fillstyle=&#39;full&#39;) for line in self.lines</span>
+<span class="c1">#         }</span>
+<span class="c1">#         super().__init__(**kwargs)</span>
+<span class="c1">#         print(dir(self.lines))</span>
+<span class="c1">#</span>
+<span class="c1">#     def next(self):</span>
+<span class="c1">#         self.lines.exposure[0] = self._owner.position.size</span>
 
 
 <div class="viewcode-block" id="NormPnL"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.observers.NormPnL">[docs]</a><span class="k">class</span> <span class="nc">NormPnL</span><span class="p">(</span><span class="n">bt</span><span class="o">.</span><span class="n">observer</span><span class="o">.</span><span class="n">Observer</span><span class="p">):</span>

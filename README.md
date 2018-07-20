@@ -50,7 +50,6 @@ of reinforcement learning theory.
 - [Description](#description)
     - [Problem setting](#problem)
     - [Data sampling approaches](#data)
-    - [General notes](#notes)
 - [Reference](#reference) 
 - [Current issues and limitations](#issues)
 - [Roadmap](#roadmap)
@@ -114,17 +113,35 @@ MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv
 ****
 ### <a name="description"></a> [General description](#contents)
 #### <a name="problem"></a> Problem setting
-Consider a discrete-time finite-horizon partially observable Markov decision process for equity/currency trading:
-- agent action space is discrete (`buy`, `sell`, `close` [position], `hold` [do nothing]);
-- environment is episodic: maximum  episode duration and episode termination conditions
-  are set;
-- for every timestep of the episode agent is given environment state observation as tensor of last
-  m price open/high/low/close values for every equity considered and based on that information is making
-  trading decisions.
-- agent's goal is to maximize expected cumulative capital;
-- classic 'market liquidity' and 'capital impact' assumptions are met.
-- environment setup is set close to real trading conditions, including commissions, order execution delays,
-  trading calendar etc.
+
+- **Discrete actions setup:** consider setup with one riskless asset acting as broker account cash and K (by default - one) risky assets.
+For every risky asset there exists track of historic price records referred as `data-line`.
+Apart from assets data lines there [optionally] exists number of exogenous data lines holding some
+information and statistics, e.g. economic indexes, encoded news, macroeconomic indicators, weather forecasts
+etc. which are considered relevant to decision-making.
+It is supposed for this setup that:
+    1. there is no interest rates for any asset;
+    2. broker actions are fixed-size market orders (`buy`, `sell`, `close`); short selling is permitted;
+    3. transaction costs are modelled via broker commission;
+    4. 'market liquidity' and 'capital impact' assumptions are met;
+    6. time indexes match for all data lines provided;
+- The problem is modelled as discrete-time finite-horizon partially observable Markov decision process for equity/currency trading:
+    - *for every asset* traded agent action space is discrete `(0: `hold` [do nothing], 1:`buy`, 2: `sell`, 3:`close` [position])`;
+    - environment is episodic: maximum  episode duration and episode termination conditions
+      are set;
+    - for every timestep of the episode agent is given environment state observation as tensor of last
+      `m` time-embedded preprocessed values for every data-line included and emits actions according some stochastic policy.
+    - agent's goal is to maximize expected cumulative capital by learning optimal policy;
+
+- **Continuous actions setup[BETA]:** this setup closely relates to continuous portfolio optimisation problem definition;
+it differs from setup above in:
+    1. base broker actions are real numbers: `a[i] in [0,1], 0<=i<=K, SUM{a[i]} = 1`  for `K` risky assets added;
+       each action is a market target order to adjust portfolio to get share `a[i]*100%` for `i`-th  asset;
+    2. entire single-step broker action is dictionary of form:
+       `{cash_name: a[0], asset_name_1: a[1], ..., asset_name_K: a[K]}`;
+    3. short selling is not permitted;
+- For RL it implies having continuous action space as `K+1` dim vector.
+
 
 #### <a name="data"></a> Data selection options for backtest agent training:
 _Notice: data shaping approach is under development, expect some changes. [7.01.18]_
@@ -141,67 +158,7 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
   furthest to most recent training data. Should be less prone to overfitting than random sampling.
 
 ****
- 
-### <a name="notes"></a> [Developent notes](#contents)
-_Notice: will be moved inside project wiki [26.01.18]_
 
- 1. There is a choice: where to place most of state observation/reward estimation and prepossessing such as
-    featurization, normalization, frame skipping and all other -zation: either to hide it inside environment or to do it
-    inside RL algorytm?
-    - E.g. while state feature estimators are commonly parts of RL algorithms, reward estimation is often taken
-    directly from environment.
-    In case of portfolio optimisation reward function can be tricky (not to mention state preprocessing),
-    so it is reasonable to make it easyly accessable inside single module for ease of experimenting
-    and hyperparameter tuning.
-     - BTgym allows to do it both ways: either pass "raw" state observation and do all heavy work inside RL loop
-      or put it inside get_state() and get_reward() methods.
-    - To mention, it seems reasonable to pass all preprocessing work to server, since it can be done asynchronously
-    with agent own computations and thus somehow speed up training.
-
- 2. [state matrix], returned by Environment by default is 2d [n,m] numpy array of floats,
-    where n - number of Backtrader Datafeed values: v[-n], v[-n+1], v[-n+2],...,v[0],
-    i.e. from n steps back to present step, and every v[i] is itself a vector of m features
-    (open, close,...,volume,..., mov.avg., etc.).
-    - in case of n=1 process is obviously POMDP. Ensure Markov property by 'frame stacking' or/and
-    employing stateful function approximators.
-    - When n>1 process [somehow] approaches MDP (by means of Takens' delay embedding theorem).
-
- 3. Why Gym, not Universe VNC environment?
-    - At a glance, vnc-type environment should fit algorithmic trading extremely well.
-    But to best of my knowledge, OpenAI is yet to publish its "DIY VNC environment" kit. Let's wait.
-
- 4. Why Backtrader library, not Zipline/PyAlgotrader etc.?
-    - Those are excellent platforms, but what I really like about Backtrader is clear [to me], flexible  programming logic
-    and ease of customisation. You dont't need to do tricks, say, to disable automatic calendar fetching, etc.
-    I mean, it's nice feature and making it easy-to-run for trading people but prevents from
-    correctly running intraday trading strategies. Since RL-algo-trading is in active research stage, it's impossible to tell
-    in advance which setup and logic could do the job. IMO Backtrader is just well suited for this kinds of experiments.
-    Besides this framework is being actively maintained.
-
- 5. Why Currency data by default?
-    - Obviously environment is data/market agnostic. Backtesting dataset size is what matters.
-    Deep Q-value algorithm, most sample efficient among deep RL, take about 1M steps just to lift off.
-    1 year 1 minute FX data contains about 300K samples. Feeding dataset consisting of several years of data and
-    performing random sampling [arguably]
-    makes it realistic to expect algorithm to converge for intra-day or intra-week trading setting (~1500-5000 steps per episode).
-    Besides, currency trading holds market liquidity and impact assumptions.
-    - That's just preliminary assumption, not proved at all!
-
- 6. Note for backtrader users:
-    - There is a shift on meaning 'Backtrader Strategy' in case of reinforcement learning: BtgymStrategy is mostly used for
-    technical and service tasks, like data preparation and order executions, while all trading decisions are taken
-    by RL agent.
-
- 7. On current implementation: 
-    - my commit was to treat backtrader engine as black box and create wrapper using explicitly
-    defined and documented methods only. While it is not efficiency-optimised approach, I think
-    it is still decent alpha-solution.
-    
- 8. *Note:* `.research` subpackage code can (and usually does) contain errors, logic flaws and can be 
-    poor performing generally.
-
-****
-   
     
 ### <a name="reference"></a> [Documentation and API Reference >>](https://kismuz.github.io/btgym/)
 ### [Development Wiki >>](https://github.com/Kismuz/btgym/wiki)
@@ -215,9 +172,9 @@ _Notice: will be moved inside project wiki [26.01.18]_
 - not tested with Python < 3.5;
 - doesn't seem to work correctly under Windows; partially done
 - by default, is configured to accept Forex 1 min. data from www.HistData.com;
-- only random data sampling is implemented;
+- ~~only random data sampling is implemented;~~
 - ~~no built-in dataset splitting to training/cv/testing subsets;~~ done
-- only one equity/currency pair can be traded;
+- ~~only one equity/currency pair can be traded~~ done
 - ~~no 'skip-frames' implementation within environment;~~ done
 - ~~no plotting features, except if using pycharm integration observer.~~
     ~~Not sure if it is suited for intraday strategies.~~ [partially] done
@@ -239,15 +196,50 @@ _Notice: will be moved inside project wiki [26.01.18]_
  - [x] A3C implementation for BTgym;
  - [x] UNREAL implementation for BTgym;
  - [x] PPO implementation for BTgym;
- - [ ] RL^2 / MAML / DARLA adaptations - INP ROGRESS;
+ - [ ] RL^2 / MAML / DARLA adaptations - IN PROGRESS;
  - [x] learning from demonstrations; -  partially done
  - [ ] risk-sensitive agents implementation;
  - [x] sequential and sliding time-window sampling;
- - [ ] multiply instruments trading;
+ - [x] multiply instruments trading;
  - [ ] docker image;
  
  
 ### <a name="news"></a>[News and updates:](#title)
+
+- xx.07.2018: Major update to package:
+    - enchancements to agent architecture:
+        - casual convolution state encoder with attention for LSTM agent;
+        - dropout regularization added;
+    - strategy: new convention for naming `get_state` methods,  see `BaseStrategy` class for details;
+
+    - **multiply datafeeds and assets trading** implemented in two flavors:
+        - **discrete actions** space via MultiDiscreteEnv class;
+        - **continious actions** space via PortfolioEnv which is closely related to
+          contionious portfolio optimisation problem setup;
+            - description and docs:
+                - [MultiDataFeed]
+                - [ActionSpace]
+                - [DiscreteEnv]
+                - [PortfolioEnv]
+
+            - examples:
+                - [DiscreteEnv]
+                - [PortfolioEnv]
+        - **Notes on multi-asset setup**:
+            - adding these features forced substantial package redesign;
+              expect bugs, some backward incompatibility, broken examples etc - please report;
+            - current algorithms and agents architectures are ok with multiply data lines but seem not to cope well with multi-asset setup.
+              It is especially evident in case of continuous actions, where agents completely fail to converge on train data;
+            - current reward function design seems inappropriate; need to reshape;
+            - continuous space in `beta` and still needs some improvement, esp. for broker order execution logic as well as
+              action sampling routine for continuous A3C (which is Dirichlet process by now);
+            - multi-discrete space is more consistent but severely limited in number of portfolio assets (but not data-lines)
+              due to exponential rise of action space cardinality;
+              the option is to as use many datalines as desired while limiting portfolio to 1 - 4 assets;
+            - no Guided Policy available for multi-asset setup yet - in progress;
+            - all but `episode` rendering modes are temporally disabled;
+            - whole thing is shamelessly resource-hungry;
+
 - 17.02.18: First results on applying guided policy search ideas (GPS) to btgym setup can be seen 
            [here](./examples/guided_a3c.ipynb).  
     - tensorboard summaries are updated with additional renderings: 

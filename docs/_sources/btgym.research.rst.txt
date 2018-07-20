@@ -2,12 +2,23 @@ btgym\.research package
 =======================
 
 
+
 btgym\.research\.gps subpackage
 --------------------------------
 .. toctree::
     :maxdepth: 2
 
     btgym.research.gps
+
+
+
+btgym\.research\.casual_conv subpackage
+---------------------------------------
+.. toctree::
+    :maxdepth: 2
+
+    btgym.research.casual_conv
+
 
 
 btgym\.research\.strategy_gen_4 module
@@ -18,10 +29,4 @@ btgym\.research\.strategy_gen_4 module
     :private-members:
 
 
-btgym\.research\.verbose_env_runner
-------------------------------------
-
-.. automodule:: btgym.research.verbose_env_runner
-    :members:
-    :private-members:
 

@@ -123,8 +123,14 @@
 <li class="toctree-l3"><a class="reference internal" href="btgym.research.gps.html#module-btgym.research.gps.oracle">btgym.research.gps.oracle module</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#btgym-research-casual-conv-subpackage">btgym.research.casual_conv subpackage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="btgym.research.casual_conv.html">btgym.research.casual_conv.layers module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="btgym.research.casual_conv.html#module-btgym.research.casual_conv.networks">btgym.research.casual_conv.networks module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="btgym.research.casual_conv.html#module-btgym.research.casual_conv.policy">btgym.research.casual_conv.policy module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="btgym.research.casual_conv.html#module-btgym.research.casual_conv.strategy">btgym.research.casual_conv.strategy module</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.research.strategy_gen_4">btgym.research.strategy_gen_4 module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-btgym.research.verbose_env_runner">btgym.research.verbose_env_runner</a></li>
 </ul>
 </li>
 </ul>
@@ -201,6 +207,17 @@
 <li class="toctree-l1"><a class="reference internal" href="btgym.research.gps.html#module-btgym.research.gps.loss">btgym.research.gps.loss module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.research.gps.html#module-btgym.research.gps.strategy">btgym.research.gps.strategy module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.research.gps.html#module-btgym.research.gps.oracle">btgym.research.gps.oracle module</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="btgym-research-casual-conv-subpackage">
+<h2>btgym.research.casual_conv subpackage<a class="headerlink" href="#btgym-research-casual-conv-subpackage" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="btgym.research.casual_conv.html">btgym.research.casual_conv.layers module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.research.casual_conv.html#module-btgym.research.casual_conv.networks">btgym.research.casual_conv.networks module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.research.casual_conv.html#module-btgym.research.casual_conv.policy">btgym.research.casual_conv.policy module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.research.casual_conv.html#module-btgym.research.casual_conv.strategy">btgym.research.casual_conv.strategy module</a></li>
 </ul>
 </div>
 </div>
@@ -345,42 +362,6 @@ F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
 <dt id="btgym.research.strategy_gen_4.DevStrat_4_12">
 <em class="property">class </em><code class="descclassname">btgym.research.strategy_gen_4.</code><code class="descname">DevStrat_4_12</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_gen_4.html#DevStrat_4_12"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_gen_4.DevStrat_4_12" title="Permalink to this definition">¶</a></dt>
 <dd><p>4_11 + sma-features 8, 512;</p>
-</dd></dl>
-
-</div>
-<div class="section" id="module-btgym.research.verbose_env_runner">
-<span id="btgym-research-verbose-env-runner"></span><h2>btgym.research.verbose_env_runner<a class="headerlink" href="#module-btgym.research.verbose_env_runner" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt id="btgym.research.verbose_env_runner.VerboseEnvRunnerFn">
-<code class="descclassname">btgym.research.verbose_env_runner.</code><code class="descname">VerboseEnvRunnerFn</code><span class="sig-paren">(</span><em>sess</em>, <em>env</em>, <em>policy</em>, <em>task</em>, <em>rollout_length</em>, <em>summary_writer</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>atari_test</em>, <em>ep_summary</em>, <em>memory_config</em>, <em>log</em>, <em>aux_summaries=('action_prob'</em>, <em>'value_fn'</em>, <em>'lstm_1_h'</em>, <em>'lstm_2_h')</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/verbose_env_runner.html#VerboseEnvRunnerFn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.verbose_env_runner.VerboseEnvRunnerFn" title="Permalink to this definition">¶</a></dt>
-<dd><p>More verbose function for runtime logic of the thread runner.
-Extends per-episode summaries with visualiation of: actions porbabilities distribution, value function,
-hidden LSTM state. In it’s default configuration supposed to be used with stacked_LSTM architecture.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>env</strong> – environment instance</li>
-<li><strong>policy</strong> – policy instance</li>
-<li><strong>task</strong> – int</li>
-<li><strong>rollout_length</strong> – int</li>
-<li><strong>episode_summary_freq</strong> – int</li>
-<li><strong>env_render_freq</strong> – int</li>
-<li><strong>atari_test</strong> – bool, Atari or BTGyn</li>
-<li><strong>ep_summary</strong> – dict of tf.summary op and placeholders</li>
-<li><strong>memory_config</strong> – replay memory configuration dictionary</li>
-<li><strong>log</strong> – logbook logger</li>
-<li><strong>aux_summaries</strong> – list of str, additional summaries to compute</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="docutils">
-<dt>Yelds:</dt>
-<dd>collected data as dictionary of on_policy, off_policy rollouts, episode statistics and summaries.</dd>
-</dl>
 </dd></dl>
 
 </div>

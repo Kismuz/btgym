@@ -404,7 +404,7 @@ list of summarues</p>
 <span id="btgym-algorithms-nn-networks-module"></span><h1>btgym.algorithms.nn.networks module<a class="headerlink" href="#module-btgym.algorithms.nn.networks" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="btgym.algorithms.nn.networks.conv_2d_network">
-<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">conv_2d_network</code><span class="sig-paren">(</span><em>x</em>, <em>ob_space</em>, <em>ac_space</em>, <em>conv_2d_layer_ref=&lt;function conv2d&gt;</em>, <em>conv_2d_num_filters=(32</em>, <em>32</em>, <em>64</em>, <em>64)</em>, <em>conv_2d_filter_size=(3</em>, <em>3)</em>, <em>conv_2d_stride=(2</em>, <em>2)</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>name='conv2d'</em>, <em>collections=None</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#conv_2d_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.conv_2d_network" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">conv_2d_network</code><span class="sig-paren">(</span><em>x</em>, <em>ob_space</em>, <em>ac_space</em>, <em>conv_2d_layer_ref=&lt;function conv2d&gt;</em>, <em>conv_2d_num_filters=(32</em>, <em>32</em>, <em>64</em>, <em>64)</em>, <em>conv_2d_filter_size=(3</em>, <em>3)</em>, <em>conv_2d_stride=(2</em>, <em>2)</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>name='conv2d'</em>, <em>collections=None</em>, <em>reuse=False</em>, <em>keep_prob=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#conv_2d_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.conv_2d_network" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stage1 network: from preprocessed 2D input to estimated features.
 Encapsulates convolutions + layer normalisation + nonlinearity. Can be shared.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -419,7 +419,7 @@ Encapsulates convolutions + layer normalisation + nonlinearity. Can be shared.</
 
 <dl class="function">
 <dt id="btgym.algorithms.nn.networks.conv_1d_network">
-<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">conv_1d_network</code><span class="sig-paren">(</span><em>x</em>, <em>ob_space</em>, <em>ac_space</em>, <em>conv_1d_num_layers=4</em>, <em>conv_1d_num_filters=32</em>, <em>conv_1d_filter_size=3</em>, <em>conv_1d_stride=2</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>collections=None</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#conv_1d_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.conv_1d_network" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">conv_1d_network</code><span class="sig-paren">(</span><em>x</em>, <em>ob_space</em>, <em>ac_space</em>, <em>conv_1d_num_layers=4</em>, <em>conv_1d_num_filters=32</em>, <em>conv_1d_filter_size=3</em>, <em>conv_1d_stride=2</em>, <em>pad='SAME'</em>, <em>dtype=tf.float32</em>, <em>collections=None</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#conv_1d_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.conv_1d_network" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stage1 network: from preprocessed 1D input to estimated features.
 Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -434,7 +434,7 @@ Encapsulates convolutions, [possibly] skip-connections etc. Can be shared.</p>
 
 <dl class="function">
 <dt id="btgym.algorithms.nn.networks.lstm_network">
-<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">lstm_network</code><span class="sig-paren">(</span><em>x</em>, <em>lstm_sequence_length</em>, <em>lstm_class=&lt;class 'tensorflow.python.ops.rnn_cell_impl.BasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>)</em>, <em>name='lstm'</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#lstm_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.lstm_network" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">lstm_network</code><span class="sig-paren">(</span><em>x</em>, <em>lstm_sequence_length</em>, <em>lstm_class=&lt;class 'tensorflow.python.ops.rnn_cell_impl.BasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>)</em>, <em>static=False</em>, <em>keep_prob=None</em>, <em>name='lstm'</em>, <em>reuse=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#lstm_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.lstm_network" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stage2 network: from features to flattened LSTM output.
 Defines [multi-layered] dynamic [possibly shared] LSTM network.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -452,15 +452,21 @@ lstm flattened feed placeholders as tuple.</td>
 
 <dl class="function">
 <dt id="btgym.algorithms.nn.networks.dense_aac_network">
-<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">dense_aac_network</code><span class="sig-paren">(</span><em>x</em>, <em>ac_space</em>, <em>name='dense_aac'</em>, <em>linear_layer_ref=&lt;function noisy_linear&gt;</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#dense_aac_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.dense_aac_network" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.algorithms.nn.networks.</code><code class="descname">dense_aac_network</code><span class="sig-paren">(</span><em>x</em>, <em>ac_space_depth</em>, <em>name='dense_aac'</em>, <em>linear_layer_ref=&lt;function noisy_linear&gt;</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/networks.html#dense_aac_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.networks.dense_aac_network" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stage3 network: from LSTM flattened output to advantage actor-critic.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">logits tensor
-value function tensor
-action sampling function.</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><dl class="docutils">
+<dt>logits tensor</dt>
+<dd>value function tensor
+action sampling function.</dd>
+</dl>
+<p>for every space in ac_space_shape dictionary</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dictionary containg tuples</td>
 </tr>
 </tbody>
 </table>
@@ -491,6 +497,22 @@ action sampling function.</td>
 </div>
 <div class="section" id="module-btgym.algorithms.nn.layers">
 <span id="btgym-algorithms-nn-layers-module"></span><h1>btgym.algorithms.nn.layers module<a class="headerlink" href="#module-btgym.algorithms.nn.layers" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="btgym.algorithms.nn.layers.categorical_sample">
+<code class="descclassname">btgym.algorithms.nn.layers.</code><code class="descname">categorical_sample</code><span class="sig-paren">(</span><em>logits</em>, <em>depth</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/layers.html#categorical_sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.layers.categorical_sample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given logits returns one-hot encoded categorical sample.
+:param logits:
+:param depth:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">tensor of shape [batch_dim, logits_depth]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="function">
 <dt id="btgym.algorithms.nn.layers.linear">
 <code class="descclassname">btgym.algorithms.nn.layers.</code><code class="descname">linear</code><span class="sig-paren">(</span><em>x</em>, <em>size</em>, <em>name</em>, <em>initializer=None</em>, <em>bias_init=0</em>, <em>reuse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/nn/layers.html#linear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.nn.layers.linear" title="Permalink to this definition">¶</a></dt>

@@ -1,0 +1,1287 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.envs.base &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>btgym.envs.base</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for btgym.envs.base</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2017 Andrew Muzikin, muzikinae@gmail.com</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">###############################################################################</span>
+
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span><span class="p">,</span> <span class="n">WARNING</span><span class="p">,</span> <span class="n">NOTICE</span><span class="p">,</span> <span class="n">INFO</span><span class="p">,</span> <span class="n">DEBUG</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">zmq</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">gym</span>
+<span class="kn">from</span> <span class="nn">gym</span> <span class="k">import</span> <span class="n">spaces</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+
+<span class="kn">import</span> <span class="nn">backtrader</span> <span class="k">as</span> <span class="nn">bt</span>
+
+<span class="kn">from</span> <span class="nn">btgym</span> <span class="k">import</span> <span class="n">BTgymServer</span><span class="p">,</span> <span class="n">BTgymBaseStrategy</span><span class="p">,</span> <span class="n">BTgymDataset</span><span class="p">,</span> <span class="n">BTgymRendering</span><span class="p">,</span> <span class="n">BTgymDataFeedServer</span>
+<span class="kn">from</span> <span class="nn">btgym</span> <span class="k">import</span> <span class="n">DictSpace</span><span class="p">,</span> <span class="n">ActionDictSpace</span>
+<span class="kn">from</span> <span class="nn">btgym.datafeed.multi</span> <span class="k">import</span> <span class="n">BTgymMultiData</span>
+
+<span class="kn">from</span> <span class="nn">btgym.rendering</span> <span class="k">import</span> <span class="n">BTgymNullRendering</span>
+
+<span class="c1">############################## OpenAI Gym Environment  ##############################</span>
+
+
+<div class="viewcode-block" id="BTgymEnv"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv">[docs]</a><span class="k">class</span> <span class="nc">BTgymEnv</span><span class="p">(</span><span class="n">gym</span><span class="o">.</span><span class="n">Env</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base OpenAI Gym API shell for Backtrader backtesting/trading library.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Datafeed Server management:</span>
+    <span class="n">data_master</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">data_network_address</span> <span class="o">=</span> <span class="s1">&#39;tcp://127.0.0.1:&#39;</span>  <span class="c1"># using localhost.</span>
+    <span class="n">data_port</span> <span class="o">=</span> <span class="mi">4999</span>
+    <span class="n">data_server</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">data_server_pid</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">data_context</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">data_socket</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">data_server_response</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Dataset:</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># BTgymDataset instance.</span>
+    <span class="n">dataset_stat</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Backtrader engine:</span>
+    <span class="n">engine</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># bt.Cerbro subclass for server to execute.</span>
+
+    <span class="c1"># Strategy:</span>
+    <span class="n">strategy</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># strategy to use if no &lt;engine&gt; class been passed.</span>
+
+    <span class="c1"># Server and network:</span>
+    <span class="n">server</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Server process.</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># ZMQ context.</span>
+    <span class="n">socket</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># ZMQ socket, client side.</span>
+    <span class="n">port</span> <span class="o">=</span> <span class="mi">5500</span>  <span class="c1"># network port to use.</span>
+    <span class="n">network_address</span> <span class="o">=</span> <span class="s1">&#39;tcp://127.0.0.1:&#39;</span>  <span class="c1"># using localhost.</span>
+    <span class="n">ctrl_actions</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_done&#39;</span><span class="p">,</span> <span class="s1">&#39;_reset&#39;</span><span class="p">,</span> <span class="s1">&#39;_stop&#39;</span><span class="p">,</span> <span class="s1">&#39;_getstat&#39;</span><span class="p">,</span> <span class="s1">&#39;_render&#39;</span><span class="p">)</span>  <span class="c1"># server control messages.</span>
+    <span class="n">server_response</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Connection timeout:</span>
+    <span class="n">connect_timeout</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># server connection timeout in seconds.</span>
+    <span class="c1">#connect_timeout_step = 0.01  # time between retries in seconds.</span>
+
+    <span class="c1"># Rendering:</span>
+    <span class="n">render_enabled</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">render_modes</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;human&#39;</span><span class="p">,</span> <span class="s1">&#39;episode&#39;</span><span class="p">,]</span>
+    <span class="c1"># `episode` - plotted episode results.</span>
+    <span class="c1"># `human` - raw_state observation in conventional human-readable format.</span>
+    <span class="c1">#  &lt;obs_space_key&gt; - rendering of arbitrary state presented in observation_space with same key.</span>
+
+    <span class="n">renderer</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Rendering support.</span>
+    <span class="n">rendered_rgb</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># Keep last rendered images for each mode.</span>
+
+    <span class="c1"># Logging and id:</span>
+    <span class="n">log</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">log_level</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># logbook level: NOTICE, WARNING, INFO, DEBUG etc. or its integer equivalent;</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># verbosity mode, valid only if no `log_level` arg has been provided:</span>
+    <span class="c1"># 0 - WARNING, 1 - INFO, 2 - DEBUG.</span>
+    <span class="n">task</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">asset_names</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;default_asset&#39;</span><span class="p">,)</span>
+    <span class="n">data_lines_names</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;default_asset&#39;</span><span class="p">,)</span>
+    <span class="n">cash_name</span> <span class="o">=</span> <span class="s1">&#39;default_cash&#39;</span>
+
+    <span class="n">closed</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Keyword Args:</span>
+<span class="sd">            filename=None (str, list):                      csv data file.</span>
+<span class="sd">            **datafeed_args (any):                          any datafeed-related args, passed through to</span>
+<span class="sd">                                                            default btgym.datafeed class.</span>
+<span class="sd">            dataset=None (btgym.datafeed):                  BTgymDataDomain instance,</span>
+<span class="sd">                                                            overrides `filename` or any other datafeed-related args.</span>
+<span class="sd">            strategy=None (btgym.startegy):                 strategy to be used by `engine`, any subclass of</span>
+<span class="sd">                                                            btgym.strategy.base.BTgymBaseStrateg</span>
+<span class="sd">            engine=None (bt.Cerebro):                       environment simulation engine, any bt.Cerebro subclass,</span>
+<span class="sd">                                                            overrides `strategy` arg.</span>
+<span class="sd">            network_address=`tcp://127.0.0.1:` (str):       BTGym_server address.</span>
+<span class="sd">            port=5500 (int):                                network port to use for server - API_shell communication.</span>
+<span class="sd">            data_master=True (bool):                        let this environment control over data_server;</span>
+<span class="sd">            data_network_address=`tcp://127.0.0.1:` (str):  data_server address.</span>
+<span class="sd">            data_port=4999 (int):                           network port to use for server -- data_server communication.</span>
+<span class="sd">            connect_timeout=60 (int):                       server connection timeout in seconds.</span>
+<span class="sd">            render_enabled=True (bool):                     enable rendering for this environment;</span>
+<span class="sd">            render_modes=[&#39;human&#39;, &#39;episode&#39;] (list):       `episode` - plotted episode results;</span>
+<span class="sd">                                                            `human` - raw_state observation.</span>
+<span class="sd">            **render_args (any):                            any render-related args, passed through to renderer class.</span>
+<span class="sd">            verbose=0 (int):                                verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}</span>
+<span class="sd">            log_level=None (int):                           logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},</span>
+<span class="sd">                                                            overrides `verbose` arg;</span>
+<span class="sd">            log=None (logbook.Logger):                      external logbook logger,</span>
+<span class="sd">                                                            overrides `log_level` and `verbose` args.</span>
+<span class="sd">            task=0 (int):                                   environment id</span>
+
+<span class="sd">        Environment kwargs applying logic::</span>
+
+<span class="sd">            if &lt;engine&gt; kwarg is given:</span>
+<span class="sd">                do not use default engine and strategy parameters;</span>
+<span class="sd">                ignore &lt;strategy&gt; kwarg and all strategy and engine-related kwargs.</span>
+
+<span class="sd">            else (no &lt;engine&gt;):</span>
+<span class="sd">                use default engine parameters;</span>
+<span class="sd">                if any engine-related kwarg is given:</span>
+<span class="sd">                    override corresponding default parameter;</span>
+
+<span class="sd">                if &lt;strategy&gt; is given:</span>
+<span class="sd">                    do not use default strategy parameters;</span>
+<span class="sd">                    if any strategy related kwarg is given:</span>
+<span class="sd">                        override corresponding strategy parameter;</span>
+
+<span class="sd">                else (no &lt;strategy&gt;):</span>
+<span class="sd">                    use default strategy parameters;</span>
+<span class="sd">                    if any strategy related kwarg is given:</span>
+<span class="sd">                        override corresponding strategy parameter;</span>
+
+<span class="sd">            if &lt;dataset&gt; kwarg is given:</span>
+<span class="sd">                do not use default dataset parameters;</span>
+<span class="sd">                ignore dataset related kwargs;</span>
+
+<span class="sd">            else (no &lt;dataset&gt;):</span>
+<span class="sd">                use default dataset parameters;</span>
+<span class="sd">                    if  any dataset related kwarg is given:</span>
+<span class="sd">                        override corresponding dataset parameter;</span>
+
+<span class="sd">            If any &lt;other&gt; kwarg is given:</span>
+<span class="sd">                override corresponding default parameter.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Parameters and default values:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+
+            <span class="c1"># Backtrader engine mandatory parameters:</span>
+            <span class="n">engine</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">start_cash</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span>  <span class="c1"># initial trading capital.</span>
+                <span class="n">broker_commission</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>  <span class="c1"># trade execution commission, default is 0.1% of operation value.</span>
+                <span class="n">fixed_stake</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># single trade stake is fixed type by def.</span>
+            <span class="p">),</span>
+            <span class="c1"># Dataset mandatory parameters:</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">strategy</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">state_shape</span><span class="o">=</span><span class="nb">dict</span><span class="p">(),</span>
+            <span class="p">),</span>
+            <span class="n">render</span><span class="o">=</span><span class="nb">dict</span><span class="p">(),</span>
+        <span class="p">)</span>
+        <span class="n">p2</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>  <span class="c1"># IS HERE FOR REFERENCE ONLY</span>
+            <span class="c1"># Strategy related parameters:</span>
+            <span class="c1"># Observation state shape is dictionary of Gym spaces,</span>
+            <span class="c1"># at least should contain `raw_state` field.</span>
+            <span class="c1"># By convention first dimension of every Gym Box space is time embedding one;</span>
+            <span class="c1"># one can define any shape; should match env.observation_space.shape.</span>
+            <span class="c1"># observation space state min/max values,</span>
+            <span class="c1"># For `raw_state&#39; - absolute min/max values from BTgymDataset will be used.</span>
+            <span class="n">state_shape</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">raw</span><span class="o">=</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                    <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+                    <span class="n">low</span><span class="o">=-</span><span class="mi">100</span><span class="p">,</span>
+                    <span class="n">high</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+                <span class="p">)</span>
+            <span class="p">),</span>
+            <span class="n">drawdown_call</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># episode maximum drawdown threshold, default is 90% of initial value.</span>
+            <span class="n">portfolio_actions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="c1"># agent actions,</span>
+                <span class="c1"># should consist with BTgymStrategy order execution logic;</span>
+                <span class="c1"># defaults are: 0 - &#39;do nothing&#39;, 1 - &#39;buy&#39;, 2 - &#39;sell&#39;, 3 - &#39;close position&#39;.</span>
+            <span class="n">skip_frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="c1"># Number of environment steps to skip before returning next response,</span>
+                <span class="c1"># e.g. if set to 10 -- agent will interact with environment every 10th episode step;</span>
+                <span class="c1"># Every other step agent&#39;s action is assumed to be &#39;hold&#39;.</span>
+                <span class="c1"># Note: INFO part of environment response is a list of all skipped frame&#39;s info&#39;s,</span>
+                <span class="c1">#       i.e. [info[-9], info[-8], ..., info[0].</span>
+        <span class="p">)</span>
+        <span class="c1"># Update self attributes, remove used kwargs:</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;render.modes&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_modes</span><span class="p">}</span>
+
+        <span class="c1"># Logging and verbosity control:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">log_levels</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">NOTICE</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">INFO</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">DEBUG</span><span class="p">)]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">WARNING</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">log_levels</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTgymAPIshell_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+
+        <span class="c1"># Network parameters:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network_address</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_port</span><span class="p">)</span>
+
+        <span class="c1"># Set server rendering:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_enabled</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">renderer</span> <span class="o">=</span> <span class="n">BTgymRendering</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;render.modes&#39;</span><span class="p">],</span> <span class="n">log_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">renderer</span> <span class="o">=</span> <span class="n">BTgymNullRendering</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Rendering disabled. Call to render() will return null-plug image.&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Append logging:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span>
+
+        <span class="c1"># Update params -1: pull from renderer, remove used kwargs:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;render&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;render&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">_</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+        <span class="c1"># Disable multiply data streams (multi-assets) [for data-master]:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span> <span class="n">BTgymMultiData</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="s1">&#39;Using multiply data streams with base BTgymEnv class not supported. Use designated class.&#39;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
+            <span class="c1"># DATASET preparation, only data_master executes this:</span>
+            <span class="c1">#</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># If BTgymDataset instance has been passed:</span>
+                <span class="c1"># do nothing.</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Custom Dataset class used.&#39;</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># If no BTgymDataset has been passed,</span>
+                <span class="c1"># Make default dataset with given CSV file:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;dataset&#39;</span><span class="p">][</span><span class="s1">&#39;filename&#39;</span><span class="p">]))</span>
+
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s1">&#39;Dataset source data file not specified/not found&#39;</span><span class="p">)</span>
+
+                <span class="c1"># Use kwargs to instantiate dataset:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">BTgymDataset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Base Dataset class used.&#39;</span>
+
+            <span class="c1"># Append logging:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">set_logger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+
+            <span class="c1"># Update params -2: pull from dataset, remove used kwargs:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;dataset&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;dataset&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">_</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="c1"># Connect/Start data server (and get dataset configuration and statistic):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Connecting data_server...&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_data_server</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;...done.&#39;</span><span class="p">)</span>
+
+        <span class="c1"># After starting data-server we have self.data_names attribute filled.</span>
+
+        <span class="c1"># ENGINE preparation:</span>
+        <span class="c1"># Update params -3: pull engine-related kwargs, remove used:</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;engine&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;engine&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># If full-blown bt.Cerebro() subclass has been passed:</span>
+            <span class="c1"># Update info:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Custom Cerebro class used.&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="o">=</span> <span class="n">msg</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;engine&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;engine&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">msg</span>
+
+        <span class="c1"># Note: either way, bt.observers.DrawDown observer [and logger] will be added to any BTgymStrategy instance</span>
+        <span class="c1"># by BTgymServer process at runtime.</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Default configuration for Backtrader computational engine (Cerebro),</span>
+            <span class="c1"># if no bt.Cerebro() custom subclass has been passed,</span>
+            <span class="c1"># get base class Cerebro(), using kwargs on top of defaults:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">bt</span><span class="o">.</span><span class="n">Cerebro</span><span class="p">()</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Base Cerebro class used.&#39;</span>
+
+            <span class="c1"># First, set STRATEGY configuration:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># If custom strategy has been passed:</span>
+                <span class="n">msg2</span> <span class="o">=</span> <span class="s1">&#39;Custom Strategy class used.&#39;</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Base class strategy :</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="o">=</span> <span class="n">BTgymBaseStrategy</span>
+                <span class="n">msg2</span> <span class="o">=</span> <span class="s1">&#39;Base Strategy class used.&#39;</span>
+
+            <span class="c1"># Add, using kwargs on top of defaults:</span>
+            <span class="c1">#self.log.debug(&#39;kwargs for strategy: {}&#39;.format(kwargs))</span>
+            <span class="n">strat_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">addstrategy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">msg2</span>
+
+            <span class="c1"># Second, set Cerebro-level configuration:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">setcash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;engine&#39;</span><span class="p">][</span><span class="s1">&#39;start_cash&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">setcommission</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;engine&#39;</span><span class="p">][</span><span class="s1">&#39;broker_commission&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">addsizer</span><span class="p">(</span><span class="n">bt</span><span class="o">.</span><span class="n">sizers</span><span class="o">.</span><span class="n">SizerFix</span><span class="p">,</span> <span class="n">stake</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;engine&#39;</span><span class="p">][</span><span class="s1">&#39;fixed_stake&#39;</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="c1"># Define observation space shape, minimum / maximum values and agent action space.</span>
+        <span class="c1"># Retrieve values from configured engine or...</span>
+
+        <span class="c1"># ...Update params -4:</span>
+        <span class="c1"># Pull strategy defaults to environment params dict :</span>
+        <span class="k">for</span> <span class="n">t_key</span><span class="p">,</span> <span class="n">t_value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">_gettuple</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="n">t_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">t_value</span>
+
+        <span class="c1"># Update it with values from strategy &#39;passed-to params&#39;:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;asset_names&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server_actions</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;portfolio_actions&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cash_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;cash_name&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;initial_action&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_initial_action</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;initial_portfolio_action&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_initial_portfolio_action</span><span class="p">()</span>
+
+        <span class="c1"># Only single  asset is supported by base class:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">))</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="s1">&#39;Using multiply assets with base BTgymEnv class not supported. Use designated class.&#39;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">)</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_lines_names</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Assets names should be subset of data_lines names, but got: assets: </span><span class="si">{}</span><span class="s1">, data_lines: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">),</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_lines_names</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+
+        <span class="c1"># ... Push it all back (don&#39;t ask):</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span>  <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c1"># For &#39;raw_state&#39; min/max values,</span>
+        <span class="c1"># the only way is to infer from raw Dataset price values (we already got those from data_server):</span>
+        <span class="k">if</span> <span class="s1">&#39;raw&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="c1"># Exclude &#39;volume&#39; from columns we count:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;volume&#39;</span><span class="p">)</span>
+
+            <span class="c1">#print(self.params[&#39;strategy&#39;])</span>
+            <span class="c1">#print(&#39;self.engine.strats[0][0][2]:&#39;, self.engine.strats[0][0][2])</span>
+            <span class="c1">#print(&#39;self.engine.strats[0][0][0].params:&#39;, self.engine.strats[0][0][0].params._gettuple())</span>
+
+            <span class="c1"># Override with absolute price min and max values:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">low</span> <span class="o">=</span>\
+                <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">low</span> <span class="o">=</span>\
+                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span>\
+                <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">high</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">high</span> <span class="o">=</span> \
+                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">][</span><span class="s1">&#39;raw&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Inferring `state[raw]` high/low values form dataset: </span><span class="si">{:.6f}</span><span class="s1"> / </span><span class="si">{:.6f}</span><span class="s1">.&#39;</span><span class="o">.</span>
+                          <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
+                                 <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()))</span>
+
+        <span class="c1"># Set observation space shape from engine/strategy parameters:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">observation_space</span> <span class="o">=</span> <span class="n">DictSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;state_shape&#39;</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Obs. shape: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">spaces</span><span class="p">))</span>
+        <span class="c1">#self.log.debug(&#39;Obs. min:\n{}\nmax:\n{}&#39;.format(self.observation_space.low, self.observation_space.high))</span>
+
+        <span class="c1"># Set action space (one-key dict for this class) and corresponding server messages:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span> <span class="o">=</span> <span class="n">ActionDictSpace</span><span class="p">(</span>
+            <span class="n">base_actions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;strategy&#39;</span><span class="p">][</span><span class="s1">&#39;portfolio_actions&#39;</span><span class="p">],</span>
+            <span class="n">assets</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Finally:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_server</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">closed</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Environment is ready.&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BTgymEnv._seed"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._seed">[docs]</a>    <span class="k">def</span> <span class="nf">_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets env. random seed.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            seed:   int or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._comm_with_timeout"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._comm_with_timeout">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_comm_with_timeout</span><span class="p">(</span> <span class="n">socket</span><span class="p">,</span> <span class="n">message</span><span class="p">,):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Exchanges messages via socket, timeout sensitive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            socket: zmq connected socket to communicate via;</span>
+<span class="sd">            message: message to send;</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            socket zmq.RCVTIMEO and zmq.SNDTIMEO should be set to some finite number of milliseconds.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dictionary:</span>
+<span class="sd">                `status`: communication result;</span>
+<span class="sd">                `message`: received message if status == `ok` or None;</span>
+<span class="sd">                `time`: remote side response time.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">status</span><span class="o">=</span><span class="s1">&#39;ok&#39;</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="n">zmq</span><span class="o">.</span><span class="n">ZMQError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="n">zmq</span><span class="o">.</span><span class="n">EAGAIN</span><span class="p">:</span>
+                <span class="n">response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;send_failed_due_to_connect_timeout&#39;</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;send_failed_for_unknown_reason&#39;</span>
+            <span class="k">return</span> <span class="n">response</span>
+
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+            <span class="n">response</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+        <span class="k">except</span> <span class="n">zmq</span><span class="o">.</span><span class="n">ZMQError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="n">zmq</span><span class="o">.</span><span class="n">EAGAIN</span><span class="p">:</span>
+                <span class="n">response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;receive_failed_due_to_connect_timeout&#39;</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;receive_failed_for_unknown_reason&#39;</span>
+            <span class="k">return</span> <span class="n">response</span>
+
+        <span class="k">return</span> <span class="n">response</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._start_server"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._start_server">[docs]</a>    <span class="k">def</span> <span class="nf">_start_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Configures backtrader REQ/REP server instance and starts server process.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Ensure network resources:</span>
+        <span class="c1"># 1. Release client-side, if any:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 2. Kill any process using server port:</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;kill $( lsof -i:</span><span class="si">{}</span><span class="s2"> -t ) &gt; /dev/null 2&gt;&amp;1&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+
+        <span class="c1"># Set up client channel:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">REQ</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">RCVTIMEO</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">SNDTIMEO</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">network_address</span><span class="p">)</span>
+
+        <span class="c1"># Configure and start server:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server</span> <span class="o">=</span> <span class="n">BTgymServer</span><span class="p">(</span>
+            <span class="n">cerebro</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="p">,</span>
+            <span class="n">render</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">renderer</span><span class="p">,</span>
+            <span class="n">network_address</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">network_address</span><span class="p">,</span>
+            <span class="n">data_network_address</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span><span class="p">,</span>
+            <span class="n">connect_timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span><span class="p">,</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span>
+            <span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="c1"># Wait for server to startup:</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Check connection:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Server started, pinging </span><span class="si">{}</span><span class="s1"> ...&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">network_address</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+            <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;ping!&#39;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Server seems ready with response: &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span>
+                           <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]))</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Server unreachable with status: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._stop_server"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._stop_server">[docs]</a>    <span class="k">def</span> <span class="nf">_stop_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stops BT server process, releases network resources.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_force_control_mode</span><span class="p">():</span>
+                <span class="c1"># In case server is running and client side is ok:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">({</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_stop&#39;</span><span class="p">})</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span> <span class="o">=</span> <span class="s1">&#39;Server process terminated.&#39;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> Exit code: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">server_response</span><span class="p">,</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">exitcode</span><span class="p">))</span>
+
+        <span class="c1"># Release client-side, if any:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._force_control_mode"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._force_control_mode">[docs]</a>    <span class="k">def</span> <span class="nf">_force_control_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Puts BT server to control mode.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check is there any faults with server process and connection?</span>
+        <span class="n">network_error</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">is_alive</span><span class="p">(),</span> <span class="s1">&#39;No running server found. Hint: forgot to call reset()?&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">closed</span><span class="p">,</span> <span class="s1">&#39;No network connection found.&#39;</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span> <span class="ow">in</span> <span class="n">network_error</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">err</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span> <span class="o">=</span> <span class="n">msg</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># If everything works, insist to go &#39;control&#39;:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">attempt</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">while</span> <span class="s1">&#39;ctrl&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">({</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_done&#39;</span><span class="p">})</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+                <span class="n">attempt</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;FORCE CONTROL MODE attempt: </span><span class="si">{}</span><span class="s1">.</span><span class="se">\n</span><span class="s1">Response: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">attempt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span><span class="p">))</span>
+
+            <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._assert_response"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._assert_response">[docs]</a>    <span class="k">def</span> <span class="nf">_assert_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simple watcher:</span>
+<span class="sd">        roughly checks if we really talking to environment (== episode is running).</span>
+<span class="sd">        Rises exception if response given is not as expected.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span>
+
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Unexpected environment response: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">Hint: Forgot to call reset() or reset_data()?&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Response checker received:</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s1">as type: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                       <span class="nb">format</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">response</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._print_space"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._print_space">[docs]</a>    <span class="k">def</span> <span class="nf">_print_space</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">,</span> <span class="n">_tab</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parses observation space shape or response.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            space: gym observation space or state.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            description as string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">space</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">OrderedDict</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">space</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">response</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="si">{}{}</span><span class="s1">:</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_tab</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_space</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;   &#39;</span><span class="p">))</span>
+
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">space</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="n">spaces</span><span class="o">.</span><span class="n">Dict</span><span class="p">,</span> <span class="n">DictSpace</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">space</span><span class="o">.</span><span class="n">spaces</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_space</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;   &#39;</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">space</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">space</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_space</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s1">&#39;   &#39;</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">space</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="si">{}</span><span class="s1">array of shape: </span><span class="si">{}</span><span class="s1">, low: </span><span class="si">{}</span><span class="s1">, high: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_tab</span><span class="p">,</span> <span class="n">space</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">space</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">space</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="si">{}{}</span><span class="s1">, &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_tab</span><span class="p">,</span> <span class="n">space</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">+=</span> <span class="s1">&#39;low: </span><span class="si">{}</span><span class="s1">, high: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">space</span><span class="o">.</span><span class="n">low</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">space</span><span class="o">.</span><span class="n">high</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+
+            <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">ArithmeticError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">pass</span>
+                <span class="c1">#response += &#39;\n{}&#39;.format(e)</span>
+
+        <span class="k">return</span> <span class="n">response</span></div>
+
+    <span class="k">def</span> <span class="nf">get_initial_action</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">asset</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">asset</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">get_initial_portfolio_action</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">asset</span><span class="p">:</span> <span class="n">actions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">asset</span><span class="p">,</span> <span class="n">actions</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">server_actions</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+<div class="viewcode-block" id="BTgymEnv.reset"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implementation of OpenAI Gym env.reset method. Starts new episode. Episode data are sampled</span>
+<span class="sd">        according to data provider class logic, controlled via kwargs. Refer `BTgym_Server` and data provider</span>
+<span class="sd">        classes for details.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            kwargs:         any kwargs; this dictionary is passed through to BTgym_server side without any checks and</span>
+<span class="sd">                            modifications; currently used for data sampling control;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            observation space state</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            Current kwargs accepted is::</span>
+
+
+<span class="sd">                episode_config=dict(</span>
+<span class="sd">                    get_new=True,</span>
+<span class="sd">                    sample_type=0,</span>
+<span class="sd">                    b_alpha=1,</span>
+<span class="sd">                    b_beta=1</span>
+<span class="sd">                ),</span>
+<span class="sd">                trial_config=dict(</span>
+<span class="sd">                    get_new=True,</span>
+<span class="sd">                    sample_type=0,</span>
+<span class="sd">                    b_alpha=1,</span>
+<span class="sd">                    b_beta=1</span>
+<span class="sd">                )</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Data Server check:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;No running data_server found, starting...&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_start_data_server</span><span class="p">()</span>
+
+            <span class="c1"># Domain dataset status check:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+                <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="p">,</span>
+                <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_get_info&#39;</span><span class="p">}</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;dataset_is_ready&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s1">&#39;Data domain `reset()` called prior to `reset_data()` with [possibly inconsistent] defaults.&#39;</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">reset_data</span><span class="p">()</span>
+
+        <span class="c1"># Server process check:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;No running server found, starting...&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_server</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_force_control_mode</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+                <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="p">,</span>
+                <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_reset&#39;</span><span class="p">,</span> <span class="s1">&#39;kwargs&#39;</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">}</span>
+            <span class="p">)</span>
+            <span class="c1"># Get initial environment response:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_initial_action</span><span class="p">())</span>
+
+            <span class="c1"># Check (once) if it is really (o,r,d,i) tuple:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_assert_response</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_response</span><span class="p">)</span>
+
+            <span class="c1"># Check (once) if state_space is as expected:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_response</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+            <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">msg1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_space</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">spaces</span><span class="p">)</span>
+                <span class="n">msg2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_print_space</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_response</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">msg3</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+                <span class="k">for</span> <span class="n">step_info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                    <span class="n">msg3</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">step_info</span><span class="p">)</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">State observation shape/range mismatch!</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;Space set by env: </span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;Space returned by server: </span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;Full response:</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;Reward: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;Done: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;Info:</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                    <span class="s1">&#39;Hint: Wrong Strategy.get_state() parameters?&#39;</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">msg1</span><span class="p">,</span>
+                    <span class="n">msg2</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                    <span class="n">msg3</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stop_server</span><span class="p">()</span>
+                <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Something went wrong. env.reset() can not get response from server.&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ChildProcessError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymEnv.step"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implementation of OpenAI Gym env.step() method.</span>
+<span class="sd">        Makes a step in the environment.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action:     int or dict, action compatible to env.action_space</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple (Observation, Reward, Info, Done)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># If we got int as action - try to treat it as an action for single-valued action space dict:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">a</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+
+        <span class="c1"># Are you in the list, ready to go and all that?</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>\
+            <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span>\
+            <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>\
+            <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">closed</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">At least one of these is true:</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;Action error: (space is </span><span class="si">{}</span><span class="s1">, action sent is </span><span class="si">{}</span><span class="s1">): </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;Environment closed: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;Network error [socket doesnt exists or closed]: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;Hint: forgot to call reset()?&#39;</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">action</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">,</span>
+                <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">closed</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="c1"># Send action (as dict of strings) to backtrader engine, receive environment response:</span>
+        <span class="n">action_as_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">server_actions</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">value</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">action</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="c1">#print(&#39;step: &#39;, action, action_as_dict)</span>
+        <span class="n">env_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+            <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="n">action_as_dict</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">env_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;.step(): server unreachable with status: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">env_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span> <span class="o">=</span> <span class="n">env_response</span> <span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_response</span></div>
+
+<div class="viewcode-block" id="BTgymEnv.close"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implementation of OpenAI Gym env.close method.</span>
+<span class="sd">        Puts BTgym server in Control Mode.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;close.call()&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_server</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_data_server</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Environment closed.&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymEnv.get_stat"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv.get_stat">[docs]</a>    <span class="k">def</span> <span class="nf">get_stat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns last run episode statistics.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            when invoked, forces running episode to terminate.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_force_control_mode</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">({</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_getstat&#39;</span><span class="p">})</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">server_response</span></div>
+
+<div class="viewcode-block" id="BTgymEnv.render"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;other_mode&#39;</span><span class="p">,</span> <span class="n">close</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implementation of OpenAI Gym env.render method.</span>
+<span class="sd">        Visualises current environment state.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            `mode`:     str, any of these::</span>
+
+<span class="sd">                            `human` - current state observation as price lines;</span>
+<span class="sd">                            `episode` - plotted results of last completed episode.</span>
+<span class="sd">                            [other_key] - corresponding to any custom observation space key</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">close</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span>\
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span>\
+            <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">closed</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Can&#39;&#39;t get renderings.&#39;</span>
+                <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">At least one of these is true:</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;Environment closed: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;Network error [socket doesnt exists or closed]: </span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;Hint: forgot to call reset()?&#39;</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">,</span>
+                <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">closed</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_modes</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unexpected render mode </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mode</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">({</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_render&#39;</span><span class="p">,</span> <span class="s1">&#39;mode&#39;</span><span class="p">:</span> <span class="n">mode</span><span class="p">})</span>
+
+        <span class="n">rgb_array_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">rendered_rgb</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">rgb_array_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rendered_rgb</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._stop"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._stop">[docs]</a>    <span class="k">def</span> <span class="nf">_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Finishes current episode if any, does nothing otherwise. Leaves server running.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_force_control_mode</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Episode stop forced.&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._restart_server"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._restart_server">[docs]</a>    <span class="k">def</span> <span class="nf">_restart_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Restarts server.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_server</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_server</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Server restarted.&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._start_data_server"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._start_data_server">[docs]</a>    <span class="k">def</span> <span class="nf">_start_data_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        For data_master environment:</span>
+<span class="sd">            - configures backtrader REQ/REP server instance and starts server process.</span>
+
+<span class="sd">        For others:</span>
+<span class="sd">            - establishes network connection to existing data_server.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Ensure network resources:</span>
+        <span class="c1"># 1. Release client-side, if any:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_context</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Only data_master launches/stops data_server process:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
+            <span class="c1"># 2. Kill any process using server port:</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;kill $( lsof -i:</span><span class="si">{}</span><span class="s2"> -t ) &gt; /dev/null 2&gt;&amp;1&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_port</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+
+            <span class="c1"># Configure and start server:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span> <span class="o">=</span> <span class="n">BTgymDataFeedServer</span><span class="p">(</span>
+                <span class="n">dataset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span>
+                <span class="n">network_address</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span><span class="p">,</span>
+                <span class="n">log_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span>
+                <span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+            <span class="c1"># Wait for server to startup</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Set up client channel:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">REQ</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">RCVTIMEO</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">SNDTIMEO</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">connect_timeout</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span><span class="p">)</span>
+
+        <span class="c1"># Check connection:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Pinging data_server at: </span><span class="si">{}</span><span class="s1"> ...&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+            <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;ping!&#39;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Data_server seems ready with response: &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span>
+                          <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]))</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Data_server unreachable with status: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span>\
+                <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="c1"># Get info and statistic:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_columns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server_pid</span><span class="p">,</span>  <span class="bp">self</span><span class="o">.</span><span class="n">data_lines_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_dataset_info</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._stop_data_server"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._stop_data_server">[docs]</a>    <span class="k">def</span> <span class="nf">_stop_data_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        For data_master:</span>
+<span class="sd">            - stops BT server process, releases network resources.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+                <span class="c1"># In case server is running and is ok:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">({</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_stop&#39;</span><span class="p">})</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span> <span class="o">=</span> <span class="s1">&#39;Data_server process terminated.&#39;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> Exit code: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span><span class="o">.</span><span class="n">exitcode</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_context</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_context</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._restart_data_server"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._restart_data_server">[docs]</a>    <span class="k">def</span> <span class="nf">_restart_data_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Restarts data_server.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_data_server</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_data_server</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="BTgymEnv._get_dataset_info"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._get_dataset_info">[docs]</a>    <span class="k">def</span> <span class="nf">_get_dataset_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves dataset configuration and descriptive statistic.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">({</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_get_info&#39;</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;dataset_stat&#39;</span><span class="p">],</span>\
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;dataset_columns&#39;</span><span class="p">],</span>\
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;pid&#39;</span><span class="p">],</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;data_names&#39;</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="BTgymEnv.reset_data"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv.reset_data">[docs]</a>    <span class="k">def</span> <span class="nf">reset_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resets data provider class used, whatever it means for that class. Gets data_server ready to provide data.</span>
+<span class="sd">        Supposed to be called before first env.reset().</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            when invoked, forces running episode to terminate.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            **kwargs:   data provider class .reset() method specific.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">closed</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_server</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_start_data_server</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">closed</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_force_control_mode</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_master</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_restart_data_server</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+                <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="p">,</span>
+                <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_reset_data&#39;</span><span class="p">,</span> <span class="s1">&#39;kwargs&#39;</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">}</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Dataset seems ready with response: &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span>
+                               <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]))</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Data_server unreachable with status: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span> \
+                    <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span></div></div>
+
+
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -57,7 +57,7 @@ def BaseEnvRunnerFn(
     length = 0
     local_episode = 0
     reward_sum = 0
-    last_action = env.action_space.action_to_vec(env.get_initial_action())
+    last_action = env.action_space.encode(env.get_initial_action())
     last_reward = np.asarray(0.0)
 
     # Summary averages accumulators:
@@ -75,24 +75,20 @@ def BaseEnvRunnerFn(
         terminal_end = False
         rollout = Rollout()
 
-        action_one_hot, _, value_, context = policy.act(
+        action, _, value_, context = policy.act(
             last_state,
             last_context,
             last_action[None, ...],
             last_reward[None, ...]
         )
-        # Convert action to vector:
-        action = env.action_space.cat_to_vec(action_one_hot.argmax())
-        #log.debug('*: A: {}, V: {}, step: {} '.format(action, value_, length))
-
-        # Make a step, convertin action vector to dict:
-        state, reward, terminal, info = env.step(env.action_space.vec_to_action(action))
+        # Make a step:
+        state, reward, terminal, info = env.step(action['environment'])
 
         # Partially collect first experience of rollout:
         last_experience = {
             'position': {'episode': local_episode, 'step': length},
             'state': last_state,
-            'action': action,
+            'action': action['one_hot'],
             'reward': reward,
             'value': value_,
             'terminal': terminal,
@@ -108,26 +104,26 @@ def BaseEnvRunnerFn(
         reward_sum += reward
         last_state = state
         last_context = context
-        last_action = action
+        last_action = action['encoded']
         last_reward = reward
 
         for roll_step in range(1, rollout_length):
             if not terminal:
                 # Continue adding experiences to rollout:
-                action_one_hot, _, value_, context = policy.act(
+                action, _, value_, context = policy.act(
                     last_state,
                     last_context,
                     last_action[None, ...],
                     last_reward[None, ...]
                 )
-                action = env.action_space.cat_to_vec(action_one_hot.argmax())
-                state, reward, terminal, info = env.step(env.action_space.vec_to_action(action))
+
+                state, reward, terminal, info = env.step(action['environment'])
 
                 # print(
                 #     'RUNNER: one_hot: {}, vec: {}, dict: {}'.format(
                 #         action_one_hot,
                 #         action,
-                #         env.action_space.vec_to_action(action)
+                #         env.action_space._vec_to_action(action)
                 #     )
                 # )
 
@@ -135,7 +131,7 @@ def BaseEnvRunnerFn(
                 experience = {
                     'position': {'episode': local_episode, 'step': length},
                     'state': last_state,
-                    'action': action,
+                    'action': action['one_hot'],
                     'reward': reward,
                     'value': value_,
                     'terminal': terminal,
@@ -157,7 +153,7 @@ def BaseEnvRunnerFn(
                 reward_sum += reward
                 last_state = state
                 last_context = context
-                last_action = action
+                last_action = action['encoded']
                 last_reward = reward
                 last_experience = experience
 
@@ -237,7 +233,7 @@ def BaseEnvRunnerFn(
                 last_context = policy.get_initial_features(state=last_state, context=last_context)
                 length = 0
                 reward_sum = 0
-                last_action = env.action_space.action_to_vec(env.get_initial_action())
+                last_action = env.action_space.encode(env.get_initial_action())
                 last_reward = np.asarray(0.0)
 
                 # Increment global and local episode counts:

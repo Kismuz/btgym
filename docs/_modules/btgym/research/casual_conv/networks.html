@@ -1,0 +1,553 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>btgym.research.casual_conv.networks &mdash; BTGym 0.0.7 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../../search.html"/>
+    <link rel="top" title="BTGym 0.0.7 documentation" href="../../../../index.html"/>
+        <link rel="up" title="Module code" href="../../../index.html"/> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> BTGym
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Package Description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#quickstart">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#environment-engine-description">Environment engine description</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#data-flow-structure">Data flow structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html#a3c-framework-description">A3C framework description</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.envs.html">btgym.envs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html">btgym.dataserver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.server">btgym.server module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.html#module-btgym.spaces">btgym.spaces module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.strategy.html">btgym.strategy package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.monitor.html">btgym.monitor package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.rendering.html">btgym.rendering package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.datafeed.html">btgym.datafeed package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.algorithms.html">btgym.algorithms package</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../btgym.research.html">btgym.research package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">BTGym</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+      <li>btgym.research.casual_conv.networks</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for btgym.research.casual_conv.networks</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">tensorflow.contrib.layers</span> <span class="k">import</span> <span class="n">layer_norm</span> <span class="k">as</span> <span class="n">norm_layer</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
+<span class="kn">from</span> <span class="nn">btgym.algorithms.nn.layers</span> <span class="k">import</span> <span class="n">conv1d</span>
+
+
+<div class="viewcode-block" id="conv_1d_casual_encoder"><a class="viewcode-back" href="../../../../btgym.research.casual_conv.html#btgym.research.casual_conv.networks.conv_1d_casual_encoder">[docs]</a><span class="k">def</span> <span class="nf">conv_1d_casual_encoder</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span>
+        <span class="n">ob_space</span><span class="p">,</span>
+        <span class="n">ac_space</span><span class="p">,</span>
+        <span class="n">conv_1d_num_filters</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+        <span class="n">conv_1d_filter_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">conv_1d_activation</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">,</span>
+        <span class="n">conv_1d_overlap</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;casual_encoder&#39;</span><span class="p">,</span>
+        <span class="n">keep_prob</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">conv_1d_gated</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">collections</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tree-shaped convolution stack encoder as more comp. efficient alternative to dilated one.</span>
+
+<span class="sd">    Stage1 casual convolutions network: from 1D input to estimated features.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tensor holding state features;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name_or_scope</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>  <span class="c1"># remove pseudo 2d dimension</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">num_layers</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">conv_1d_filter_size</span><span class="p">))</span>
+
+        <span class="c1"># print(&#39;num_layers: &#39;, num_layers)</span>
+
+        <span class="n">layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">slice_depth</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">x</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_layers</span><span class="p">):</span>
+
+            <span class="n">_</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">channels</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+
+            <span class="c1"># t2b:</span>
+            <span class="n">tail</span> <span class="o">=</span> <span class="n">length</span> <span class="o">%</span> <span class="n">conv_1d_filter_size</span>
+            <span class="k">if</span> <span class="n">tail</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">pad</span> <span class="o">=</span> <span class="n">conv_1d_filter_size</span> <span class="o">-</span> <span class="n">tail</span>
+                <span class="n">paddings</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="n">pad</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">paddings</span><span class="p">)</span>
+                <span class="n">length</span> <span class="o">+=</span> <span class="n">pad</span>
+
+            <span class="c1"># print(&#39;padded_length: &#39;, length)</span>
+
+            <span class="n">num_time_batches</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">length</span> <span class="o">/</span> <span class="n">conv_1d_filter_size</span><span class="p">)</span>
+
+            <span class="c1"># print(&#39;num_time_batches: &#39;, num_time_batches)</span>
+
+            <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">conv_1d_filter_size</span><span class="p">,</span> <span class="n">channels</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;layer_</span><span class="si">{}</span><span class="s1">_t2b&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+            <span class="n">y</span> <span class="o">=</span> <span class="n">conv1d</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+                <span class="n">num_filters</span><span class="o">=</span><span class="n">conv_1d_num_filters</span><span class="p">,</span>
+                <span class="n">filter_size</span><span class="o">=</span><span class="n">conv_1d_filter_size</span><span class="p">,</span>
+                <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">pad</span><span class="o">=</span><span class="s1">&#39;VALID&#39;</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;conv1d_layer_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="c1"># b2t:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_time_batches</span><span class="p">,</span> <span class="n">conv_1d_num_filters</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;layer_</span><span class="si">{}</span><span class="s1">_output&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+            <span class="n">y</span> <span class="o">=</span> <span class="n">norm_layer</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">conv_1d_activation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">conv_1d_activation</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">keep_prob</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">dropout</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">keep_prob</span><span class="o">=</span><span class="n">keep_prob</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;_layer_</span><span class="si">{}</span><span class="s2">_with_dropout&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+            <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+            <span class="n">depth</span> <span class="o">=</span> <span class="n">conv_1d_overlap</span> <span class="o">//</span> <span class="n">conv_1d_filter_size</span> <span class="o">**</span> <span class="n">i</span>
+
+            <span class="k">if</span> <span class="n">depth</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">depth</span> <span class="o">=</span> <span class="mi">1</span>
+
+            <span class="n">slice_depth</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">depth</span><span class="p">)</span>
+
+        <span class="c1"># encoded = tf.stack([h[:, -1, :] for h in layers], axis=1, name=&#39;encoded_state&#39;)</span>
+
+        <span class="n">sliced_layers</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span>
+                <span class="n">h</span><span class="p">,</span>
+                <span class="n">begin</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">h</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">d</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                <span class="n">size</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="p">)</span> <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">layers</span><span class="p">,</span> <span class="n">slice_depth</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="n">output_stack</span> <span class="o">=</span> <span class="n">sliced_layers</span>
+        <span class="c1"># But:</span>
+        <span class="k">if</span> <span class="n">conv_1d_gated</span><span class="p">:</span>
+            <span class="n">split_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">conv_1d_num_filters</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">output_stack</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">sliced_layers</span><span class="p">:</span>
+                <span class="n">x1</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">split_size</span><span class="p">]</span>
+                <span class="n">x2</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">split_size</span><span class="p">:]</span>
+
+                <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span>
+                    <span class="n">x1</span><span class="p">,</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">x2</span><span class="p">),</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;gated_conv_output&#39;</span>
+                <span class="p">)</span>
+                <span class="n">output_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+        <span class="n">encoded</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">output_stack</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoded_state&#39;</span><span class="p">)</span>
+
+        <span class="c1"># encoded = tf.concat(</span>
+        <span class="c1">#     [</span>
+        <span class="c1">#         tf.slice(</span>
+        <span class="c1">#             h,</span>
+        <span class="c1">#             begin=[0, h.get_shape().as_list()[1] - d, 0],</span>
+        <span class="c1">#             size=[-1, d, -1]</span>
+        <span class="c1">#         ) for h, d in zip(layers, slice_depth)</span>
+        <span class="c1">#     ],</span>
+        <span class="c1">#     axis=1,</span>
+        <span class="c1">#     name=&#39;encoded_state&#39;</span>
+        <span class="c1"># )</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;encoder :&#39;</span><span class="p">,</span> <span class="n">encoded</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">encoded</span></div>
+
+
+<div class="viewcode-block" id="attention_layer"><a class="viewcode-back" href="../../../../btgym.research.casual_conv.html#btgym.research.casual_conv.networks.attention_layer">[docs]</a><span class="k">def</span> <span class="nf">attention_layer</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">attention_ref</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">seq2seq</span><span class="o">.</span><span class="n">LuongAttention</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;attention_layer&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Temporal attention layer.</span>
+<span class="sd">    Computes attention context based on last(left) value in time dim.</span>
+
+<span class="sd">    Paper:</span>
+<span class="sd">    Minh-Thang Luong, Hieu Pham, Christopher D. Manning.,</span>
+<span class="sd">    &quot;Effective Approaches to Attention-based Neural Machine Translation.&quot; https://arxiv.org/abs/1508.04025</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        inputs:</span>
+<span class="sd">        attention_ref:      attention mechanism class</span>
+<span class="sd">        name:</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        attention output tensor</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+    <span class="n">source_states</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># all but last</span>
+    <span class="n">query_state</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="n">attention_mechanism</span> <span class="o">=</span> <span class="n">attention_ref</span><span class="p">(</span>
+        <span class="n">num_units</span><span class="o">=</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+        <span class="n">memory</span><span class="o">=</span><span class="n">source_states</span><span class="p">,</span>
+        <span class="c1">#scale=True,</span>
+        <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span>
+
+    <span class="c1"># alignments = attention_mechanism(query_state, None)  # normalized attention weights</span>
+
+    <span class="c1"># Suppose there is no previous context for attention (uhm?):</span>
+    <span class="n">alignments</span> <span class="o">=</span> <span class="n">attention_mechanism</span><span class="p">(</span>
+        <span class="n">query_state</span><span class="p">,</span>
+        <span class="n">attention_mechanism</span><span class="o">.</span><span class="n">initial_alignments</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">inputs</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="c1"># Somehow attention call returns tuple of twin tensors (wtf?):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="n">alignments</span> <span class="o">=</span> <span class="n">alignments</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Compute context vector:</span>
+    <span class="n">expanded_alignments</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># print(&#39;attention_mechanism.values:&#39;, attention_mechanism.values)</span>
+    <span class="c1"># print(&#39;alignments: &#39;, alignments)</span>
+    <span class="c1"># print(&#39;expanded_alignments:&#39;, expanded_alignments)</span>
+
+    <span class="n">context</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">expanded_alignments</span><span class="p">,</span> <span class="n">attention_mechanism</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>  <span class="c1"># values == source_states</span>
+
+    <span class="c1"># context = tf.squeeze(context, [1])</span>
+    <span class="c1"># attention = tf.layers.Dense(shape-1, name=&#39;attention_layer&#39;)(tf.concat([query_state, context], 1))</span>
+
+    <span class="n">attention</span> <span class="o">=</span> <span class="n">context</span>
+
+    <span class="k">return</span> <span class="n">attention</span></div>
+
+
+<div class="viewcode-block" id="conv_1d_casual_attention_encoder"><a class="viewcode-back" href="../../../../btgym.research.casual_conv.html#btgym.research.casual_conv.networks.conv_1d_casual_attention_encoder">[docs]</a><span class="k">def</span> <span class="nf">conv_1d_casual_attention_encoder</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span>
+        <span class="n">ob_space</span><span class="p">,</span>
+        <span class="n">ac_space</span><span class="p">,</span>
+        <span class="n">conv_1d_num_filters</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+        <span class="n">conv_1d_filter_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">conv_1d_activation</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">elu</span><span class="p">,</span>
+        <span class="n">conv_1d_attention_ref</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">seq2seq</span><span class="o">.</span><span class="n">LuongAttention</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;casual_encoder&#39;</span><span class="p">,</span>
+        <span class="n">keep_prob</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">conv_1d_gated</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">conv_1d_full_hidden</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">reuse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">collections</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tree-shaped convolution stack encoder with self-attention.</span>
+
+<span class="sd">    Stage1 casual convolutions network: from 1D input to estimated features.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tensor holding state features;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">name_or_scope</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">reuse</span><span class="o">=</span><span class="n">reuse</span><span class="p">):</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>  <span class="c1"># remove pseudo 2d dimension</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">num_layers</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">conv_1d_filter_size</span><span class="p">))</span>
+
+        <span class="c1"># print(&#39;num_layers: &#39;, num_layers)</span>
+
+        <span class="n">layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">attention_layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">x</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_layers</span><span class="p">):</span>
+
+            <span class="n">_</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">channels</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+
+            <span class="c1"># t2b:</span>
+            <span class="n">tail</span> <span class="o">=</span> <span class="n">length</span> <span class="o">%</span> <span class="n">conv_1d_filter_size</span>
+            <span class="k">if</span> <span class="n">tail</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">pad</span> <span class="o">=</span> <span class="n">conv_1d_filter_size</span> <span class="o">-</span> <span class="n">tail</span>
+                <span class="n">paddings</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="n">pad</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">paddings</span><span class="p">)</span>
+                <span class="n">length</span> <span class="o">+=</span> <span class="n">pad</span>
+
+            <span class="c1"># print(&#39;padded_length: &#39;, length)</span>
+
+            <span class="n">num_time_batches</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">length</span> <span class="o">/</span> <span class="n">conv_1d_filter_size</span><span class="p">)</span>
+
+            <span class="c1"># print(&#39;num_time_batches: &#39;, num_time_batches)</span>
+
+            <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">conv_1d_filter_size</span><span class="p">,</span> <span class="n">channels</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;layer_</span><span class="si">{}</span><span class="s1">_t2b&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+            <span class="n">y</span> <span class="o">=</span> <span class="n">conv1d</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+                <span class="n">num_filters</span><span class="o">=</span><span class="n">conv_1d_num_filters</span><span class="p">,</span>
+                <span class="n">filter_size</span><span class="o">=</span><span class="n">conv_1d_filter_size</span><span class="p">,</span>
+                <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">pad</span><span class="o">=</span><span class="s1">&#39;VALID&#39;</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;conv1d_layer_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="c1"># b2t:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_time_batches</span><span class="p">,</span> <span class="n">conv_1d_num_filters</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;layer_</span><span class="si">{}</span><span class="s1">_output&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+            <span class="n">y</span> <span class="o">=</span> <span class="n">norm_layer</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">conv_1d_activation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">conv_1d_activation</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">keep_prob</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">dropout</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">keep_prob</span><span class="o">=</span><span class="n">keep_prob</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;_layer_</span><span class="si">{}</span><span class="s2">_with_dropout&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">conv_1d_gated</span><span class="p">:</span>
+                <span class="n">split_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">conv_1d_num_filters</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+
+                <span class="n">y1</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">split_size</span><span class="p">]</span>
+                <span class="n">y2</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">split_size</span><span class="p">:]</span>
+
+                <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span>
+                    <span class="n">y1</span><span class="p">,</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">y2</span><span class="p">),</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;_layer_</span><span class="si">{}</span><span class="s2">_gated&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+            <span class="c1"># Insert attention for all but top layer:</span>
+            <span class="k">if</span> <span class="n">num_time_batches</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">attention</span> <span class="o">=</span> <span class="n">attention_layer</span><span class="p">(</span>
+                    <span class="n">y</span><span class="p">,</span>
+                    <span class="n">attention_ref</span><span class="o">=</span><span class="n">conv_1d_attention_ref</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;attention_layer_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">attention_layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">attention</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">conv_1d_full_hidden</span><span class="p">:</span>
+            <span class="n">convolved</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">layers</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;convolved_stack_full&#39;</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">convolved</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">h</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">layers</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;convolved_stack&#39;</span><span class="p">)</span>
+
+        <span class="n">attended</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">attention_layers</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;attention_stack&#39;</span><span class="p">)</span>
+
+        <span class="n">encoded</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">convolved</span><span class="p">,</span> <span class="n">attended</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoded_state&#39;</span><span class="p">)</span>
+        <span class="c1"># print(&#39;layers&#39;, layers)</span>
+        <span class="c1"># print(&#39;convolved: &#39;, convolved)</span>
+        <span class="c1"># print(&#39;attention_layers:&#39;, attention_layers)</span>
+        <span class="c1"># print(&#39;attention_stack: &#39;, attended)</span>
+        <span class="c1"># print(&#39;encoded :&#39;, encoded)</span>
+
+    <span class="k">return</span> <span class="n">encoded</span></div>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, 2018, Andrew Muzikin.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../../',
+            VERSION:'0.0.7',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

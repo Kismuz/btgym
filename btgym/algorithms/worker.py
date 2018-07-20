@@ -176,7 +176,10 @@ class Worker(multiprocessing.Process):
             for port, data_port, is_render, is_master in zip(port_list, data_port_list, render_list, data_master_list):
                 if not self.test_mode:
                     # Assume BTgym env. class:
-                    self.log.debug('env at port_{} is data_master: {}'.format(port, data_master))
+                    self.log.debug('setting env at port_{} is data_master: {}'.format(port, data_master))
+                    self.log.debug('env_kwargs:')
+                    for k, v in env_kwargs.items():
+                        self.log.debug('{}: {}'.format(k, v))
                     try:
                         self.env_list.append(
                             self.env_class(

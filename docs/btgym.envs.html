@@ -100,7 +100,9 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">btgym.envs package</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#module-btgym.envs.backtrader">btgym.envs.backtrader module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.envs.base">btgym.envs.base module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.envs.multidiscrete">btgym.envs.multidiscrete module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-btgym.envs.portfolio">btgym.envs.portfolio module</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.html">btgym.dataserver module</a></li>
@@ -183,12 +185,12 @@
             
   <div class="section" id="btgym-envs-package">
 <h1>btgym.envs package<a class="headerlink" href="#btgym-envs-package" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-btgym.envs.backtrader">
-<span id="btgym-envs-backtrader-module"></span><h2>btgym.envs.backtrader module<a class="headerlink" href="#module-btgym.envs.backtrader" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-btgym.envs.base">
+<span id="btgym-envs-base-module"></span><h2>btgym.envs.base module<a class="headerlink" href="#module-btgym.envs.base" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
-<dt id="btgym.envs.backtrader.BTgymEnv">
-<em class="property">class </em><code class="descclassname">btgym.envs.backtrader.</code><code class="descname">BTgymEnv</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv" title="Permalink to this definition">¶</a></dt>
-<dd><p>OpenAI Gym API shell for Backtrader backtesting/trading library.</p>
+<dt id="btgym.envs.base.BTgymEnv">
+<em class="property">class </em><code class="descclassname">btgym.envs.base.</code><code class="descname">BTgymEnv</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base OpenAI Gym API shell for Backtrader backtesting/trading library.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -259,8 +261,8 @@ overrides <cite>log_level</cite> and <cite>verbose</cite> args.</li>
 </pre></div>
 </div>
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._seed">
-<code class="descname">_seed</code><span class="sig-paren">(</span><em>seed=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._seed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._seed" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._seed">
+<code class="descname">_seed</code><span class="sig-paren">(</span><em>seed=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._seed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._seed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets env. random seed.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -273,8 +275,8 @@ overrides <cite>log_level</cite> and <cite>verbose</cite> args.</li>
 </dd></dl>
 
 <dl class="staticmethod">
-<dt id="btgym.envs.backtrader.BTgymEnv._comm_with_timeout">
-<em class="property">static </em><code class="descname">_comm_with_timeout</code><span class="sig-paren">(</span><em>socket</em>, <em>message</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._comm_with_timeout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._comm_with_timeout" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._comm_with_timeout">
+<em class="property">static </em><code class="descname">_comm_with_timeout</code><span class="sig-paren">(</span><em>socket</em>, <em>message</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._comm_with_timeout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._comm_with_timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Exchanges messages via socket, timeout sensitive.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -307,34 +309,34 @@ overrides <cite>log_level</cite> and <cite>verbose</cite> args.</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._start_server">
-<code class="descname">_start_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._start_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._start_server" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._start_server">
+<code class="descname">_start_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._start_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._start_server" title="Permalink to this definition">¶</a></dt>
 <dd><p>Configures backtrader REQ/REP server instance and starts server process.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._stop_server">
-<code class="descname">_stop_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._stop_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._stop_server" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._stop_server">
+<code class="descname">_stop_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._stop_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._stop_server" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stops BT server process, releases network resources.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._force_control_mode">
-<code class="descname">_force_control_mode</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._force_control_mode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._force_control_mode" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._force_control_mode">
+<code class="descname">_force_control_mode</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._force_control_mode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._force_control_mode" title="Permalink to this definition">¶</a></dt>
 <dd><p>Puts BT server to control mode.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._assert_response">
-<code class="descname">_assert_response</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._assert_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._assert_response" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._assert_response">
+<code class="descname">_assert_response</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._assert_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._assert_response" title="Permalink to this definition">¶</a></dt>
 <dd><p>Simple watcher:
 roughly checks if we really talking to environment (== episode is running).
 Rises exception if response given is not as expected.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._print_space">
-<code class="descname">_print_space</code><span class="sig-paren">(</span><em>space</em>, <em>_tab=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._print_space"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._print_space" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._print_space">
+<code class="descname">_print_space</code><span class="sig-paren">(</span><em>space</em>, <em>_tab=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._print_space"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._print_space" title="Permalink to this definition">¶</a></dt>
 <dd><p>Parses observation space shape or response.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -349,8 +351,8 @@ Rises exception if response given is not as expected.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv.reset">
-<code class="descname">reset</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv.reset" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv.reset">
+<code class="descname">reset</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv.reset" title="Permalink to this definition">¶</a></dt>
 <dd><p>Implementation of OpenAI Gym env.reset method. Starts new episode. Episode data are sampled
 according to data provider class logic, controlled via kwargs. Refer <cite>BTgym_Server</cite> and data provider
 classes for details.</p>
@@ -384,15 +386,15 @@ modifications; currently used for data sampling control;</td>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv.step">
-<code class="descname">step</code><span class="sig-paren">(</span><em>action</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv.step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv.step" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv.step">
+<code class="descname">step</code><span class="sig-paren">(</span><em>action</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv.step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv.step" title="Permalink to this definition">¶</a></dt>
 <dd><p>Implementation of OpenAI Gym env.step() method.
 Makes a step in the environment.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>action</strong> – int, number representing action from env.action_space</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>action</strong> – int or dict, action compatible to env.action_space</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">tuple (Observation, Reward, Info, Done)</td>
 </tr>
@@ -401,15 +403,15 @@ Makes a step in the environment.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv.close">
-<code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv.close" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv.close">
+<code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv.close" title="Permalink to this definition">¶</a></dt>
 <dd><p>Implementation of OpenAI Gym env.close method.
 Puts BTgym server in Control Mode.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv.get_stat">
-<code class="descname">get_stat</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv.get_stat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv.get_stat" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv.get_stat">
+<code class="descname">get_stat</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv.get_stat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv.get_stat" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns last run episode statistics.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -418,8 +420,8 @@ Puts BTgym server in Control Mode.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv.render">
-<code class="descname">render</code><span class="sig-paren">(</span><em>mode='other_mode'</em>, <em>close=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv.render" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv.render">
+<code class="descname">render</code><span class="sig-paren">(</span><em>mode='other_mode'</em>, <em>close=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv.render" title="Permalink to this definition">¶</a></dt>
 <dd><p>Implementation of OpenAI Gym env.render method.
 Visualises current environment state.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -439,20 +441,20 @@ Visualises current environment state.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._stop">
-<code class="descname">_stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._stop" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._stop">
+<code class="descname">_stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._stop" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finishes current episode if any, does nothing otherwise. Leaves server running.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._restart_server">
-<code class="descname">_restart_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._restart_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._restart_server" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._restart_server">
+<code class="descname">_restart_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._restart_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._restart_server" title="Permalink to this definition">¶</a></dt>
 <dd><p>Restarts server.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._start_data_server">
-<code class="descname">_start_data_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._start_data_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._start_data_server" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._start_data_server">
+<code class="descname">_start_data_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._start_data_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._start_data_server" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="docutils">
 <dt>For data_master environment:</dt>
 <dd><ul class="first last simple">
@@ -468,8 +470,8 @@ Visualises current environment state.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._stop_data_server">
-<code class="descname">_stop_data_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._stop_data_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._stop_data_server" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._stop_data_server">
+<code class="descname">_stop_data_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._stop_data_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._stop_data_server" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="docutils">
 <dt>For data_master:</dt>
 <dd><ul class="first last simple">
@@ -480,20 +482,20 @@ Visualises current environment state.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._restart_data_server">
-<code class="descname">_restart_data_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._restart_data_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._restart_data_server" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv._restart_data_server">
+<code class="descname">_restart_data_server</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._restart_data_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._restart_data_server" title="Permalink to this definition">¶</a></dt>
 <dd><p>Restarts data_server.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv._get_dataset_info">
-<code class="descname">_get_dataset_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv._get_dataset_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv._get_dataset_info" title="Permalink to this definition">¶</a></dt>
-<dd><p>Retrieves dataset descriptive statistic.</p>
+<dt id="btgym.envs.base.BTgymEnv._get_dataset_info">
+<code class="descname">_get_dataset_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv._get_dataset_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv._get_dataset_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieves dataset configuration and descriptive statistic.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.envs.backtrader.BTgymEnv.reset_data">
-<code class="descname">reset_data</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/backtrader.html#BTgymEnv.reset_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.backtrader.BTgymEnv.reset_data" title="Permalink to this definition">¶</a></dt>
+<dt id="btgym.envs.base.BTgymEnv.reset_data">
+<code class="descname">reset_data</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/base.html#BTgymEnv.reset_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.base.BTgymEnv.reset_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resets data provider class used, whatever it means for that class. Gets data_server ready to provide data.
 Supposed to be called before first env.reset().</p>
 <div class="admonition note">
@@ -505,6 +507,348 @@ Supposed to be called before first env.reset().</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>**kwargs</strong> – data provider class .reset() method specific.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.envs.multidiscrete">
+<span id="btgym-envs-multidiscrete-module"></span><h2>btgym.envs.multidiscrete module<a class="headerlink" href="#module-btgym.envs.multidiscrete" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.envs.multidiscrete.MultiDiscreteEnv">
+<em class="property">class </em><code class="descclassname">btgym.envs.multidiscrete.</code><code class="descname">MultiDiscreteEnv</code><span class="sig-paren">(</span><em>engine</em>, <em>dataset=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/multidiscrete.html#MultiDiscreteEnv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.multidiscrete.MultiDiscreteEnv" title="Permalink to this definition">¶</a></dt>
+<dd><p>OpenAI Gym API shell for Backtrader backtesting/trading library with multiply data streams (assets) support.
+Action space is dictionary of discrete actions for every asset.</p>
+<p>Multi-asset setup explanation:</p>
+<blockquote>
+<div><p>1. This environment expects Dataset to be instance of <cite>btgym.datafeed.multi.BTgymMultiData</cite>, which sets
+number,  specifications and sampling synchronisation for historic data for all assets
+one want to trade jointly.</p>
+<p>2. Internally every episodic asset data is converted to single bt.feed and added to environment strategy
+as separate named data-line (see backtrader docs for extensive explanation of data-lines concept). Strategy is
+expected to properly handle all received data-lines.</p>
+<p>3. btgym.spaces.ActionDictSpace and order execution. Strategy expects to receive separate action
+for every asset in form of dictionary: <cite>{data_line_name_1: action, …, data_line_name_K: action}</cite>
+for K assets added, and issues orders for all assets within a single strategy step.
+TODO: refine order execution control, see: <a class="reference external" href="https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1">https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1</a>
+It is supposed that actions are discrete [for this environment] and same for every asset.
+Base actions are set by strategy.params.portfolio_actions, default is: (‘hold’, ‘buy’, ‘sell’, ‘close’) which
+equals to <cite>gym.spaces.Discrete</cite> with depth <cite>N=4 (~number of actions: 0, 1, 2, 3)</cite>. That is, for <cite>K</cite> assets environment
+action space will be a shallow dictionary <cite>(DictSpace)</cite> of discrete spaces:
+<cite>{data_line_name_1: gym.spaces.Discrete(N), …, data_line_name_K: gym.spaces.Discrete(N)}</cite></p>
+<blockquote>
+<div><p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">datalines</span> <span class="n">added</span> <span class="n">via</span> <span class="n">BTgymMultiData</span> <span class="n">are</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;eurchf&#39;</span><span class="p">,</span> <span class="s1">&#39;eurgbp&#39;</span><span class="p">,</span> <span class="s1">&#39;eurgpy&#39;</span><span class="p">,</span> <span class="s1">&#39;eurusd&#39;</span><span class="p">],</span>
+<span class="ow">and</span> <span class="n">base</span> <span class="n">asset</span> <span class="n">actions</span> <span class="n">are</span> <span class="p">[</span><span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;buy&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">],</span> <span class="n">than</span><span class="p">:</span>
+
+<span class="n">env</span><span class="o">.</span><span class="n">action</span><span class="o">.</span><span class="n">space</span> <span class="n">will</span> <span class="n">be</span><span class="p">:</span>
+    <span class="n">DictSpace</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;eurchf&#39;</span><span class="p">:</span> <span class="n">gym</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">Discrete</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span>
+            <span class="s1">&#39;eurgbp&#39;</span><span class="p">:</span> <span class="n">gym</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">Discrete</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span>
+            <span class="s1">&#39;eurgpy&#39;</span><span class="p">:</span> <span class="n">gym</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">Discrete</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span>
+            <span class="s1">&#39;eurusd&#39;</span><span class="p">:</span> <span class="n">gym</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">Discrete</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+<span class="n">single</span> <span class="n">environment</span> <span class="n">action</span> <span class="n">instance</span> <span class="p">(</span><span class="k">as</span> <span class="n">seen</span> <span class="n">inside</span> <span class="n">strategy</span><span class="p">):</span>
+    <span class="p">{</span>
+        <span class="s1">&#39;eurchf&#39;</span><span class="p">:</span> <span class="s1">&#39;hold&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;eurgbp&#39;</span><span class="p">:</span> <span class="s1">&#39;buy&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;eurgpy&#39;</span><span class="p">:</span> <span class="s1">&#39;hold&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;eurusd&#39;</span><span class="p">:</span> <span class="s1">&#39;close&#39;</span><span class="p">,</span>
+    <span class="p">}</span>
+<span class="n">corresponding</span> <span class="n">action</span> <span class="n">integer</span> <span class="n">encoding</span> <span class="k">as</span> <span class="n">passed</span> <span class="n">to</span> <span class="n">environment</span> <span class="n">via</span> <span class="o">.</span><span class="n">step</span><span class="p">():</span>
+    <span class="p">{</span>
+        <span class="s1">&#39;eurchf&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s1">&#39;eurgbp&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s1">&#39;eurgpy&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s1">&#39;eurusd&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="p">}</span>
+<span class="n">vector</span> <span class="n">of</span> <span class="n">integers</span> <span class="p">(</span><span class="n">categorical</span><span class="p">):</span>
+    <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>4. Environment actions cardinality and encoding. Note that total set of environment actions for <cite>K</cite> assets
+and <cite>N</cite> base actions is a <cite>cartesian product of K sets of N elements each</cite>. It can be encoded as <cite>vector of integers,
+single scalar, binary or one_hot</cite>. As cardinality skyrockets with <cite>K</cite>, <cite>multi-discrete</cite> action setup is only suited
+for small number of assets.</p>
+<blockquote>
+<div><p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Setup</span> <span class="k">with</span> <span class="mi">4</span> <span class="n">assets</span> <span class="ow">and</span> <span class="mi">4</span> <span class="n">base</span> <span class="n">actions</span> <span class="p">[</span><span class="n">hold</span><span class="p">,</span> <span class="n">buy</span><span class="p">,</span> <span class="n">sell</span><span class="p">,</span> <span class="n">close</span><span class="p">]</span> <span class="n">spawns</span> <span class="n">total</span> <span class="n">of</span> <span class="mi">256</span> <span class="n">possible</span>
+<span class="n">environment</span> <span class="n">actions</span> <span class="n">expressed</span> <span class="n">by</span> <span class="n">single</span> <span class="n">integer</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">]</span> <span class="ow">or</span> <span class="n">binary</span> <span class="n">encoding</span><span class="p">:</span>
+    <span class="n">vector</span> <span class="nb">str</span> <span class="p">:</span>                            <span class="n">vector</span> <span class="nb">int</span><span class="p">:</span>     <span class="nb">int</span><span class="p">:</span>   <span class="n">binary</span><span class="p">:</span>
+    <span class="p">(</span><span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;hold&#39;</span><span class="p">)</span>     <span class="o">-&gt;</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="mi">0</span>   <span class="o">-&gt;</span> <span class="mi">00000000</span>
+    <span class="p">(</span><span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;buy&#39;</span><span class="p">)</span>      <span class="o">-&gt;</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="mi">1</span>   <span class="o">-&gt;</span> <span class="mi">00000001</span>
+    <span class="o">...</span>         <span class="o">...</span>         <span class="o">...</span>
+    <span class="p">(</span><span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">)</span>  <span class="o">-&gt;</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="mi">254</span> <span class="o">-&gt;</span> <span class="mi">11111110</span>
+    <span class="p">(</span><span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="mi">255</span> <span class="o">-&gt;</span> <span class="mi">11111111</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>Internally there is some weirdness with encodings as we jump forth and back between
+dictionary of names or categorical encodings and binary encoding or one-hot encoding.
+As a rule: strategy operates with dictionary of string names of actions, environment sees action as dictionary
+of integer numbers while policy estimator operates with either binary or one-hot encoding.</p>
+<p>5. Observation space: is nested DictSpace, where ‘external’ part part of space should hold specifications for
+every asset added.</p>
+<blockquote>
+<div><p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">datalines</span> <span class="n">added</span> <span class="n">via</span> <span class="n">BTgymMultiData</span> <span class="n">are</span><span class="p">:</span>
+    <span class="s1">&#39;eurchf&#39;</span><span class="p">,</span> <span class="s1">&#39;eurgbp&#39;</span><span class="p">,</span> <span class="s1">&#39;eurgpy&#39;</span><span class="p">,</span> <span class="s1">&#39;eurusd&#39;</span><span class="p">;</span>
+
+<span class="n">environment</span> <span class="n">observation</span> <span class="n">space</span> <span class="n">should</span> <span class="n">be</span> <span class="n">DictSpace</span><span class="p">:</span>
+ <span class="p">{</span>
+    <span class="s1">&#39;raw&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">1000</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+    <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="n">DictSpace</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;eurusd&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">1000</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_features</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="s1">&#39;eurgbp&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">1000</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_features</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="s1">&#39;eurchf&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">1000</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_features</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="s1">&#39;eurgpy&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">1000</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_features</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+        <span class="p">}</span>
+    <span class="p">),</span>
+    <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+    <span class="s1">&#39;datetime&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+    <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="n">DictSpace</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="n">refer</span> <span class="n">to</span> <span class="n">strategies</span> <span class="n">declarations</span> <span class="k">for</span> <span class="n">full</span> <span class="n">code</span><span class="o">.</span>
+</pre></div>
+</div>
+</div></blockquote>
+</div></blockquote>
+<p>This class requires dataset, strategy, engine instances to be passed explicitly.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>dataset</strong> (<em>btgym.datafeed</em>) – BTgymDataDomain instance;</li>
+<li><strong>engine</strong> (<em>bt.Cerebro</em>) – environment simulation engine, any bt.Cerebro subclass,</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Keyword Arguments:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"><ul class="first last simple">
+<li><strong>network_address=`tcp://127.0.0.1:`</strong> (<em>str</em>) – BTGym_server address.</li>
+<li><strong>port=5500</strong> (<em>int</em>) – network port to use for server - API_shell communication.</li>
+<li><strong>data_master=True</strong> (<em>bool</em>) – let this environment control over data_server;</li>
+<li><strong>data_network_address=`tcp://127.0.0.1:`</strong> (<em>str</em>) – data_server address.</li>
+<li><strong>data_port=4999</strong> (<em>int</em>) – network port to use for server – data_server communication.</li>
+<li><strong>connect_timeout=60</strong> (<em>int</em>) – server connection timeout in seconds.</li>
+<li><strong>render_enabled=True</strong> (<em>bool</em>) – enable rendering for this environment;</li>
+<li><strong>render_modes=[‘human’, ‘episode’]</strong> (<em>list</em>) – <cite>episode</cite> - plotted episode results;
+<cite>human</cite> - raw_state observation.</li>
+<li><strong>**render_args</strong> (<em>any</em>) – any render-related args, passed through to renderer class.</li>
+<li><strong>verbose=0</strong> (<em>int</em>) – verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}</li>
+<li><strong>log_level=None</strong> (<em>int</em>) – logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},
+overrides <cite>verbose</cite> arg;</li>
+<li><strong>log=None</strong> (<em>logbook.Logger</em>) – external logbook logger,
+overrides <cite>log_level</cite> and <cite>verbose</cite> args.</li>
+<li><strong>task=0</strong> (<em>int</em>) – environment id</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-btgym.envs.portfolio">
+<span id="btgym-envs-portfolio-module"></span><h2>btgym.envs.portfolio module<a class="headerlink" href="#module-btgym.envs.portfolio" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="btgym.envs.portfolio.PortfolioEnv">
+<em class="property">class </em><code class="descclassname">btgym.envs.portfolio.</code><code class="descname">PortfolioEnv</code><span class="sig-paren">(</span><em>engine</em>, <em>dataset=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/portfolio.html#PortfolioEnv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.portfolio.PortfolioEnv" title="Permalink to this definition">¶</a></dt>
+<dd><p>OpenAI Gym API shell for Backtrader backtesting/trading library with multiply assets support.
+Action space is dictionary of contionious  actions for every asset.
+This setup closely relates to continuous portfolio optimisation problem definition.</p>
+<dl class="docutils">
+<dt>Multi-asset setup explanation:</dt>
+<dd><p class="first">0. Problem definition.
+Consider setup with one riskless asset acting as broker account cash and K (by default - one) risky assets.
+For every risky asset there exists track of historic price records referred as <cite>data-line</cite>.
+Apart from assets data lines there possibly exists number of exogenous data lines holding some
+information and statistics, e.g. economic indexes, encoded news, macroeconomic indicators, weather forecasts
+etc. which are considered relevant and valuable for decision-making.
+It is supposed for this setup that:
+i. there is no interest rate for base (riskless) asset;
+ii. short selling is not permitted;
+iii. transaction costs are modelled via broker commission;
+iv. ‘market liquidity’ and ‘capital impact’ assumptions are met;
+v. time indexes match for all data lines provided;</p>
+<p>1. Assets and datalines.
+This environment expects Dataset to be instance of <cite>btgym.datafeed.multi.BTgymMultiData</cite>, which sets
+number,  specifications and sampling synchronisation for historic data for all assets and data lines.</p>
+<p>Namely, one should define data_config dictionary of <cite>data lines</cite> and list of <cite>assets</cite>.
+<cite>data_config</cite> specifies all data sources used by strategy, while <cite>assets</cite> defines subset of <cite>data lines</cite>
+which is supposed to hold historic data for risky portfolio assets.</p>
+<p>Internally every episodic asset data is converted to single bt.feed and added to environment strategy
+as separate named data_line (see backtrader docs for extensive explanation of data_lines concept).
+Every non-asset data line as also added as bt.feed with difference that it is not ‘tradable’ i.e. it is
+impossible to issue trade orders on such line.
+Strategy is expected to properly handle all received data-lines.</p>
+<blockquote>
+<div><p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>1. Four data streams added via Dataset.data_config,
+   portfolio consists of four assets, added via strategy_params, cash is EUR:
+
+    data_config = {
+        &#39;usd&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURUSD_M1_2017.csv&#39;},
+        &#39;gbp&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURGBP_M1_2017.csv&#39;},
+        &#39;jpy&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURJPY_M1_2017.csv&#39;},
+        &#39;chf&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURCHF_M1_2017.csv&#39;},
+    }
+    cash_name = &#39;eur&#39;
+    assets_names = [&#39;usd&#39;, &#39;gbp&#39;, &#39;jpy&#39;, &#39;chf&#39;]
+
+2. Three streams added, only two of them form portfolio; DXY stream is `decision-making` only:
+    data_config = {
+        &#39;usd&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURUSD_M1_2017.csv&#39;},
+        &#39;gbp&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_EURGBP_M1_2017.csv&#39;},
+        &#39;​DXY&#39;: {&#39;filename&#39;: &#39;.../DAT_ASCII_DXY_M1_2017.csv&#39;},
+    }
+    cash_name = &#39;eur&#39;
+    assets_names = [&#39;usd&#39;, &#39;gbp&#39;]
+</pre></div>
+</div>
+</div></blockquote>
+<p>2. btgym.spaces.ActionDictSpace and order execution.
+ActionDictSpace is an extension of OpenAI Gym DictSpace providing domain-specific functionality.
+Strategy expects to receive separate action for every K+1 asset in form of dictionary:
+<cite>{cash_name: a[0], asset_name_1: a[1], …, asset_name_K: a[K]}</cite> for K risky assets added,
+where base actions are real numbers: <cite>a[i] in [0,1], 0&lt;=i&lt;=K, SUM{a[i]} = 1</cite>. Whole action should be
+interpreted as order to adjust portfolio to have share <cite>a[i] * 100% for i-th  asset</cite>.</p>
+<p>Therefore, base actions are gym.spaces.Box and for K assets environment action space will be a shallow
+DictSpace of K+1 continuous spaces: <cite>{cash_name: gym.spaces.Box(low=0, high=1),
+asset_name_1: gym.spaces.Box(low=0, high=1), …, asset_name_K: gym.spaces.Box(low=0, high=1)}</cite></p>
+<ol class="arabic" start="3">
+<li><p class="first">TODO: refine order execution control, see: <a class="reference external" href="https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1">https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1</a></p>
+<blockquote>
+<div><p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>if cash asset is &#39;eur&#39;,
+risky assets added are: [&#39;chf&#39;, &#39;gbp&#39;, &#39;gpy&#39;, &#39;usd&#39;],
+and data lines added via BTgymMultiData are:
+{
+    &#39;chf&#39;: eurchf_hist_data_source,
+    &#39;gbp&#39;, eurgbp_hist_data_source,
+    &#39;jpy&#39;, eurgpy_hist_data_source,
+    &#39;usd&#39;, eurusd_hist_data_source,
+},
+than:
+
+env.action.space will be:
+    DictSpace(
+        {
+            &#39;eur&#39;: gym.spaces.Box(low=0, high=1, dtype=np.float32),
+            &#39;chf&#39;: gym.spaces.Box(low=0, high=1, dtype=np.float32),
+            &#39;gbp&#39;: gym.spaces.Box(low=0, high=1, dtype=np.float32),
+            &#39;jpy&#39;: gym.spaces.Box(low=0, high=1, dtype=np.float32),
+            &#39;usd&#39;: gym.spaces.Box(low=0, high=1, dtype=np.float32),
+        }
+    )
+
+single environment action instance (as seen inside strategy or passed to environment via .step()):
+    {
+        &#39;eur&#39;: 0.3
+        &#39;chf&#39;: 0.1,
+        &#39;gbp&#39;: 0.1,
+        &#39;jpy&#39;: 0.2,
+        &#39;usd&#39;: 0.3,
+    }
+
+or vector (unlike multi-asset discrete setup, there is no binary/one hot encoding):
+    (0.3, 0.1, 0.1, 0.2, 0.3)
+
+which says to broker: &quot;... adjust positions to get 30% in base EUR asset (cash), and amounts of
+10%, 10%, 20% and 30% off current portfolio value in CHF, GBP, JPY respectively&quot;.
+
+Note that under the hood broker uses `order_target_percent` for every risky asset and can issue
+&#39;sell&#39;, &#39;buy&#39; or &#39;close&#39; orders depending on positive/negative difference of current to desired
+share of asset.
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
+<p>3. Observation space: is nested DictSpace, where ‘external’ part part of space should hold specifications
+for every data line added (note that cash asset does not have it’s own data line).</p>
+<blockquote class="last">
+<div><p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">data</span> <span class="n">lines</span> <span class="n">added</span> <span class="n">via</span> <span class="n">BTgymMultiData</span> <span class="n">are</span><span class="p">:</span>
+    <span class="s1">&#39;chf&#39;</span><span class="p">,</span> <span class="s1">&#39;gbp&#39;</span><span class="p">,</span> <span class="s1">&#39;jpy&#39;</span><span class="p">,</span> <span class="s1">&#39;usd&#39;</span><span class="p">;</span>
+
+<span class="n">environment</span> <span class="n">observation</span> <span class="n">space</span> <span class="n">can</span> <span class="n">be</span> <span class="n">DictSpace</span><span class="p">:</span>
+ <span class="p">{</span>
+    <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="n">DictSpace</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;usd&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">1000</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_features</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="s1">&#39;gbp&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">1000</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_features</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="s1">&#39;chf&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">1000</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_features</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="s1">&#39;jpy&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">1000</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_features</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+        <span class="p">}</span>
+    <span class="p">),</span>
+    <span class="s1">&#39;raw&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+    <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+    <span class="s1">&#39;datetime&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+    <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="n">DictSpace</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="n">refer</span> <span class="n">to</span> <span class="n">strategies</span> <span class="n">declarations</span> <span class="k">for</span> <span class="n">full</span> <span class="n">code</span><span class="o">.</span>
+</pre></div>
+</div>
+</div></blockquote>
+</dd>
+</dl>
+<p>This class requires dataset, strategy, engine instances to be passed explicitly.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>dataset</strong> (<em>btgym.datafeed</em>) – BTgymDataDomain instance;</li>
+<li><strong>engine</strong> (<em>bt.Cerebro</em>) – environment simulation engine, any bt.Cerebro subclass,</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Keyword Arguments:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"><ul class="first last simple">
+<li><strong>network_address=`tcp://127.0.0.1:`</strong> (<em>str</em>) – BTGym_server address.</li>
+<li><strong>port=5500</strong> (<em>int</em>) – network port to use for server - API_shell communication.</li>
+<li><strong>data_master=True</strong> (<em>bool</em>) – let this environment control over data_server;</li>
+<li><strong>data_network_address=`tcp://127.0.0.1:`</strong> (<em>str</em>) – data_server address.</li>
+<li><strong>data_port=4999</strong> (<em>int</em>) – network port to use for server – data_server communication.</li>
+<li><strong>connect_timeout=60</strong> (<em>int</em>) – server connection timeout in seconds.</li>
+<li><strong>render_enabled=True</strong> (<em>bool</em>) – enable rendering for this environment;</li>
+<li><strong>render_modes=[‘human’, ‘episode’]</strong> (<em>list</em>) – <cite>episode</cite> - plotted episode results;
+<cite>human</cite> - raw_state observation.</li>
+<li><strong>**render_args</strong> (<em>any</em>) – any render-related args, passed through to renderer class.</li>
+<li><strong>verbose=0</strong> (<em>int</em>) – verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}</li>
+<li><strong>log_level=None</strong> (<em>int</em>) – logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},
+overrides <cite>verbose</cite> arg;</li>
+<li><strong>log=None</strong> (<em>logbook.Logger</em>) – external logbook logger,
+overrides <cite>log_level</cite> and <cite>verbose</cite> args.</li>
+<li><strong>task=0</strong> (<em>int</em>) – environment id</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="btgym.envs.portfolio.PortfolioEnv.step">
+<code class="descname">step</code><span class="sig-paren">(</span><em>action</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/envs/portfolio.html#PortfolioEnv.step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.envs.portfolio.PortfolioEnv.step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implementation of OpenAI Gym env.step() method.
+Makes a step in the environment.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>action</strong> – int or dict, action compatible to env.action_space</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">tuple (Observation, Reward, Info, Done)</td>
 </tr>
 </tbody>
 </table>

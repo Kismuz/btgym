@@ -198,7 +198,8 @@ class BTgymDataFeedServer(multiprocessing.Process):
                         dataset_stat=self.dataset_stat,
                         dataset_columns=list(self.dataset.names),
                         pid=self.process.pid,
-                        dataset_is_ready=self.dataset.is_ready
+                        dataset_is_ready=self.dataset.is_ready,
+                        data_names=self.dataset.data_names
                     )
                     socket.send_pyobj(info_dict)
 

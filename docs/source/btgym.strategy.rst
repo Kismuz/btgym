@@ -14,3 +14,6 @@ btgym\.strategy\.observers module
 
 .. automodule:: btgym.strategy.observers
     :members:
+    :private-members:
+
+

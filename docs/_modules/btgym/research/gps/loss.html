@@ -181,7 +181,7 @@
 <span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 
 
-<div class="viewcode-block" id="guided_aac_loss_def_0_0"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.loss.guided_aac_loss_def_0_0">[docs]</a><span class="k">def</span> <span class="nf">guided_aac_loss_def_0_0</span><span class="p">(</span><span class="n">pi_actions</span><span class="p">,</span> <span class="n">expert_actions</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy/aac&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="guided_aac_loss_def_0_0"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.loss.guided_aac_loss_def_0_0">[docs]</a><span class="k">def</span> <span class="nf">guided_aac_loss_def_0_0</span><span class="p">(</span><span class="n">pi_actions</span><span class="p">,</span> <span class="n">expert_actions</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy/aac&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Cross-entropy imitation loss on expert actions.</span>
 
@@ -199,7 +199,7 @@
 
         <span class="n">neg_pi_log_prob</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">softmax_cross_entropy_with_logits_v2</span><span class="p">(</span>
             <span class="n">logits</span><span class="o">=</span><span class="n">pi_actions</span><span class="p">,</span>
-            <span class="n">labels</span><span class="o">=</span><span class="n">expert_actions</span>
+            <span class="n">labels</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">expert_actions</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">loss</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">neg_pi_log_prob</span><span class="p">)</span>
 
@@ -211,7 +211,7 @@
     <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">summaries</span></div>
 
 
-<div class="viewcode-block" id="guided_aac_loss_def_0_1"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.loss.guided_aac_loss_def_0_1">[docs]</a><span class="k">def</span> <span class="nf">guided_aac_loss_def_0_1</span><span class="p">(</span><span class="n">pi_actions</span><span class="p">,</span> <span class="n">expert_actions</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy/aac&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="guided_aac_loss_def_0_1"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.loss.guided_aac_loss_def_0_1">[docs]</a><span class="k">def</span> <span class="nf">guided_aac_loss_def_0_1</span><span class="p">(</span><span class="n">pi_actions</span><span class="p">,</span> <span class="n">expert_actions</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy/aac&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Cross-entropy imitation loss on {`buy`, `sell`} subset of expert actions.</span>
 
@@ -242,7 +242,7 @@
     <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">summaries</span></div>
 
 
-<div class="viewcode-block" id="guided_aac_loss_def_0_3"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.loss.guided_aac_loss_def_0_3">[docs]</a><span class="k">def</span> <span class="nf">guided_aac_loss_def_0_3</span><span class="p">(</span><span class="n">pi_actions</span><span class="p">,</span> <span class="n">expert_actions</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy/aac&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="guided_aac_loss_def_0_3"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.loss.guided_aac_loss_def_0_3">[docs]</a><span class="k">def</span> <span class="nf">guided_aac_loss_def_0_3</span><span class="p">(</span><span class="n">pi_actions</span><span class="p">,</span> <span class="n">expert_actions</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy/aac&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    MSE imitation loss on {`buy`, `sell`} subset of expert actions.</span>
 
@@ -256,12 +256,16 @@
 <span class="sd">        list of related tensorboard summaries.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">name_scope</span><span class="p">(</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;/guided_loss&#39;</span><span class="p">):</span>
-        <span class="c1"># Loss over expert buy/ sell:</span>
+        <span class="k">if</span> <span class="s1">&#39;guided_lambda&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">guided_lambda</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;guided_lambda&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">guided_lambda</span> <span class="o">=</span> <span class="mf">1.0</span>
 
+        <span class="c1"># Loss over expert buy/ sell:</span>
         <span class="n">loss</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">mean_squared_error</span><span class="p">(</span>
             <span class="n">labels</span><span class="o">=</span><span class="n">expert_actions</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">],</span>
             <span class="n">predictions</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">pi_actions</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">],</span>
-        <span class="p">)</span>
+        <span class="p">)</span> <span class="o">*</span> <span class="n">guided_lambda</span>
 
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="n">summaries</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s1">&#39;actions_mse&#39;</span><span class="p">,</span> <span class="n">loss</span><span class="p">)]</span>

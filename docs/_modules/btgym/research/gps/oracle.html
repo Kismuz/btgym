@@ -344,7 +344,7 @@
 
 <span class="sd">        Args:</span>
 <span class="sd">            episode_data:   np.array of shape [episode_length, values]</span>
-<span class="sd">            factor:     scalar</span>
+<span class="sd">            factor:         scalar</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            np.array of median Hi/Lo observations of size [int(episode_length/skip_frame) + 1, 1]</span>
@@ -367,6 +367,129 @@
 
         <span class="c1"># Define HI and Low inside every new bar:</span>
         <span class="n">v_high</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">episode_data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="n">resampled_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">v_low</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">episode_data</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="n">resampled_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># ...and yse Hi/Low mean along time_embedding:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">v_high</span><span class="p">,</span> <span class="n">v_low</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">data</span></div></div>
+
+
+<div class="viewcode-block" id="Oracle2"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.oracle.Oracle2">[docs]</a><span class="k">class</span> <span class="nc">Oracle2</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    [less]Irresponsible financial adviser.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">action_space</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="n">gamma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action_space:       actions to advice: 0 - hold, 1- buy, 2 - sell, 3 - close</span>
+<span class="sd">            gamma:              price movement horizon discount, in (0, 1]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span> <span class="o">=</span> <span class="n">action_space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gamma</span> <span class="o">=</span> <span class="n">gamma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="Oracle2.p_up"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.oracle.Oracle2.p_up">[docs]</a>    <span class="k">def</span> <span class="nf">p_up</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Discounted rise potential</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">p_x_n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_up</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">gamma</span><span class="p">)</span>
+            <span class="n">delta</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">p_x</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="n">delta</span> <span class="o">+</span> <span class="nb">max</span><span class="p">([</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">p_x_n</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">]),</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">p_x</span><span class="p">]</span> <span class="o">+</span> <span class="n">p_x_n</span></div>
+
+<div class="viewcode-block" id="Oracle2.p_down"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.oracle.Oracle2.p_down">[docs]</a>    <span class="k">def</span> <span class="nf">p_down</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Discounted fall potential</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">p_x_n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_down</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">gamma</span><span class="p">)</span>
+            <span class="n">delta</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">p_x</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">delta</span> <span class="o">+</span> <span class="nb">min</span><span class="p">([</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">p_x_n</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">]),</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">p_x</span><span class="p">]</span> <span class="o">+</span> <span class="n">p_x_n</span></div>
+
+<div class="viewcode-block" id="Oracle2.fit"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.oracle.Oracle2.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">episode_data</span><span class="p">,</span> <span class="n">resampling_factor</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates `advised` actions probabilities distribution based on data received.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            episode_data:           1D np.array of unscaled price values in OHL[CV] format</span>
+<span class="sd">            resampling_factor:      factor by which to resample given data</span>
+<span class="sd">                                    by taking min/max values inside every resampled bar</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">             Np.array of size [resampled_data_size, actions_space_size] of probabilities of advised actions,</span>
+<span class="sd">             where resampled_data_size = int(len(episode_data) / resampling_factor) + 1/0</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Vector of action unsacaled probabilities as future price movements potentials:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resample_data</span><span class="p">(</span><span class="n">episode_data</span><span class="p">,</span> <span class="n">resampling_factor</span><span class="p">)</span>
+
+        <span class="n">up_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p_up</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gamma</span><span class="p">))</span>
+        <span class="n">down_p</span> <span class="o">=</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p_down</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gamma</span><span class="p">))</span>
+
+        <span class="n">mean_scale</span> <span class="o">=</span> <span class="p">(</span><span class="n">up_p</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">down_p</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="o">/</span> <span class="mi">2</span>
+
+        <span class="n">up_p</span> <span class="o">/=</span> <span class="n">mean_scale</span>
+        <span class="n">down_p</span> <span class="o">/=</span> <span class="n">mean_scale</span>
+
+        <span class="n">close_p</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">up_p</span> <span class="o">+</span> <span class="n">down_p</span><span class="p">)</span>
+        <span class="n">close_p</span><span class="p">[</span><span class="n">close_p</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">hold_p</span> <span class="o">=</span> <span class="mf">0.2</span> <span class="o">*</span> <span class="n">close_p</span>
+
+        <span class="n">action_logits</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">hold_p</span><span class="p">,</span> <span class="n">up_p</span><span class="p">,</span> <span class="n">down_p</span><span class="p">,</span> <span class="n">close_p</span><span class="p">],</span>
+            <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">action_logits</span> <span class="o">/</span> <span class="n">action_logits</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Oracle2.resample_data"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.oracle.Oracle2.resample_data">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">resample_data</span><span class="p">(</span><span class="n">episode_data</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resamples raw observations according to given skip_frame value</span>
+<span class="sd">        and estimates mean value of newly formed bars.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            episode_data:   np.array of shape [episode_length, values]</span>
+<span class="sd">            factor:         scalar</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.array of median Hi/Lo observations of size [int(episode_length/skip_frame) + 1, 1]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Define resampled size and [possibly] extend</span>
+        <span class="c1"># to complete last bar by padding with values from very last column:</span>
+        <span class="n">resampled_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">episode_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">factor</span><span class="p">)</span>
+        <span class="c1"># print(&#39;episode_data.shape:&#39;, episode_data.shape)</span>
+
+        <span class="k">if</span> <span class="n">episode_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">factor</span> <span class="o">&gt;</span> <span class="n">resampled_size</span><span class="p">:</span>
+            <span class="n">resampled_size</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">pad_size</span> <span class="o">=</span> <span class="n">resampled_size</span> <span class="o">*</span> <span class="n">factor</span> <span class="o">-</span> <span class="n">episode_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="c1"># print(&#39;pad_size:&#39;, pad_size)</span>
+            <span class="n">episode_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">episode_data</span><span class="p">,</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">pad_size</span><span class="p">,</span> <span class="n">episode_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span> <span class="o">+</span> <span class="n">episode_data</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:][</span><span class="kc">None</span><span class="p">,</span> <span class="p">:],</span>
+                <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+            <span class="p">)</span>
+        <span class="c1"># print(&#39;new_episode_data.shape:&#39;, episode_data.shape)</span>
+
+        <span class="c1"># Define HI and Low inside every new bar:</span>
+        <span class="n">v_high</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">episode_data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="n">resampled_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
         <span class="n">v_low</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">episode_data</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="n">resampled_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 
         <span class="c1"># ...and yse Hi/Low mean along time_embedding:</span>

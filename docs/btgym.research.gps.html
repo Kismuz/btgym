@@ -124,7 +124,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="btgym.research.html#module-btgym.research.strategy_gen_4">btgym.research.strategy_gen_4 module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="btgym.research.html#module-btgym.research.verbose_env_runner">btgym.research.verbose_env_runner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="btgym.research.html#btgym-research-casual-conv-subpackage">btgym.research.casual_conv subpackage</a></li>
 </ul>
 </li>
 </ul>
@@ -196,7 +196,7 @@
 <span id="btgym-research-gps-aac-module"></span><h1>btgym.research.gps.aac module<a class="headerlink" href="#module-btgym.research.gps.aac" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="btgym.research.gps.aac.GuidedAAC">
-<em class="property">class </em><code class="descclassname">btgym.research.gps.aac.</code><code class="descname">GuidedAAC</code><span class="sig-paren">(</span><em>expert_loss=&lt;function guided_aac_loss_def_0_3&gt;</em>, <em>aac_lambda=1.0</em>, <em>guided_lambda=1.0</em>, <em>runner_fn_ref=&lt;function VerboseEnvRunnerFn&gt;</em>, <em>_aux_render_modes=('action_prob'</em>, <em>'value_fn'</em>, <em>'lstm_1_h'</em>, <em>'lstm_2_h')</em>, <em>name='GuidedA3C'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/aac.html#GuidedAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.aac.GuidedAAC" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.research.gps.aac.</code><code class="descname">GuidedAAC</code><span class="sig-paren">(</span><em>expert_loss=&lt;function guided_aac_loss_def_0_3&gt;</em>, <em>aac_lambda=1.0</em>, <em>guided_lambda=1.0</em>, <em>guided_decay_steps=None</em>, <em>runner_fn_ref=&lt;function VerboseEnvRunnerFn&gt;</em>, <em>_aux_render_modes=('action_prob'</em>, <em>'value_fn'</em>, <em>'lstm_1_h'</em>, <em>'lstm_2_h')</em>, <em>name='GuidedA3C'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/aac.html#GuidedAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.aac.GuidedAAC" title="Permalink to this definition">¶</a></dt>
 <dd><p>Actor-critic framework augmented with expert actions imitation loss:
 L_gps = aac_lambda * L_a3c + guided_lambda * L_im.</p>
 <p>This implementation is loosely refereed as ‘guided policy search’ after algorithm described in paper
@@ -236,6 +236,7 @@ state observations only.</p>
 <li><strong>expert_loss</strong> – callable returning tensor holding on_policy imitation loss graph and summaries</li>
 <li><strong>aac_lambda</strong> – float, main on_policy a3c loss lambda</li>
 <li><strong>guided_lambda</strong> – float, imitation loss lambda</li>
+<li><strong>guided_decay_steps</strong> – number of steps guided_lambda is annealed to zero</li>
 <li><strong>name</strong> – str, name scope</li>
 <li><strong>**kwargs</strong> – see BaseAAC kwargs</li>
 </ul>
@@ -259,7 +260,7 @@ state observations only.</p>
 <span id="btgym-research-gps-loss-module"></span><h1>btgym.research.gps.loss module<a class="headerlink" href="#module-btgym.research.gps.loss" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="btgym.research.gps.loss.guided_aac_loss_def_0_0">
-<code class="descclassname">btgym.research.gps.loss.</code><code class="descname">guided_aac_loss_def_0_0</code><span class="sig-paren">(</span><em>pi_actions</em>, <em>expert_actions</em>, <em>name='on_policy/aac'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/loss.html#guided_aac_loss_def_0_0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.loss.guided_aac_loss_def_0_0" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.research.gps.loss.</code><code class="descname">guided_aac_loss_def_0_0</code><span class="sig-paren">(</span><em>pi_actions</em>, <em>expert_actions</em>, <em>name='on_policy/aac'</em>, <em>verbose=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/loss.html#guided_aac_loss_def_0_0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.loss.guided_aac_loss_def_0_0" title="Permalink to this definition">¶</a></dt>
 <dd><p>Cross-entropy imitation loss on expert actions.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -282,7 +283,7 @@ list of related tensorboard summaries.</p>
 
 <dl class="function">
 <dt id="btgym.research.gps.loss.guided_aac_loss_def_0_1">
-<code class="descclassname">btgym.research.gps.loss.</code><code class="descname">guided_aac_loss_def_0_1</code><span class="sig-paren">(</span><em>pi_actions</em>, <em>expert_actions</em>, <em>name='on_policy/aac'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/loss.html#guided_aac_loss_def_0_1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.loss.guided_aac_loss_def_0_1" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.research.gps.loss.</code><code class="descname">guided_aac_loss_def_0_1</code><span class="sig-paren">(</span><em>pi_actions</em>, <em>expert_actions</em>, <em>name='on_policy/aac'</em>, <em>verbose=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/loss.html#guided_aac_loss_def_0_1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.loss.guided_aac_loss_def_0_1" title="Permalink to this definition">¶</a></dt>
 <dd><p>Cross-entropy imitation loss on {<cite>buy</cite>, <cite>sell</cite>} subset of expert actions.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -305,7 +306,7 @@ list of related tensorboard summaries.</p>
 
 <dl class="function">
 <dt id="btgym.research.gps.loss.guided_aac_loss_def_0_3">
-<code class="descclassname">btgym.research.gps.loss.</code><code class="descname">guided_aac_loss_def_0_3</code><span class="sig-paren">(</span><em>pi_actions</em>, <em>expert_actions</em>, <em>name='on_policy/aac'</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/loss.html#guided_aac_loss_def_0_3"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.loss.guided_aac_loss_def_0_3" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">btgym.research.gps.loss.</code><code class="descname">guided_aac_loss_def_0_3</code><span class="sig-paren">(</span><em>pi_actions</em>, <em>expert_actions</em>, <em>name='on_policy/aac'</em>, <em>verbose=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/loss.html#guided_aac_loss_def_0_3"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.loss.guided_aac_loss_def_0_3" title="Permalink to this definition">¶</a></dt>
 <dd><p>MSE imitation loss on {<cite>buy</cite>, <cite>sell</cite>} subset of expert actions.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -344,7 +345,8 @@ list of related tensorboard summaries.</p>
 <dl class="class">
 <dt id="btgym.research.gps.strategy.ExpertObserver">
 <em class="property">class </em><code class="descclassname">btgym.research.gps.strategy.</code><code class="descname">ExpertObserver</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/strategy.html#ExpertObserver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.strategy.ExpertObserver" title="Permalink to this definition">¶</a></dt>
-<dd><p>Keeps track of expert-advised actions.</p>
+<dd><p>Keeps track of expert-advised actions.
+Single data_feed.</p>
 </dd></dl>
 
 </div>
@@ -444,6 +446,81 @@ resampled_data_size = int(len(episode_data) / resampling_factor) + 1/0</p>
 <dl class="method">
 <dt id="btgym.research.gps.oracle.Oracle.resample_data">
 <code class="descname">resample_data</code><span class="sig-paren">(</span><em>episode_data</em>, <em>factor=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle.resample_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle.resample_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resamples raw observations according to given skip_frame value
+and estimates mean value of newly formed bars.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>episode_data</strong> – np.array of shape [episode_length, values]</li>
+<li><strong>factor</strong> – scalar</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">np.array of median Hi/Lo observations of size [int(episode_length/skip_frame) + 1, 1]</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.research.gps.oracle.Oracle2">
+<em class="property">class </em><code class="descclassname">btgym.research.gps.oracle.</code><code class="descname">Oracle2</code><span class="sig-paren">(</span><em>action_space=(0</em>, <em>1</em>, <em>2</em>, <em>3)</em>, <em>gamma=1.0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle2" title="Permalink to this definition">¶</a></dt>
+<dd><p>[less]Irresponsible financial adviser.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>action_space</strong> – actions to advice: 0 - hold, 1- buy, 2 - sell, 3 - close</li>
+<li><strong>gamma</strong> – price movement horizon discount, in (0, 1]</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="btgym.research.gps.oracle.Oracle2.p_up">
+<code class="descname">p_up</code><span class="sig-paren">(</span><em>x</em>, <em>gamma=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle2.p_up"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle2.p_up" title="Permalink to this definition">¶</a></dt>
+<dd><p>Discounted rise potential</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.research.gps.oracle.Oracle2.p_down">
+<code class="descname">p_down</code><span class="sig-paren">(</span><em>x</em>, <em>gamma=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle2.p_down"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle2.p_down" title="Permalink to this definition">¶</a></dt>
+<dd><p>Discounted fall potential</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.research.gps.oracle.Oracle2.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>episode_data</em>, <em>resampling_factor=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle2.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle2.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates <cite>advised</cite> actions probabilities distribution based on data received.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>episode_data</strong> – 1D np.array of unscaled price values in OHL[CV] format</li>
+<li><strong>resampling_factor</strong> – factor by which to resample given data
+by taking min/max values inside every resampled bar</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Np.array of size [resampled_data_size, actions_space_size] of probabilities of advised actions,
+where resampled_data_size = int(len(episode_data) / resampling_factor) + 1/0</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="btgym.research.gps.oracle.Oracle2.resample_data">
+<em class="property">static </em><code class="descname">resample_data</code><span class="sig-paren">(</span><em>episode_data</em>, <em>factor=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/gps/oracle.html#Oracle2.resample_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.gps.oracle.Oracle2.resample_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resamples raw observations according to given skip_frame value
 and estimates mean value of newly formed bars.</p>
 <table class="docutils field-list" frame="void" rules="none">

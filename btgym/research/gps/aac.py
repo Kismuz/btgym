@@ -3,6 +3,7 @@ import tensorflow as tf
 from btgym.algorithms import BaseAAC
 from .loss import guided_aac_loss_def_0_0, guided_aac_loss_def_0_1, guided_aac_loss_def_0_3
 from btgym.research.verbose_env_runner import VerboseEnvRunnerFn
+from btgym.algorithms.runner.synchro import BaseSynchroRunner
 
 
 class GuidedAAC(BaseAAC):

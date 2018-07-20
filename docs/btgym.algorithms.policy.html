@@ -200,26 +200,28 @@
 <span id="btgym-algorithms-policy-base-module"></span><h1>btgym.algorithms.policy.base module<a class="headerlink" href="#module-btgym.algorithms.policy.base" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="btgym.algorithms.policy.base.BaseAacPolicy">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.policy.base.</code><code class="descname">BaseAacPolicy</code><span class="sig-paren">(</span><em>ob_space</em>, <em>ac_space</em>, <em>rp_sequence_size</em>, <em>lstm_class=&lt;class 'tensorflow.python.ops.rnn_cell_impl.BasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>)</em>, <em>aux_estimate=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy/base.html#BaseAacPolicy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.base.BaseAacPolicy" title="Permalink to this definition">¶</a></dt>
-<dd><p>Base advantage actor-critic Convolution-LSTM policy estimator with auxiliary control tasks.</p>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.policy.base.</code><code class="descname">BaseAacPolicy</code><span class="sig-paren">(</span><em>ob_space</em>, <em>ac_space</em>, <em>rp_sequence_size</em>, <em>lstm_class=&lt;class 'tensorflow.python.ops.rnn_cell_impl.BasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>)</em>, <em>action_dp_alpha=200.0</em>, <em>aux_estimate=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy/base.html#BaseAacPolicy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.base.BaseAacPolicy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base advantage actor-critic Convolution-LSTM policy estimator with auxiliary control tasks for
+discrete or nested discrete action spaces.</p>
 <p>Papers:</p>
 <blockquote>
 <div><a class="reference external" href="https://arxiv.org/abs/1602.01783">https://arxiv.org/abs/1602.01783</a>
 <a class="reference external" href="https://arxiv.org/abs/1611.05397">https://arxiv.org/abs/1611.05397</a></div></blockquote>
 <p>Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,
 reward and state ‘pixel_change’ predictions.
-Expects uni-modal observation as array of shape <cite>ob_space</cite>.</p>
+Expects multi-modal observation as array of shape <cite>ob_space</cite>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>ob_space</strong> – dictionary of observation state shapes</li>
-<li><strong>ac_space</strong> – discrete action space shape (length)</li>
+<li><strong>ob_space</strong> – instance of btgym.spaces.DictSpace</li>
+<li><strong>ac_space</strong> – instance of btgym.spaces.ActionDictSpace</li>
 <li><strong>rp_sequence_size</strong> – reward prediction sample length</li>
 <li><strong>lstm_class</strong> – tf.nn.lstm class</li>
 <li><strong>lstm_layers</strong> – tuple of LSTM layers sizes</li>
-<li><strong>aux_estimate</strong> – (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary.</li>
+<li><strong>aux_estimate</strong> – bool, if True - add auxiliary tasks estimations to self.callbacks dictionary</li>
+<li><strong>time_flat</strong> – bool, if True - use static rnn, dynamic otherwise</li>
 <li><strong>not used</strong> (<em>**kwargs</em>) – </li>
 </ul>
 </td>
@@ -242,7 +244,7 @@ Expects uni-modal observation as array of shape <cite>ob_space</cite>.</p>
 
 <dl class="method">
 <dt id="btgym.algorithms.policy.base.BaseAacPolicy.act">
-<code class="descname">act</code><span class="sig-paren">(</span><em>observation</em>, <em>lstm_state</em>, <em>action_reward</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy/base.html#BaseAacPolicy.act"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.base.BaseAacPolicy.act" title="Permalink to this definition">¶</a></dt>
+<code class="descname">act</code><span class="sig-paren">(</span><em>observation</em>, <em>lstm_state</em>, <em>last_action</em>, <em>last_reward</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy/base.html#BaseAacPolicy.act"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.base.BaseAacPolicy.act" title="Permalink to this definition">¶</a></dt>
 <dd><p>Predicts action.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -251,11 +253,12 @@ Expects uni-modal observation as array of shape <cite>ob_space</cite>.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>observation</strong> – dictionary containing single observation</li>
 <li><strong>lstm_state</strong> – lstm context value</li>
-<li><strong>action_reward</strong> – concatenated last action-reward value</li>
+<li><strong>last_action</strong> – action value from previous step</li>
+<li><strong>last_reward</strong> – reward value previous step</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Action [one-hot], actions logits, V-fn value, output RNN state</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Action as dictionary of several action encodings, actions logits, V-fn value, output RNN state</p>
 </td>
 </tr>
 </tbody>
@@ -264,7 +267,7 @@ Expects uni-modal observation as array of shape <cite>ob_space</cite>.</p>
 
 <dl class="method">
 <dt id="btgym.algorithms.policy.base.BaseAacPolicy.get_value">
-<code class="descname">get_value</code><span class="sig-paren">(</span><em>observation</em>, <em>lstm_state</em>, <em>action_reward</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy/base.html#BaseAacPolicy.get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.base.BaseAacPolicy.get_value" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_value</code><span class="sig-paren">(</span><em>observation</em>, <em>lstm_state</em>, <em>last_action</em>, <em>last_reward</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy/base.html#BaseAacPolicy.get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.base.BaseAacPolicy.get_value" title="Permalink to this definition">¶</a></dt>
 <dd><p>Estimates policy V-function.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -273,7 +276,8 @@ Expects uni-modal observation as array of shape <cite>ob_space</cite>.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>observation</strong> – single observation value</li>
 <li><strong>lstm_state</strong> – lstm context value</li>
-<li><strong>action_reward</strong> – concatenated last action-reward value</li>
+<li><strong>last_action</strong> – action value from previous step</li>
+<li><strong>last_reward</strong> – reward value from previous step</li>
 </ul>
 </td>
 </tr>
@@ -324,7 +328,7 @@ Expects uni-modal observation as array of shape <cite>ob_space</cite>.</p>
 
 <dl class="class">
 <dt id="btgym.algorithms.policy.base.Aac1dPolicy">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.policy.base.</code><code class="descname">Aac1dPolicy</code><span class="sig-paren">(</span><em>ob_space</em>, <em>ac_space</em>, <em>rp_sequence_size</em>, <em>lstm_class=&lt;class 'tensorflow.python.ops.rnn_cell_impl.BasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>)</em>, <em>aux_estimate=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy/base.html#Aac1dPolicy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.base.Aac1dPolicy" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.policy.base.</code><code class="descname">Aac1dPolicy</code><span class="sig-paren">(</span><em>ob_space</em>, <em>ac_space</em>, <em>rp_sequence_size</em>, <em>lstm_class=&lt;class 'tensorflow.python.ops.rnn_cell_impl.BasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>)</em>, <em>action_dp_alpha=200.0</em>, <em>aux_estimate=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy/base.html#Aac1dPolicy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.base.Aac1dPolicy" title="Permalink to this definition">¶</a></dt>
 <dd><p>AAC policy for one-dimensional signal obs. state.</p>
 <p>Defines [partially shared] on/off-policy networks for estimating  action-logits, value function,
 reward and state ‘pixel_change’ predictions.
@@ -353,7 +357,7 @@ Expects bi-modal observation as dict: <cite>external</cite>, <cite>internal</cit
 <span id="btgym-algorithms-policy-stacked-lstm-module"></span><h1>btgym.algorithms.policy.stacked_lstm module<a class="headerlink" href="#module-btgym.algorithms.policy.stacked_lstm" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="btgym.algorithms.policy.stacked_lstm.StackedLstmPolicy">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.policy.stacked_lstm.</code><code class="descname">StackedLstmPolicy</code><span class="sig-paren">(</span><em>ob_space</em>, <em>ac_space</em>, <em>rp_sequence_size</em>, <em>lstm_class_ref=&lt;class 'tensorflow.contrib.rnn.python.ops.rnn_cell.LayerNormBasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>256)</em>, <em>linear_layer_ref=&lt;function linear&gt;</em>, <em>aux_estimate=False</em>, <em>encode_internal_state=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy/stacked_lstm.html#StackedLstmPolicy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.stacked_lstm.StackedLstmPolicy" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.policy.stacked_lstm.</code><code class="descname">StackedLstmPolicy</code><span class="sig-paren">(</span><em>ob_space</em>, <em>ac_space</em>, <em>rp_sequence_size</em>, <em>state_encoder_class_ref=&lt;function conv_2d_network&gt;</em>, <em>lstm_class_ref=&lt;class 'tensorflow.contrib.rnn.python.ops.rnn_cell.LayerNormBasicLSTMCell'&gt;</em>, <em>lstm_layers=(256</em>, <em>256)</em>, <em>linear_layer_ref=&lt;function noisy_linear&gt;</em>, <em>dropout_keep_prob=1.0</em>, <em>action_dp_alpha=200.0</em>, <em>aux_estimate=False</em>, <em>encode_internal_state=False</em>, <em>static_rnn=False</em>, <em>shared_p_v=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/policy/stacked_lstm.html#StackedLstmPolicy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.policy.stacked_lstm.StackedLstmPolicy" title="Permalink to this definition">¶</a></dt>
 <dd><p>Conv.-Stacked_LSTM policy, based on <cite>NAV A3C agent</cite> architecture from</p>
 <p><cite>LEARNING TO NAVIGATE IN COMPLEX ENVIRONMENTS</cite> by Mirowski et all. and</p>
 <p><cite>LEARNING TO REINFORCEMENT LEARN</cite> by JX Wang et all.</p>
@@ -368,13 +372,17 @@ Expects multi-modal observation as array of shape <cite>ob_space</cite>.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>ob_space</strong> – dictionary of observation state shapes</li>
-<li><strong>ac_space</strong> – discrete action space shape (length)</li>
+<li><strong>ob_space</strong> – instance of btgym.spaces.DictSpace</li>
+<li><strong>ac_space</strong> – instance of btgym.spaces.ActionDictSpace</li>
 <li><strong>rp_sequence_size</strong> – reward prediction sample length</li>
 <li><strong>lstm_class_ref</strong> – tf.nn.lstm class to use</li>
 <li><strong>lstm_layers</strong> – tuple of LSTM layers sizes</li>
 <li><strong>linear_layer_ref</strong> – linear layer class to use</li>
-<li><strong>aux_estimate</strong> – (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary.</li>
+<li><strong>dropout_keep_prob</strong> – in (0, 1] dropout regularisation parameter</li>
+<li><strong>action_dp_alpha</strong> – </li>
+<li><strong>aux_estimate</strong> – (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary</li>
+<li><strong>encode_internal_state</strong> – use encoder over ‘internal’ part of observation space</li>
+<li><strong>static_rnn</strong> – (bool), it True - use static rnn graph, dynamic otherwise</li>
 <li><strong>not used</strong> (<em>**kwargs</em>) – </li>
 </ul>
 </td>

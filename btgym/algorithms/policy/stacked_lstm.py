@@ -31,6 +31,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                  lstm_layers=(256, 256),
                  linear_layer_ref=noisy_linear,
                  dropout_keep_prob=1.0,
+                 action_dp_alpha=200.0,
                  aux_estimate=False,
                  encode_internal_state=False,
                  static_rnn=False,
@@ -49,6 +50,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             lstm_layers:            tuple of LSTM layers sizes
             linear_layer_ref:       linear layer class to use
             dropout_keep_prob:      in (0, 1] dropout regularisation parameter
+            action_dp_alpha:
             aux_estimate:           (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary
             encode_internal_state:  use encoder over 'internal' part of observation space
             static_rnn:             (bool), it True - use static rnn graph, dynamic otherwise
@@ -67,6 +69,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.state_encoder_class_ref = state_encoder_class_ref
         self.lstm_class = lstm_class_ref
         self.lstm_layers = lstm_layers
+        self.action_dp_alpha = action_dp_alpha
         self.aux_estimate = aux_estimate
         self.callback = {}
         self.encode_internal_state = encode_internal_state
@@ -84,14 +87,14 @@ class StackedLstmPolicy(BaseAacPolicy):
         # Placeholders for previous step action[multi-categorical vector encoding]  and reward [scalar]:
         self.on_last_a_in = tf.placeholder(
             tf.float32,
-            [None, self.ac_space.tensor_shape[0]],
+            [None, self.ac_space.encoded_depth],
             name='on_policy_last_action_in_pl'
         )
         self.on_last_reward_in = tf.placeholder(tf.float32, [None], name='on_policy_last_reward_in_pl')
 
         self.off_last_a_in = tf.placeholder(
             tf.float32,
-            [None, self.ac_space.tensor_shape[0]],
+            [None, self.ac_space.encoded_depth],
             name='off_policy_last_action_in_pl'
         )
         self.off_last_reward_in = tf.placeholder(tf.float32, [None], name='off_policy_last_reward_in_pl')
@@ -105,6 +108,7 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         self.debug['on_state_in_keys'] = list(self.on_state_in.keys())
 
+        # Dropout related:
         try:
             if self.train_phase is not None:
                 pass
@@ -180,7 +184,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         # TODO: for encoder prediction test, output `naive` estimates for logits and value directly from encoder:
         [self.on_simple_logits, self.on_simple_value, _] = dense_aac_network(
             tf.layers.flatten(on_aac_x),
-            ac_space_depth=self.ac_space.depth,
+            ac_space_depth=self.ac_space.one_hot_depth,
             linear_layer_ref=linear_layer_ref,
             name='aac_dense_simple_pi_v'
         )
@@ -192,11 +196,11 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         on_last_action_in = tf.reshape(
             self.on_last_a_in,
-            [self.on_batch_size, max_seq_len, self.ac_space.tensor_shape[0]]
+            [self.on_batch_size, max_seq_len, self.ac_space.encoded_depth]
         )
-        on_last_reward_in = tf.reshape(self.on_last_reward_in, [self.on_batch_size, max_seq_len, 1])
+        on_last_r_in = tf.reshape(self.on_last_reward_in, [self.on_batch_size, max_seq_len, 1])
 
-        on_aac_x = tf.reshape( on_aac_x, [self.on_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
+        on_aac_x = tf.reshape(on_aac_x, [self.on_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
 
         # Prepare `internal` state, if any:
         if 'internal' in list(self.on_state_in.keys()):
@@ -244,7 +248,7 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         # Feed last last_reward into LSTM_1 layer along with encoded `external` state features and datetime stamp:
         # on_stage2_1_input = [on_aac_x, on_last_action_in, on_last_reward_in] + on_x_dt
-        on_stage2_1_input = [on_aac_x, on_last_reward_in] #+ on_x_dt
+        on_stage2_1_input = [on_aac_x, on_last_r_in] #+ on_x_dt
 
         # Feed last_action, encoded `external` state,  `internal` state, datetime stamp into LSTM_2:
         # on_stage2_2_input = [on_aac_x, on_last_action_in, on_last_reward_in] + on_x_internal + on_x_dt
@@ -288,7 +292,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             # Aac policy output and action-sampling function:
             [self.on_logits, _, self.on_sample] = dense_aac_network(
                 rsh_on_x_lstm_1_out,
-                ac_space_depth=self.ac_space.depth,
+                ac_space_depth=self.ac_space.one_hot_depth,
                 linear_layer_ref=linear_layer_ref,
                 name='aac_dense_pi'
             )
@@ -328,7 +332,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         if shared_p_v:
             [self.on_logits, self.on_vf, self.on_sample] = dense_aac_network(
                 rsh_on_x_lstm_2_out,
-                ac_space_depth=self.ac_space.depth,
+                ac_space_depth=self.ac_space.one_hot_depth,
                 linear_layer_ref=linear_layer_ref,
                 name='aac_dense_pi_vfn'
             )
@@ -337,7 +341,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             # Aac value function:
             [_, self.on_vf, _] = dense_aac_network(
                 rsh_on_x_lstm_2_out,
-                ac_space_depth=self.ac_space.depth,
+                ac_space_depth=self.ac_space.one_hot_depth,
                 linear_layer_ref=linear_layer_ref,
                 name='aac_dense_vfn'
             )
@@ -392,9 +396,9 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         off_last_action_in = tf.reshape(
             self.off_last_a_in,
-            [self.off_batch_size, max_seq_len, self.ac_space.tensor_shape[0]]
+            [self.off_batch_size, max_seq_len, self.ac_space.encoded_depth]
         )
-        off_last_reward_in = tf.reshape(self.off_last_reward_in, [self.off_batch_size, max_seq_len, 1])
+        off_last_r_in = tf.reshape(self.off_last_reward_in, [self.off_batch_size, max_seq_len, 1])
 
         off_aac_x = tf.reshape( off_aac_x, [self.off_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
 
@@ -437,10 +441,10 @@ class StackedLstmPolicy(BaseAacPolicy):
             off_x_dt = []
 
         # off_stage2_1_input = [off_aac_x,  off_last_action_in, off_last_reward_in] + off_x_dt
-        off_stage2_1_input = [off_aac_x, off_last_reward_in] #+ off_x_dt
+        off_stage2_1_input = [off_aac_x, off_last_r_in]  # + off_x_dt
 
         # off_stage2_2_input = [off_aac_x,  off_last_action_in, off_last_reward_in] + off_x_internal + off_x_dt
-        off_stage2_2_input = [off_aac_x,  off_last_action_in] + off_x_internal #+ off_x_dt
+        off_stage2_2_input = [off_aac_x,  off_last_action_in] + off_x_internal  # + off_x_dt
 
         off_aac_x = tf.concat(off_stage2_1_input, axis=-1)
 
@@ -463,7 +467,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             [self.off_logits, _, _] =\
                 dense_aac_network(
                     rsh_off_x_lstm_1_out,
-                    ac_space_depth=self.ac_space.depth,
+                    ac_space_depth=self.ac_space.one_hot_depth,
                     linear_layer_ref=linear_layer_ref,
                     name='aac_dense_pi',
                     reuse=True
@@ -492,7 +496,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         if shared_p_v:
             [self.off_logits, self.off_vf, _] = dense_aac_network(
                 rsh_off_x_lstm_2_out,
-                ac_space_depth=self.ac_space.depth,
+                ac_space_depth=self.ac_space.one_hot_depth,
                 linear_layer_ref=linear_layer_ref,
                 name='aac_dense_pi_vfn',
                 reuse=True
@@ -501,7 +505,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             # Aac value function:
             [_, self.off_vf, _] = dense_aac_network(
                 rsh_off_x_lstm_2_out,
-                ac_space_depth=self.ac_space.depth,
+                ac_space_depth=self.ac_space.one_hot_depth,
                 linear_layer_ref=linear_layer_ref,
                 name='aac_dense_vfn',
                 reuse=True

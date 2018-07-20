@@ -41,7 +41,7 @@ class BTgymBaseStrategy(bt.Strategy):
     server cerebro engine behaviour, including order execution logic etc.
 
     Note:
-        - base class supports single asset iteration via default data_line named 'base_data_line', see derived classes
+        - base class supports single asset iteration via default data_line named 'base_asset', see derived classes
           multi-asset support
         - bt.observers.DrawDown observer will be automatically added to BTgymStrategy instance at runtime.
         - Since it is bt.Strategy subclass, refer to https://www.backtrader.com/docu/strategy.html for more information.
@@ -117,6 +117,11 @@ class BTgymBaseStrategy(bt.Strategy):
                 }
             )
         },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.
         target_call=10,  # finish episode when reaching profit target, in percent.
         dataset_stat=None,  # Summary descriptive statistics for entire dataset and
@@ -134,21 +139,24 @@ class BTgymBaseStrategy(bt.Strategy):
     def __init__(self, **kwargs):
         """
         Keyword Args:
-
             params (dict):          parameters dictionary, see Note below.
 
 
             Notes:
-                Due to backtrader convention, any strategy argsuments should be defined inside `params` dictionary
+                Due to backtrader convention, any strategy arguments should be defined inside `params` dictionary
                 or passed as kwargs to bt.Cerebro() class via .addstrategy() method. Parameter dictionary
                 should contain at least these keys::
 
                     state_shape:        Observation state shape is dictionary of Gym spaces, by convention
                                         first dimension of every Gym Box space is time embedding one;
+                    cash_name:          str, name for cash asset
+                    asset_names:        iterable of str, names for assets
+                    start_cash:         float, broker starting cash
+                    commission:         float, broker commission value, .01 stands for 1%
+                    leverage:           broker leverage, default is 1.0
+                    order_size:         dict of fixed order stakes (floats); keys should match assets names.
                     drawdown_call:      finish episode when hitting this drawdown treshghold , in percent.
                     target_call:        finish episode when reaching this profit target, in percent.
-                    dataset_stat:       summary descriptive statistics for entire dataset. Internal, updated by server.
-                    episode_stat:       summary descriptive statistics for episode. Internal, updated by server.
                     portfolio_actions:  possible agent actions.
                     skip_frame:         number of environment steps to skip before returning next response,
                                         e.g. if set to 10 -- agent will interact with environment every 10th step;
@@ -157,12 +165,18 @@ class BTgymBaseStrategy(bt.Strategy):
                 Default values are::
 
                     state_shape=dict(raw_state=spaces.Box(shape=(4, 4), low=0, high=0,))
+                    cash_name='default_cash'
+                    asset_names=['default_asset']
+                    start_cash=None
+                    commission=None
+                    leverage=1.0
                     drawdown_call=10
                     target_call=10
                     dataset_stat=None
                     episode_stat=None
                     portfolio_actions=('hold', 'buy', 'sell', 'close')
                     skip_frame=1
+                    order_size=None
         """
         try:
             self.time_dim = self.p.state_shape['raw'].shape[0]
@@ -193,6 +207,13 @@ class BTgymBaseStrategy(bt.Strategy):
         # Inherit logger from cerebro:
         self.log = self.env._log
 
+        # Prepare broker:
+        if self.p.start_cash is not None:
+            self.env.broker.setcash(self.p.start_cash)
+
+        if self.p.commission is not None:
+            self.env.broker.setcommission(commission=self.p.commission, leverage=self.p.leverage)
+
         # Normalisation constant for statistics derived from account value:
         self.broker_value_normalizer = 1 / \
             self.env.broker.startingcash / (self.p.drawdown_call + self.p.target_call) * 100
@@ -209,18 +230,19 @@ class BTgymBaseStrategy(bt.Strategy):
                 assert 'stake' in env_sizer_params.keys()
 
             except (AssertionError, KeyError) as e:
-                self.log.warning(
-                    'Sizer stake is not set neither via strategy.param.order_size nor via bt.Cerebro.addsizer() method;\
-                    using defult stake_size=1 fo every data_line.'
-                )
-                env_sizer_params = {'stake': 1}
+                msg = 'Order stake is not set neither via strategy.param.order_size nor via bt.Cerebro.addsizer method.'
+                self.log.error(msg)
+                raise ValueError(msg)
 
-            self.p.order_size = {data._name: env_sizer_params['stake'] for data in self.datas}
+            self.p.order_size = {name: env_sizer_params['stake'] for name in self.p.asset_names}
+
+        elif isinstance(self.p.order_size, int) or isinstance(self.p.order_size, float):
+            unimodal_stake = {name: self.p.order_size for name in self.p.asset_names}
+            self.p.order_size = unimodal_stake
 
         self.trade_just_closed = False
         self.trade_result = 0
 
-        # TODO: brush:
         self.unrealized_pnl = None
         self.norm_broker_value = None
         self.realized_pnl = None
@@ -288,9 +310,6 @@ class BTgymBaseStrategy(bt.Strategy):
         # Here we define collection dictionary looking for methods for estimating state, one method for one mode,
         # should be named .get_[mode_name]_state():
         self.collection_get_state_methods = {}
-
-        # print('self.p.state_shape:\n', self.p.state_shape)
-
         for key in self.p.state_shape.keys():
             try:
                 self.collection_get_state_methods[key] = getattr(self, 'get_{}_state'.format(key))
@@ -298,8 +317,22 @@ class BTgymBaseStrategy(bt.Strategy):
             except AttributeError:
                 raise NotImplementedError('Callable get_{}_state.() not found'.format(key))
 
-        self.log.debug('data[0]_name: {}'.format(self.datas[0]._name))
+        for data in self.datas:
+            self.log.debug('data_name: {}'.format(data._name))
+
         self.log.debug('stake size: {}'.format(self.p.order_size))
+
+        # Define how this strategy should handle actions: either as discrete or continuous:
+        if self.p.portfolio_actions is None or set(self.p.portfolio_actions) == {}:
+            # No discrete actions provided, assume continuous:
+            self.next_process_fn = self._next_target_percent
+            # Disable broker checking margin,
+            # see: https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1
+            self.env.broker.set_checksubmit(False)
+
+        else:
+            # Use discrete handling method otherwise:
+            self.next_process_fn = self._next_discrete
 
     def prenext(self):
         self.update_sliding_stat()
@@ -307,6 +340,23 @@ class BTgymBaseStrategy(bt.Strategy):
     def nextstart(self):
         self.inner_embedding = self.data.close.buflen()
         self.log.debug('Inner time embedding: {}'.format(self.inner_embedding))
+
+    def next(self):
+        """
+        Default implementation for built-in backtrader method.
+        Defines one step environment routine;
+        At least, it should handle order execution logic according to action received.
+        Note that orders can only be submitted for data_lines in action_space (assets).
+        `self.action` attr. is updated by btgym.server._BTgymAnalyzer, and `None` actions
+        are emitted while doing `skip_frame` loop.
+        """
+        if '_skip_this' in self.action.keys():
+                # print('a_skip, b_message: ', self.broker_message)
+                return
+
+        else:
+            self.next_process_fn(self.action)
+            # print('a_process, b_message: ', self.broker_message)
 
     def notify_trade(self, trade):
         if trade.isclosed:
@@ -412,28 +462,6 @@ class BTgymBaseStrategy(bt.Strategy):
         stat['reward'].append(self.reward)
 
         #print(stat['episode_step'])
-
-    # def action_one_hot(self, action):
-    #     """
-    #     Returns one-hot encoding for action.
-    #     """
-    #     try:
-    #         one_hot = np.zeros(len(self.p.portfolio_actions))
-    #         one_hot[self.p.portfolio_actions.index(action)] = 1
-    #         return one_hot
-    #
-    #     except ValueError:
-    #         raise ValueError('Got action: <{}>, expected: <{}> '.format(self.action, self.p.portfolio_actions))
-    #
-    # def action_norm(self, action):
-    #     """
-    #     Returns normalized in [0,1] real-valued encoding for action.
-    #     """
-    #     try:
-    #         return self.p.portfolio_actions.index(action) / (len(self.p.portfolio_actions) - 1)
-    #
-    #     except ValueError:
-    #         raise ValueError('Got action: <{}>, expected: <{}> '.format(self.action, self.p.portfolio_actions))
 
     def set_datalines(self):
         """
@@ -659,52 +687,47 @@ class BTgymBaseStrategy(bt.Strategy):
             self.broker_message = 'ORDER FAILED with status: ' + str(order.getstatusname())
             # Rise order_failed flag until get_reward() will [hopefully] use and reset it:
             self.order_failed += 1
+
         self.order = None
 
-    # def next(self):
-    #     """
-    #     Default implementation.
-    #     Defines one step environment routine for server 'Episode mode';
-    #     At least, it should handle order execution logic according to action received.
-    #     """
-    #
-    #     self.log.warning('action: {}'.format(self.action))
-    #
-    #     # Simple action-to-order logic:
-    #     if self.action == 'hold' or self.order or self.is_done_enabled:
-    #         pass
-    #     elif self.action == 'buy':
-    #         self.order = self.buy()
-    #         self.broker_message = 'New BUY created; ' + self.broker_message
-    #     elif self.action == 'sell':
-    #         self.order = self.sell()
-    #         self.broker_message = 'New SELL created; ' + self.broker_message
-    #     elif self.action == 'close':
-    #         self.order = self.close()
-    #         self.broker_message = 'New CLOSE created; ' + self.broker_message
-    #
-    #     #print('next_call, iteration:', self.iteration)
+    def _next_discrete(self, action):
+        """
+        Default implementation for discrete actions.
+        Note that orders can be submitted only for data_lines in action_space (assets).
 
-    def next(self):
+        Args:
+            action:     dict, string encoding of btgym.spaces.ActionDictSpace
+
         """
-        Default implementation.
-        Defines one step environment routine for server 'Episode mode';
-        At least, it should handle order execution logic according to action received.
-        Multiply data lines/action space are supported.
-        """
-        for key, action in self.action.items():
+        for key, single_action in action.items():
             # Simple action-to-order logic:
-            if action == 'hold' or self.is_done_enabled:
+            if single_action == 'hold' or self.is_done_enabled:
                 pass
-            elif action == 'buy':
+            elif single_action == 'buy':
                 self.order = self.buy(data=key, size=self.p.order_size[key])
                 self.broker_message = 'new {}_BUY created; '.format(key) + self.broker_message
-            elif action == 'sell':
+            elif single_action == 'sell':
                 self.order = self.sell(data=key, size=self.p.order_size[key])
                 self.broker_message = 'new {}_SELL created; '.format(key) + self.broker_message
-            elif action == 'close':
+            elif single_action == 'close':
                 self.order = self.close(data=key)
                 self.broker_message = 'new {}_CLOSE created; '.format(key) + self.broker_message
 
         # Somewhere after this point, server-side _BTgymAnalyzer() is exchanging information with environment wrapper,
         # obtaining <self.action> , composing and sending <state,reward,done,info> etc... never mind.
+
+    def _next_target_percent(self, action):
+        """
+        Uses `order_target_percent` method to rebalance assets to given ratios. Expects action for every asset to be
+        a float scalar in [0,1], with actions sum to 1 over all assets (including base one).
+        Note that action for base asset (cash) is ignored.
+        For details refer to: https://www.backtrader.com/docu/order_target/order_target.html
+        """
+        # TODO 1: filter similar actions to prevent excessive orders issue e.g by DKL on two consecutive ones
+        # TODO 2: actions discretesation on level of execution
+        for asset in self.p.asset_names:
+                # Reducing assets positions subj to 5% margin reserve:
+                single_action = round(float(action[asset]) * 0.9, 2)
+                self.order = self.order_target_percent(data=asset, target=single_action )
+                self.broker_message += ' new {}->{:1.0f}% created; '.format(asset, single_action * 100)
+

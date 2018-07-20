@@ -98,6 +98,11 @@ class DevStrat_4_6(BTgymBaseStrategy):
                     }
                 )
             },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
@@ -302,6 +307,11 @@ class DevStrat_4_7(DevStrat_4_6):
                 }
             )
         },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
@@ -485,6 +495,11 @@ class DevStrat_4_8(DevStrat_4_7):
                 }
             )
         },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
@@ -600,6 +615,11 @@ class DevStrat_4_9(DevStrat_4_7):
                 }
             )
         },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
@@ -818,6 +838,11 @@ class DevStrat_4_11(DevStrat_4_10):
                 }
             )
         },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
@@ -956,6 +981,11 @@ class DevStrat_4_12(DevStrat_4_11):
                 }
             )
         },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,

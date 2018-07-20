@@ -22,8 +22,9 @@ from gym import spaces
 
 from collections import OrderedDict
 from itertools import product
+from math import log2, ceil
 
-from numpy import asarray
+from numpy import asarray, squeeze, zeros
 
 
 class DictSpace(spaces.Dict):
@@ -47,6 +48,7 @@ class DictSpace(spaces.Dict):
 
 class ActionDictSpace(DictSpace):
     """
+    Extension of OpenAI Gym DictSpace providing additional domain-specific functionality.
     Action space for btgym environments as shallow dictionary of discrete or continuous spaces.
     Defines several handy attributes and encoding conversion methods.
     """
@@ -61,33 +63,128 @@ class ActionDictSpace(DictSpace):
         """
         self.assets = tuple(sorted(assets))
         if base_actions is not None:
+            # Discrete base actions provided, will use binary encoding for encode/decode methods
             self.base_actions = tuple(base_actions)
             self.base_actions_lookup_table = dict(list(enumerate(self.base_actions)))
             self.base_space = spaces.Discrete
+            self.is_discrete = True
             self.tensor_shape = (len(self.assets), len(self.base_actions))
-            self.lookup_table = self.make_lookup_table(
+            self.lookup_table = self._make_lookup_table(
                 base_actions=list(self.base_actions_lookup_table.keys()),
                 num_assets=len(self.assets)
             )
+            # Infer binary code length (depth):
             self.cardinality = len(list(self.lookup_table.keys()))
-            self.depth = self.cardinality
+            self.encoded_depth = ceil(log2(self.cardinality))
+            self.one_hot_depth = self.cardinality
             spaces_dict = {key: spaces.Discrete(self.tensor_shape[-1]) for key in self.assets}
 
+            self.encode_method = self._action_to_binary
+            self.decode_method = self._binary_to_action
+            self.one_hot_encode_method = self._to_one_hot
+            self.one_hot_decode_method = None
+
         else:
+            # Using continuous base actions,
+            # encoding will be simply making 1D array out of shallow dictionary and back:
             self.base_actions = None
             self.base_actions_lookup_table = None
             self.base_space = spaces.Box
+            self.is_discrete = False
             self.tensor_shape = (len(self.assets), 1)
             self.lookup_table = None
-            self.cardinality = None
-            self.depth = self.tensor_shape[0]
+            self.cardinality = None  # ~inf.
+            self.encoded_depth = self.tensor_shape[0]
+            self.one_hot_depth = self.tensor_shape[0]
             spaces_dict = {
                 key: spaces.Box(low=0, high=1, shape=(self.tensor_shape[-1],), dtype='float32') for key in self.assets
             }
+
+            # For continuous space encoding is simple:
+            self.encode_method = self._action_to_vec
+            self.decode_method = self._vec_to_action
+            self.one_hot_encode_method = self._action_to_vec
+            self.one_hot_decode_method = None
+
         super(ActionDictSpace, self).__init__(spaces_dict)
 
+    def get_initial_action(self):
+        """
+
+        Returns:
+            'do nothing' action as OrderedDict (for discrete spaces)
+            'put all in cash' action as OrderedDict (for continuous actions)
+        """
+        raise NotImplementedError
+
+    def encode(self, action):
+        """
+        Given action returns it's encoding.
+        Encoding method depends on type of base actions:
+        - if base actions defined are discrete (gym.spaces.Discrete), binary encoding is used;
+        - if base actions defined are continuous(gym.spaces.Box),
+          encoding is translating shallow dictionary to vector of same values and back
+
+        Args:
+            action:     action from this space (shallow dictionary)
+
+        Returns:
+                1D array of floats in [0, 1]
+        """
+        return self.encode_method(action)
+
+    def decode(self, code):
+        """
+        Given code returns action.
+        Encoding method depends on type of base actions:
+        - if base actions defined are discrete (gym.spaces.Discrete), binary encoding is used;
+        - if base actions defined are continuous(gym.spaces.Box),
+          encoding is translating shallow dictionary to vector of same values and back
+
+        Args:
+            code:     1D array of floats in [0, 1]
+
+        Returns:
+                action from this space (shallow dictionary)
+        """
+        return self.decode_method(code)
+
+    def one_hot_encode(self, action):
+        """
+        Given action returns it's encoding.
+        Encoding method depends on type of base actions:
+        - if base actions defined are discrete (gym.spaces.Discrete), one_hot encoding is used;
+        - if base actions defined are continuous(gym.spaces.Box),
+          encoding is translating shallow dictionary to vector of same values and back
+
+        Args:
+            action:     action from this space (shallow dictionary)
+
+        Returns:
+                1D array of floats in [0, 1]
+        """
+        return self.one_hot_encode_method(action)
+
+    def one_hot_decode(self, code):
+        raise NotImplementedError
+
+    def _to_one_hot(self, action):
+        cat = self._vec_to_cat(self._action_to_vec(action))
+        one_hot = zeros(self.one_hot_depth)
+        one_hot[cat] = 1
+        return squeeze(one_hot)
+
+    def _vec_to_one_hot(self, vec):
+        if self.cardinality is None:
+            return vec
+
+        else:
+            one_hot = zeros(self.one_hot_depth)
+            one_hot[self._vec_to_cat(vec)] = 1
+            return squeeze(one_hot)
+
     @staticmethod
-    def make_lookup_table(base_actions, num_assets):
+    def _make_lookup_table(base_actions, num_assets):
         """
         Creates lookup table for set of environment actions for K assets
         and N base actions as a cartesian product of K sets of N elements each.
@@ -101,7 +198,40 @@ class ActionDictSpace(DictSpace):
         """
         return dict(list(enumerate(product(list(base_actions), repeat=num_assets))))
 
-    def action_to_vec(self, action):
+    def _action_to_binary(self, action):
+        """
+        Given action returns it binary encoding
+
+        Args:
+            action:     action from this space (shallow dictionary)
+
+        Returns:
+            1D numpy array of floats in [0, 1]
+        """
+        cat = self._vec_to_cat(self._action_to_vec(action))
+        bit_string = format(cat, 'b').zfill(self.encoded_depth)
+        bit_array = asarray(list(bit_string), dtype='float')
+        return bit_array
+
+    def _binary_to_action(self, binary_code):
+        """
+        Given binary action encoding, returns action
+
+        Args:
+            binary_code: 1D array of ints or floats in [0, 1]
+
+        Returns:
+            action from action space
+        """
+        assert len(binary_code.shape) <= 1, \
+            'Only 1D code vectors are supported, got array of shape: {}'.format(binary_code.shape)
+        bit_string = ''
+        for bit in list(binary_code.astype(int)):
+            bit_string += str(bit)
+        cat = int(bit_string, 2)
+        return self._vec_to_action(self._cat_to_vec(cat))
+
+    def _action_to_vec(self, action):
         """
         Given action returns its vector encoding.
 
@@ -112,9 +242,15 @@ class ActionDictSpace(DictSpace):
             numpy array
         """
         assert self.contains(action), 'Action {} does not belongs to this space'.format(action)
-        return asarray([action[key] for key in self.assets])
 
-    def vec_to_action(self, vector):
+        if self.is_discrete:
+            return asarray([action[key] for key in self.assets])
+
+        else:
+
+            return asarray([action[key] for key in self.assets])[..., 0]
+
+    def _vec_to_action(self, vector):
         """
         Given vector encoding of an action returns action from this space.
 
@@ -126,16 +262,19 @@ class ActionDictSpace(DictSpace):
         """
         assert len(vector) == len(self.assets), \
             'Length of encoding and number of assets should match, got: {} / {}'.format(len(vector), len(self.assets))
+        if self.cardinality is None:
+            action = OrderedDict([(asset, asarray([value])) for asset, value in zip(self.assets, vector)])
 
-        action = OrderedDict([(asset, value) for asset, value in zip(self.assets, vector)])
+        else:
+            action = OrderedDict([(asset, value) for asset, value in zip(self.assets, vector)])
 
         assert self.contains(action), 'Vector {} can not be converted to action of this space'.format(vector)
         return action
 
-    def vec_to_cat(self, action):
+    def _vec_to_cat(self, action):
         """
         Given action vector returns it's position (categorical encoding).
-        Only for dictionary of discrete base spaces.
+        Valid for dictionary of discrete base spaces only.
 
         Args:
             action:     environment action as tuple, list or array of base asset cations
@@ -153,10 +292,10 @@ class ActionDictSpace(DictSpace):
                 return key
         raise ValueError('Action vector {} is not in lookup table of this space.'.format(action))
 
-    def cat_to_vec(self, category):
+    def _cat_to_vec(self, category):
         """
         Given integer as categorical encoding returns corresponding env. action vector.
-        Only for dictionary of discrete base spaces.
+        Valid for dictionary of discrete base spaces only.
 
         Args:
             category:   int, encoding
@@ -177,8 +316,9 @@ class ActionDictSpace(DictSpace):
             raise ValueError('Category {} does not match action space.'.format(category))
 
 
-class _DictSpace(Space):
+class __DictSpace(Space):
     """
+    DEPRECATED
     Defines space as nested dictionary of simpler gym spaces.
 
     """

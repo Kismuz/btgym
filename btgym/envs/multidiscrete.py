@@ -19,14 +19,8 @@
 
 from logbook import Logger, StreamHandler, WARNING, NOTICE, INFO, DEBUG
 import sys
-import time
-import zmq
-import os
-import itertools
-import copy
 import numpy as np
 
-from gym import spaces
 import backtrader as bt
 
 from btgym import BTgymRendering, DictSpace, ActionDictSpace
@@ -43,7 +37,7 @@ class MultiDiscreteEnv(BTgymEnv):
 
     Multi-asset setup explanation:
 
-        1. This environment expects Dataset to be instance of btgym.datafeed.multi.BTgymMultiData, which sets
+        1. This environment expects Dataset to be instance of `btgym.datafeed.multi.BTgymMultiData`, which sets
         number,  specifications and sampling synchronisation for historic data for all assets
         one want to trade jointly.
 
@@ -52,16 +46,16 @@ class MultiDiscreteEnv(BTgymEnv):
         expected to properly handle all received data-lines.
 
         3. btgym.spaces.ActionDictSpace and order execution. Strategy expects to receive separate action
-        for every asset in form of dictionary: {data_line_name_1: action, ..., data_line_name_K: action}
+        for every asset in form of dictionary: `{data_line_name_1: action, ..., data_line_name_K: action}`
         for K assets added, and issues orders for all assets within a single strategy step.
         TODO: refine order execution control, see: https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1
         It is supposed that actions are discrete [for this environment] and same for every asset.
         Base actions are set by strategy.params.portfolio_actions, default is: ('hold', 'buy', 'sell', 'close') which
-        equals to gym.spaces.Discrete with depth N=4 (~number of actions: 0, 1, 2, 3). That is, for K assets environment
-        action space will be a shallow dictionary (DictSpace) of discrete spaces:
-        {data_line_name_1: gym.spaces.Discrete(N), ..., data_line_name_K: gym.spaces.Discrete(N)}
+        equals to `gym.spaces.Discrete` with depth `N=4 (~number of actions: 0, 1, 2, 3)`. That is, for `K` assets environment
+        action space will be a shallow dictionary `(DictSpace)` of discrete spaces:
+        `{data_line_name_1: gym.spaces.Discrete(N), ..., data_line_name_K: gym.spaces.Discrete(N)}`
 
-            Example:
+            Example::
 
                 if datalines added via BTgymMultiData are: ['eurchf', 'eurgbp', 'eurgpy', 'eurusd'],
                 and base asset actions are ['hold', 'buy', 'sell', 'close'], than:
@@ -92,31 +86,31 @@ class MultiDiscreteEnv(BTgymEnv):
                 vector of integers (categorical):
                     (0, 1, 0, 3)
 
-        4. Environment actions cardinality and encoding. Note that total set of environment actions for K assets
-        and N base actions is a cartesian product of K sets of N elements each. It can be encoded as vector of integers,
-        single scalar or one-hot. As cardinality skyrockets with K, this `multi-discrete' action setup is only suited
+        4. Environment actions cardinality and encoding. Note that total set of environment actions for `K` assets
+        and `N` base actions is a `cartesian product of K sets of N elements each`. It can be encoded as `vector of integers,
+        single scalar, binary or one_hot`. As cardinality skyrockets with `K`, `multi-discrete` action setup is only suited
         for small number of assets.
 
-            Example:
+            Example::
 
                 Setup with 4 assets and 4 base actions [hold, buy, sell, close] spawns total of 256 possible
-                environment actions expressed by single integer in [0, 255] or 256-depth one-hot encoding:
-                    vector str :                            vector int:     int:   one_hot:
-                    ('hold', 'hold', 'hold', 'hold')     -> (0, 0, 0, 0) -> 0   -> 000.....0
-                    ('hold', 'hold', 'hold', 'buy')      -> (0, 0, 0, 1) -> 1   -> 010.....0
+                environment actions expressed by single integer in [0, 255] or binary encoding:
+                    vector str :                            vector:         int:   binary:
+                    ('hold', 'hold', 'hold', 'hold')     -> (0, 0, 0, 0) -> 0   -> 00000000
+                    ('hold', 'hold', 'hold', 'buy')      -> (0, 0, 0, 1) -> 1   -> 00000001
                     ...         ...         ...
-                    ('close', 'close', 'close', 'sell')  -> (3, 3, 3, 2) -> 254 -> 0.....010
-                    ('close', 'close', 'close', 'close') -> (3, 3, 3, 3) -> 255 -> 0.....001
+                    ('close', 'close', 'close', 'sell')  -> (3, 3, 3, 2) -> 254 -> 11111110
+                    ('close', 'close', 'close', 'close') -> (3, 3, 3, 3) -> 255 -> 11111111
 
-        On algorithms side, there is some weirdness with encodings as we jump forth and back between
-        dictionary of categorical encodings, vector of categorical encodings, integer action number and one-hot encoding.
-        As a rule, environment and strategy operates with dictionary of either string name of action or integer
-        encodings while algorithm policy operates with either vector of cat. encodings or one-hot encoding.
+        Internally there is some weirdness with encodings as we jump forth and back between
+        dictionary of names or categorical encodings and binary encoding or one-hot encoding.
+        As a rule: strategy operates with dictionary of string names of actions, environment sees action as dictionary
+        of integer numbers while policy estimator operates with either binary or one-hot encoding.
 
         5. Observation space: is nested DictSpace, where 'external' part part of space should hold specifications for
         every asset added.
 
-            Example:
+            Example::
 
                 if datalines added via BTgymMultiData are:
                     'eurchf', 'eurgbp', 'eurgpy', 'eurusd';
@@ -136,9 +130,8 @@ class MultiDiscreteEnv(BTgymEnv):
                     'datetime': spaces.Box(...),
                     'metadata': DictSpace(...)
                 }
-                refer to strategies declarations for full code.
 
-        6. Action space [multi-continious]: NotImplementedYet
+                refer to strategies declarations for full code.
     """
 
     # Datafeed Server management:
@@ -190,17 +183,21 @@ class MultiDiscreteEnv(BTgymEnv):
     verbose = 0  # verbosity mode, valid only if no `log_level` arg has been provided:
     # 0 - WARNING, 1 - INFO, 2 - DEBUG.
     task = 0
+    asset_names = ('default_asset',)
+    data_lines_names = ('default_asset',)
+    cash_name = 'default_cash'
 
     closed = True
 
-    def __init__(self, dataset, engine,  **kwargs):
+    def __init__(self, engine, dataset=None, **kwargs):
         """
         This class requires dataset, strategy, engine instances to be passed explicitly.
 
         Args:
-
             dataset(btgym.datafeed):                        BTgymDataDomain instance;
             engine(bt.Cerebro):                             environment simulation engine, any bt.Cerebro subclass,
+
+        Keyword Args:
             network_address=`tcp://127.0.0.1:` (str):       BTGym_server address.
             port=5500 (int):                                network port to use for server - API_shell communication.
             data_master=True (bool):                        let this environment control over data_server;
@@ -245,7 +242,7 @@ class MultiDiscreteEnv(BTgymEnv):
                 for key, value in log_levels:
                     if key == self.verbose:
                         self.log_level = value
-            self.log = Logger('BTgymMultiAssetShell_{}'.format(self.task), level=self.log_level)
+            self.log = Logger('BTgymMultiDataShell_{}'.format(self.task), level=self.log_level)
 
         # Network parameters:
         self.network_address += str(self.port)
@@ -268,15 +265,15 @@ class MultiDiscreteEnv(BTgymEnv):
             if key in kwargs.keys():
                 _ = kwargs.pop(key)
 
-        # We require dataset instance to have `data_config` attribute to infer assets names:
-        try:
-            self.assets = [key for key in self.dataset.data_config.keys()]
-
-        except AttributeError:
-            self.log.error('`data_config` attribute for dataset instance passed not found, cannot infer assets config.')
-            raise AttributeError()
-
         if self.data_master:
+            try:
+                assert self.dataset is not None
+
+            except AssertionError:
+                msg = 'Dataset instance shoud be provided for data_master environment.'
+                self.log.error(msg)
+                raise ValueError(msg)
+
             # Append logging:
             self.dataset.set_logger(self.log_level, self.task)
 
@@ -290,6 +287,7 @@ class MultiDiscreteEnv(BTgymEnv):
         self.log.info('Connecting data_server...')
         self._start_data_server()
         self.log.info('...done.')
+        # After starting data-server we have self.assets attribute, dataset statisitc etc. filled.
 
         # Define observation space shape, minimum / maximum values and agent action space.
         # Retrieve values from configured engine or...
@@ -303,10 +301,22 @@ class MultiDiscreteEnv(BTgymEnv):
         for key, value in self.engine.strats[0][0][2].items():
             self.params['strategy'][key] = value
 
-        self.server_actions = {name: self.params['strategy']['portfolio_actions'] for name in self.assets}
+        self.asset_names = self.params['strategy']['asset_names']
+        self.server_actions = {name: self.params['strategy']['portfolio_actions'] for name in self.asset_names}
+        self.cash_name = self.params['strategy']['cash_name']
 
         self.params['strategy']['initial_action'] = self.get_initial_action()
         self.params['strategy']['initial_portfolio_action'] = self.get_initial_portfolio_action()
+
+        try:
+            assert set(self.asset_names).issubset(set(self.data_lines_names))
+
+        except AssertionError:
+            msg = 'Assets names should be subset of data_lines names, but got: assets: {}, data_lines: {}'.format(
+                set(self.asset_names), set(self.data_lines_names)
+            )
+            self.log.error(msg)
+            raise ValueError(msg)
 
         # ... Push it all back (don't ask):
         for key, value in self.params['strategy'].items():
@@ -345,7 +355,7 @@ class MultiDiscreteEnv(BTgymEnv):
         # Set action space and corresponding server messages:
         self.action_space = ActionDictSpace(
             base_actions=self.params['strategy']['portfolio_actions'],
-            assets=self.assets
+            assets=self.asset_names
         )
 
         self.log.debug('Act. space shape: {}'.format(self.action_space.spaces))
@@ -360,61 +370,3 @@ class MultiDiscreteEnv(BTgymEnv):
 
         self.log.info('Environment is ready.')
 
-    def get_initial_action(self):
-        return {key: 0 for key in self.assets}
-
-    def get_initial_portfolio_action(self):
-        return {key: self.server_actions[key][0] for key in self.assets}
-
-    def step(self, action):
-        """
-        Implementation of OpenAI Gym env.step() method.
-        Makes a step in the environment.
-
-        Args:
-            action:     int or dict, action compatible to env.action_space
-
-        Returns:
-            tuple (Observation, Reward, Info, Done)
-
-        """
-        # If we got int as action - try to treat it as an action for single-valued action space dict:
-        if isinstance(action, int) and len(list(self.action_space.spaces.keys())) == 1:
-            a = copy.deepcopy(action)
-            action = {key: a for key in self.action_space.spaces.keys()}
-
-        # Are you in the list, ready to go and all that?
-        if self.action_space.contains(action)\
-            and not self._closed\
-            and (self.socket is not None)\
-            and not self.socket.closed:
-            pass
-
-        else:
-            msg = (
-                '\nAt least one of these is true:\n' +
-                'Action error: (space is {}, action sent is {}): {}\n' +
-                'Environment closed: {}\n' +
-                'Network error [socket doesnt exists or closed]: {}\n' +
-                'Hint: forgot to call reset()?'
-            ).format(
-                self.action_space, action, not self.action_space.contains(action),
-                self._closed,
-                not self.socket or self.socket.closed,
-            )
-            self.log.exception(msg)
-            raise AssertionError(msg)
-
-        # Send action (as dict of strings) to backtrader engine, receive environment response:
-        env_response = self._comm_with_timeout(
-            socket=self.socket,
-            message={'action': {key: self.server_actions[key][value] for key, value in action.items()}}
-        )
-        if not env_response['status'] in 'ok':
-            msg = '.step(): server unreachable with status: <{}>.'.format(env_response['status'])
-            self.log.error(msg)
-            raise ConnectionError(msg)
-
-        self.env_response = env_response ['message']
-
-        return self.env_response

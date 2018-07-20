@@ -191,12 +191,14 @@
 <em class="property">class </em><code class="descclassname">btgym.strategy.base.</code><code class="descname">BTgymBaseStrategy</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy" title="Permalink to this definition">¶</a></dt>
 <dd><p>Controls Environment inner dynamics and backtesting logic. Provides gym’my (State, Action, Reward, Done, Info) data.
 Any State, Reward and Info computation logic can be implemented by subclassing BTgymStrategy and overriding
-get_state(), get_reward(), get_info(), is_done() and set_datalines() methods.
+get_[mode]_state(), get_reward(), get_info(), is_done() and set_datalines() methods.
 One can always go deeper and override __init__ () and next() methods for desired
 server cerebro engine behaviour, including order execution logic etc.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <ul class="last simple">
+<li>base class supports single asset iteration via default data_line named ‘base_asset’, see derived classes
+multi-asset support</li>
 <li>bt.observers.DrawDown observer will be automatically added to BTgymStrategy instance at runtime.</li>
 <li>Since it is bt.Strategy subclass, refer to <a class="reference external" href="https://www.backtrader.com/docu/strategy.html">https://www.backtrader.com/docu/strategy.html</a> for more information.</li>
 </ul>
@@ -209,15 +211,19 @@ server cerebro engine behaviour, including order execution logic etc.</p>
 <tr class="field-odd field"><td>&#160;</td><td class="field-body"><ul class="first last">
 <li><p class="first"><strong>params</strong> (<em>dict</em>) – parameters dictionary, see Note below.</p>
 </li>
-<li><p class="first"><strong>Notes</strong> – Due to backtrader convention, any strategy argsuments should be defined inside <cite>params</cite> dictionary
+<li><p class="first"><strong>Notes</strong> – Due to backtrader convention, any strategy arguments should be defined inside <cite>params</cite> dictionary
 or passed as kwargs to bt.Cerebro() class via .addstrategy() method. Parameter dictionary
 should contain at least these keys:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">state_shape</span><span class="p">:</span>        <span class="n">Observation</span> <span class="n">state</span> <span class="n">shape</span> <span class="ow">is</span> <span class="n">dictionary</span> <span class="n">of</span> <span class="n">Gym</span> <span class="n">spaces</span><span class="p">,</span> <span class="n">by</span> <span class="n">convention</span>
                     <span class="n">first</span> <span class="n">dimension</span> <span class="n">of</span> <span class="n">every</span> <span class="n">Gym</span> <span class="n">Box</span> <span class="n">space</span> <span class="ow">is</span> <span class="n">time</span> <span class="n">embedding</span> <span class="n">one</span><span class="p">;</span>
+<span class="n">cash_name</span><span class="p">:</span>          <span class="nb">str</span><span class="p">,</span> <span class="n">name</span> <span class="k">for</span> <span class="n">cash</span> <span class="n">asset</span>
+<span class="n">asset_names</span><span class="p">:</span>        <span class="n">iterable</span> <span class="n">of</span> <span class="nb">str</span><span class="p">,</span> <span class="n">names</span> <span class="k">for</span> <span class="n">assets</span>
+<span class="n">start_cash</span><span class="p">:</span>         <span class="nb">float</span><span class="p">,</span> <span class="n">broker</span> <span class="n">starting</span> <span class="n">cash</span>
+<span class="n">commission</span><span class="p">:</span>         <span class="nb">float</span><span class="p">,</span> <span class="n">broker</span> <span class="n">commission</span> <span class="n">value</span><span class="p">,</span> <span class="o">.</span><span class="mi">01</span> <span class="n">stands</span> <span class="k">for</span> <span class="mi">1</span><span class="o">%</span>
+<span class="n">leverage</span><span class="p">:</span>           <span class="n">broker</span> <span class="n">leverage</span><span class="p">,</span> <span class="n">default</span> <span class="ow">is</span> <span class="mf">1.0</span>
+<span class="n">order_size</span><span class="p">:</span>         <span class="nb">dict</span> <span class="n">of</span> <span class="n">fixed</span> <span class="n">order</span> <span class="n">stakes</span> <span class="p">(</span><span class="n">floats</span><span class="p">);</span> <span class="n">keys</span> <span class="n">should</span> <span class="n">match</span> <span class="n">assets</span> <span class="n">names</span><span class="o">.</span>
 <span class="n">drawdown_call</span><span class="p">:</span>      <span class="n">finish</span> <span class="n">episode</span> <span class="n">when</span> <span class="n">hitting</span> <span class="n">this</span> <span class="n">drawdown</span> <span class="n">treshghold</span> <span class="p">,</span> <span class="ow">in</span> <span class="n">percent</span><span class="o">.</span>
 <span class="n">target_call</span><span class="p">:</span>        <span class="n">finish</span> <span class="n">episode</span> <span class="n">when</span> <span class="n">reaching</span> <span class="n">this</span> <span class="n">profit</span> <span class="n">target</span><span class="p">,</span> <span class="ow">in</span> <span class="n">percent</span><span class="o">.</span>
-<span class="n">dataset_stat</span><span class="p">:</span>       <span class="n">summary</span> <span class="n">descriptive</span> <span class="n">statistics</span> <span class="k">for</span> <span class="n">entire</span> <span class="n">dataset</span><span class="o">.</span> <span class="n">Internal</span><span class="p">,</span> <span class="n">updated</span> <span class="n">by</span> <span class="n">server</span><span class="o">.</span>
-<span class="n">episode_stat</span><span class="p">:</span>       <span class="n">summary</span> <span class="n">descriptive</span> <span class="n">statistics</span> <span class="k">for</span> <span class="n">episode</span><span class="o">.</span> <span class="n">Internal</span><span class="p">,</span> <span class="n">updated</span> <span class="n">by</span> <span class="n">server</span><span class="o">.</span>
 <span class="n">portfolio_actions</span><span class="p">:</span>  <span class="n">possible</span> <span class="n">agent</span> <span class="n">actions</span><span class="o">.</span>
 <span class="n">skip_frame</span><span class="p">:</span>         <span class="n">number</span> <span class="n">of</span> <span class="n">environment</span> <span class="n">steps</span> <span class="n">to</span> <span class="n">skip</span> <span class="n">before</span> <span class="n">returning</span> <span class="nb">next</span> <span class="n">response</span><span class="p">,</span>
                     <span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span> <span class="k">if</span> <span class="nb">set</span> <span class="n">to</span> <span class="mi">10</span> <span class="o">--</span> <span class="n">agent</span> <span class="n">will</span> <span class="n">interact</span> <span class="k">with</span> <span class="n">environment</span> <span class="n">every</span> <span class="mi">10</span><span class="n">th</span> <span class="n">step</span><span class="p">;</span>
@@ -226,12 +232,18 @@ should contain at least these keys:</p>
 </div>
 <p>Default values are:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">state_shape</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">raw_state</span><span class="o">=</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">0</span><span class="p">,))</span>
+<span class="n">cash_name</span><span class="o">=</span><span class="s1">&#39;default_cash&#39;</span>
+<span class="n">asset_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;default_asset&#39;</span><span class="p">]</span>
+<span class="n">start_cash</span><span class="o">=</span><span class="kc">None</span>
+<span class="n">commission</span><span class="o">=</span><span class="kc">None</span>
+<span class="n">leverage</span><span class="o">=</span><span class="mf">1.0</span>
 <span class="n">drawdown_call</span><span class="o">=</span><span class="mi">10</span>
 <span class="n">target_call</span><span class="o">=</span><span class="mi">10</span>
 <span class="n">dataset_stat</span><span class="o">=</span><span class="kc">None</span>
 <span class="n">episode_stat</span><span class="o">=</span><span class="kc">None</span>
 <span class="n">portfolio_actions</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;buy&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">)</span>
 <span class="n">skip_frame</span><span class="o">=</span><span class="mi">1</span>
+<span class="n">order_size</span><span class="o">=</span><span class="kc">None</span>
 </pre></div>
 </div>
 </li>
@@ -240,6 +252,17 @@ should contain at least these keys:</p>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.next">
+<code class="descname">next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.next" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default implementation for built-in backtrader method.
+Defines one step environment routine;
+At least, it should handle order execution logic according to action received.
+Note that orders can only be submitted for data_lines in action_space (assets).
+<cite>self.action</cite> attr. is updated by btgym.server._BTgymAnalyzer, and <cite>None</cite> actions
+are emitted while doing <cite>skip_frame</cite> loop.</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="btgym.strategy.base.BTgymBaseStrategy.update_sliding_stat">
 <code class="descname">update_sliding_stat</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.update_sliding_stat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.update_sliding_stat" title="Permalink to this definition">¶</a></dt>
@@ -255,23 +278,11 @@ should contain at least these keys:</p>
 <li>normalized profit/loss for current opened trade (unrealized p/l);</li>
 <li>normalized best possible up to present point unrealized result for current opened trade;</li>
 <li>normalized worst possible up to present point unrealized result for current opened trade;</li>
-<li>one hot encoding for actions received;</li>
+<li>DELETED: one hot encoding for actions received;</li>
 <li>rewards received (based on self.reward variable values);</li>
 </ul>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.strategy.base.BTgymBaseStrategy.action_one_hot">
-<code class="descname">action_one_hot</code><span class="sig-paren">(</span><em>action</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.action_one_hot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.action_one_hot" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns one-hot encoding for action.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.strategy.base.BTgymBaseStrategy.action_norm">
-<code class="descname">action_norm</code><span class="sig-paren">(</span><em>action</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.action_norm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.action_norm" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns normalized in [0,1] real-valued encoding for action.</p>
 </dd></dl>
 
 <dl class="method">
@@ -283,11 +294,33 @@ Invoked once by Strategy.__init__().</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.get_raw_state">
+<code class="descname">get_raw_state</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_raw_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_raw_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default state observation composer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">4 - number of signal features  == state_shape[1],
+n - time-embedding length  == state_shape[0] == &lt;set by user&gt;.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">and updates time-embedded environment state observation as [n,4] numpy matrix, where</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><cite>self.raw_state</cite> is used to render environment <cite>human</cite> mode and should not be modified.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="btgym.strategy.base.BTgymBaseStrategy.get_state">
 <code class="descname">get_state</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_state" title="Permalink to this definition">¶</a></dt>
-<dd><p>Override this method, defining necessary calculations and return arbitrary shaped tensor.
-It’s option either to compute entire featurized environment state or just pass raw price data
-to RL algorithm featurizer module.</p>
+<dd><p>Collects estimated values for every mode of observation space by calling methods from
+<cite>collection_get_state_methods</cite> dictionary.
+As a rule, this method should not be modified, override or implement correspondig get_[mode]_state() methods,
+defining necessary calculations and return arbitrary shaped tensors for every space mode.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <ul class="last simple">
@@ -300,12 +333,6 @@ to RL algorithm featurizer module.</p>
 </dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>while iterating, .get_raw_state() method is called just before this one,</dt>
-<dd>so attr. <cite>self.raw_state</cite> is fresh and ready to use.</dd>
-</dl>
-</li>
-<li>should update self.state variable</li>
 </ul>
 </div>
 </dd></dl>
@@ -360,15 +387,8 @@ It is just a structural a convention method. Default method is empty.</p>
 <dl class="method">
 <dt id="btgym.strategy.base.BTgymBaseStrategy.notify_order">
 <code class="descname">notify_order</code><span class="sig-paren">(</span><em>order</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.notify_order"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.notify_order" title="Permalink to this definition">¶</a></dt>
-<dd><p>Shamelessly taken from backtrader tutorial.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="btgym.strategy.base.BTgymBaseStrategy.next">
-<code class="descname">next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.next" title="Permalink to this definition">¶</a></dt>
-<dd><p>Default implementation.
-Defines one step environment routine for server ‘Episode mode’;
-At least, it should handle order execution logic according to action received.</p>
+<dd><p>Shamelessly taken from backtrader tutorial.
+TODO: better multi data support</p>
 </dd></dl>
 
 </dd></dl>

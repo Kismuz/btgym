@@ -199,6 +199,7 @@
 
 <span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">WARNING</span>
 <span class="kn">from</span> <span class="nn">.base</span> <span class="k">import</span> <span class="n">BTgymBaseData</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
 
 
 <div class="viewcode-block" id="BTgymEpisode"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.derivative.BTgymEpisode">[docs]</a><span class="k">class</span> <span class="nc">BTgymEpisode</span><span class="p">(</span><span class="n">BTgymBaseData</span><span class="p">):</span>
@@ -215,6 +216,7 @@
             <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">sampling_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">data_names</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;default_asset&#39;</span><span class="p">,),</span>
             <span class="n">task</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
             <span class="n">_config_stack</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -226,6 +228,7 @@
             <span class="n">sampling_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;episode&#39;</span><span class="p">,</span>
             <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+            <span class="n">data_names</span><span class="o">=</span><span class="n">data_names</span><span class="p">,</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
             <span class="n">_config_stack</span><span class="o">=</span><span class="n">_config_stack</span>
         <span class="p">)</span>
@@ -254,6 +257,8 @@
             <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">sampling_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">data_names</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;default_asset&#39;</span><span class="p">,),</span>
+            <span class="n">frozen_time_split</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">task</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
             <span class="n">_config_stack</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -275,6 +280,8 @@
             <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
             <span class="n">sampling_params</span><span class="o">=</span><span class="n">sampling_params</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Trial&#39;</span><span class="p">,</span>
+            <span class="n">data_names</span><span class="o">=</span><span class="n">data_names</span><span class="p">,</span>
+            <span class="n">frozen_time_split</span><span class="o">=</span><span class="n">frozen_time_split</span><span class="p">,</span>
             <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
             <span class="n">_config_stack</span><span class="o">=</span><span class="n">_config_stack</span>
@@ -297,32 +304,47 @@
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
-            <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">filename</span><span class="p">,</span>
+            <span class="n">trial_params</span><span class="p">,</span>
+            <span class="n">episode_params</span><span class="p">,</span>
             <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">trial_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">episode_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">target_period</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">use_target_backshift</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">frozen_time_split</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;RndDataDomain&#39;</span><span class="p">,</span>
             <span class="n">task</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">data_names</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;default_asset&#39;</span><span class="p">,),</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Args:</span>
-<span class="sd">            filename:           Str or list of str, file_names containing CSV historic data;</span>
-<span class="sd">            parsing_params:     csv parsing options, see base class description for details;</span>
-<span class="sd">            trial_params:       dict, describes trial parameters, should contain keys:</span>
-<span class="sd">                                {sample_duration, time_gap, start_00, start_weekdays, test_period, expanding};</span>
-<span class="sd">            episode_params:     dict, describes episode parameters, should contain keys:</span>
-<span class="sd">                                {sample_duration, time_gap, start_00, start_weekdays};</span>
+<span class="sd">            filename:               Str or list of str, file_names containing CSV historic data;</span>
+<span class="sd">            parsing_params:         csv parsing options, see base class description for details;</span>
+<span class="sd">            trial_params:           dict, describes trial parameters, should contain keys:</span>
+<span class="sd">                                    {sample_duration, time_gap, start_00, start_weekdays, test_period, expanding};</span>
+<span class="sd">            episode_params:         dict, describes episode parameters, should contain keys:</span>
+<span class="sd">                                    {sample_duration, time_gap, start_00, start_weekdays};</span>
 
-<span class="sd">            target_period:      dict, domain target period, def={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0};</span>
-<span class="sd">                                setting this param to non-zero duration forces separation to source/target</span>
-<span class="sd">                                domains (which can be thought of as creating  top-level train/test subsets) with</span>
-<span class="sd">                                target data duration equal to `target_period`. Source data always precedes target one.</span>
-<span class="sd">            name:               str, optional</span>
-<span class="sd">            task:               int, optional</span>
-<span class="sd">            log_level:          int, logbook.level</span>
+<span class="sd">            target_period:          dict, domain target period, def={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0};</span>
+<span class="sd">                                    setting this param to non-zero duration forces separation to source/target</span>
+<span class="sd">                                    domains (which can be thought of as creating  top-level train/test subsets) with</span>
+<span class="sd">                                    target data duration equal to `target_period`.</span>
+<span class="sd">                                    Source data always precedes target one.</span>
+<span class="sd">            use_target_backshift:   bool, if true - target domain is shifted back by the duration of trial train period,</span>
+<span class="sd">                                    thus allowing training on part of target domain data,</span>
+<span class="sd">                                    namely train part of the trial closest to source/target break point.</span>
+<span class="sd">            name:                   str, optional</span>
+<span class="sd">            task:                   int, optional</span>
+<span class="sd">            log_level:              int, logbook.level</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sample_params_keys</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;sample_duration&#39;</span><span class="p">,</span> <span class="s1">&#39;time_gap&#39;</span><span class="p">}</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trial_params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">sample_params_keys</span> <span class="o">&lt;=</span> <span class="nb">set</span><span class="p">(</span><span class="n">trial_params</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>\
+            <span class="s1">&#39;Expected dict. &lt;trial_params&gt; contain keys: </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_params_keys</span><span class="p">,</span> <span class="n">trial_params</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">episode_params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">sample_params_keys</span> <span class="o">&lt;=</span> <span class="nb">set</span><span class="p">(</span><span class="n">episode_params</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> \
+            <span class="s1">&#39;Expected dict. &lt;episode_params&gt; contain keys: </span><span class="si">{}</span><span class="s1">, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sample_params_keys</span><span class="p">,</span> <span class="n">episode_params</span><span class="p">)</span>
+
         <span class="k">if</span> <span class="n">parsing_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">parsing_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
                 <span class="c1"># Default parameters for source-specific CSV datafeed class,</span>
@@ -359,7 +381,14 @@
 
         <span class="k">if</span> <span class="n">target_period</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">target_period</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;days&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+
         <span class="n">trial_params</span><span class="p">[</span><span class="s1">&#39;test_period&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_period</span>
+
+
+        <span class="c1"># Setting target backshift:</span>
+        <span class="k">if</span> <span class="n">use_target_backshift</span><span class="p">:</span>
+            <span class="n">trial_params</span><span class="p">[</span><span class="s1">&#39;_test_period_backshift_delta&#39;</span><span class="p">]</span> <span class="o">=</span>\
+                <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="n">trial_params</span><span class="p">[</span><span class="s1">&#39;sample_duration&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="n">trial_test_period</span><span class="p">)</span>
 
         <span class="n">episode_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
             <span class="n">class_ref</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">episode_class_ref</span><span class="p">,</span>
@@ -379,6 +408,7 @@
                 <span class="n">sampling_params</span><span class="o">=</span><span class="n">episode_params</span><span class="p">,</span>
                 <span class="n">name</span><span class="o">=</span><span class="s1">&#39;trial&#39;</span><span class="p">,</span>
                 <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+                <span class="n">frozen_time_split</span><span class="o">=</span><span class="n">frozen_time_split</span><span class="p">,</span>
                 <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
                 <span class="n">_config_stack</span><span class="o">=</span><span class="p">[</span><span class="n">episode_config</span><span class="p">],</span>
             <span class="p">),</span>
@@ -390,6 +420,8 @@
             <span class="n">sampling_params</span><span class="o">=</span><span class="n">trial_params</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
             <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+            <span class="n">frozen_time_split</span><span class="o">=</span><span class="n">frozen_time_split</span><span class="p">,</span>
+            <span class="n">data_names</span><span class="o">=</span><span class="n">data_names</span><span class="p">,</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
             <span class="n">_config_stack</span><span class="o">=</span><span class="p">[</span><span class="n">episode_config</span><span class="p">,</span> <span class="n">trial_config</span><span class="p">]</span>
         <span class="p">)</span></div>
@@ -435,8 +467,9 @@
             <span class="n">start_00</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">start_weekdays</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">test_period</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">target_period</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;SimpleDataSet&#39;</span><span class="p">,</span>
+            <span class="n">data_names</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;default_asset&#39;</span><span class="p">,),</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
@@ -450,7 +483,7 @@
 <span class="sd">                                of the day (usually 00:00), def=False;</span>
 <span class="sd">            start_weekdays:     list, only weekdays from the list will be used for sample start,</span>
 <span class="sd">                                def=[0, 1, 2, 3, 4, 5, 6];</span>
-<span class="sd">            test_period:        domain test(target) period. def={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0};</span>
+<span class="sd">            target_period:      domain test(aka target) period. def={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0};</span>
 <span class="sd">                                setting this param to non-zero duration forces data separation to train/test</span>
 <span class="sd">                                subsets. Train data always precedes test one.</span>
 <span class="sd">            parsing_params:     csv parsing options, see base class description for details;</span>
@@ -505,8 +538,9 @@
             <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
             <span class="n">trial_params</span><span class="o">=</span><span class="n">trial_params</span><span class="p">,</span>
             <span class="n">episode_params</span><span class="o">=</span><span class="n">episode_params</span><span class="p">,</span>
-            <span class="n">target_period</span><span class="o">=</span><span class="n">test_period</span><span class="p">,</span>
+            <span class="n">target_period</span><span class="o">=</span><span class="n">target_period</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">data_names</span><span class="o">=</span><span class="n">data_names</span><span class="p">,</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
         <span class="p">)</span></div>
 

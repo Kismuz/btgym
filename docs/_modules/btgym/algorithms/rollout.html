@@ -240,30 +240,36 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">top</span> <span class="o">=</span> <span class="kc">False</span>
 
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_struct</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                    <span class="n">_struct</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-                <span class="n">_struct</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">_struct</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_struct</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                        <span class="n">_struct</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                    <span class="n">_struct</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">_struct</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
 
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
-                <span class="n">_struct</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;empty&#39;</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
-            <span class="n">_struct</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="o">*</span><span class="n">pair</span><span class="p">)</span> <span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">_struct</span><span class="p">)])</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                    <span class="n">_struct</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;empty&#39;</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
+                <span class="n">_struct</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="o">*</span><span class="n">pair</span><span class="p">)</span> <span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">_struct</span><span class="p">)])</span>
 
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">LSTMStateTuple</span><span class="p">):</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="n">LSTMStateTuple</span><span class="p">):</span>
-                <span class="n">_struct</span> <span class="o">=</span> <span class="n">LSTMStateTuple</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-            <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">_struct</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="n">h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">_struct</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-            <span class="n">_struct</span> <span class="o">=</span> <span class="n">LSTMStateTuple</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
-
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-                <span class="n">_struct</span> <span class="o">+=</span> <span class="p">[</span><span class="n">values</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">LSTMStateTuple</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="n">LSTMStateTuple</span><span class="p">):</span>
+                    <span class="n">_struct</span> <span class="o">=</span> <span class="n">LSTMStateTuple</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">_struct</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">_struct</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">_struct</span> <span class="o">=</span> <span class="n">LSTMStateTuple</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
 
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">_struct</span> <span class="o">=</span> <span class="p">[</span><span class="n">values</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_struct</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                    <span class="n">_struct</span> <span class="o">+=</span> <span class="p">[</span><span class="n">values</span><span class="p">]</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">_struct</span> <span class="o">=</span> <span class="p">[</span><span class="n">values</span><span class="p">]</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;values:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;_struct:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">_struct</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">top</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">_struct</span></div>

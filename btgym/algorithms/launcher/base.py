@@ -223,6 +223,7 @@ class Launcher():
                         env_config['kwargs']['render_enabled'] = True
                     else:
                         env_config['kwargs']['data_master'] = False
+                        # env_config['kwargs']['dataset'] = dataset_instance
                         env_config['kwargs']['render_enabled'] = False  # disable rendering for all but chief
 
                     # Add list of connection ports for every parallel env for each worker:

@@ -35,7 +35,8 @@ class BaseSynchroRunner():
             test_conditions=None,
             slowdown_steps=0,
             global_step_op=None,
-            aux_summaries=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+            # aux_summaries=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+            aux_summaries=None,
             name='synchro',
             log_level=WARNING,
     ):
@@ -121,7 +122,9 @@ class BaseSynchroRunner():
         self.pre_experience = None
         self.state = None
         self.context = None
-        self.action_reward = None
+
+        self.last_action = None
+        self.last_reward = None
 
         # Episode accumulators:
         self.ep_accum = None
@@ -153,7 +156,7 @@ class BaseSynchroRunner():
         # Hacky but we need env.renderer methods ready:
         self.env.renderer.initialize_pyplot()
 
-        self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
+        self.pre_experience, self.state, self.context, self.last_action, self.last_reward = self.get_init_experience(
             policy=self.policy,
             init_context=init_context,
             data_sample_config=data_sample_config
@@ -191,7 +194,7 @@ class BaseSynchroRunner():
         # self.log.warning('get_init_exp() data_sample_config: {}'.format(data_sample_config))
 
         if data_sample_config is None:
-            data_sample_config = policy.get_sample_config(**self.data_sample_config)
+            data_sample_config = policy.get_sample_config()
 
         # Pass sample config to environment (.get_sample_config() is actually aac framework method):
         init_state = self.env.reset(**data_sample_config)
@@ -204,30 +207,32 @@ class BaseSynchroRunner():
         # self.log.warning('init_context_passed: {}'.format(init_context))
         # self.log.warning('state_metadata: {}'.format(state['metadata']))
 
-        init_action = np.zeros(self.env.action_space.n)
-        init_action[0] = 1
-        init_reward = 0.0
-        init_action_reward = np.concatenate([init_action, np.asarray([init_reward])], axis=-1)
+        init_action = self.env.action_space.encode(self.env.get_initial_action())
+        init_reward = np.asarray(0.0)
 
         # Update policy:
         if policy_sync_op is not None:
             self.sess.run(policy_sync_op)
 
         init_context = policy.get_initial_features(state=init_state, context=init_context)
-        action, logits, value, next_context = policy.act(init_state, init_context, init_action_reward)
-        next_state, reward, terminal, self.info = self.env.step(init_action.argmax())
-
-        next_action_reward = np.concatenate([action, np.asarray([reward])], axis=-1)
+        action, logits, value, next_context = policy.act(
+            init_state,
+            init_context,
+            init_action[None, ...],
+            init_reward[None, ...],
+        )
+        next_state, reward, terminal, self.info = self.env.step(action['environment'])
 
         experience = {
             'position': {'episode': self.local_episode, 'step': self.length},
             'state': init_state,
-            'action': action,
+            'action': action['one_hot'],
             'reward': reward,
             'value': value,
             'terminal': terminal,
             'context': init_context,
-            'last_action_reward': init_action_reward,  # ~zeros
+            'last_action': init_action,
+            'last_reward': init_reward,
             'r': None,  # to be updated
             'info': self.info[-1],
         }
@@ -247,9 +252,9 @@ class BaseSynchroRunner():
         # Take a nap:
         self.sleep()
 
-        return experience, next_state, next_context, next_action_reward
+        return experience, next_state, next_context, action['encoded'], reward
 
-    def get_experience(self, policy, state, context, action_reward, policy_sync_op=None):
+    def get_experience(self, policy, state, context, action, reward, policy_sync_op=None):
         """
         Get single experience (possibly terminal).
 
@@ -279,29 +284,30 @@ class BaseSynchroRunner():
             #     # self.log.notice('waited: {}'.format(i))
 
         # Continue adding experiences to rollout:
-        action, logits, value, next_context = policy.act(state, context, action_reward)
-
+        next_action, logits, value, next_context = policy.act(
+            state,
+            context,
+            action[None, ...],
+            reward[None, ...],
+        )
         self.ep_accum['logits'].append(logits)
         self.ep_accum['value'].append(value)
-        self.ep_accum['context'].append(context)
+        self.ep_accum['context'].append(next_context)
 
         # self.log.notice('context: {}'.format(context))
+        next_state, next_reward, terminal, self.info = self.env.step(next_action['environment'])
 
-        # Argmax to convert from one-hot:
-        next_state, reward, terminal, self.info = self.env.step(action.argmax())
-
-        next_action_reward = np.concatenate([action, np.asarray([reward])], axis=-1)
-
-        # Partially collect experience:
+        # Partially compose experience:
         experience = {
             'position': {'episode': self.local_episode, 'step': self.length},
             'state': state,
-            'action': action,
-            'reward': reward,
+            'action': next_action['one_hot'],
+            'reward': next_reward,
             'value': value,
             'terminal': terminal,
             'context': context,
-            'last_action_reward': action_reward,
+            'last_action': action,
+            'last_reward': reward,
             'r': None,
             'info': self.info[-1],
         }
@@ -312,9 +318,9 @@ class BaseSynchroRunner():
         self.length += 1
 
         # Take a nap:
-        self.sleep()
+        # self.sleep()
 
-        return experience, next_state, next_context, next_action_reward
+        return experience, next_state, next_context, next_action['encoded'], next_reward
 
     def get_train_stat(self, is_test=False):
         """
@@ -382,11 +388,12 @@ class BaseSynchroRunner():
 
         """
         # Only render chief worker and test (slave) environment:
-        if self.task < 1 and (
-            is_test or(
-                self.local_episode % self.env_render_freq == 0 and not self.data_sample_config['mode']
-            )
-        ):
+        # if self.task < 1 and (
+        #     is_test or(
+        #         self.local_episode % self.env_render_freq == 0 and not self.data_sample_config['mode']
+        #     )
+        # ):
+        if self.task < 1 and self.local_episode % self.env_render_freq == 0:
 
             # Render environment (chief worker only):
             render_stat = {
@@ -404,31 +411,31 @@ class BaseSynchroRunner():
             c1, h1 = zip(*rnn_1)
             c2, h2 = zip(*rnn_2)
 
-            aux_images = {
-                'action_prob': self.env.renderer.draw_plot(
-                    # data=softmax(np.asarray(ep_a_logits)[:, 0, :] - np.asarray(ep_a_logits).max()),
-                    data=softmax(np.asarray(self.ep_accum['logits'])[:, 0, :]),
-                    title='Episode actions probabilities',
-                    figsize=(12, 4),
-                    box_text='',
-                    xlabel='Backward env. steps',
-                    ylabel='R+',
-                    line_labels=['Hold', 'Buy', 'Sell', 'Close']
-                )[None, ...],
-                'value_fn': self.env.renderer.draw_plot(
-                    data=np.asarray(self.ep_accum['value']),
-                    title='Episode Value function',
-                    figsize=(12, 4),
-                    xlabel='Backward env. steps',
-                    ylabel='R',
-                    line_labels=['Value']
-                )[None, ...],
-                # 'lstm_1_c': norm_image(np.asarray(c1).T[None, :, 0, :, None]),
-                'lstm_1_h': self.norm_image(np.asarray(h1).T[None, :, 0, :, None]),
-                # 'lstm_2_c': norm_image(np.asarray(c2).T[None, :, 0, :, None]),
-                'lstm_2_h': self.norm_image(np.asarray(h2).T[None, :, 0, :, None])
-            }
-            render_stat.update(aux_images)
+            # aux_images = {
+            #     # 'action_prob': self.env.renderer.draw_plot(
+            #     #     # data=softmax(np.asarray(ep_a_logits)[:, 0, :] - np.asarray(ep_a_logits).max()),
+            #     #     data=softmax(np.asarray(self.ep_accum['logits'])[:, 0, :]),
+            #     #     title='Episode actions probabilities',
+            #     #     figsize=(12, 4),
+            #     #     box_text='',
+            #     #     xlabel='Backward env. steps',
+            #     #     ylabel='R+',
+            #     #     #line_labels=['Hold', 'Buy', 'Sell', 'Close']
+            #     # )[None, ...],
+            #     'value_fn': self.env.renderer.draw_plot(
+            #         data=np.asarray(self.ep_accum['value']),
+            #         title='Episode Value function',
+            #         figsize=(12, 4),
+            #         xlabel='Backward env. steps',
+            #         ylabel='R',
+            #         line_labels=['Value']
+            #     )[None, ...],
+            #     # 'lstm_1_c': norm_image(np.asarray(c1).T[None, :, 0, :, None]),
+            #     'lstm_1_h': self.norm_image(np.asarray(h1).T[None, :, 0, :, None]),
+            #     # 'lstm_2_c': norm_image(np.asarray(c2).T[None, :, 0, :, None]),
+            #     'lstm_2_h': self.norm_image(np.asarray(h2).T[None, :, 0, :, None])
+            # }
+            # render_stat.update(aux_images)
 
         else:
             render_stat = None
@@ -479,7 +486,7 @@ class BaseSynchroRunner():
 
         if self.terminal_end or force_new_episode:
             # Start new episode:
-            self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
+            self.pre_experience, self.state, self.context, self.last_action, self.last_reward = self.get_init_experience(
                 policy=policy,
                 policy_sync_op=policy_sync_op,
                 init_context=init_context,
@@ -491,17 +498,38 @@ class BaseSynchroRunner():
             # )
             # self.log.warning('pre_experience_metadata: {}'.format(self.pre_experience['state']['metadata']))
 
+        # NOTE: self.terminal_end is set actual via get_init_experience() method
+
         # Collect single rollout:
-        while rollout.size < rollout_length and not self.terminal_end:
-            experience, self.state, self.context, self.action_reward = self.get_experience(
-                policy=policy,
-                policy_sync_op=policy_sync_op,
-                state=self.state,
-                context=self.context,
-                action_reward=self.action_reward
-            )
-            # Complete previous experience by bootstrapping V from next one:
-            self.pre_experience['r'] = experience['value']
+        while rollout.size < rollout_length - 1 and not self.terminal_end:
+            if self.pre_experience['terminal']:
+                # Episode has been just finished,
+                # need to complete and push last experience and update all episode summaries
+                self.pre_experience['r'] = np.asarray([0.0])
+                experience = None
+                self.state = None
+                self.context = None
+                self.last_action = None
+                self.last_reward = None
+
+                self.terminal_end = True
+
+                train_ep_summary = self.get_train_stat(is_test)
+                test_ep_summary = self.get_test_stat(is_test)
+                render_ep_summary = self.get_ep_render(is_test)
+
+            else:
+                experience, self.state, self.context, self.last_action, self.last_reward = self.get_experience(
+                    policy=policy,
+                    policy_sync_op=policy_sync_op,
+                    state=self.state,
+                    context=self.context,
+                    action=self.last_action,
+                    reward=self.last_reward
+                )
+                # Complete previous experience by bootstrapping V from next one:
+                self.pre_experience['r'] = experience['value']
+
             # Push:
             rollout.add(self.pre_experience)
 
@@ -521,35 +549,30 @@ class BaseSynchroRunner():
             if not is_test:
                 self.memory.add(self.pre_experience)
 
+            self.reward_sum += self.pre_experience['reward']
+
             # Move one step froward:
             self.pre_experience = experience
 
-            self.reward_sum += experience['reward']
+        # Done collecting rollout, either got termination of episode or not:
+        if not self.terminal_end:
+            # Bootstrap:
+            self.pre_experience['r'] = np.asarray(
+                [
+                    policy.get_value(
+                        self.pre_experience['state'],
+                        self.pre_experience['context'],
+                        self.pre_experience['last_action'][None, ...],
+                        self.pre_experience['last_reward'][None, ...],
+                    )
+                ]
+            )
+            rollout.add(self.pre_experience)
+            if not is_test:
+                self.memory.add(self.pre_experience)
 
-            if self.pre_experience['terminal']:
-                # Episode has been just finished,
-                # need to complete and push last experience and update all episode summaries:
-                self.terminal_end = True
-
-                # Bootstrap:
-                self.pre_experience['r'] = np.asarray(
-                    [
-                        policy.get_value(
-                            self.pre_experience['state'],
-                            self.pre_experience['context'],
-                            self.pre_experience['last_action_reward']
-                        )
-                    ]
-                )
-                rollout.add(self.pre_experience)
-                if not is_test:
-                    self.memory.add(self.pre_experience)
-
-                train_ep_summary = self.get_train_stat(is_test)
-                test_ep_summary = self.get_test_stat(is_test)
-                render_ep_summary = self.get_ep_render(is_test)
-
-        #self.log.warning('rollout.size: {}'.format(rollout.size))
+        # self.log.warning('rollout.terminal: {}'.format(self.terminal_end))
+        # self.log.warning('rollout.size: {}'.format(rollout.size))
 
         data = dict(
             on_policy=rollout,
@@ -594,7 +617,7 @@ class BaseSynchroRunner():
         render_ep_summary = None
 
         # Start new episode:
-        self.pre_experience, self.state, self.context, self.action_reward = self.get_init_experience(
+        self.pre_experience, self.state, self.context, self.last_action, self.last_reward = self.get_init_experience(
             policy=policy,
             policy_sync_op=policy_sync_op,
             init_context=init_context,  # None (initially) or final context of previous episode
@@ -614,12 +637,13 @@ class BaseSynchroRunner():
         # Collect data until episode is over:
 
         while not self.terminal_end:
-            experience, self.state, self.context, self.action_reward = self.get_experience(
+            experience, self.state, self.context, self.last_action = self.get_experience(
                 policy=policy,
                 policy_sync_op=policy_sync_op,
                 state=self.state,
                 context=self.context,
-                action_reward=self.action_reward
+                action=self.last_action,
+                reward=self.last_reward,
             )
             # Complete previous experience by bootstrapping V from next one:
             self.pre_experience['r'] = experience['value']
@@ -640,12 +664,14 @@ class BaseSynchroRunner():
                 self.terminal_end = True
 
         # Bootstrap:
+        # TODO: should be zero here
         self.pre_experience['r'] = np.asarray(
             [
                 policy.get_value(
                     self.pre_experience['state'],
                     self.pre_experience['context'],
-                    self.pre_experience['last_action_reward']
+                    self.pre_experience['last_reward'][None, ...],
+                    self.pre_experience['last_reward'][None, ...],
                 )
             ]
         )

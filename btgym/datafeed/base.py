@@ -72,6 +72,7 @@ class BTgymBaseData:
             parsing_params=None,
             sampling_params=None,
             name='base_data',
+            data_names=('default_asset',),
             task=0,
             frozen_time_split=None,
             log_level=WARNING,
@@ -190,9 +191,11 @@ class BTgymBaseData:
 
         self.name = name
         # String will be used as key name for bt_feed data-line:
-        self.data_name = 'base_data_line'
+
         self.task = task
         self.log_level = log_level
+        self.data_names = data_names
+        self.data_name = self.data_names[0]
 
         self.data = None  # Will hold actual data as pandas dataframe
         self.is_ready = False

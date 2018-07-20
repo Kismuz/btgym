@@ -5,11 +5,14 @@ from btgym import DictSpace
 import backtrader.indicators as btind
 from backtrader import Indicator
 
-from btgym.strategy.utils import tanh
+from btgym.strategy.utils import tanh, exp_scale
+
 from btgym.research.gps.strategy import GuidedStrategy_0_0
+from btgym.research.strategy_gen_4 import DevStrat_4_12
 
 
-class CasualConvStrategy(GuidedStrategy_0_0):
+class CasualConvStrategy(DevStrat_4_12):
+# class CasualConvStrategy(GuidedStrategy_0_0):
     """
     Provides stream of data for casual convolutional encoder
     """
@@ -46,7 +49,7 @@ class CasualConvStrategy(GuidedStrategy_0_0):
             'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, num_features), dtype=np.float32),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
             'datetime': spaces.Box(low=0, high=1, shape=(1, 5), dtype=np.float32),
-            'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),  # TODO: change inheritance!
+            # 'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),  # TODO: change inheritance!
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -88,6 +91,11 @@ class CasualConvStrategy(GuidedStrategy_0_0):
                 }
             )
         },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
@@ -190,7 +198,7 @@ class CasualConvStrategy_0(CasualConvStrategy):
             'external': spaces.Box(low=-100, high=100, shape=(time_dim, 1, num_features * 2), dtype=np.float32),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
             'datetime': spaces.Box(low=0, high=1, shape=(1, 5), dtype=np.float32),
-            'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+            # 'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
         # TODO: change inheritance!
             'metadata': DictSpace(
                 {
@@ -233,6 +241,11 @@ class CasualConvStrategy_0(CasualConvStrategy):
                 }
             )
         },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
@@ -331,7 +344,7 @@ class CasualConvStrategy_1(CasualConvStrategy_0):
             # 'external_2': spaces.Box(low=-100, high=100, shape=(time_dim, 1, 4), dtype=np.float32),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
             'datetime': spaces.Box(low=0, high=1, shape=(1, 5), dtype=np.float32),
-            'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+            # 'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
             # TODO: change inheritance!
             'metadata': DictSpace(
                 {
@@ -374,6 +387,11 @@ class CasualConvStrategy_1(CasualConvStrategy_0):
                 }
             )
         },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
@@ -465,7 +483,9 @@ class CasualConvStrategy_1(CasualConvStrategy_0):
 
 class CasualConvStrategyMulti(CasualConvStrategy_0):
     """
-    CWT. again. Multiply data streams (assets)
+    CWT + multiply data streams.
+    Beta - data names are class hard-coded.
+    TODO: pass data streams names as params
     """
     # Time embedding period:
     # NOTE_2: should be power of 2 if using casual conv. state encoder
@@ -504,16 +524,16 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
     cwt_upper_bound = 100.0
 
     state_ext_scale = {
-        'eurusd': np.linspace(1, 2, num=num_features),
-        'eurgbp': np.linspace(1, 2, num=num_features),
-        'eurchf': np.linspace(1, 2, num=num_features),
-        'eurgpy': np.linspace(5e-3, 1e-2, num=num_features),
+        'USD': np.linspace(1, 2, num=num_features),
+        'GBP': np.linspace(1, 2, num=num_features),
+        'CHF': np.linspace(1, 2, num=num_features),
+        'JPY': np.linspace(5e-3, 1e-2, num=num_features),
     }
     order_size = {
-        'eurusd': 1000,
-        'eurgbp': 1000,
-        'eurchf': 1000,
-        'eurgpy': 1000,
+        'USD': 1000,
+        'GBP': 1000,
+        'CHF': 1000,
+        'JPY': 1000,
     }
 
     params = dict(
@@ -523,22 +543,22 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
             'raw': spaces.Box(low=-1000, high=1000, shape=(time_dim, 4), dtype=np.float32),
             'external': DictSpace(
                 {
-                    'eurusd': spaces.Box(low=-1000, high=1000, shape=(time_dim, 1, num_features), dtype=np.float32),
-                    'eurgbp': spaces.Box(low=-1000, high=1000, shape=(time_dim, 1, num_features), dtype=np.float32),
-                    'eurchf': spaces.Box(low=-1000, high=1000, shape=(time_dim, 1, num_features), dtype=np.float32),
-                    'eurgpy': spaces.Box(low=-1000, high=1000, shape=(time_dim, 1, num_features), dtype=np.float32),
+                    'USD': spaces.Box(low=-1000, high=1000, shape=(time_dim, 1, num_features), dtype=np.float32),
+                    'GBP': spaces.Box(low=-1000, high=1000, shape=(time_dim, 1, num_features), dtype=np.float32),
+                    'CHF': spaces.Box(low=-1000, high=1000, shape=(time_dim, 1, num_features), dtype=np.float32),
+                    'JPY': spaces.Box(low=-1000, high=1000, shape=(time_dim, 1, num_features), dtype=np.float32),
                 }
             ),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 5), dtype=np.float32),
             'datetime': spaces.Box(low=0, high=1, shape=(1, 5), dtype=np.float32),
-            'expert': DictSpace(
-                {
-                    'eurusd': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
-                    'eurgbp': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
-                    'eurchf': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
-                    'eurgpy': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
-                }
-            ),
+            # 'expert': DictSpace(
+            #     {
+            #         'USD': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+            #         'GBP': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+            #         'CHF': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+            #         'JPY': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+            #     }
+            # ),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -580,6 +600,11 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
                 }
             )
         },
+        cash_name='EUR',
+        asset_names={'USD', 'GBP', 'CHF', 'JPY'},
+        start_cash=None,
+        commission=None,
+        leverage=1.0,
         drawdown_call=5,
         target_call=19,
         portfolio_actions=portfolio_actions,
@@ -587,10 +612,10 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
         initial_portfolio_action=None,
         order_size=order_size,
         skip_frame=skip_frame,
-        state_ext_scale=state_ext_scale,  # EURUSD
+        state_ext_scale=state_ext_scale,
         state_int_scale=1.0,
         gamma=gamma,
-        base_dataline='eurusd',
+        # base_dataline='USD',
         reward_scale=1.0,
         metadata={},
         cwt_lower_bound=cwt_lower_bound,
@@ -628,26 +653,25 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
         # expert_actions is a matrix representing discrete distribution over actions probabilities
         # of size [max_env_steps, action_space_size]:
 
-        # self.expert_actions = self.expert.fit(episode_data=data, resampling_factor=self.p.skip_frame)
 
-        self.expert_actions = {
-            key: self.expert.fit(episode_data=line, resampling_factor=self.p.skip_frame)
-            for key, line in data.items()
-        }
+        # self.expert_actions = {
+        #     key: self.expert.fit(episode_data=line, resampling_factor=self.p.skip_frame)
+        #     for key, line in data.items()
+        # }
 
-    def get_expert_state(self):
-        # self.current_expert_action = self.expert_actions[self.env_iteration]
-        self.current_expert_action = {
-            key: line[self.env_iteration] for key, line in self.expert_actions.items()
-        }
-
-        return self.current_expert_action
+    # def get_expert_state(self):
+    #     # self.current_expert_action = self.expert_actions[self.env_iteration]
+    #     self.current_expert_action = {
+    #         key: line[self.env_iteration] for key, line in self.expert_actions.items()
+    #     }
+    #
+    #     return self.current_expert_action
 
     def set_datalines(self):
         self.data_streams = {
             stream._name: stream for stream in self.datas
         }
-        self.data = self.data_streams[self.p.base_dataline] # TODO: ??!!
+        # self.data = self.data_streams[self.p.base_dataline] # TODO: ??!!
 
         self.data.dim_sma = btind.SimpleMovingAverage(
             self.data,
@@ -686,34 +710,55 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
         # return out_x[:, None, :]
         return out_x[:, None, :]
 
-    def notify_order(self, order):
-        """
-        TODO: multi datas?
-        """
-        if order.status in [order.Submitted, order.Accepted]:
-            # Buy/Sell order submitted/accepted to/by broker - Nothing to do
-            return
-        # Check if an order has been completed
-        # Attention: broker could reject order if not enough cash
-        if order.status in [order.Completed]:
-            if order.isbuy():
-                self.broker_message = 'BUY executed,\nPrice: {:.5f}, Cost: {:.4f}, Comm: {:.4f}'. \
-                    format(order.executed.price,
-                           order.executed.value,
-                           order.executed.comm)
-                self.buyprice = order.executed.price
-                self.buycomm = order.executed.comm
+    # def get_reward(self):
+    #     """
+    #     [Tailored] to continuous action space.
+    #     Shapes reward function as normalized single trade realized profit/loss,
+    #     augmented with potential-based reward shaping functions in form of:
+    #     F(s, a, s`) = gamma * FI(s`) - FI(s);
+    #
+    #     - potential FI_1 is current normalized unrealized profit/loss;
+    #     - potential FI_2 is current normalized broker value.
+    #     - FI_3: penalizing exposure toward the end of episode
+    #
+    #     Paper:
+    #         "Policy invariance under reward transformations:
+    #          Theory and application to reward shaping" by A. Ng et al., 1999;
+    #          http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf
+    #     """
+    #
+    #     # All sliding statistics for this step are already updated by get_state().
+    #     debug = {}
+    #     # Potential-based shaping function 1:
+    #     # based on log potential of averaged profit/loss for current opened trade (unrealized p/l):
+    #     unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl']) / 2 + 1 # shift [-1,1] -> [0,1]
+    #     # TODO: make normalizing util func to return in [0,1] by default
+    #     f1 = self.p.gamma * np.log(np.average(unrealised_pnl[1:])) - np.log(np.average(unrealised_pnl[:-1]))
+    #
+    #     debug['f1'] = f1
+    #
+    #     # Potential-based shaping function 2:
+    #     # based on potential of averaged broker value, log-normalized wrt to max drawdown and target bounds.
+    #     norm_broker_value = np.asarray(self.sliding_stat['broker_value']) / 2 + 1 # shift [-1,1] -> [0,1]
+    #     f2 = self.p.gamma * np.log(np.average(norm_broker_value[1:])) - np.log(np.average(norm_broker_value[:-1]))
+    #
+    #     debug['f2'] = f2
+    #
+    #     # `Spike` reward function: normalized realized profit/loss:
+    #     # TODO: Seems useless for continuous space
+    #     realized_pnl = self.sliding_stat['realized_pnl'][-1]
+    #     debug['f_real_pnl'] = 10 * realized_pnl
+    #
+    #     # Weights are subject to tune:
+    #     self.reward = (10.0 * f1 + 2.0 * f2 + 10.0 * realized_pnl) * self.p.reward_scale
+    #
+    #     debug['r'] = self.reward
+    #     debug['b_v'] = self.sliding_stat['broker_value'][-1]
+    #     debug['unreal_pnl'] = self.sliding_stat['unrealized_pnl'][-1]
+    #     debug['iteration'] = self.iteration
+    #
+    #     self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
+    #
+    #     return self.reward
 
-            else:  # Sell
-                self.broker_message = 'SELL executed,\nPrice: {:.5f}, Cost: {:.4f}, Comm: {:.4f}'. \
-                    format(order.executed.price,
-                           order.executed.value,
-                           order.executed.comm)
-            self.bar_executed = len(self)
-
-        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
-            self.broker_message = 'ORDER FAILED with status: ' + str(order.getstatusname())
-            # Rise order_failed flag until get_reward() will [hopefully] use and reset it:
-            self.order_failed += 1
-        self.order = None
 

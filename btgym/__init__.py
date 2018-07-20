@@ -28,6 +28,7 @@ from .dataserver import BTgymDataFeedServer
 from .rendering import BTgymRendering
 from .envs.base import BTgymEnv
 from btgym.envs.multidiscrete import MultiDiscreteEnv
+from btgym.envs.portfolio import PortfolioEnv
 
 register(
     id='backtrader-v0000',

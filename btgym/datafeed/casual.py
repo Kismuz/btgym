@@ -262,6 +262,7 @@ class BTgymCasualDataDomain(BTgymRandomDataDomain):
             episode_params,
             frozen_time_split=None,
             name='TimeDataDomain',
+            data_names=('default_asset',),
             **kwargs):
         """
         Args:
@@ -306,6 +307,7 @@ class BTgymCasualDataDomain(BTgymRandomDataDomain):
             episode_params=episode_params,
             use_target_backshift=False,
             name=name,
+            data_names=data_names,
             frozen_time_split=frozen_time_split,
             **kwargs
         )

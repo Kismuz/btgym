@@ -530,7 +530,7 @@ class BaseAAC(object):
         with tf.name_scope(name):
             # On-policy AAC loss definition:
             pi.on_pi_act_target = tf.placeholder(
-                tf.float32, [None, self.ref_env.action_space.tensor_shape[0]], name="on_policy_action_pl"
+                tf.float32, [None, self.ref_env.action_space.one_hot_depth], name="on_policy_action_pl"
             )
             pi.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
             pi.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
@@ -662,10 +662,14 @@ class BaseAAC(object):
         # Set global_step increment equal to observation space batch size:
         obs_space_keys = list(pi.on_state_in.keys())
 
-        # TODO: if 'external' is nested dict:
+        # Handles case when 'external' is nested or flat dict:
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
-        self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in['external'])[0])
+        if isinstance(pi.on_state_in['external'], dict):
+            stream = pi.on_state_in['external'][list(pi.on_state_in['external'].keys())[0]]
+        else:
+            stream = pi.on_state_in['external']
+        self.inc_step = self.global_step.assign_add(tf.shape(stream)[0])
 
         train_op = self.optimizer.apply_gradients(grads_and_vars)
         self.log.debug('train_op defined')

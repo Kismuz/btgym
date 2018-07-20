@@ -42,7 +42,7 @@ from btgym.rendering import BTgymNullRendering
 
 class BTgymEnv(gym.Env):
     """
-    OpenAI Gym API shell for Backtrader backtesting/trading library.
+    Base OpenAI Gym API shell for Backtrader backtesting/trading library.
     """
     # Datafeed Server management:
     data_master = True
@@ -93,13 +93,16 @@ class BTgymEnv(gym.Env):
     verbose = 0  # verbosity mode, valid only if no `log_level` arg has been provided:
     # 0 - WARNING, 1 - INFO, 2 - DEBUG.
     task = 0
+    asset_names = ('default_asset',)
+    data_lines_names = ('default_asset',)
+    cash_name = 'default_cash'
 
     closed = True
 
     def __init__(self, **kwargs):
         """
-        Keyword Args:
 
+        Keyword Args:
             filename=None (str, list):                      csv data file.
             **datafeed_args (any):                          any datafeed-related args, passed through to
                                                             default btgym.datafeed class.
@@ -244,12 +247,15 @@ class BTgymEnv(gym.Env):
             if key in kwargs.keys():
                 _ = kwargs.pop(key)
 
-        # Disable multiply data streams (multi-assets):
-        assert not isinstance(self.dataset, BTgymMultiData),\
-            'Using multiply data streams with base BTgymEnv class not supported. Use designated class.'
+        # Disable multiply data streams (multi-assets) [for data-master]:
+        try:
+            assert not isinstance(self.dataset, BTgymMultiData)
 
-        # Only single asset data-line is supported by base class:
-        self.assets = ['base_data_line']
+        except AssertionError:
+            self.log.error(
+                'Using multiply data streams with base BTgymEnv class not supported. Use designated class.'
+            )
+            raise ValueError
 
         if self.data_master:
             # DATASET preparation, only data_master executes this:
@@ -283,10 +289,12 @@ class BTgymEnv(gym.Env):
 
             self.log.info(msg)
 
-        # Connect/Start data server (and get dataset statistic):
+        # Connect/Start data server (and get dataset configuration and statistic):
         self.log.info('Connecting data_server...')
         self._start_data_server()
         self.log.info('...done.')
+
+        # After starting data-server we have self.data_names attribute filled.
 
         # ENGINE preparation:
         # Update params -3: pull engine-related kwargs, remove used:
@@ -347,10 +355,33 @@ class BTgymEnv(gym.Env):
         for key, value in self.engine.strats[0][0][2].items():
             self.params['strategy'][key] = value
 
-        self.server_actions = {name: self.params['strategy']['portfolio_actions'] for name in self.assets}
+        self.asset_names = self.params['strategy']['asset_names']
+        self.server_actions = {name: self.params['strategy']['portfolio_actions'] for name in self.asset_names}
+        self.cash_name = self.params['strategy']['cash_name']
 
         self.params['strategy']['initial_action'] = self.get_initial_action()
         self.params['strategy']['initial_portfolio_action'] = self.get_initial_portfolio_action()
+
+        # Only single  asset is supported by base class:
+        try:
+            assert len(list(self.asset_names)) == 1
+
+        except AssertionError:
+            self.log.error(
+                'Using multiply assets with base BTgymEnv class not supported. Use designated class.'
+            )
+            raise ValueError
+
+        try:
+            assert set(self.asset_names).issubset(set(self.data_lines_names))
+
+        except AssertionError:
+            msg = 'Assets names should be subset of data_lines names, but got: assets: {}, data_lines: {}'.format(
+                set(self.asset_names), set(self.data_lines_names)
+            )
+            self.log.error(msg)
+            raise ValueError(msg)
+
 
         # ... Push it all back (don't ask):
         for key, value in  self.params['strategy'].items():
@@ -390,7 +421,7 @@ class BTgymEnv(gym.Env):
         # Set action space (one-key dict for this class) and corresponding server messages:
         self.action_space = ActionDictSpace(
             base_actions=self.params['strategy']['portfolio_actions'],
-            assets=self.assets
+            assets=self.asset_names
         )
 
         # Finally:
@@ -619,10 +650,10 @@ class BTgymEnv(gym.Env):
         return response
 
     def get_initial_action(self):
-        return {key: 0 for key in self.assets}
+        return {asset: 0 for asset in self.asset_names}
 
     def get_initial_portfolio_action(self):
-        return {key: self.server_actions[key][0] for key in self.assets}
+        return {asset: actions[0] for asset, actions in self.server_actions.items()}
 
     def reset(self, **kwargs):
         """
@@ -768,58 +799,10 @@ class BTgymEnv(gym.Env):
 
         # Send action (as dict of strings) to backtrader engine, receive environment response:
         action_as_dict = {key: self.server_actions[key][value] for key, value in action.items()}
-        print('step: ', action, action_as_dict)
+        #print('step: ', action, action_as_dict)
         env_response = self._comm_with_timeout(
             socket=self.socket,
             message={'action': action_as_dict}
-        )
-        if not env_response['status'] in 'ok':
-            msg = '.step(): server unreachable with status: <{}>.'.format(env_response['status'])
-            self.log.error(msg)
-            raise ConnectionError(msg)
-
-        self.env_response = env_response ['message']
-
-        return self.env_response
-
-    def ___step(self, action):
-        """
-        Implementation of OpenAI Gym env.step() method.
-        Makes a step in the environment.
-
-        Args:
-            action:     int, number representing action from env.action_space
-
-        Returns:
-            tuple (Observation, Reward, Info, Done)
-
-        """
-        # Are you in the list, ready to go and all that?
-        if self.action_space.contains(action)\
-            and not self._closed\
-            and (self.socket is not None)\
-            and not self.socket.closed:
-            pass
-
-        else:
-            msg = (
-                '\nAt least one of these is true:\n' +
-                'Action error: (space is {}, action sent is {}): {}\n' +
-                'Environment closed: {}\n' +
-                'Network error [socket doesnt exists or closed]: {}\n' +
-                'Hint: forgot to call reset()?'
-            ).format(
-                self.action_space, action, not self.action_space.contains(action),
-                self._closed,
-                not self.socket or self.socket.closed,
-            )
-            self.log.exception(msg)
-            raise AssertionError(msg)
-
-        # Send action to backtrader engine, receive environment response
-        env_response = self._comm_with_timeout(
-            socket=self.socket,
-            message={'action': self.server_actions[action]}
         )
         if not env_response['status'] in 'ok':
             msg = '.step(): server unreachable with status: <{}>.'.format(env_response['status'])
@@ -970,7 +953,7 @@ class BTgymEnv(gym.Env):
             raise ConnectionError(msg)
 
         # Get info and statistic:
-        self.dataset_stat, self.dataset_columns, self.data_server_pid = self._get_dataset_info()
+        self.dataset_stat, self.dataset_columns, self.data_server_pid,  self.data_lines_names = self._get_dataset_info()
 
     def _stop_data_server(self):
         """
@@ -1004,14 +987,15 @@ class BTgymEnv(gym.Env):
 
     def _get_dataset_info(self):
         """
-        Retrieves dataset descriptive statistic.
+        Retrieves dataset configuration and descriptive statistic.
         """
         self.data_socket.send_pyobj({'ctrl': '_get_info'})
         self.data_server_response = self.data_socket.recv_pyobj()
 
         return self.data_server_response['dataset_stat'],\
-               self.data_server_response['dataset_columns'],\
-               self.data_server_response['pid']
+            self.data_server_response['dataset_columns'],\
+            self.data_server_response['pid'], \
+            self.data_server_response['data_names']
 
     def reset_data(self, **kwargs):
         """

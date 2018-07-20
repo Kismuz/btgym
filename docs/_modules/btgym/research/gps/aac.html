@@ -183,6 +183,7 @@
 <span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">BaseAAC</span>
 <span class="kn">from</span> <span class="nn">.loss</span> <span class="k">import</span> <span class="n">guided_aac_loss_def_0_0</span><span class="p">,</span> <span class="n">guided_aac_loss_def_0_1</span><span class="p">,</span> <span class="n">guided_aac_loss_def_0_3</span>
 <span class="kn">from</span> <span class="nn">btgym.research.verbose_env_runner</span> <span class="k">import</span> <span class="n">VerboseEnvRunnerFn</span>
+<span class="kn">from</span> <span class="nn">btgym.algorithms.runner.synchro</span> <span class="k">import</span> <span class="n">BaseSynchroRunner</span>
 
 
 <div class="viewcode-block" id="GuidedAAC"><a class="viewcode-back" href="../../../../btgym.research.gps.html#btgym.research.gps.aac.GuidedAAC">[docs]</a><span class="k">class</span> <span class="nc">GuidedAAC</span><span class="p">(</span><span class="n">BaseAAC</span><span class="p">):</span>
@@ -217,6 +218,7 @@
             <span class="n">expert_loss</span><span class="o">=</span><span class="n">guided_aac_loss_def_0_3</span><span class="p">,</span>
             <span class="n">aac_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
             <span class="n">guided_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="n">guided_decay_steps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">runner_fn_ref</span><span class="o">=</span><span class="n">VerboseEnvRunnerFn</span><span class="p">,</span>
             <span class="n">_aux_render_modes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;action_prob&#39;</span><span class="p">,</span> <span class="s1">&#39;value_fn&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_1_h&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_2_h&#39;</span><span class="p">),</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;GuidedA3C&#39;</span><span class="p">,</span>
@@ -228,13 +230,17 @@
 <span class="sd">            expert_loss:        callable returning tensor holding on_policy imitation loss graph and summaries</span>
 <span class="sd">            aac_lambda:         float, main on_policy a3c loss lambda</span>
 <span class="sd">            guided_lambda:      float, imitation loss lambda</span>
+<span class="sd">            guided_decay_steps: number of steps guided_lambda is annealed to zero</span>
 <span class="sd">            name:               str, name scope</span>
 <span class="sd">            **kwargs:           see BaseAAC kwargs</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">expert_loss</span> <span class="o">=</span> <span class="n">expert_loss</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">aac_lambda</span> <span class="o">=</span> <span class="n">aac_lambda</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda</span> <span class="o">=</span> <span class="n">guided_lambda</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda</span> <span class="o">=</span> <span class="n">guided_lambda</span> <span class="o">*</span> <span class="mf">1.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">guided_decay_steps</span> <span class="o">=</span> <span class="n">guided_decay_steps</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda_decayed</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_guided_lambda</span> <span class="o">=</span> <span class="kc">None</span>
 
             <span class="nb">super</span><span class="p">(</span><span class="n">GuidedAAC</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
                 <span class="n">runner_fn_ref</span><span class="o">=</span><span class="n">runner_fn_ref</span><span class="p">,</span>
@@ -242,14 +248,13 @@
                 <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
                 <span class="o">**</span><span class="n">kwargs</span>
             <span class="p">)</span>
-
         <span class="k">except</span><span class="p">:</span>
             <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;GuidedAAC.__init()__ exception occurred&#39;</span> <span class="o">+</span> \
                   <span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">Press `Ctrl-C` or jupyter:[Kernel]-&gt;[Interrupt] for clean exit.</span><span class="se">\n</span><span class="s1">&#39;</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_make_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_make_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Augments base loss with expert actions imitation loss</span>
 
@@ -257,18 +262,37 @@
 <span class="sd">            tensor holding estimated loss graph</span>
 <span class="sd">            list of related summaries</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">aac_loss</span><span class="p">,</span> <span class="n">summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_base_loss</span><span class="p">()</span>
+        <span class="n">aac_loss</span><span class="p">,</span> <span class="n">summaries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_base_loss</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-        <span class="n">guided_loss</span><span class="p">,</span> <span class="n">guided_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expert_loss</span><span class="p">(</span>
+        <span class="c1"># Guidance annealing:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">guided_decay_steps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda_decayed</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">polynomial_decay</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">guided_decay_steps</span><span class="p">,</span>
+                <span class="mi">0</span><span class="p">,</span>
+                <span class="n">power</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">cycle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda_decayed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda</span>
+        <span class="c1"># Switch to zero when testing - prevents information leakage:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_guided_lambda</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda_decayed</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">local_network</span><span class="o">.</span><span class="n">train_phase</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">guided_loss</span><span class="p">,</span> <span class="n">guided_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expert_loss</span><span class="p">(</span>
             <span class="n">pi_actions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">local_network</span><span class="o">.</span><span class="n">on_logits</span><span class="p">,</span>
             <span class="n">expert_actions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">local_network</span><span class="o">.</span><span class="n">expert_actions</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_policy&#39;</span><span class="p">,</span>
-            <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">guided_lambda</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_guided_lambda</span>
         <span class="p">)</span>
-        <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">aac_lambda</span> <span class="o">*</span> <span class="n">aac_loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda</span> <span class="o">*</span> <span class="n">guided_loss</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">aac_lambda</span> <span class="o">*</span> <span class="n">aac_loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">guided_loss</span>
+
         <span class="n">summaries</span> <span class="o">+=</span> <span class="n">guided_summary</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;aac_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, guided_lambda: </span><span class="si">{:1.6f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">aac_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span>
+            <span class="s1">&#39;guided_lambda: </span><span class="si">{:1.6f}</span><span class="s1">, guided_decay_steps: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">guided_decay_steps</span><span class="p">)</span>
+        <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">summaries</span></div>
 

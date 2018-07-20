@@ -1,5 +1,8 @@
 import numpy as np
 import scipy.signal
+
+from scipy.special import logsumexp
+
 import tensorflow as tf
 
 
@@ -51,18 +54,50 @@ def kl_divergence(logits_1, logits_2):
     return tf.reduce_sum(p0 * (a0 - tf.log(z0) - a1 + tf.log(z1)), axis=-1)
 
 
-def softmax(x):
-    if len(x.shape) > 1:
-        tmp = np.max(x, axis = 1)
-        x -= tmp.reshape((x.shape[0], 1))
-        x = np.exp(x)
-        tmp = np.sum(x, axis = 1)
-        x /= tmp.reshape((x.shape[0], 1))
-    else:
-        tmp = np.max(x)
-        x -= tmp
-        x = np.exp(x)
-        tmp = np.sum(x)
-        x /= tmp
+# def softmax(x):
+#     if len(x.shape) > 1:
+#         tmp = np.max(x, axis = 1)
+#         x -= tmp.reshape((x.shape[0], 1))
+#         x = np.exp(x)
+#         tmp = np.sum(x, axis = 1)
+#         x /= tmp.reshape((x.shape[0], 1))
+#     else:
+#         tmp = np.max(x)
+#         x -= tmp
+#         x = np.exp(x)
+#         tmp = np.sum(x)
+#         x /= tmp
+#
+#     return x
 
-    return x
+
+def softmax(a, axis=None):
+    """
+    Computes exp(a)/sumexp(a); relies on scipy logsumexp implementation.
+    Credit goes to https://stackoverflow.com/users/4115369/yibo-yang
+
+    Args:
+        a: ndarray/tensor
+        axis: axis to sum over; default (None) sums over everything
+    """
+    lse = logsumexp(a, axis=axis)  # this reduces along axis
+    if axis is not None:
+        lse = np.expand_dims(lse, axis)  # restore that axis for subtraction
+    return np.exp(a - lse)
+
+
+def sample_dp(logits, alpha=200.0):
+    """
+    Given vector of unnormalised log probabilities,
+    returns sample of probability distribution taken from induced Dirichlet Process,
+    where `logits` define DP mean and `alpha` is inverse variance.
+
+    Args:
+        logits:     vector of unnormalised probabilities
+        alpha:      scalar, concentration parameter
+
+    Returns:
+        vector of probabilities
+    """
+    return softmax(np.random.multivariate_normal(mean=logits, cov=np.eye(logits.shape[-1]) * alpha ** -1))
+

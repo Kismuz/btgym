@@ -127,6 +127,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#btgym-algorithms-runner-subpackage">btgym.algorithms.runner subpackage</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="btgym.algorithms.runner.html">btgym.algorithms.runner.base module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="btgym.algorithms.runner.html#module-btgym.algorithms.runner.threadrunner">btgym.algorithms.runner.threadrunner module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="btgym.algorithms.runner.html#module-btgym.algorithms.runner.synchro">btgym.algorithms.runner.synchro module</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#module-btgym.algorithms.launcher">btgym.algorithms.launcher module</a></li>
@@ -231,6 +232,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.runner.html">btgym.algorithms.runner.base module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.runner.html#module-btgym.algorithms.runner.threadrunner">btgym.algorithms.runner.threadrunner module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="btgym.algorithms.runner.html#module-btgym.algorithms.runner.synchro">btgym.algorithms.runner.synchro module</a></li>
 </ul>
 </div>
 </div>
@@ -298,7 +300,7 @@ it’s own ThreadRunner process.</dd>
 <span id="btgym-algorithms-aac-module"></span><h2>btgym.algorithms.aac module<a class="headerlink" href="#module-btgym.algorithms.aac" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.aac.BaseAAC">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log_level</em>, <em>name='AAC'</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>runner_config=None</em>, <em>runner_fn_ref=&lt;function BaseEnvRunnerFn&gt;</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_train_test_cycle=(1</em>, <em>0)</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1.0</em>, <em>pc_lambda=1.0</em>, <em>vr_lambda=1.0</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>global_step_op=None</em>, <em>global_episode_op=None</em>, <em>inc_episode_op=None</em>, <em>_use_global_network=True</em>, <em>_use_target_policy=False</em>, <em>_aux_render_modes=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log_level</em>, <em>name='AAC'</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>runner_config=None</em>, <em>runner_fn_ref=&lt;function BaseEnvRunnerFn&gt;</em>, <em>cluster_spec=None</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_train_test_cycle=(1</em>, <em>0)</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1.0</em>, <em>pc_lambda=1.0</em>, <em>vr_lambda=1.0</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>global_step_op=None</em>, <em>global_episode_op=None</em>, <em>inc_episode_op=None</em>, <em>_use_global_network=True</em>, <em>_use_target_policy=False</em>, <em>_use_local_memory=False</em>, <em>_aux_render_modes=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base Asynchronous Advantage Actor Critic algorithm framework class with auxiliary control tasks and
 option to run several instances of environment for every worker in vectorized fashion, PAAC-like.
 Can be configured to run with different losses and policies.</p>
@@ -328,6 +330,7 @@ Can be configured to run with different losses and policies.</p>
 <li><strong>runner_config</strong> – runner class and configuration dictionary,</li>
 <li><strong>runner_fn_ref</strong> – callable defining environment runner execution logic,
 valid only if no ‘runner_config’ arg is provided</li>
+<li><strong>cluster_spec</strong> – dict, full training cluster spec (may be used by meta-trainer)</li>
 <li><strong>random_seed</strong> – int or None</li>
 <li><strong>model_gamma</strong> – scalar, gamma discount factor</li>
 <li><strong>model_gae_lambda</strong> – scalar, GAE lambda</li>
@@ -371,6 +374,7 @@ with provided dataset parameters (test data should exist if <cite>test_number &g
 <li><strong>inc_episode_op</strong> – external tf.op incrementing global step counter</li>
 <li><strong>_use_global_network</strong> – bool, either to use parameter server policy instance</li>
 <li><strong>_use_target_policy</strong> – bool, PPO: use target policy (aka pi_old), delayed by <cite>pi_prime_update_period</cite> delay</li>
+<li><strong>_use_local_memory</strong> – bool: use in-process replay memory instead of runner-based one</li>
 <li><strong>_aux_render_modes</strong> – additional visualisationas to include in per-episode rendering summary, internal</li>
 </ul>
 </td>
@@ -409,9 +413,15 @@ closer to optimal one. When time_flattened, every time-step uses RNN states comp
 when rollout was collected (i.e. by behavioral policy estimator with older
 parameters).</p>
 </dd>
-<dt>Nevertheless, time_flatting can be interesting</dt>
-<dd><p class="first last">because one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
-ensuring iid property and allowing, say, proper batch normalisation (this has yet to be tested).</p>
+<dt>Nevertheless, time_flat:</dt>
+<dd><ul class="first simple">
+<li>allows use of static RNN;</li>
+<li>one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,</li>
+</ul>
+<p class="last">ensuring iid property;
+- allowing second-order derivatives which is impossible in current tf dynamic RNN implementation as
+it uses tf.while_loop internally;
+- computationally cheaper;</p>
 </dd>
 </dl>
 </div></blockquote>
@@ -476,26 +486,12 @@ Supposed to be called by parent worker just before training loop starts.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.algorithms.aac.BaseAAC._process_rollouts">
-<code class="descname">_process_rollouts</code><span class="sig-paren">(</span><em>rollouts</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC._process_rollouts"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC._process_rollouts" title="Permalink to this definition">¶</a></dt>
-<dd><p>rollout.process wrapper: makes single batch from list of rollouts</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rollouts</strong> – list of btgym.algorithms.Rollout class instances</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">single batch data</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
 <dt id="btgym.algorithms.aac.BaseAAC.process_data">
-<code class="descname">process_data</code><span class="sig-paren">(</span><em>sess</em>, <em>data</em>, <em>is_train</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.process_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.process_data" title="Permalink to this definition">¶</a></dt>
+<code class="descname">process_data</code><span class="sig-paren">(</span><em>sess</em>, <em>data</em>, <em>is_train</em>, <em>pi</em>, <em>pi_prime=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.process_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.process_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Processes data, composes train step feed dictionary.
 :param sess: tf session obj.
+:param pi: policy to feed
+:param pi_prime: optional policy to feed
 :param data: data dictionary
 :type data: dict
 :param is_train: is data provided are train or test</p>
@@ -505,7 +501,7 @@ Supposed to be called by parent worker just before training loop starts.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>feed_dict</strong> – train step feed dictionary</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)">dict</a></td>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
 </tr>
 </tbody>
 </table>

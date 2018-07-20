@@ -201,35 +201,306 @@
 <span class="kn">from</span> <span class="nn">gym</span> <span class="k">import</span> <span class="n">spaces</span>
 
 <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">product</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="k">import</span> <span class="n">log2</span><span class="p">,</span> <span class="n">ceil</span>
 
-<span class="c1">#DictSpace = spaces.Dict</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">asarray</span><span class="p">,</span> <span class="n">squeeze</span><span class="p">,</span> <span class="n">zeros</span>
 
 
 <div class="viewcode-block" id="DictSpace"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.DictSpace">[docs]</a><span class="k">class</span> <span class="nc">DictSpace</span><span class="p">(</span><span class="n">spaces</span><span class="o">.</span><span class="n">Dict</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Temporal Wrapper for gym Dict space. Adds support for .shape attribute.</span>
+<span class="sd">    Wrapper for gym.spaces.Dict class. Adds support for .shape attribute.</span>
 <span class="sd">    Defines space as nested dictionary of simpler gym spaces.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces_dict</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            spaces_dict:    [nested] dictionary of core Gym spaces.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">DictSpace</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">spaces</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">DictSpace</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">spaces_dict</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_shape</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">_get_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">OrderedDict</span><span class="p">([(</span><span class="n">k</span><span class="p">,</span> <span class="n">space</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">space</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span></div>
 
 
-<span class="k">class</span> <span class="nc">_DictSpace</span><span class="p">(</span><span class="n">Space</span><span class="p">):</span>
+<div class="viewcode-block" id="ActionDictSpace"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.ActionDictSpace">[docs]</a><span class="k">class</span> <span class="nc">ActionDictSpace</span><span class="p">(</span><span class="n">DictSpace</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extension of OpenAI Gym DictSpace providing additional domain-specific functionality.</span>
+<span class="sd">    Action space for btgym environments as shallow dictionary of discrete or continuous spaces.</span>
+<span class="sd">    Defines several handy attributes and encoding conversion methods.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">assets</span><span class="p">,</span> <span class="n">base_actions</span><span class="o">=</span><span class="kc">None</span><span class="p">,):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            base_actions:   None or iterable of base asset discrete actions;</span>
+<span class="sd">                            if no actions provided - continuous 1D base action space is set in [0,1] interval.</span>
+<span class="sd">            assets:         iterable of assets names</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assets</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">assets</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">base_actions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Discrete base actions provided, will use binary encoding for encode/decode methods</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base_actions</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">base_actions</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base_actions_lookup_table</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_actions</span><span class="p">)))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base_space</span> <span class="o">=</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Discrete</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_discrete</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tensor_shape</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assets</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_actions</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lookup_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_lookup_table</span><span class="p">(</span>
+                <span class="n">base_actions</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_actions_lookup_table</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>
+                <span class="n">num_assets</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="c1"># Infer binary code length (depth):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cardinality</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lookup_table</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">encoded_depth</span> <span class="o">=</span> <span class="n">ceil</span><span class="p">(</span><span class="n">log2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cardinality</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">one_hot_depth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cardinality</span>
+            <span class="n">spaces_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Discrete</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tensor_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">assets</span><span class="p">}</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">encode_method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_action_to_binary</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">decode_method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_to_action</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">one_hot_encode_method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_one_hot</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">one_hot_decode_method</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Using continuous base actions,</span>
+            <span class="c1"># encoding will be simply making 1D array out of shallow dictionary and back:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base_actions</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base_actions_lookup_table</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base_space</span> <span class="o">=</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_discrete</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tensor_shape</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assets</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lookup_table</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cardinality</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># ~inf.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">encoded_depth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tensor_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">one_hot_depth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tensor_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">spaces_dict</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">key</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tensor_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float32&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">assets</span>
+            <span class="p">}</span>
+
+            <span class="c1"># For continuous space encoding is simple:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">encode_method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_action_to_vec</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">decode_method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vec_to_action</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">one_hot_encode_method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_action_to_vec</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">one_hot_decode_method</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">ActionDictSpace</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">spaces_dict</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ActionDictSpace.get_initial_action"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.ActionDictSpace.get_initial_action">[docs]</a>    <span class="k">def</span> <span class="nf">get_initial_action</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            &#39;do nothing&#39; action as OrderedDict (for discrete spaces)</span>
+<span class="sd">            &#39;put all in cash&#39; action as OrderedDict (for continuous actions)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+<div class="viewcode-block" id="ActionDictSpace.encode"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.ActionDictSpace.encode">[docs]</a>    <span class="k">def</span> <span class="nf">encode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given action returns it&#39;s encoding.</span>
+<span class="sd">        Encoding method depends on type of base actions:</span>
+<span class="sd">        - if base actions defined are discrete (gym.spaces.Discrete), binary encoding is used;</span>
+<span class="sd">        - if base actions defined are continuous(gym.spaces.Box),</span>
+<span class="sd">          encoding is translating shallow dictionary to vector of same values and back</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action:     action from this space (shallow dictionary)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">                1D array of floats in [0, 1]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_method</span><span class="p">(</span><span class="n">action</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ActionDictSpace.decode"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.ActionDictSpace.decode">[docs]</a>    <span class="k">def</span> <span class="nf">decode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given code returns action.</span>
+<span class="sd">        Encoding method depends on type of base actions:</span>
+<span class="sd">        - if base actions defined are discrete (gym.spaces.Discrete), binary encoding is used;</span>
+<span class="sd">        - if base actions defined are continuous(gym.spaces.Box),</span>
+<span class="sd">          encoding is translating shallow dictionary to vector of same values and back</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            code:     1D array of floats in [0, 1]</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">                action from this space (shallow dictionary)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_method</span><span class="p">(</span><span class="n">code</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ActionDictSpace.one_hot_encode"><a class="viewcode-back" href="../../btgym.html#btgym.spaces.ActionDictSpace.one_hot_encode">[docs]</a>    <span class="k">def</span> <span class="nf">one_hot_encode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given action returns it&#39;s encoding.</span>
+<span class="sd">        Encoding method depends on type of base actions:</span>
+<span class="sd">        - if base actions defined are discrete (gym.spaces.Discrete), one_hot encoding is used;</span>
+<span class="sd">        - if base actions defined are continuous(gym.spaces.Box),</span>
+<span class="sd">          encoding is translating shallow dictionary to vector of same values and back</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action:     action from this space (shallow dictionary)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">                1D array of floats in [0, 1]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_hot_encode_method</span><span class="p">(</span><span class="n">action</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">one_hot_decode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span> <span class="nf">_to_one_hot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="n">cat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vec_to_cat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_action_to_vec</span><span class="p">(</span><span class="n">action</span><span class="p">))</span>
+        <span class="n">one_hot</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">one_hot_depth</span><span class="p">)</span>
+        <span class="n">one_hot</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">squeeze</span><span class="p">(</span><span class="n">one_hot</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_vec_to_one_hot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vec</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cardinality</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">vec</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">one_hot</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">one_hot_depth</span><span class="p">)</span>
+            <span class="n">one_hot</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_vec_to_cat</span><span class="p">(</span><span class="n">vec</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">return</span> <span class="n">squeeze</span><span class="p">(</span><span class="n">one_hot</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_make_lookup_table</span><span class="p">(</span><span class="n">base_actions</span><span class="p">,</span> <span class="n">num_assets</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates lookup table for set of environment actions for K assets</span>
+<span class="sd">        and N base actions as a cartesian product of K sets of N elements each.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            base_actions:   iterable of base asset actions</span>
+<span class="sd">            num_assets:     int, number of assets</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            lookup table as dictionary form {num_0: env_action_0, ...}</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">product</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">base_actions</span><span class="p">),</span> <span class="n">repeat</span><span class="o">=</span><span class="n">num_assets</span><span class="p">))))</span>
+
+    <span class="k">def</span> <span class="nf">_action_to_binary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given action returns it binary encoding</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action:     action from this space (shallow dictionary)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            1D numpy array of floats in [0, 1]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vec_to_cat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_action_to_vec</span><span class="p">(</span><span class="n">action</span><span class="p">))</span>
+        <span class="n">bit_string</span> <span class="o">=</span> <span class="nb">format</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoded_depth</span><span class="p">)</span>
+        <span class="n">bit_array</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">bit_string</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">bit_array</span>
+
+    <span class="k">def</span> <span class="nf">_binary_to_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">binary_code</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given binary action encoding, returns action</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            binary_code: 1D array of ints or floats in [0, 1]</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            action from action space</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">binary_code</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">,</span> \
+            <span class="s1">&#39;Only 1D code vectors are supported, got array of shape: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">binary_code</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">bit_string</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">bit</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">binary_code</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)):</span>
+            <span class="n">bit_string</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="n">bit</span><span class="p">)</span>
+        <span class="n">cat</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">bit_string</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vec_to_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cat_to_vec</span><span class="p">(</span><span class="n">cat</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_action_to_vec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given action returns its vector encoding.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action:     action from this space (shallow dictionary)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            numpy array</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">action</span><span class="p">),</span> <span class="s1">&#39;Action </span><span class="si">{}</span><span class="s1"> does not belongs to this space&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">asarray</span><span class="p">([</span><span class="n">action</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">assets</span><span class="p">])</span>
+
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="k">return</span> <span class="n">asarray</span><span class="p">([</span><span class="n">action</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">assets</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_vec_to_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given vector encoding of an action returns action from this space.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            vector:     iterable of scalars</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            action as shallow dictionary of scalars</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assets</span><span class="p">),</span> \
+            <span class="s1">&#39;Length of encoding and number of assets should match, got: </span><span class="si">{}</span><span class="s1"> / </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">vector</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assets</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cardinality</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">([(</span><span class="n">asset</span><span class="p">,</span> <span class="n">asarray</span><span class="p">([</span><span class="n">value</span><span class="p">]))</span> <span class="k">for</span> <span class="n">asset</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span> <span class="n">vector</span><span class="p">)])</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">([(</span><span class="n">asset</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">asset</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span> <span class="n">vector</span><span class="p">)])</span>
+
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">action</span><span class="p">),</span> <span class="s1">&#39;Vector </span><span class="si">{}</span><span class="s1"> can not be converted to action of this space&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">action</span>
+
+    <span class="k">def</span> <span class="nf">_vec_to_cat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given action vector returns it&#39;s position (categorical encoding).</span>
+<span class="sd">        Valid for dictionary of discrete base spaces only.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action:     environment action as tuple, list or array of base asset cations</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int, position in lookup table</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError, if no matches found</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">lookup_table</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;Lookup table not defined for base </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_space</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lookup_table</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">list</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="n">action</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">key</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Action vector </span><span class="si">{}</span><span class="s1"> is not in lookup table of this space.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">action</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_cat_to_vec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">category</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given integer as categorical encoding returns corresponding env. action vector.</span>
+<span class="sd">        Valid for dictionary of discrete base spaces only.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            category:   int, encoding</span>
+<span class="sd">            table:      lookup table</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            environment action as numpy array of base asset actions</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError, if no matches found</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">lookup_table</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;Lookup table not defined for base </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_space</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lookup_table</span><span class="p">[</span><span class="n">category</span><span class="p">])</span>
+
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Category </span><span class="si">{}</span><span class="s1"> does not match action space.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">category</span><span class="p">))</span></div>
+
+
+<span class="k">class</span> <span class="nc">__DictSpace</span><span class="p">(</span><span class="n">Space</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    DEPRECATED</span>
 <span class="sd">    Defines space as nested dictionary of simpler gym spaces.</span>
 
-<span class="sd">    Warning:</span>
-<span class="sd">        DEPRECATED. Use gym.spaces.Dict instead.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces_dict</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
