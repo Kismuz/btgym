@@ -535,10 +535,10 @@ expected to properly handle all received data-lines.</p>
 for every asset in form of dictionary: <cite>{asset_name_1: action, …, asset_name_K: action}</cite>
 for K assets added, and issues orders for all assets within a single strategy step.
 It is supposed that actions are discrete [for this environment] and same for every asset.
-Base actions are set by strategy.params.portfolio_actions, default is: (‘hold’, ‘buy’, ‘sell’, ‘close’) which
-equals to <cite>gym.spaces.Discrete</cite> with depth <cite>N=4 (~number of actions: 0, 1, 2, 3)</cite>. That is, for <cite>K</cite> assets environment
-action space will be a shallow dictionary <cite>(DictSpace)</cite> of discrete spaces:
-<cite>{data_line_name_1: gym.spaces.Discrete(N), …, data_line_name_K: gym.spaces.Discrete(N)}</cite></p>
+Base actions are set by strategy.params.portfolio_actions, defaults are: (‘hold’, ‘buy’, ‘sell’, ‘close’) which
+equals to <cite>gym.spaces.Discrete</cite> with depth <cite>N=4 (~number of actions: 0, 1, 2, 3)</cite>.
+That is, for <cite>K</cite> assets environment action space will be a shallow dictionary <cite>(DictSpace)</cite> of discrete spaces:
+<cite>{asset_name_1: gym.spaces.Discrete(N), …, asset_name_K: gym.spaces.Discrete(N)}</cite></p>
 <blockquote>
 <div><p>Example:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">datalines</span> <span class="n">added</span> <span class="n">via</span> <span class="n">BTgymMultiData</span> <span class="n">are</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;eurchf&#39;</span><span class="p">,</span> <span class="s1">&#39;eurgbp&#39;</span><span class="p">,</span> <span class="s1">&#39;eurgpy&#39;</span><span class="p">,</span> <span class="s1">&#39;eurusd&#39;</span><span class="p">],</span>

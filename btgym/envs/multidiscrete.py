@@ -49,10 +49,10 @@ class MultiDiscreteEnv(BTgymEnv):
         for every asset in form of dictionary: `{asset_name_1: action, ..., asset_name_K: action}`
         for K assets added, and issues orders for all assets within a single strategy step.
         It is supposed that actions are discrete [for this environment] and same for every asset.
-        Base actions are set by strategy.params.portfolio_actions, default is: ('hold', 'buy', 'sell', 'close') which
-        equals to `gym.spaces.Discrete` with depth `N=4 (~number of actions: 0, 1, 2, 3)`. That is, for `K` assets environment
-        action space will be a shallow dictionary `(DictSpace)` of discrete spaces:
-        `{data_line_name_1: gym.spaces.Discrete(N), ..., data_line_name_K: gym.spaces.Discrete(N)}`
+        Base actions are set by strategy.params.portfolio_actions, defaults are: ('hold', 'buy', 'sell', 'close') which
+        equals to `gym.spaces.Discrete` with depth `N=4 (~number of actions: 0, 1, 2, 3)`.
+        That is, for `K` assets environment action space will be a shallow dictionary `(DictSpace)` of discrete spaces:
+        `{asset_name_1: gym.spaces.Discrete(N), ..., asset_name_K: gym.spaces.Discrete(N)}`
 
             Example::
 
