@@ -710,55 +710,58 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
         # return out_x[:, None, :]
         return out_x[:, None, :]
 
-    # def get_reward(self):
-    #     """
-    #     [Tailored] to continuous action space.
-    #     Shapes reward function as normalized single trade realized profit/loss,
-    #     augmented with potential-based reward shaping functions in form of:
-    #     F(s, a, s`) = gamma * FI(s`) - FI(s);
-    #
-    #     - potential FI_1 is current normalized unrealized profit/loss;
-    #     - potential FI_2 is current normalized broker value.
-    #     - FI_3: penalizing exposure toward the end of episode
-    #
-    #     Paper:
-    #         "Policy invariance under reward transformations:
-    #          Theory and application to reward shaping" by A. Ng et al., 1999;
-    #          http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf
-    #     """
-    #
-    #     # All sliding statistics for this step are already updated by get_state().
-    #     debug = {}
-    #     # Potential-based shaping function 1:
-    #     # based on log potential of averaged profit/loss for current opened trade (unrealized p/l):
-    #     unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl']) / 2 + 1 # shift [-1,1] -> [0,1]
-    #     # TODO: make normalizing util func to return in [0,1] by default
-    #     f1 = self.p.gamma * np.log(np.average(unrealised_pnl[1:])) - np.log(np.average(unrealised_pnl[:-1]))
-    #
-    #     debug['f1'] = f1
-    #
-    #     # Potential-based shaping function 2:
-    #     # based on potential of averaged broker value, log-normalized wrt to max drawdown and target bounds.
-    #     norm_broker_value = np.asarray(self.sliding_stat['broker_value']) / 2 + 1 # shift [-1,1] -> [0,1]
-    #     f2 = self.p.gamma * np.log(np.average(norm_broker_value[1:])) - np.log(np.average(norm_broker_value[:-1]))
-    #
-    #     debug['f2'] = f2
-    #
-    #     # `Spike` reward function: normalized realized profit/loss:
-    #     # TODO: Seems useless for continuous space
-    #     realized_pnl = self.sliding_stat['realized_pnl'][-1]
-    #     debug['f_real_pnl'] = 10 * realized_pnl
-    #
-    #     # Weights are subject to tune:
-    #     self.reward = (10.0 * f1 + 2.0 * f2 + 10.0 * realized_pnl) * self.p.reward_scale
-    #
-    #     debug['r'] = self.reward
-    #     debug['b_v'] = self.sliding_stat['broker_value'][-1]
-    #     debug['unreal_pnl'] = self.sliding_stat['unrealized_pnl'][-1]
-    #     debug['iteration'] = self.iteration
-    #
-    #     self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
-    #
-    #     return self.reward
+
+class CasualConvStrategyMultiCont(CasualConvStrategyMulti):
+
+    def get_reward(self):
+        """
+        [Tailored] to continuous action space.
+        Shapes reward function as normalized single trade realized profit/loss,
+        augmented with potential-based reward shaping functions in form of:
+        F(s, a, s`) = gamma * FI(s`) - FI(s);
+
+        - potential FI_1 is current normalized unrealized profit/loss;
+        - potential FI_2 is current normalized broker value.
+        - FI_3: penalizing exposure toward the end of episode
+
+        Paper:
+            "Policy invariance under reward transformations:
+             Theory and application to reward shaping" by A. Ng et al., 1999;
+             http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf
+        """
+
+        # All sliding statistics for this step are already updated by get_state().
+        debug = {}
+        # Potential-based shaping function 1:
+        # based on log potential of averaged profit/loss for current opened trade (unrealized p/l):
+        unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl']) / 2 + 1 # shift [-1,1] -> [0,1]
+        # TODO: make normalizing util func to return in [0,1] by default
+        f1 = self.p.gamma * np.log(np.average(unrealised_pnl[1:])) - np.log(np.average(unrealised_pnl[:-1]))
+
+        debug['f1'] = f1
+
+        # Potential-based shaping function 2:
+        # based on potential of averaged broker value, log-normalized wrt to max drawdown and target bounds.
+        norm_broker_value = np.asarray(self.sliding_stat['broker_value']) / 2 + 1 # shift [-1,1] -> [0,1]
+        f2 = self.p.gamma * np.log(np.average(norm_broker_value[1:])) - np.log(np.average(norm_broker_value[:-1]))
+
+        debug['f2'] = f2
+
+        # `Spike` reward function: normalized realized profit/loss:
+        # TODO: Seems useless for continuous space
+        realized_pnl = self.sliding_stat['realized_pnl'][-1]
+        debug['f_real_pnl'] = 10 * realized_pnl
+
+        # Weights are subject to tune:
+        self.reward = (10.0 * f1 + 2.0 * f2 + 10.0 * realized_pnl) * self.p.reward_scale
+
+        debug['r'] = self.reward
+        debug['b_v'] = self.sliding_stat['broker_value'][-1]
+        debug['unreal_pnl'] = self.sliding_stat['unrealized_pnl'][-1]
+        debug['iteration'] = self.iteration
+
+        self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
+
+        return self.reward
 
 

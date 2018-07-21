@@ -532,9 +532,8 @@ one want to trade jointly.</p>
 as separate named data-line (see backtrader docs for extensive explanation of data-lines concept). Strategy is
 expected to properly handle all received data-lines.</p>
 <p>3. btgym.spaces.ActionDictSpace and order execution. Strategy expects to receive separate action
-for every asset in form of dictionary: <cite>{data_line_name_1: action, …, data_line_name_K: action}</cite>
+for every asset in form of dictionary: <cite>{asset_name_1: action, …, asset_name_K: action}</cite>
 for K assets added, and issues orders for all assets within a single strategy step.
-TODO: refine order execution control, see: <a class="reference external" href="https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1">https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1</a>
 It is supposed that actions are discrete [for this environment] and same for every asset.
 Base actions are set by strategy.params.portfolio_actions, default is: (‘hold’, ‘buy’, ‘sell’, ‘close’) which
 equals to <cite>gym.spaces.Discrete</cite> with depth <cite>N=4 (~number of actions: 0, 1, 2, 3)</cite>. That is, for <cite>K</cite> assets environment
@@ -667,9 +666,9 @@ overrides <cite>log_level</cite> and <cite>verbose</cite> args.</li>
 <dd><p>OpenAI Gym API shell for Backtrader backtesting/trading library with multiply assets support.
 Action space is dictionary of contionious  actions for every asset.
 This setup closely relates to continuous portfolio optimisation problem definition.</p>
-<dl class="docutils">
-<dt>Multi-asset setup explanation:</dt>
-<dd><p class="first">0. Problem definition.
+<p>Setup explanation:</p>
+<blockquote>
+<div><p>0. Problem definition.
 Consider setup with one riskless asset acting as broker account cash and K (by default - one) risky assets.
 For every risky asset there exists track of historic price records referred as <cite>data-line</cite>.
 Apart from assets data lines there possibly exists number of exogenous data lines holding some
@@ -777,7 +776,7 @@ share of asset.
 </ol>
 <p>3. Observation space: is nested DictSpace, where ‘external’ part part of space should hold specifications
 for every data line added (note that cash asset does not have it’s own data line).</p>
-<blockquote class="last">
+<blockquote>
 <div><p>Example:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">data</span> <span class="n">lines</span> <span class="n">added</span> <span class="n">via</span> <span class="n">BTgymMultiData</span> <span class="n">are</span><span class="p">:</span>
     <span class="s1">&#39;chf&#39;</span><span class="p">,</span> <span class="s1">&#39;gbp&#39;</span><span class="p">,</span> <span class="s1">&#39;jpy&#39;</span><span class="p">,</span> <span class="s1">&#39;usd&#39;</span><span class="p">;</span>
@@ -802,8 +801,7 @@ for every data line added (note that cash asset does not have it’s own data li
 </pre></div>
 </div>
 </div></blockquote>
-</dd>
-</dl>
+</div></blockquote>
 <p>This class requires dataset, strategy, engine instances to be passed explicitly.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />

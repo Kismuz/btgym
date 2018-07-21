@@ -195,7 +195,9 @@ class BTgymBaseStrategy(bt.Strategy):
         self.is_done_enabled = False
         self.steps_till_is_done = 2  # extra steps to make when episode terminal conditions are met
         self.action = self.p.initial_portfolio_action
-        self.last_action = self.p.initial_portfolio_action
+        self.action_to_repeat = self.p.initial_portfolio_action
+        self.action_repeated = 0
+        self.num_action_repeats = None
         self.reward = 0
         self.order = None
         self.order_failed = 0
@@ -325,14 +327,27 @@ class BTgymBaseStrategy(bt.Strategy):
         # Define how this strategy should handle actions: either as discrete or continuous:
         if self.p.portfolio_actions is None or set(self.p.portfolio_actions) == {}:
             # No discrete actions provided, assume continuous:
-            self.next_process_fn = self._next_target_percent
+            try:
+                assert self.p.skip_frame > 1
+
+            except AssertionError:
+                msg = 'For continuous actions it is essential to set `skip_frame` parameter > 1, got: {}'.format(
+                    self.p.skip_frame
+                )
+                self.log.error(msg)
+                raise ValueError(msg)
             # Disable broker checking margin,
             # see: https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1
             self.env.broker.set_checksubmit(False)
+            self.next_process_fn = self._next_target_percent
+            # Do not repeat action for discrete:
+            self.num_action_repeats = 0
 
         else:
             # Use discrete handling method otherwise:
             self.next_process_fn = self._next_discrete
+            # Repeat action 2 times:
+            self.num_action_repeats = 2
 
     def prenext(self):
         self.update_sliding_stat()
@@ -352,10 +367,14 @@ class BTgymBaseStrategy(bt.Strategy):
         """
         if '_skip_this' in self.action.keys():
                 # print('a_skip, b_message: ', self.broker_message)
-                return
+                if self.action_repeated < self.num_action_repeats:
+                    self.next_process_fn(self.action_to_repeat)
+                    self.action_repeated += 1
 
         else:
             self.next_process_fn(self.action)
+            self.action_repeated = 0
+            self.action_to_repeat = self.action
             # print('a_process, b_message: ', self.broker_message)
 
     def notify_trade(self, trade):

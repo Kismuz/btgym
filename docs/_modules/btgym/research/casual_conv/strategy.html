@@ -891,56 +891,59 @@
         <span class="c1"># return out_x[:, None, :]</span>
         <span class="k">return</span> <span class="n">out_x</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span></div>
 
-    <span class="c1"># def get_reward(self):</span>
-    <span class="c1">#     &quot;&quot;&quot;</span>
-    <span class="c1">#     [Tailored] to continuous action space.</span>
-    <span class="c1">#     Shapes reward function as normalized single trade realized profit/loss,</span>
-    <span class="c1">#     augmented with potential-based reward shaping functions in form of:</span>
-    <span class="c1">#     F(s, a, s`) = gamma * FI(s`) - FI(s);</span>
-    <span class="c1">#</span>
-    <span class="c1">#     - potential FI_1 is current normalized unrealized profit/loss;</span>
-    <span class="c1">#     - potential FI_2 is current normalized broker value.</span>
-    <span class="c1">#     - FI_3: penalizing exposure toward the end of episode</span>
-    <span class="c1">#</span>
-    <span class="c1">#     Paper:</span>
-    <span class="c1">#         &quot;Policy invariance under reward transformations:</span>
-    <span class="c1">#          Theory and application to reward shaping&quot; by A. Ng et al., 1999;</span>
-    <span class="c1">#          http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</span>
-    <span class="c1">#     &quot;&quot;&quot;</span>
-    <span class="c1">#</span>
-    <span class="c1">#     # All sliding statistics for this step are already updated by get_state().</span>
-    <span class="c1">#     debug = {}</span>
-    <span class="c1">#     # Potential-based shaping function 1:</span>
-    <span class="c1">#     # based on log potential of averaged profit/loss for current opened trade (unrealized p/l):</span>
-    <span class="c1">#     unrealised_pnl = np.asarray(self.sliding_stat[&#39;unrealized_pnl&#39;]) / 2 + 1 # shift [-1,1] -&gt; [0,1]</span>
-    <span class="c1">#     # TODO: make normalizing util func to return in [0,1] by default</span>
-    <span class="c1">#     f1 = self.p.gamma * np.log(np.average(unrealised_pnl[1:])) - np.log(np.average(unrealised_pnl[:-1]))</span>
-    <span class="c1">#</span>
-    <span class="c1">#     debug[&#39;f1&#39;] = f1</span>
-    <span class="c1">#</span>
-    <span class="c1">#     # Potential-based shaping function 2:</span>
-    <span class="c1">#     # based on potential of averaged broker value, log-normalized wrt to max drawdown and target bounds.</span>
-    <span class="c1">#     norm_broker_value = np.asarray(self.sliding_stat[&#39;broker_value&#39;]) / 2 + 1 # shift [-1,1] -&gt; [0,1]</span>
-    <span class="c1">#     f2 = self.p.gamma * np.log(np.average(norm_broker_value[1:])) - np.log(np.average(norm_broker_value[:-1]))</span>
-    <span class="c1">#</span>
-    <span class="c1">#     debug[&#39;f2&#39;] = f2</span>
-    <span class="c1">#</span>
-    <span class="c1">#     # `Spike` reward function: normalized realized profit/loss:</span>
-    <span class="c1">#     # TODO: Seems useless for continuous space</span>
-    <span class="c1">#     realized_pnl = self.sliding_stat[&#39;realized_pnl&#39;][-1]</span>
-    <span class="c1">#     debug[&#39;f_real_pnl&#39;] = 10 * realized_pnl</span>
-    <span class="c1">#</span>
-    <span class="c1">#     # Weights are subject to tune:</span>
-    <span class="c1">#     self.reward = (10.0 * f1 + 2.0 * f2 + 10.0 * realized_pnl) * self.p.reward_scale</span>
-    <span class="c1">#</span>
-    <span class="c1">#     debug[&#39;r&#39;] = self.reward</span>
-    <span class="c1">#     debug[&#39;b_v&#39;] = self.sliding_stat[&#39;broker_value&#39;][-1]</span>
-    <span class="c1">#     debug[&#39;unreal_pnl&#39;] = self.sliding_stat[&#39;unrealized_pnl&#39;][-1]</span>
-    <span class="c1">#     debug[&#39;iteration&#39;] = self.iteration</span>
-    <span class="c1">#</span>
-    <span class="c1">#     self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)</span>
-    <span class="c1">#</span>
-    <span class="c1">#     return self.reward</span>
+
+<span class="k">class</span> <span class="nc">CasualConvStrategyMultiCont</span><span class="p">(</span><span class="n">CasualConvStrategyMulti</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">get_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        [Tailored] to continuous action space.</span>
+<span class="sd">        Shapes reward function as normalized single trade realized profit/loss,</span>
+<span class="sd">        augmented with potential-based reward shaping functions in form of:</span>
+<span class="sd">        F(s, a, s`) = gamma * FI(s`) - FI(s);</span>
+
+<span class="sd">        - potential FI_1 is current normalized unrealized profit/loss;</span>
+<span class="sd">        - potential FI_2 is current normalized broker value.</span>
+<span class="sd">        - FI_3: penalizing exposure toward the end of episode</span>
+
+<span class="sd">        Paper:</span>
+<span class="sd">            &quot;Policy invariance under reward transformations:</span>
+<span class="sd">             Theory and application to reward shaping&quot; by A. Ng et al., 1999;</span>
+<span class="sd">             http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># All sliding statistics for this step are already updated by get_state().</span>
+        <span class="n">debug</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># Potential-based shaping function 1:</span>
+        <span class="c1"># based on log potential of averaged profit/loss for current opened trade (unrealized p/l):</span>
+        <span class="n">unrealised_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span> <span class="c1"># shift [-1,1] -&gt; [0,1]</span>
+        <span class="c1"># TODO: make normalizing util func to return in [0,1] by default</span>
+        <span class="n">f1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f1</span>
+
+        <span class="c1"># Potential-based shaping function 2:</span>
+        <span class="c1"># based on potential of averaged broker value, log-normalized wrt to max drawdown and target bounds.</span>
+        <span class="n">norm_broker_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span> <span class="c1"># shift [-1,1] -&gt; [0,1]</span>
+        <span class="n">f2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f2</span>
+
+        <span class="c1"># `Spike` reward function: normalized realized profit/loss:</span>
+        <span class="c1"># TODO: Seems useless for continuous space</span>
+        <span class="n">realized_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f_real_pnl&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">realized_pnl</span>
+
+        <span class="c1"># Weights are subject to tune:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="p">(</span><span class="mf">10.0</span> <span class="o">*</span> <span class="n">f1</span> <span class="o">+</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">f2</span> <span class="o">+</span> <span class="mf">10.0</span> <span class="o">*</span> <span class="n">realized_pnl</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span>
+
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span>
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;b_v&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;unreal_pnl&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;iteration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span>
 
 
 </pre></div>

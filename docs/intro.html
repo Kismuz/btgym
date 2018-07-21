@@ -341,7 +341,7 @@ are set;</li>
 <dt><strong>Continuous actions setup[BETA]:</strong></dt>
 <dd><p class="first">this setup closely relates to continuous portfolio optimisation problem definition;
 it differs from setup above in:</p>
-<blockquote class="last">
+<blockquote>
 <div><ol class="arabic simple">
 <li>base broker actions are real numbers: <cite>a[i] in [0,1], 0&lt;=i&lt;=K, SUM{a[i]} = 1</cite>  for <cite>K</cite> risky assets added;
 each action is a market target order to adjust portfolio to get share <cite>a[i]*100%</cite> for <cite>i</cite>-th  asset;</li>
@@ -350,10 +350,11 @@ each action is a market target order to adjust portfolio to get share <cite>a[i]
 <li>short selling is not permitted;</li>
 </ol>
 </div></blockquote>
+<ul class="last simple">
+<li>For RL model it implies having continuous action space as <cite>K+1</cite> dim vector.</li>
+</ul>
 </dd>
 </dl>
-</li>
-<li><p class="first">For RL it implies having continuous action space as <cite>K+1</cite> dim vector.</p>
 </li>
 </ul>
 </div>

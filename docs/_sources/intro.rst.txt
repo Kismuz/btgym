@@ -159,7 +159,7 @@ Problem definition
       2. entire single-step broker action is dictionary of form:
          `{cash_name: a[0], asset_name_1: a[1], ..., asset_name_K: a[K]}`;
       3. short selling is not permitted;
-- For RL it implies having continuous action space as `K+1` dim vector.
+   - For RL model it implies having continuous action space as `K+1` dim vector.
 
 Environment engine description
 ------------------------------

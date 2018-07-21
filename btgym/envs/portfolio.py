@@ -37,7 +37,8 @@ class PortfolioEnv(BTgymEnv):
         Action space is dictionary of contionious  actions for every asset.
         This setup closely relates to continuous portfolio optimisation problem definition.
 
-        Multi-asset setup explanation:
+        Setup explanation:
+
             0. Problem definition.
             Consider setup with one riskless asset acting as broker account cash and K (by default - one) risky assets.
             For every risky asset there exists track of historic price records referred as `data-line`.

@@ -46,9 +46,8 @@ class MultiDiscreteEnv(BTgymEnv):
         expected to properly handle all received data-lines.
 
         3. btgym.spaces.ActionDictSpace and order execution. Strategy expects to receive separate action
-        for every asset in form of dictionary: `{data_line_name_1: action, ..., data_line_name_K: action}`
+        for every asset in form of dictionary: `{asset_name_1: action, ..., asset_name_K: action}`
         for K assets added, and issues orders for all assets within a single strategy step.
-        TODO: refine order execution control, see: https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1
         It is supposed that actions are discrete [for this environment] and same for every asset.
         Base actions are set by strategy.params.portfolio_actions, default is: ('hold', 'buy', 'sell', 'close') which
         equals to `gym.spaces.Discrete` with depth `N=4 (~number of actions: 0, 1, 2, 3)`. That is, for `K` assets environment
