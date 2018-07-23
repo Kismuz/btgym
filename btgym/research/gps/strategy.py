@@ -139,7 +139,7 @@ class GuidedStrategy_0_0(DevStrat_4_12):
 
     # def get_state(self):
     #     # Update inner state statistic and compose state:
-    #     self.update_sliding_stat()
+    #     self.update_broker_stat()
     #
     #     self.state = {
     #         'external': self.get_external_state(),

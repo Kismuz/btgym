@@ -287,29 +287,33 @@ class BTgymBaseStrategy(bt.Strategy):
         self.log.debug('strategy.metadata: {}'.format(self.metadata))
         self.log.debug('can_increment_global_time: {}'.format(self.can_increment_global_time))
 
-        # Sliding staistics accumulators, globally normalized last `avg_perod` values,
-        # so it's a bit more comp. efficient than use of bt.Observers:
-        sliding_datalines = [
+        # Broker data lines of interest (used for estimation inner state of agent:
+        self.broker_datalines = [
             'broker_cash',
             'broker_value',
             'exposure',
-            'leverage',
-            'pos_duration',
-            'episode_step',
             'realized_pnl',
             'unrealized_pnl',
-            'max_unrealized_pnl',
-            'min_unrealized_pnl',
-            # 'action',
-            'reward',
         ]
-        self.sliding_stat = {key: deque(maxlen=self.avg_period) for key in sliding_datalines}
+        # Define collection dictionary looking for methods for estimating broker statistics, one method for one mode,
+        # should be named .get_broker_[mode_name]():
+        self.collection_get_broker_stat_methods = {}
+        for line in self.broker_datalines:
+            try:
+                self.collection_get_broker_stat_methods[line] = getattr(self, 'get_broker_{}'.format(line))
+
+            except AttributeError:
+                raise NotImplementedError('Callable get_broker_{}.() not found'.format(line))
+
+        # Broker and account related sliding staistics accumulators, globally normalized last `avg_perod` values,
+        # so it's a bit more comp. efficient than use of bt.Observers:
+        self.broker_stat = {key: deque(maxlen=self.avg_period) for key in self.broker_datalines}
 
         # Add custom data Lines if any (convenience wrapper):
         self.set_datalines()
         self.log.debug('Kwargs:\n{}\n'.format(str(kwargs)))
 
-        # Here we define collection dictionary looking for methods for estimating state, one method for one mode,
+        # Define collection dictionary looking for methods for estimating observation state, one method for one mode,
         # should be named .get_[mode_name]_state():
         self.collection_get_state_methods = {}
         for key in self.p.state_shape.keys():
@@ -350,7 +354,7 @@ class BTgymBaseStrategy(bt.Strategy):
             self.num_action_repeats = 2
 
     def prenext(self):
-        self.update_sliding_stat()
+        self.update_broker_stat()
 
     def nextstart(self):
         self.inner_embedding = self.data.close.buflen()
@@ -388,99 +392,128 @@ class BTgymBaseStrategy(bt.Strategy):
             # Store realized prtfolio value:
             self.realized_broker_value = self.broker.get_value()
 
-    def update_sliding_stat(self):
+    def update_broker_stat(self):
         """
-        Updates all sliding statistics deques with latest-step values:
+        Updates all sliding broker statistics deques with latest-step values such as:
             - normalized broker value
             - normalized broker cash
             - normalized exposure (position size)
-            - position duration in steps, normalized wrt. max possible episode steps
             - exp. scaled episode duration in steps, normalized wrt. max possible episode steps
             - normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)
             - normalized profit/loss for current opened trade (unrealized p/l);
-            - normalized best possible up to present point unrealized result for current opened trade;
-            - normalized worst possible up to present point unrealized result for current opened trade;
-            - DELETED: one hot encoding for actions received;
-            - rewards received (based on self.reward variable values);
         """
-        stat = self.sliding_stat
         current_value = self.env.broker.get_value()
 
-        stat['broker_value'].append(
-            norm_value(
+        for key, method in self.collection_get_broker_stat_methods.items():
+            self.broker_stat[key].append(method(current_value=current_value))
+
+    def get_broker_value(self, current_value, **kwargs):
+        """
+
+        Args:
+            current_value:  current portfolio value
+
+        Returns:
+            normalized broker value.
+        """
+        return norm_value(
+            current_value,
+            self.env.broker.startingcash,
+            self.p.drawdown_call,
+            self.p.target_call,
+        )
+
+    def get_broker_cash(self, **kwargs):
+        """
+
+        Returns:
+            normalized broker cash
+        """
+        return norm_value(
+            self.env.broker.get_cash(),
+            self.env.broker.startingcash,
+            99.0,
+            self.p.target_call,
+        )
+
+    def get_broker_exposure(self, **kwargs):
+        """
+
+        Returns:
+            normalized exposure (position size)
+        """
+        return self.position.size / (self.env.broker.startingcash * self.env.broker.get_leverage() + 1e-2)
+
+    def get_broker_realized_pnl(self, current_value, **kwargs):
+        """
+
+        Args:
+            current_value: current portfolio value
+
+        Returns:
+            normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)
+        """
+        if self.trade_just_closed:
+            pnl = decayed_result(
+                self.trade_result,
                 current_value,
                 self.env.broker.startingcash,
                 self.p.drawdown_call,
                 self.p.target_call,
-            )
-        )
-        stat['broker_cash'].append(
-            norm_value(
-                self.env.broker.get_cash(),
-                self.env.broker.startingcash,
-                99.0,
-                self.p.target_call,
-            )
-        )
-        stat['exposure'].append(
-            self.position.size / (self.env.broker.startingcash * self.env.broker.get_leverage() + 1e-2)
-        )
-        stat['leverage'].append(self.env.broker.get_leverage())  # TODO: Do we need this?
-
-        if self.trade_just_closed:
-            stat['realized_pnl'].append(
-                decayed_result(
-                    self.trade_result,
-                    current_value,
-                    self.env.broker.startingcash,
-                    self.p.drawdown_call,
-                    self.p.target_call,
-                    gamma=1
-                )
+                gamma=1
             )
             # Reset flag:
             self.trade_just_closed = False
             # print('POS_OBS: step {}, just closed.'.format(self.iteration))
 
         else:
-            stat['realized_pnl'].append(0.0)
+            pnl = 0.0
+        return pnl
 
-        if self.position.size == 0:
-            self.current_pos_duration = 0
-            self.current_pos_min_value = current_value
-            self.current_pos_max_value = current_value
-            # print('ZERO_POSITION\n')
+    def get_broker_unrealized_pnl(self, current_value, **kwargs):
+        """
 
-        else:
-            self.current_pos_duration += 1
-            if self.current_pos_max_value < current_value:
-                self.current_pos_max_value = current_value
+        Args:
+            current_value: current portfolio value
 
-            elif self.current_pos_min_value > current_value:
-                self.current_pos_min_value = current_value
+        Returns:
+            normalized profit/loss for current opened trade
+        """
+        return (current_value - self.realized_broker_value) * self.broker_value_normalizer
 
-        stat['pos_duration'].append(
-            self.current_pos_duration / (self.data.numrecords - self.inner_embedding)
-        )
-        stat['episode_step'].append(
-            exp_scale(
-                self.iteration / (self.data.numrecords - self.inner_embedding),
-                gamma=3
-            )
-        )
-        stat['max_unrealized_pnl'].append(
-            (self.current_pos_max_value - self.realized_broker_value) * self.broker_value_normalizer
-        )
-        stat['min_unrealized_pnl'].append(
-            (self.current_pos_min_value - self.realized_broker_value) * self.broker_value_normalizer
-        )
-        stat['unrealized_pnl'].append(
-            (current_value - self.realized_broker_value) * self.broker_value_normalizer
-        )
-        #stat['action'].append(self.action_norm(self.last_action))
-        stat['reward'].append(self.reward)
+    def get_broker_episode_step(self, **kwargs):
+        """
 
-        #print(stat['episode_step'])
+        Returns:
+            exp. scaled episode duration in steps, normalized wrt. max possible episode steps
+        """
+        return exp_scale(
+            self.iteration / (self.data.numrecords - self.inner_embedding),
+            gamma=3
+        )
+
+    # def get_broker_pos_duration(self, current_value):
+    #     if self.position.size == 0:
+    #         self.current_pos_duration = 0
+    #         self.current_pos_min_value = current_value
+    #         self.current_pos_max_value = current_value
+    #         # print('ZERO_POSITION\n')
+    #
+    #     else:
+    #         self.current_pos_duration += 1
+    #         if self.current_pos_max_value < current_value:
+    #             self.current_pos_max_value = current_value
+    #
+    #         elif self.current_pos_min_value > current_value:
+    #             self.current_pos_min_value = current_value
+    #
+    #     return self.current_pos_duration / (self.data.numrecords - self.inner_embedding)
+    #
+    # def get_broker_max_unrealized_pnl(self):
+    #     return (self.current_pos_max_value - self.realized_broker_value) * self.broker_value_normalizer
+    #
+    # def get_broker_min_unrealized_pnl(self):
+    #     return (self.current_pos_min_value - self.realized_broker_value) * self.broker_value_normalizer
 
     def set_datalines(self):
         """
@@ -514,6 +547,18 @@ class BTgymBaseStrategy(bt.Strategy):
 
         return self.raw_state
 
+    def get_internal_state(self):
+        """
+        Composes internal state tensor by calling all statistics from broker_stat dictionary.
+        Generally, this method should not be modified, implement corresponding get_broker_[mode]() methods.
+
+        """
+        x_broker = np.concatenate(
+            [np.asarray(stat[..., None]) for stat in self.broker_stat.values()],
+            axis=-1
+        )
+        return x_broker[:, None, :]
+
     def get_metadata_state(self):
         self.metadata['timestamp'] = np.asarray(self._get_timestamp())
 
@@ -543,7 +588,7 @@ class BTgymBaseStrategy(bt.Strategy):
         """
         Collects estimated values for every mode of observation space by calling methods from
         `collection_get_state_methods` dictionary.
-        As a rule, this method should not be modified, override or implement correspondig get_[mode]_state() methods,
+        As a rule, this method should not be modified, override or implement corresponding get_[mode]_state() methods,
         defining necessary calculations and return arbitrary shaped tensors for every space mode.
 
         Note:
@@ -552,7 +597,7 @@ class BTgymBaseStrategy(bt.Strategy):
                  __init__() or define_datalines().
         """
         # Update inner state statistic and compose state:
-        self.update_sliding_stat()
+        self.update_broker_stat()
 
         self.state = {key: method() for key, method in self.collection_get_state_methods.items()}
         # Above line is generalisation of, say:
@@ -566,18 +611,61 @@ class BTgymBaseStrategy(bt.Strategy):
 
     def get_reward(self):
         """
-        Default reward estimator.
+        Shapes reward function as normalized single trade realized profit/loss,
+        augmented with potential-based reward shaping functions in form of:
+        F(s, a, s`) = gamma * FI(s`) - FI(s);
 
-        Computes `dummy` reward as log utility of current to initial portfolio value ratio.
-        Same principles as for state composer apply.
+        - potential FI_1 is current normalized unrealized profit/loss;
+        - potential FI_2 is current normalized broker value.
+        - FI_3: penalizing exposure toward the end of episode
 
-        Returns:
-             self.reward value: scalar, float
-
-        Note:
-            should update self.reward variable.
+        Paper:
+            "Policy invariance under reward transformations:
+             Theory and application to reward shaping" by A. Ng et al., 1999;
+             http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf
         """
-        self.reward = float(np.log(self.stats.broker.value[0] / self.env.broker.startingcash))
+
+        # All sliding statistics for this step are already updated by get_state().
+        debug = {}
+        # Potential-based shaping function 1:
+        # based on log potential of averaged profit/loss for current opened trade (unrealized p/l):
+        unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl']) / 2 + 1 # shift [-1,1] -> [0,1]
+        # TODO: make normalizing util func to return in [0,1] by default
+        f1 = self.p.gamma * np.log(np.average(unrealised_pnl[1:])) - np.log(np.average(unrealised_pnl[:-1]))
+
+        debug['f1'] = f1
+
+        # Potential-based shaping function 2:
+        # based on potential of averaged broker value, log-normalized wrt to max drawdown and target bounds.
+        norm_broker_value = np.asarray(self.broker_stat['value']) / 2 + 1 # shift [-1,1] -> [0,1]
+        f2 = self.p.gamma * np.log(np.average(norm_broker_value[1:])) - np.log(np.average(norm_broker_value[:-1]))
+
+        debug['f2'] = f2
+
+        # Potential-based shaping function 3: NOT USED
+        # negative potential of abs. size of position, exponentially weighted wrt. episode steps
+        # abs_exposure = np.abs(np.asarray(self.broker_stat['exposure']))
+        # time = np.asarray(self.broker_stat['step'])
+        #
+        # f3 = - self.p.gamma * exp_scale(time[-1], gamma=3) * abs_exposure[-1] + \
+        #      exp_scale(time[-2], gamma=3) * abs_exposure[-2]
+        # debug['f3'] = f3
+        f3 = 1
+
+        # `Spike` reward function: normalized realized profit/loss:
+        realized_pnl = self.broker_stat['realized_pnl'][-1]
+        debug['f_real_pnl'] = 10 * realized_pnl
+
+        # Weights are subject to tune:
+        self.reward = (1.0 * f1 + 2.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl) * self.p.reward_scale
+
+        debug['r'] = self.reward
+        debug['b_v'] = self.broker_stat['value'][-1]
+        debug['unreal_pnl'] = self.broker_stat['unrealized_pnl'][-1]
+        debug['iteration'] = self.iteration
+
+        self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
+
         return self.reward
 
     def get_info(self):

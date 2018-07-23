@@ -531,7 +531,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">num_action_repeats</span> <span class="o">=</span> <span class="mi">2</span>
 
     <span class="k">def</span> <span class="nf">prenext</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_sliding_stat</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">nextstart</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">close</span><span class="o">.</span><span class="n">buflen</span><span class="p">()</span>
@@ -569,7 +569,7 @@
             <span class="c1"># Store realized prtfolio value:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">realized_broker_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
 
-<div class="viewcode-block" id="BTgymBaseStrategy.update_sliding_stat"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.update_sliding_stat">[docs]</a>    <span class="k">def</span> <span class="nf">update_sliding_stat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="BTgymBaseStrategy.update_broker_stat"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.update_broker_stat">[docs]</a>    <span class="k">def</span> <span class="nf">update_broker_stat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Updates all sliding statistics deques with latest-step values:</span>
 <span class="sd">            - normalized broker value</span>
@@ -733,7 +733,7 @@
 <span class="sd">                 __init__() or define_datalines().</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_sliding_stat</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">method</span><span class="p">()</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_get_state_methods</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
         <span class="c1"># Above line is generalisation of, say:</span>

@@ -359,7 +359,7 @@
     <span class="c1"># def get_state(self):</span>
     <span class="c1">#</span>
     <span class="c1">#     # Update inner state statistic and compose state:</span>
-    <span class="c1">#     self.update_sliding_stat()</span>
+    <span class="c1">#     self.update_broker_stat()</span>
     <span class="c1">#</span>
     <span class="c1">#     self.state[&#39;external&#39;] = self.get_external_state()</span>
     <span class="c1">#     self.state[&#39;internal&#39;] = self.get_internal_state()</span>
@@ -523,7 +523,7 @@
 
     <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_sliding_stat</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_external_state</span><span class="p">(),</span>
@@ -715,7 +715,7 @@
 
     <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_sliding_stat</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_external_state</span><span class="p">(),</span>
@@ -853,7 +853,7 @@
 
     <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_sliding_stat</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_external_state</span><span class="p">(),</span>
@@ -940,7 +940,7 @@
 
     <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_sliding_stat</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">method</span><span class="p">()</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_get_state_methods</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
 
@@ -1238,7 +1238,7 @@
 
     <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_sliding_stat</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">method</span><span class="p">()</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_get_state_methods</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
 

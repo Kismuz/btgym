@@ -130,11 +130,11 @@ class DevStrat_2_0(DevStrat_4_10):
     def get_internal_state(self):
         x_broker = np.concatenate(
             [
-                np.asarray(self.sliding_stat['broker_value'])[..., None],
-                np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
-                np.asarray(self.sliding_stat['realized_pnl'])[..., None],
-                np.asarray(self.sliding_stat['broker_cash'])[..., None],
-                np.asarray(self.sliding_stat['exposure'])[..., None],
+                np.asarray(self.broker_stat['broker_value'])[..., None],
+                np.asarray(self.broker_stat['unrealized_pnl'])[..., None],
+                np.asarray(self.broker_stat['realized_pnl'])[..., None],
+                np.asarray(self.broker_stat['broker_cash'])[..., None],
+                np.asarray(self.broker_stat['exposure'])[..., None],
             ],
             axis=-1
         )

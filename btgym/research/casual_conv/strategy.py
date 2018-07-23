@@ -734,7 +734,7 @@ class CasualConvStrategyMultiCont(CasualConvStrategyMulti):
         debug = {}
         # Potential-based shaping function 1:
         # based on log potential of averaged profit/loss for current opened trade (unrealized p/l):
-        unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl']) / 2 + 1 # shift [-1,1] -> [0,1]
+        unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl']) / 2 + 1 # shift [-1,1] -> [0,1]
         # TODO: make normalizing util func to return in [0,1] by default
         f1 = self.p.gamma * np.log(np.average(unrealised_pnl[1:])) - np.log(np.average(unrealised_pnl[:-1]))
 
@@ -742,22 +742,22 @@ class CasualConvStrategyMultiCont(CasualConvStrategyMulti):
 
         # Potential-based shaping function 2:
         # based on potential of averaged broker value, log-normalized wrt to max drawdown and target bounds.
-        norm_broker_value = np.asarray(self.sliding_stat['broker_value']) / 2 + 1 # shift [-1,1] -> [0,1]
+        norm_broker_value = np.asarray(self.broker_stat['value']) / 2 + 1 # shift [-1,1] -> [0,1]
         f2 = self.p.gamma * np.log(np.average(norm_broker_value[1:])) - np.log(np.average(norm_broker_value[:-1]))
 
         debug['f2'] = f2
 
         # `Spike` reward function: normalized realized profit/loss:
         # TODO: Seems useless for continuous space
-        realized_pnl = self.sliding_stat['realized_pnl'][-1]
+        realized_pnl = self.broker_stat['realized_pnl'][-1]
         debug['f_real_pnl'] = 10 * realized_pnl
 
         # Weights are subject to tune:
         self.reward = (10.0 * f1 + 2.0 * f2 + 10.0 * realized_pnl) * self.p.reward_scale
 
         debug['r'] = self.reward
-        debug['b_v'] = self.sliding_stat['broker_value'][-1]
-        debug['unreal_pnl'] = self.sliding_stat['unrealized_pnl'][-1]
+        debug['b_v'] = self.broker_stat['value'][-1]
+        debug['unreal_pnl'] = self.broker_stat['unrealized_pnl'][-1]
         debug['iteration'] = self.iteration
 
         self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)

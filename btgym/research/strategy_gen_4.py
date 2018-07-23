@@ -161,13 +161,13 @@ class DevStrat_4_6(BTgymBaseStrategy):
     def get_internal_state(self):
         x_broker = np.concatenate(
             [
-                np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
+                np.asarray(self.broker_stat['unrealized_pnl'])[..., None],
                 # max_unrealized_pnl[..., None],
                 # min_unrealized_pnl[..., None],
-                np.asarray(self.sliding_stat['realized_pnl'])[..., None],
-                np.asarray(self.sliding_stat['broker_value'])[..., None],
-                np.asarray(self.sliding_stat['broker_cash'])[..., None],
-                np.asarray(self.sliding_stat['exposure'])[..., None],
+                np.asarray(self.broker_stat['realized_pnl'])[..., None],
+                np.asarray(self.broker_stat['value'])[..., None],
+                np.asarray(self.broker_stat['cash'])[..., None],
+                np.asarray(self.broker_stat['exposure'])[..., None],
                 # norm_episode_duration, gamma=5)[...,None],
                 # norm_position_duration, gamma=2)[...,None],
             ],
@@ -178,7 +178,7 @@ class DevStrat_4_6(BTgymBaseStrategy):
     # def get_state(self):
     #
     #     # Update inner state statistic and compose state:
-    #     self.update_sliding_stat()
+    #     self.update_broker_stat()
     #
     #     self.state['external'] = self.get_external_state()
     #     self.state['internal'] = self.get_internal_state()
@@ -210,16 +210,16 @@ class DevStrat_4_6(BTgymBaseStrategy):
 
         # Potential-based shaping function 1:
         # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
-        unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl'])
+        unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl'])
         f1 = 1.0 * np.average(unrealised_pnl[1:]) - np.average(unrealised_pnl[:-1])
 
         # Potential-based shaping function 2:
         # based on potential of averaged broker value, normalized wrt to max drawdown and target bounds.
-        norm_broker_value = np.asarray(self.sliding_stat['broker_value'])
+        norm_broker_value = np.asarray(self.broker_stat['value'])
         f2 = 1.0 * np.average(norm_broker_value[1:]) - np.average(norm_broker_value[:-1])
 
         # Main reward function: normalized realized profit/loss:
-        realized_pnl = np.asarray(self.sliding_stat['realized_pnl'])[-1]
+        realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-1]
 
         # Weights are subject to tune:
         self.reward = 1.0 * f1 + 1.0 * f2 + 10.0 * realized_pnl
@@ -331,18 +331,18 @@ class DevStrat_4_7(DevStrat_4_6):
     def get_internal_state(self):
         x_broker = np.stack(
             [
-                self.sliding_stat['broker_value'][-1],
-                self.sliding_stat['unrealized_pnl'][-1],
-                self.sliding_stat['realized_pnl'][-1],
-                self.sliding_stat['broker_cash'][-1],
-                self.sliding_stat['exposure'][-1],
+                self.broker_stat['value'][-1],
+                self.broker_stat['unrealized_pnl'][-1],
+                self.broker_stat['realized_pnl'][-1],
+                self.broker_stat['cash'][-1],
+                self.broker_stat['exposure'][-1],
             ]
         )
         return x_broker[None, None, :]
 
     def get_state(self):
         # Update inner state statistic and compose state:
-        self.update_sliding_stat()
+        self.update_broker_stat()
 
         self.state = {
             'external': self.get_external_state(),
@@ -372,7 +372,7 @@ class DevStrat_4_7(DevStrat_4_6):
 
         # Potential-based shaping function 1:
         # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
-        unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl'])
+        unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl'])
         f1 = self.p.gamma * np.average(unrealised_pnl[1:]) - np.average(unrealised_pnl[:-1])
         #f1 = self.p.gamma * discounted_average(unrealised_pnl[1:], self.p.gamma)\
         #     - discounted_average(unrealised_pnl[:-1], self.p.gamma)
@@ -381,7 +381,7 @@ class DevStrat_4_7(DevStrat_4_6):
 
         # Potential-based shaping function 2:
         # based on potential of averaged broker value, normalized wrt to max drawdown and target bounds.
-        norm_broker_value = np.asarray(self.sliding_stat['broker_value'])
+        norm_broker_value = np.asarray(self.broker_stat['value'])
         f2 = self.p.gamma * np.average(norm_broker_value[1:]) - np.average(norm_broker_value[:-1])
         #f2 = self.p.gamma * discounted_average(norm_broker_value[1:], self.p.gamma)\
         #     - discounted_average(norm_broker_value[:-1], self.p.gamma)
@@ -390,25 +390,26 @@ class DevStrat_4_7(DevStrat_4_6):
 
         # Potential-based shaping function 3:
         # negative potential of abs. size of position, exponentially weighted wrt. episode steps
-        abs_exposure = np.abs(np.asarray(self.sliding_stat['exposure']))
-        time = np.asarray(self.sliding_stat['episode_step'])
-        #time_w = exp_scale(np.average(time[:-1]), gamma=5)
-        #time_w_prime = exp_scale(np.average(time[1:]), gamma=5)
-        #f3 = - 1.0 * time_w_prime * np.average(abs_exposure[1:]) #+ time_w * np.average(abs_exposure[:-1])
-        f3 = - self.p.gamma * exp_scale(time[-1], gamma=3) * abs_exposure[-1] + \
-             exp_scale(time[-2], gamma=3) * abs_exposure[-2]
-        debug['f3'] = f3
+        # abs_exposure = np.abs(np.asarray(self.broker_stat['exposure']))
+        # time = np.asarray(self.broker_stat['episode_step'])
+        # #time_w = exp_scale(np.average(time[:-1]), gamma=5)
+        # #time_w_prime = exp_scale(np.average(time[1:]), gamma=5)
+        # #f3 = - 1.0 * time_w_prime * np.average(abs_exposure[1:]) #+ time_w * np.average(abs_exposure[:-1])
+        # f3 = - self.p.gamma * exp_scale(time[-1], gamma=3) * abs_exposure[-1] + \
+        #      exp_scale(time[-2], gamma=3) * abs_exposure[-2]
+        # debug['f3'] = f3
+        f3 = 0
 
         # Main reward function: normalized realized profit/loss:
-        realized_pnl = np.asarray(self.sliding_stat['realized_pnl'])[-1]
+        realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-1]
         debug['f_real_pnl'] = 10 * realized_pnl
 
         # Weights are subject to tune:
         self.reward = (1.0 * f1 + 2.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl) * self.p.reward_scale
 
         debug['r'] = self.reward
-        debug['b_v'] = self.sliding_stat['broker_value'][-1]
-        debug['unreal_pnl'] = self.sliding_stat['unrealized_pnl'][-1]
+        debug['b_v'] = self.broker_stat['value'][-1]
+        debug['unreal_pnl'] = self.broker_stat['unrealized_pnl'][-1]
         debug['iteration'] = self.iteration
 
         #for k, v in debug.items():
@@ -516,11 +517,11 @@ class DevStrat_4_8(DevStrat_4_7):
     def get_internal_state(self):
         x_broker = np.concatenate(
             [
-                np.asarray(self.sliding_stat['broker_value'])[..., None],
-                np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
-                np.asarray(self.sliding_stat['realized_pnl'])[..., None],
-                np.asarray(self.sliding_stat['broker_cash'])[..., None],
-                np.asarray(self.sliding_stat['exposure'])[..., None],
+                np.asarray(self.broker_stat['value'])[..., None],
+                np.asarray(self.broker_stat['unrealized_pnl'])[..., None],
+                np.asarray(self.broker_stat['realized_pnl'])[..., None],
+                np.asarray(self.broker_stat['cash'])[..., None],
+                np.asarray(self.broker_stat['exposure'])[..., None],
                 # np.asarray(self.sliding_stat['episode_step'])[..., None],
                 # np.asarray(self.sliding_stat['reward'])[..., None],
                 # np.asarray(self.sliding_stat['action'])[..., None],
@@ -534,7 +535,7 @@ class DevStrat_4_8(DevStrat_4_7):
 
     def get_state(self):
         # Update inner state statistic and compose state:
-        self.update_sliding_stat()
+        self.update_broker_stat()
 
         self.state = {
             'external': self.get_external_state(),
@@ -672,7 +673,7 @@ class DevStrat_4_9(DevStrat_4_7):
 
     def get_state(self):
         # Update inner state statistic and compose state:
-        self.update_sliding_stat()
+        self.update_broker_stat()
 
         self.state = {
             'external': self.get_external_state(),
@@ -709,7 +710,7 @@ class DevStrat_4_10(DevStrat_4_7):
         scale = 10.0
         # Potential-based shaping function 1:
         # based on log potential of averaged profit/loss for current opened trade (unrealized p/l):
-        unrealised_pnl = np.asarray(self.sliding_stat['unrealized_pnl']) / 2 + 1 # shift [-1,1] -> [0,1]
+        unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl']) / 2 + 1 # shift [-1,1] -> [0,1]
         # TODO: make normalizing util func to return in [0,1] by default
         f1 = self.p.gamma * np.log(np.average(unrealised_pnl[1:])) - np.log(np.average(unrealised_pnl[:-1]))
 
@@ -717,32 +718,33 @@ class DevStrat_4_10(DevStrat_4_7):
 
         # Potential-based shaping function 2:
         # based on potential of averaged broker value, log-normalized wrt to max drawdown and target bounds.
-        norm_broker_value = np.asarray(self.sliding_stat['broker_value']) / 2 + 1 # shift [-1,1] -> [0,1]
+        norm_broker_value = np.asarray(self.broker_stat['value']) / 2 + 1 # shift [-1,1] -> [0,1]
         f2 = self.p.gamma * np.log(np.average(norm_broker_value[1:])) - np.log(np.average(norm_broker_value[:-1]))
 
         debug['f2'] = f2
 
         # Potential-based shaping function 3: NOT USED
         # negative potential of abs. size of position, exponentially weighted wrt. episode steps
-        abs_exposure = np.abs(np.asarray(self.sliding_stat['exposure']))
-        time = np.asarray(self.sliding_stat['episode_step'])
-        #time_w = exp_scale(np.average(time[:-1]), gamma=5)
-        #time_w_prime = exp_scale(np.average(time[1:]), gamma=5)
-        #f3 = - 1.0 * time_w_prime * np.average(abs_exposure[1:]) #+ time_w * np.average(abs_exposure[:-1])
-        f3 = - self.p.gamma * exp_scale(time[-1], gamma=3) * abs_exposure[-1] + \
-             exp_scale(time[-2], gamma=3) * abs_exposure[-2]
-        debug['f3'] = f3
+        # abs_exposure = np.abs(np.asarray(self.broker_stat['exposure']))
+        # time = np.asarray(self.broker_stat['episode_step'])
+        # #time_w = exp_scale(np.average(time[:-1]), gamma=5)
+        # #time_w_prime = exp_scale(np.average(time[1:]), gamma=5)
+        # #f3 = - 1.0 * time_w_prime * np.average(abs_exposure[1:]) #+ time_w * np.average(abs_exposure[:-1])
+        # f3 = - self.p.gamma * exp_scale(time[-1], gamma=3) * abs_exposure[-1] + \
+        #      exp_scale(time[-2], gamma=3) * abs_exposure[-2]
+        # debug['f3'] = f3
+        f3 = 1
 
         # `Spike` reward function: normalized realized profit/loss:
-        realized_pnl = self.sliding_stat['realized_pnl'][-1]
+        realized_pnl = self.broker_stat['realized_pnl'][-1]
         debug['f_real_pnl'] = 10 * realized_pnl
 
         # Weights are subject to tune:
         self.reward = (1.0 * f1 + 2.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl) * self.p.reward_scale
 
         debug['r'] = self.reward
-        debug['b_v'] = self.sliding_stat['broker_value'][-1]
-        debug['unreal_pnl'] = self.sliding_stat['unrealized_pnl'][-1]
+        debug['b_v'] = self.broker_stat['value'][-1]
+        debug['unreal_pnl'] = self.broker_stat['unrealized_pnl'][-1]
         debug['iteration'] = self.iteration
 
         #for k, v in debug.items():
@@ -759,7 +761,7 @@ class DevStrat_4_10(DevStrat_4_7):
 
     def get_state(self):
         # Update inner state statistic and compose state:
-        self.update_sliding_stat()
+        self.update_broker_stat()
 
         self.state = {key: method() for key, method in self.collection_get_state_methods.items()}
 
@@ -892,11 +894,11 @@ class DevStrat_4_11(DevStrat_4_10):
 
         x_broker = np.concatenate(
             [
-                np.asarray(self.sliding_stat['broker_value'])[..., None],
-                np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
-                np.asarray(self.sliding_stat['realized_pnl'])[..., None],
-                np.asarray(self.sliding_stat['broker_cash'])[..., None],
-                np.asarray(self.sliding_stat['exposure'])[..., None],
+                np.asarray(self.broker_stat['broker_value'])[..., None],
+                np.asarray(self.broker_stat['unrealized_pnl'])[..., None],
+                np.asarray(self.broker_stat['realized_pnl'])[..., None],
+                np.asarray(self.broker_stat['broker_cash'])[..., None],
+                np.asarray(self.broker_stat['exposure'])[..., None],
             ],
             axis=-1
         )
@@ -1029,11 +1031,11 @@ class DevStrat_4_12(DevStrat_4_11):
 
         x_broker = np.concatenate(
             [
-                np.asarray(self.sliding_stat['broker_value'])[..., None],
-                np.asarray(self.sliding_stat['unrealized_pnl'])[..., None],
-                np.asarray(self.sliding_stat['realized_pnl'])[..., None],
-                np.asarray(self.sliding_stat['broker_cash'])[..., None],
-                np.asarray(self.sliding_stat['exposure'])[..., None],
+                np.asarray(self.broker_stat['broker_value'])[..., None],
+                np.asarray(self.broker_stat['unrealized_pnl'])[..., None],
+                np.asarray(self.broker_stat['realized_pnl'])[..., None],
+                np.asarray(self.broker_stat['broker_cash'])[..., None],
+                np.asarray(self.broker_stat['exposure'])[..., None],
             ],
             axis=-1
         )
@@ -1057,7 +1059,7 @@ class DevStrat_4_12(DevStrat_4_11):
 
     def get_state(self):
         # Update inner state statistic and compose state:
-        self.update_sliding_stat()
+        self.update_broker_stat()
 
         self.state = {key: method() for key, method in self.collection_get_state_methods.items()}
 
