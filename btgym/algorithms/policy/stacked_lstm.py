@@ -30,6 +30,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                  lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
                  lstm_layers=(256, 256),
                  linear_layer_ref=noisy_linear,
+                 share_encoder_params=True,
                  dropout_keep_prob=1.0,
                  action_dp_alpha=200.0,
                  aux_estimate=False,
@@ -49,6 +50,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             lstm_class_ref:         tf.nn.lstm class to use
             lstm_layers:            tuple of LSTM layers sizes
             linear_layer_ref:       linear layer class to use
+            share_encoder_params:   bool, whether to share encoder parameters for every 'external' data stream
             dropout_keep_prob:      in (0, 1] dropout regularisation parameter
             action_dp_alpha:
             aux_estimate:           (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary
@@ -73,6 +75,12 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.aux_estimate = aux_estimate
         self.callback = {}
         self.encode_internal_state = encode_internal_state
+        self.share_encoder_params = share_encoder_params
+        if self.share_encoder_params:
+            self.reuse_encoder_params = tf.AUTO_REUSE
+
+        else:
+            self.reuse_encoder_params = False
         self.static_rnn = static_rnn
         self.dropout_keep_prob = dropout_keep_prob
         assert 0 < self.dropout_keep_prob <= 1, 'Dropout keep_prob value should be in (0, 1]'
@@ -150,8 +158,8 @@ class StackedLstmPolicy(BaseAacPolicy):
                                 x=stream,
                                 ob_space=self.ob_space.shape[key][name],
                                 ac_space=self.ac_space,
-                                name='encoded_{}'.format(key),
-                                reuse=tf.AUTO_REUSE,  # shared params for all streams in mode
+                                name='encoded_{}_{}'.format(key, name),
+                                reuse=self.reuse_encoder_params,  # shared params for all streams in mode
                                 **kwargs
                             )
                         )
@@ -361,7 +369,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                                 x=stream,
                                 ob_space=self.ob_space.shape[key][name],
                                 ac_space=self.ac_space,
-                                name='encoded_{}'.format(key),
+                                name='encoded_{}_{}'.format(key, name),
                                 reuse=True,  # shared params for all streams in mode
                                 **kwargs
                             )
@@ -566,7 +574,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                                 x=stream,
                                 ob_space=self.ob_space.shape[key][name],
                                 ac_space=self.ac_space,
-                                name='encoded_{}'.format(key),
+                                name='encoded_{}_{}'.format(key, name),
                                 reuse=True,  # shared params for all streams in mode
                                 **kwargs
                             )

@@ -281,7 +281,7 @@ class BTgymBaseStrategy(bt.Strategy):
 
         # This flag shows to the outer world if this episode can move global
         # time forward (see: btgym.server._BTgymAnalyzer.next() method);
-        # default logic: iff it is test episode from target domain:
+        # default logic: true iff. it is test episode from target domain:
         self.can_increment_global_time = self.metadata['type'] and self.metadata['trial_type']
 
         self.log.debug('strategy.metadata: {}'.format(self.metadata))
@@ -289,11 +289,15 @@ class BTgymBaseStrategy(bt.Strategy):
 
         # Broker data lines of interest (used for estimation inner state of agent:
         self.broker_datalines = [
-            'broker_cash',
-            'broker_value',
+            'cash',
+            'value',
             'exposure',
+            'drawdown',
+            'pos_direction',
             'realized_pnl',
             'unrealized_pnl',
+            'min_unrealized_pnl',
+            'max_unrealized_pnl',
         ]
         # Define collection dictionary looking for methods for estimating broker statistics, one method for one mode,
         # should be named .get_broker_[mode_name]():
@@ -364,11 +368,13 @@ class BTgymBaseStrategy(bt.Strategy):
         """
         Default implementation for built-in backtrader method.
         Defines one step environment routine;
-        At least, it should handle order execution logic according to action received.
+        Handles order execution logic according to action received.
         Note that orders can only be submitted for data_lines in action_space (assets).
         `self.action` attr. is updated by btgym.server._BTgymAnalyzer, and `None` actions
         are emitted while doing `skip_frame` loop.
         """
+        self.update_broker_stat()
+
         if '_skip_this' in self.action.keys():
                 # print('a_skip, b_message: ', self.broker_message)
                 if self.action_repeated < self.num_action_repeats:
@@ -444,6 +450,21 @@ class BTgymBaseStrategy(bt.Strategy):
         """
         return self.position.size / (self.env.broker.startingcash * self.env.broker.get_leverage() + 1e-2)
 
+    def get_broker_pos_direction(self, **kwargs):
+        """
+
+        Returns:
+            short/long/out position indicator
+        """
+        if self.position.size > 0:
+            return 1.0
+
+        elif self.position.size < 0:
+            return - 1.0
+
+        else:
+            return 0.0
+
     def get_broker_realized_pnl(self, current_value, **kwargs):
         """
 
@@ -492,6 +513,18 @@ class BTgymBaseStrategy(bt.Strategy):
             gamma=3
         )
 
+    def get_broker_drawdown(self, **kwargs):
+        """
+
+        Returns:
+            current drawdown value
+        """
+        try:
+            dd = self.stats.drawdown.drawdown[-1] #/ self.p.drawdown_call
+        except IndexError:
+            dd = 0.0
+        return dd
+
     # def get_broker_pos_duration(self, current_value):
     #     if self.position.size == 0:
     #         self.current_pos_duration = 0
@@ -509,11 +542,24 @@ class BTgymBaseStrategy(bt.Strategy):
     #
     #     return self.current_pos_duration / (self.data.numrecords - self.inner_embedding)
     #
-    # def get_broker_max_unrealized_pnl(self):
-    #     return (self.current_pos_max_value - self.realized_broker_value) * self.broker_value_normalizer
-    #
-    # def get_broker_min_unrealized_pnl(self):
-    #     return (self.current_pos_min_value - self.realized_broker_value) * self.broker_value_normalizer
+
+    def get_broker_max_unrealized_pnl(self, current_value, **kwargs):
+        if self.position.size == 0:
+            self.current_pos_max_value = current_value
+
+        else:
+            if self.current_pos_max_value < current_value:
+                self.current_pos_max_value = current_value
+        return (self.current_pos_max_value - self.realized_broker_value) * self.broker_value_normalizer
+
+    def get_broker_min_unrealized_pnl(self, current_value, **kwargs):
+        if self.position.size == 0:
+            self.current_pos_min_value = current_value
+
+        else:
+            if self.current_pos_min_value > current_value:
+                self.current_pos_min_value = current_value
+        return (self.current_pos_min_value - self.realized_broker_value) * self.broker_value_normalizer
 
     def set_datalines(self):
         """
@@ -554,7 +600,7 @@ class BTgymBaseStrategy(bt.Strategy):
 
         """
         x_broker = np.concatenate(
-            [np.asarray(stat[..., None]) for stat in self.broker_stat.values()],
+            [np.asarray(stat)[..., None] for stat in self.broker_stat.values()],
             axis=-1
         )
         return x_broker[:, None, :]
@@ -596,8 +642,8 @@ class BTgymBaseStrategy(bt.Strategy):
                 Datafeed Lines that are not default to BTgymStrategy should be explicitly defined by
                  __init__() or define_datalines().
         """
-        # Update inner state statistic and compose state:
-        self.update_broker_stat()
+        # Update inner state statistic and compose state: <- moved to .next()
+        # self.update_broker_stat()
 
         self.state = {key: method() for key, method in self.collection_get_state_methods.items()}
         # Above line is generalisation of, say:
@@ -627,33 +673,35 @@ class BTgymBaseStrategy(bt.Strategy):
 
         # All sliding statistics for this step are already updated by get_state().
         debug = {}
+
         # Potential-based shaping function 1:
-        # based on log potential of averaged profit/loss for current opened trade (unrealized p/l):
-        unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl']) / 2 + 1 # shift [-1,1] -> [0,1]
-        # TODO: make normalizing util func to return in [0,1] by default
-        f1 = self.p.gamma * np.log(np.average(unrealised_pnl[1:])) - np.log(np.average(unrealised_pnl[:-1]))
+        # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
+        unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl'])
+        # f1 = self.p.gamma * np.average(unrealised_pnl[1:]) - np.average(unrealised_pnl[:-1])
+        f1 = self.p.gamma * np.average(unrealised_pnl[-self.skip_frame:]) \
+            - np.average(unrealised_pnl[- 2 * self.skip_frame:-self.skip_frame])
 
         debug['f1'] = f1
 
         # Potential-based shaping function 2:
-        # based on potential of averaged broker value, log-normalized wrt to max drawdown and target bounds.
-        norm_broker_value = np.asarray(self.broker_stat['value']) / 2 + 1 # shift [-1,1] -> [0,1]
-        f2 = self.p.gamma * np.log(np.average(norm_broker_value[1:])) - np.log(np.average(norm_broker_value[:-1]))
+        # based on potential of averaged broker value, normalized wrt to max drawdown and target bounds.
+        norm_broker_value = np.asarray(self.broker_stat['value'])
+        # f2 = self.p.gamma * np.average(norm_broker_value[1:]) - np.average(norm_broker_value[:-1])
+        f2 = self.p.gamma * np.average(norm_broker_value[-self.skip_frame:]) \
+            - np.average(norm_broker_value[- 2 * self.skip_frame:-self.skip_frame])
 
         debug['f2'] = f2
 
-        # Potential-based shaping function 3: NOT USED
-        # negative potential of abs. size of position, exponentially weighted wrt. episode steps
-        # abs_exposure = np.abs(np.asarray(self.broker_stat['exposure']))
-        # time = np.asarray(self.broker_stat['step'])
-        #
-        # f3 = - self.p.gamma * exp_scale(time[-1], gamma=3) * abs_exposure[-1] + \
-        #      exp_scale(time[-2], gamma=3) * abs_exposure[-2]
+        # Potential-based shaping function 3:
+        # based on negative potential of relative draw-down value.
+        # drawdown = np.asarray(self.broker_stat['drawdown'])
+        # f3 = - self.p.gamma * np.max(drawdown[-self.skip_frame:]) \
+        #     + np.max(drawdown[- 2 * self.skip_frame:-self.skip_frame])
+        f3 = 0.0
         # debug['f3'] = f3
-        f3 = 1
 
-        # `Spike` reward function: normalized realized profit/loss:
-        realized_pnl = self.broker_stat['realized_pnl'][-1]
+        # Main reward function: normalized realized profit/loss:
+        realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.skip_frame:].sum()
         debug['f_real_pnl'] = 10 * realized_pnl
 
         # Weights are subject to tune:

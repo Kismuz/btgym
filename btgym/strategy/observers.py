@@ -62,8 +62,8 @@ class NormPnL(bt.observer.Observer):
     )
 
     def next(self):
-        if self._owner.sliding_stat['realized_pnl'][-1] != 0:
-            self.lines.realized_pnl[0] = self._owner.sliding_stat['realized_pnl'][-1]
-        self.lines.unrealized_pnl[0] = self._owner.sliding_stat['unrealized_pnl'][-1]
-        self.lines.max_unrealized_pnl[0] = self._owner.sliding_stat['max_unrealized_pnl'][-1]
-        self.lines.min_unrealized_pnl[0] = self._owner.sliding_stat['min_unrealized_pnl'][-1]
+        if self._owner.broker_stat['realized_pnl'][-1] != 0:
+            self.lines.realized_pnl[0] = self._owner.broker_stat['realized_pnl'][-1]
+        self.lines.unrealized_pnl[0] = self._owner.broker_stat['unrealized_pnl'][-1]
+        self.lines.max_unrealized_pnl[0] = self._owner.broker_stat['max_unrealized_pnl'][-1]
+        self.lines.min_unrealized_pnl[0] = self._owner.broker_stat['min_unrealized_pnl'][-1]

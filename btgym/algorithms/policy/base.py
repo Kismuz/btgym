@@ -307,15 +307,15 @@ class BaseAacPolicy(object):
         # )
         # return action_one_hot, logits, value, context
         logits, value, context = sess.run([self.on_logits, self.on_vf, self.on_lstm_state_out], feeder)
-
+        logits = logits[0, ...]
         if self.ac_space.is_discrete:
             # Use multinomial to get sample (discrete):
-            sample = np.random.multinomial(1, softmax(logits[0, ...]))
+            sample = np.random.multinomial(1, softmax(logits))
             sample = self.ac_space._cat_to_vec(np.argmax(sample))
 
         else:
             # Use DP to get sample (continuous):
-            sample = sample_dp(logits[0, ...], alpha=self.action_dp_alpha)
+            sample = sample_dp(logits, alpha=self.action_dp_alpha)
 
         # Get all needed action encodings:
         action = self.ac_space._vec_to_action(sample)

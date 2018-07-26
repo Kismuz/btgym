@@ -266,7 +266,7 @@ class BTgymRendering():
                     if self.render_state_as_image:
                         self.rgb_dict[mode] = self.draw_image(agent_state,
                                                                  figsize=self.render_size_state,
-                                                                 title=title,
+                                                                 title='{} / {}'.format(mode, title),
                                                                  box_text=box_text,
                                                                  ylabel=self.render_ylabel,
                                                                  xlabel=self.render_xlabel,
@@ -274,7 +274,7 @@ class BTgymRendering():
                     else:
                         self.rgb_dict[mode] = self.draw_plot(agent_state,
                                                                 figsize=self.render_size_state,
-                                                                title=title,
+                                                                title='{} / {}'.format(mode, title),
                                                                 box_text=box_text,
                                                                 ylabel=self.render_ylabel,
                                                                 xlabel=self.render_xlabel,
