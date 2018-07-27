@@ -152,13 +152,17 @@ class StackedLstmPolicy(BaseAacPolicy):
         for key in self.on_state_in.keys():
             if 'external' in key:
                 if isinstance(self.on_state_in[key], dict):  # got dictionary of data streams
+                    if self.share_encoder_params:
+                        layer_name_template = 'encoded_{}_shared'
+                    else:
+                        layer_name_template = 'encoded_{}_{}'
                     encoded_streams = {
                         name: tf.layers.flatten(
                             self.state_encoder_class_ref(
                                 x=stream,
                                 ob_space=self.ob_space.shape[key][name],
                                 ac_space=self.ac_space,
-                                name='encoded_{}_{}'.format(key, name),
+                                name=layer_name_template.format(key, name),
                                 reuse=self.reuse_encoder_params,  # shared params for all streams in mode
                                 **kwargs
                             )
@@ -363,13 +367,17 @@ class StackedLstmPolicy(BaseAacPolicy):
         for key in self.off_state_in.keys():
             if 'external' in key:
                 if isinstance(self.off_state_in[key], dict):  # got dictionary of data streams
+                    if self.share_encoder_params:
+                        layer_name_template = 'encoded_{}_shared'
+                    else:
+                        layer_name_template = 'encoded_{}_{}'
                     encoded_streams = {
                         name: tf.layers.flatten(
                             self.state_encoder_class_ref(
                                 x=stream,
                                 ob_space=self.ob_space.shape[key][name],
                                 ac_space=self.ac_space,
-                                name='encoded_{}_{}'.format(key, name),
+                                name=layer_name_template.format(key, name),
                                 reuse=True,  # shared params for all streams in mode
                                 **kwargs
                             )
@@ -568,13 +576,17 @@ class StackedLstmPolicy(BaseAacPolicy):
         for key in self.rp_state_in.keys():
             if 'external' in key:
                 if isinstance(self.rp_state_in[key], dict):  # got dictionary of data streams
+                    if self.share_encoder_params:
+                        layer_name_template = 'encoded_{}_shared'
+                    else:
+                        layer_name_template = 'encoded_{}_{}'
                     encoded_streams = {
                         name: tf.layers.flatten(
                             self.state_encoder_class_ref(
                                 x=stream,
                                 ob_space=self.ob_space.shape[key][name],
                                 ac_space=self.ac_space,
-                                name='encoded_{}_{}'.format(key, name),
+                                name=layer_name_template.format(key, name),
                                 reuse=True,  # shared params for all streams in mode
                                 **kwargs
                             )
