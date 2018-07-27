@@ -30,7 +30,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                  lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
                  lstm_layers=(256, 256),
                  linear_layer_ref=noisy_linear,
-                 share_encoder_params=True,
+                 share_encoder_params=False,
                  dropout_keep_prob=1.0,
                  action_dp_alpha=200.0,
                  aux_estimate=False,
