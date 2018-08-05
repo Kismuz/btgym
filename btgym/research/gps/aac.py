@@ -2,7 +2,6 @@ import tensorflow as tf
 
 from btgym.algorithms import BaseAAC
 from .loss import guided_aac_loss_def_0_0, guided_aac_loss_def_0_1, guided_aac_loss_def_0_3
-from btgym.research.verbose_env_runner import VerboseEnvRunnerFn
 from btgym.algorithms.runner.synchro import BaseSynchroRunner
 
 
@@ -39,8 +38,8 @@ class GuidedAAC(BaseAAC):
             aac_lambda=1.0,
             guided_lambda=1.0,
             guided_decay_steps=None,
-            runner_fn_ref=VerboseEnvRunnerFn,
-            _aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+            runner_config=None,
+            # _aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
             name='GuidedA3C',
             **kwargs
     ):
@@ -61,11 +60,18 @@ class GuidedAAC(BaseAAC):
             self.guided_decay_steps = guided_decay_steps
             self.guided_lambda_decayed = None
             self.train_guided_lambda = None
+            if runner_config is None:
+                runner_config = {
+                    'class_ref': BaseSynchroRunner,
+                    'kwargs': {
+                        'aux_summaries': ('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+                    }
+                }
 
             super(GuidedAAC, self).__init__(
-                runner_fn_ref=runner_fn_ref,
-                _aux_render_modes=_aux_render_modes,
+                runner_config=runner_config,
                 name=name,
+                # _aux_render_modes=_aux_render_modes,
                 **kwargs
             )
         except:
