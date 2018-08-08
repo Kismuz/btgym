@@ -59,6 +59,10 @@ class BTgymBaseStrategy(bt.Strategy):
     # skip_frame_period <= avg_period <= time_embedding_period:
     avg_period = time_dim
 
+    gamma = 0.99  # fi_gamma, should match MDP gamma decay
+
+    reward_scale = 1.0  # reward multiplicator
+
     # Possible agent actions;  Note: place 'hold' first! :
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
 
@@ -122,6 +126,8 @@ class BTgymBaseStrategy(bt.Strategy):
         start_cash=None,
         commission=None,
         leverage=1.0,
+        gamma=gamma,
+        reward_scale=reward_scale,
         drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.
         target_call=10,  # finish episode when reaching profit target, in percent.
         dataset_stat=None,  # Summary descriptive statistics for entire dataset and
