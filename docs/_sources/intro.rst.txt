@@ -65,11 +65,12 @@ Making gym environment with all parmeters set to defaults is as simple as::
 Adding more controls may look like::
 
     from btgym import BTgymEnv
+    from gym import spaces
 
     MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
                              episode_duration={'days': 2, 'hours': 23, 'minutes': 55},
                              drawdown_call=50,
-                             state_shape=(4,20),
+                             state_shape={'raw': spaces.Box(low=0,high=1,shape=(20,4))},
                              port=5555,
                              verbose=1,
                              )
@@ -78,12 +79,13 @@ Adding more controls may look like::
 Same one but registering environment in Gym preferred way::
 
     import gym
+    from gym import spaces
     from btgym import BTgymEnv
 
     env_params = dict(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',
                       episode_duration={'days': 2, 'hours': 23, 'minutes': 55},
                       drawdown_call=50,
-                      state_shape=(20,4),
+                      state_shape={'raw': spaces.Box(low=0,high=1,shape=(20,4))},
                       port=5555,
                       verbose=1,
                       )

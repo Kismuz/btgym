@@ -183,7 +183,6 @@
 
 <span class="kn">from</span> <span class="nn">btgym.algorithms</span> <span class="k">import</span> <span class="n">BaseAAC</span>
 <span class="kn">from</span> <span class="nn">.loss</span> <span class="k">import</span> <span class="n">guided_aac_loss_def_0_0</span><span class="p">,</span> <span class="n">guided_aac_loss_def_0_1</span><span class="p">,</span> <span class="n">guided_aac_loss_def_0_3</span>
-<span class="kn">from</span> <span class="nn">btgym.research.verbose_env_runner</span> <span class="k">import</span> <span class="n">VerboseEnvRunnerFn</span>
 <span class="kn">from</span> <span class="nn">btgym.algorithms.runner.synchro</span> <span class="k">import</span> <span class="n">BaseSynchroRunner</span>
 
 
@@ -220,8 +219,8 @@
             <span class="n">aac_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
             <span class="n">guided_lambda</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
             <span class="n">guided_decay_steps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">runner_fn_ref</span><span class="o">=</span><span class="n">VerboseEnvRunnerFn</span><span class="p">,</span>
-            <span class="n">_aux_render_modes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;action_prob&#39;</span><span class="p">,</span> <span class="s1">&#39;value_fn&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_1_h&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_2_h&#39;</span><span class="p">),</span>
+            <span class="n">runner_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="c1"># _aux_render_modes=(&#39;action_prob&#39;, &#39;value_fn&#39;, &#39;lstm_1_h&#39;, &#39;lstm_2_h&#39;),</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;GuidedA3C&#39;</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
@@ -242,11 +241,18 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">guided_decay_steps</span> <span class="o">=</span> <span class="n">guided_decay_steps</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">guided_lambda_decayed</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">train_guided_lambda</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">runner_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">runner_config</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;class_ref&#39;</span><span class="p">:</span> <span class="n">BaseSynchroRunner</span><span class="p">,</span>
+                    <span class="s1">&#39;kwargs&#39;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s1">&#39;aux_summaries&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;action_prob&#39;</span><span class="p">,</span> <span class="s1">&#39;value_fn&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_1_h&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_2_h&#39;</span><span class="p">),</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
 
             <span class="nb">super</span><span class="p">(</span><span class="n">GuidedAAC</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-                <span class="n">runner_fn_ref</span><span class="o">=</span><span class="n">runner_fn_ref</span><span class="p">,</span>
-                <span class="n">_aux_render_modes</span><span class="o">=</span><span class="n">_aux_render_modes</span><span class="p">,</span>
+                <span class="n">runner_config</span><span class="o">=</span><span class="n">runner_config</span><span class="p">,</span>
                 <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                <span class="c1"># _aux_render_modes=_aux_render_modes,</span>
                 <span class="o">**</span><span class="n">kwargs</span>
             <span class="p">)</span>
         <span class="k">except</span><span class="p">:</span>

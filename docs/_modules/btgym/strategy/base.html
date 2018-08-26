@@ -240,6 +240,10 @@
     <span class="c1"># skip_frame_period &lt;= avg_period &lt;= time_embedding_period:</span>
     <span class="n">avg_period</span> <span class="o">=</span> <span class="n">time_dim</span>
 
+    <span class="n">gamma</span> <span class="o">=</span> <span class="mf">0.99</span>  <span class="c1"># fi_gamma, should match MDP gamma decay</span>
+
+    <span class="n">reward_scale</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># reward multiplicator</span>
+
     <span class="c1"># Possible agent actions;  Note: place &#39;hold&#39; first! :</span>
     <span class="n">portfolio_actions</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;buy&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">)</span>
 
@@ -303,6 +307,8 @@
         <span class="n">start_cash</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">commission</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">leverage</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">gamma</span><span class="o">=</span><span class="n">gamma</span><span class="p">,</span>
+        <span class="n">reward_scale</span><span class="o">=</span><span class="n">reward_scale</span><span class="p">,</span>
         <span class="n">drawdown_call</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># finish episode when hitting drawdown treshghold , in percent.</span>
         <span class="n">target_call</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># finish episode when reaching profit target, in percent.</span>
         <span class="n">dataset_stat</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Summary descriptive statistics for entire dataset and</span>
@@ -462,35 +468,43 @@
 
         <span class="c1"># This flag shows to the outer world if this episode can move global</span>
         <span class="c1"># time forward (see: btgym.server._BTgymAnalyzer.next() method);</span>
-        <span class="c1"># default logic: iff it is test episode from target domain:</span>
+        <span class="c1"># default logic: true iff. it is test episode from target domain:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">can_increment_global_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;trial_type&#39;</span><span class="p">]</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;strategy.metadata: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;can_increment_global_time: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">can_increment_global_time</span><span class="p">))</span>
 
-        <span class="c1"># Sliding staistics accumulators, globally normalized last `avg_perod` values,</span>
-        <span class="c1"># so it&#39;s a bit more comp. efficient than use of bt.Observers:</span>
-        <span class="n">sliding_datalines</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s1">&#39;broker_cash&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;broker_value&#39;</span><span class="p">,</span>
+        <span class="c1"># Broker data lines of interest (used for estimation inner state of agent:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">broker_datalines</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;cash&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">,</span>
             <span class="s1">&#39;exposure&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;leverage&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;pos_duration&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;episode_step&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;drawdown&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;pos_direction&#39;</span><span class="p">,</span>
             <span class="s1">&#39;realized_pnl&#39;</span><span class="p">,</span>
             <span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;max_unrealized_pnl&#39;</span><span class="p">,</span>
             <span class="s1">&#39;min_unrealized_pnl&#39;</span><span class="p">,</span>
-            <span class="c1"># &#39;action&#39;,</span>
-            <span class="s1">&#39;reward&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;max_unrealized_pnl&#39;</span><span class="p">,</span>
         <span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">avg_period</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">sliding_datalines</span><span class="p">}</span>
+        <span class="c1"># Define collection dictionary looking for methods for estimating broker statistics, one method for one mode,</span>
+        <span class="c1"># should be named .get_broker_[mode_name]():</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collection_get_broker_stat_methods</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_datalines</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">collection_get_broker_stat_methods</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;get_broker_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;Callable get_broker_</span><span class="si">{}</span><span class="s1">.() not found&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+
+        <span class="c1"># Broker and account related sliding staistics accumulators, globally normalized last `avg_perod` values,</span>
+        <span class="c1"># so it&#39;s a bit more comp. efficient than use of bt.Observers:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">avg_period</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_datalines</span><span class="p">}</span>
 
         <span class="c1"># Add custom data Lines if any (convenience wrapper):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">set_datalines</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Kwargs:</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)))</span>
 
-        <span class="c1"># Here we define collection dictionary looking for methods for estimating state, one method for one mode,</span>
+        <span class="c1"># Define collection dictionary looking for methods for estimating observation state, one method for one mode,</span>
         <span class="c1"># should be named .get_[mode_name]_state():</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">collection_get_state_methods</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_shape</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
@@ -541,11 +555,13 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Default implementation for built-in backtrader method.</span>
 <span class="sd">        Defines one step environment routine;</span>
-<span class="sd">        At least, it should handle order execution logic according to action received.</span>
+<span class="sd">        Handles order execution logic according to action received.</span>
 <span class="sd">        Note that orders can only be submitted for data_lines in action_space (assets).</span>
 <span class="sd">        `self.action` attr. is updated by btgym.server._BTgymAnalyzer, and `None` actions</span>
 <span class="sd">        are emitted while doing `skip_frame` loop.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
+
         <span class="k">if</span> <span class="s1">&#39;_skip_this&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">action</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
                 <span class="c1"># print(&#39;a_skip, b_message: &#39;, self.broker_message)</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_repeated</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_action_repeats</span><span class="p">:</span>
@@ -571,97 +587,166 @@
 
 <div class="viewcode-block" id="BTgymBaseStrategy.update_broker_stat"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.update_broker_stat">[docs]</a>    <span class="k">def</span> <span class="nf">update_broker_stat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Updates all sliding statistics deques with latest-step values:</span>
+<span class="sd">        Updates all sliding broker statistics deques with latest-step values such as:</span>
 <span class="sd">            - normalized broker value</span>
 <span class="sd">            - normalized broker cash</span>
 <span class="sd">            - normalized exposure (position size)</span>
-<span class="sd">            - position duration in steps, normalized wrt. max possible episode steps</span>
 <span class="sd">            - exp. scaled episode duration in steps, normalized wrt. max possible episode steps</span>
 <span class="sd">            - normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)</span>
 <span class="sd">            - normalized profit/loss for current opened trade (unrealized p/l);</span>
-<span class="sd">            - normalized best possible up to present point unrealized result for current opened trade;</span>
-<span class="sd">            - normalized worst possible up to present point unrealized result for current opened trade;</span>
-<span class="sd">            - DELETED: one hot encoding for actions received;</span>
-<span class="sd">            - rewards received (based on self.reward variable values);</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">stat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span>
         <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
 
-        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="n">norm_value</span><span class="p">(</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_get_broker_stat_methods</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">method</span><span class="p">(</span><span class="n">current_value</span><span class="o">=</span><span class="n">current_value</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="BTgymBaseStrategy.get_broker_value"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_broker_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_broker_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            current_value:  current portfolio value</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            normalized broker value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">norm_value</span><span class="p">(</span>
+            <span class="n">current_value</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">drawdown_call</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">target_call</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymBaseStrategy.get_broker_cash"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_broker_cash">[docs]</a>    <span class="k">def</span> <span class="nf">get_broker_cash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            normalized broker cash</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">norm_value</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_cash</span><span class="p">(),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span><span class="p">,</span>
+            <span class="mf">99.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">target_call</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymBaseStrategy.get_broker_exposure"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_broker_exposure">[docs]</a>    <span class="k">def</span> <span class="nf">get_broker_exposure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            normalized exposure (position size)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_leverage</span><span class="p">()</span> <span class="o">+</span> <span class="mf">1e-2</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymBaseStrategy.get_broker_pos_direction"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_broker_pos_direction">[docs]</a>    <span class="k">def</span> <span class="nf">get_broker_pos_direction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            short/long/out position indicator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">1.0</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span> <span class="mf">1.0</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span></div>
+
+<div class="viewcode-block" id="BTgymBaseStrategy.get_broker_realized_pnl"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_broker_realized_pnl">[docs]</a>    <span class="k">def</span> <span class="nf">get_broker_realized_pnl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            current_value: current portfolio value</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trade_just_closed</span><span class="p">:</span>
+            <span class="n">pnl</span> <span class="o">=</span> <span class="n">decayed_result</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trade_result</span><span class="p">,</span>
                 <span class="n">current_value</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">drawdown_call</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">target_call</span><span class="p">,</span>
-            <span class="p">)</span>
-        <span class="p">)</span>
-        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;broker_cash&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="n">norm_value</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_cash</span><span class="p">(),</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span><span class="p">,</span>
-                <span class="mf">99.0</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">target_call</span><span class="p">,</span>
-            <span class="p">)</span>
-        <span class="p">)</span>
-        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_leverage</span><span class="p">()</span> <span class="o">+</span> <span class="mf">1e-2</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;leverage&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_leverage</span><span class="p">())</span>  <span class="c1"># TODO: Do we need this?</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trade_just_closed</span><span class="p">:</span>
-            <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="n">decayed_result</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">trade_result</span><span class="p">,</span>
-                    <span class="n">current_value</span><span class="p">,</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span><span class="p">,</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">drawdown_call</span><span class="p">,</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">target_call</span><span class="p">,</span>
-                    <span class="n">gamma</span><span class="o">=</span><span class="mi">1</span>
-                <span class="p">)</span>
+                <span class="n">gamma</span><span class="o">=</span><span class="mi">1</span>
             <span class="p">)</span>
             <span class="c1"># Reset flag:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">trade_just_closed</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="c1"># print(&#39;POS_OBS: step {}, just closed.&#39;.format(self.iteration))</span>
 
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="n">pnl</span></div>
 
+<div class="viewcode-block" id="BTgymBaseStrategy.get_broker_unrealized_pnl"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_broker_unrealized_pnl">[docs]</a>    <span class="k">def</span> <span class="nf">get_broker_unrealized_pnl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            current_value: current portfolio value</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            normalized profit/loss for current opened trade</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">current_value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_broker_value</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_value_normalizer</span></div>
+
+<div class="viewcode-block" id="BTgymBaseStrategy.get_broker_episode_step"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_broker_episode_step">[docs]</a>    <span class="k">def</span> <span class="nf">get_broker_episode_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            exp. scaled episode duration in steps, normalized wrt. max possible episode steps</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">exp_scale</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numrecords</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span><span class="p">),</span>
+            <span class="n">gamma</span><span class="o">=</span><span class="mi">3</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="BTgymBaseStrategy.get_broker_drawdown"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_broker_drawdown">[docs]</a>    <span class="k">def</span> <span class="nf">get_broker_drawdown</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            current drawdown value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">dd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">drawdown</span><span class="o">.</span><span class="n">drawdown</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1">#/ self.p.drawdown_call</span>
+        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+            <span class="n">dd</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="n">dd</span></div>
+
+    <span class="c1"># def get_broker_pos_duration(self, current_value):</span>
+    <span class="c1">#     if self.position.size == 0:</span>
+    <span class="c1">#         self.current_pos_duration = 0</span>
+    <span class="c1">#         self.current_pos_min_value = current_value</span>
+    <span class="c1">#         self.current_pos_max_value = current_value</span>
+    <span class="c1">#         # print(&#39;ZERO_POSITION\n&#39;)</span>
+    <span class="c1">#</span>
+    <span class="c1">#     else:</span>
+    <span class="c1">#         self.current_pos_duration += 1</span>
+    <span class="c1">#         if self.current_pos_max_value &lt; current_value:</span>
+    <span class="c1">#             self.current_pos_max_value = current_value</span>
+    <span class="c1">#</span>
+    <span class="c1">#         elif self.current_pos_min_value &gt; current_value:</span>
+    <span class="c1">#             self.current_pos_min_value = current_value</span>
+    <span class="c1">#</span>
+    <span class="c1">#     return self.current_pos_duration / (self.data.numrecords - self.inner_embedding)</span>
+    <span class="c1">#</span>
+
+    <span class="k">def</span> <span class="nf">get_broker_max_unrealized_pnl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_duration</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_min_value</span> <span class="o">=</span> <span class="n">current_value</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_max_value</span> <span class="o">=</span> <span class="n">current_value</span>
-            <span class="c1"># print(&#39;ZERO_POSITION\n&#39;)</span>
 
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_duration</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_max_value</span> <span class="o">&lt;</span> <span class="n">current_value</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_max_value</span> <span class="o">=</span> <span class="n">current_value</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_pos_max_value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_broker_value</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_value_normalizer</span>
 
-            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_min_value</span> <span class="o">&gt;</span> <span class="n">current_value</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">get_broker_min_unrealized_pnl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_min_value</span> <span class="o">=</span> <span class="n">current_value</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_min_value</span> <span class="o">&gt;</span> <span class="n">current_value</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_min_value</span> <span class="o">=</span> <span class="n">current_value</span>
-
-        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;pos_duration&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_duration</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numrecords</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;episode_step&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="n">exp_scale</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numrecords</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span><span class="p">),</span>
-                <span class="n">gamma</span><span class="o">=</span><span class="mi">3</span>
-            <span class="p">)</span>
-        <span class="p">)</span>
-        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;max_unrealized_pnl&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_pos_max_value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_broker_value</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_value_normalizer</span>
-        <span class="p">)</span>
-        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;min_unrealized_pnl&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_pos_min_value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_broker_value</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_value_normalizer</span>
-        <span class="p">)</span>
-        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="p">(</span><span class="n">current_value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_broker_value</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_value_normalizer</span>
-        <span class="p">)</span>
-        <span class="c1">#stat[&#39;action&#39;].append(self.action_norm(self.last_action))</span>
-        <span class="n">stat</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward</span><span class="p">)</span></div>
-
-        <span class="c1">#print(stat[&#39;episode_step&#39;])</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_pos_min_value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_broker_value</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_value_normalizer</span>
 
 <div class="viewcode-block" id="BTgymBaseStrategy.set_datalines"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.set_datalines">[docs]</a>    <span class="k">def</span> <span class="nf">set_datalines</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -695,6 +780,18 @@
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_state</span></div>
 
+<div class="viewcode-block" id="BTgymBaseStrategy.get_internal_state"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_internal_state">[docs]</a>    <span class="k">def</span> <span class="nf">get_internal_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Composes internal state tensor by calling all statistics from broker_stat dictionary.</span>
+<span class="sd">        Generally, this method should not be modified, implement corresponding get_broker_[mode]() methods.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_broker</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">stat</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="o">.</span><span class="n">values</span><span class="p">()],</span>
+            <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">x_broker</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span></div>
+
     <span class="k">def</span> <span class="nf">get_metadata_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_timestamp</span><span class="p">())</span>
 
@@ -724,7 +821,7 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Collects estimated values for every mode of observation space by calling methods from</span>
 <span class="sd">        `collection_get_state_methods` dictionary.</span>
-<span class="sd">        As a rule, this method should not be modified, override or implement correspondig get_[mode]_state() methods,</span>
+<span class="sd">        As a rule, this method should not be modified, override or implement corresponding get_[mode]_state() methods,</span>
 <span class="sd">        defining necessary calculations and return arbitrary shaped tensors for every space mode.</span>
 
 <span class="sd">        Note:</span>
@@ -732,8 +829,8 @@
 <span class="sd">                Datafeed Lines that are not default to BTgymStrategy should be explicitly defined by</span>
 <span class="sd">                 __init__() or define_datalines().</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
+        <span class="c1"># Update inner state statistic and compose state: &lt;- moved to .next()</span>
+        <span class="c1"># self.update_broker_stat()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">method</span><span class="p">()</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_get_state_methods</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
         <span class="c1"># Above line is generalisation of, say:</span>
@@ -747,18 +844,63 @@
 
 <div class="viewcode-block" id="BTgymBaseStrategy.get_reward"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_reward">[docs]</a>    <span class="k">def</span> <span class="nf">get_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Default reward estimator.</span>
+<span class="sd">        Shapes reward function as normalized single trade realized profit/loss,</span>
+<span class="sd">        augmented with potential-based reward shaping functions in form of:</span>
+<span class="sd">        F(s, a, s`) = gamma * FI(s`) - FI(s);</span>
 
-<span class="sd">        Computes `dummy` reward as log utility of current to initial portfolio value ratio.</span>
-<span class="sd">        Same principles as for state composer apply.</span>
+<span class="sd">        - potential FI_1 is current normalized unrealized profit/loss;</span>
+<span class="sd">        - potential FI_2 is current normalized broker value.</span>
+<span class="sd">        - FI_3: penalizing exposure toward the end of episode</span>
 
-<span class="sd">        Returns:</span>
-<span class="sd">             self.reward value: scalar, float</span>
-
-<span class="sd">        Note:</span>
-<span class="sd">            should update self.reward variable.</span>
+<span class="sd">        Paper:</span>
+<span class="sd">            &quot;Policy invariance under reward transformations:</span>
+<span class="sd">             Theory and application to reward shaping&quot; by A. Ng et al., 1999;</span>
+<span class="sd">             http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">startingcash</span><span class="p">))</span>
+
+        <span class="c1"># All sliding statistics for this step are already updated by get_state().</span>
+        <span class="n">debug</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Potential-based shaping function 1:</span>
+        <span class="c1"># based on potential of averaged profit/loss for current opened trade (unrealized p/l):</span>
+        <span class="n">unrealised_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])</span>
+        <span class="c1"># f1 = self.p.gamma * np.average(unrealised_pnl[1:]) - np.average(unrealised_pnl[:-1])</span>
+        <span class="n">f1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:])</span> \
+            <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[</span><span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">])</span>
+
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f1</span>
+
+        <span class="c1"># Potential-based shaping function 2:</span>
+        <span class="c1"># based on potential of averaged broker value, normalized wrt to max drawdown and target bounds.</span>
+        <span class="n">norm_broker_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">])</span>
+        <span class="c1"># f2 = self.p.gamma * np.average(norm_broker_value[1:]) - np.average(norm_broker_value[:-1])</span>
+        <span class="n">f2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:])</span> \
+            <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[</span><span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">])</span>
+
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f2</span>
+
+        <span class="c1"># Potential-based shaping function 3:</span>
+        <span class="c1"># based on negative potential of relative draw-down value.</span>
+        <span class="c1"># drawdown = np.asarray(self.broker_stat[&#39;drawdown&#39;])</span>
+        <span class="c1"># f3 = - self.p.gamma * np.max(drawdown[-self.skip_frame:]) \</span>
+        <span class="c1">#     + np.max(drawdown[- 2 * self.skip_frame:-self.skip_frame])</span>
+        <span class="n">f3</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="c1"># debug[&#39;f3&#39;] = f3</span>
+
+        <span class="c1"># Main reward function: normalized realized profit/loss:</span>
+        <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f_real_pnl&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">realized_pnl</span>
+
+        <span class="c1"># Weights are subject to tune:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">*</span> <span class="n">f1</span> <span class="o">+</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">f2</span> <span class="o">+</span> <span class="mf">0.0</span> <span class="o">*</span> <span class="n">f3</span> <span class="o">+</span> <span class="mf">10.0</span> <span class="o">*</span> <span class="n">realized_pnl</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span>
+
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span>
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;b_v&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;unreal_pnl&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;iteration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span><span class="p">)</span>
+
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span></div>
 
 <div class="viewcode-block" id="BTgymBaseStrategy.get_info"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>

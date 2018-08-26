@@ -329,90 +329,12 @@
             <span class="p">],</span>
             <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
         <span class="p">)</span>
-        <span class="c1"># Log-scale: NOT used. Seems to hurt performance.</span>
-        <span class="c1"># x = log_transform(x)</span>
-
         <span class="c1"># Amplify and squash in [-1,1], seems to be best option as of 4.10.17:</span>
         <span class="c1"># `self.p.state_ext_scale` param is supposed to keep most of the signal</span>
         <span class="c1"># in &#39;linear&#39; part of tanh while squashing spikes.</span>
         <span class="n">x_market</span> <span class="o">=</span> <span class="n">tanh</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_ext_scale</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">x_market</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
-
-    <span class="k">def</span> <span class="nf">get_internal_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">x_broker</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-            <span class="p">[</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="c1"># max_unrealized_pnl[..., None],</span>
-                <span class="c1"># min_unrealized_pnl[..., None],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_cash&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="c1"># norm_episode_duration, gamma=5)[...,None],</span>
-                <span class="c1"># norm_position_duration, gamma=2)[...,None],</span>
-            <span class="p">],</span>
-            <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">x_broker</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
-
-    <span class="c1"># def get_state(self):</span>
-    <span class="c1">#</span>
-    <span class="c1">#     # Update inner state statistic and compose state:</span>
-    <span class="c1">#     self.update_broker_stat()</span>
-    <span class="c1">#</span>
-    <span class="c1">#     self.state[&#39;external&#39;] = self.get_external_state()</span>
-    <span class="c1">#     self.state[&#39;internal&#39;] = self.get_internal_state()</span>
-    <span class="c1">#     self.state[&#39;action&#39;] = np.asarray(self.sliding_stat[&#39;action&#39;])[:, None, None]</span>
-    <span class="c1">#     self.state[&#39;reward&#39;] = np.asarray(self.sliding_stat[&#39;reward&#39;])[:, None, None]</span>
-    <span class="c1">#     self.state[&#39;metadata&#39;] = self.get_metadata_state()</span>
-
-        <span class="c1"># return self.state</span>
-
-<div class="viewcode-block" id="DevStrat_4_6.get_reward"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_6.get_reward">[docs]</a>    <span class="k">def</span> <span class="nf">get_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Shapes reward function as normalized single trade realized profit/loss,</span>
-<span class="sd">        augmented with potential-based reward shaping functions in form of:</span>
-<span class="sd">        F(s, a, s`) = gamma * FI(s`) - FI(s);</span>
-
-<span class="sd">        - potential FI_1 is current normalized unrealized profit/loss;</span>
-<span class="sd">        - potential FI_2 is current normalized broker value.</span>
-
-<span class="sd">        Paper:</span>
-<span class="sd">            &quot;Policy invariance under reward transformations:</span>
-<span class="sd">             Theory and application to reward shaping&quot; by A. Ng et al., 1999;</span>
-<span class="sd">             http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="c1"># All sliding statistics for this step are already updated by get_state().</span>
-        <span class="c1">#</span>
-        <span class="c1"># TODO: window size for stats averaging? Now it is time_dim - 1, can better be other?</span>
-        <span class="c1"># TODO: pass actual gamma as strategy param.</span>
-
-        <span class="c1"># Potential-based shaping function 1:</span>
-        <span class="c1"># based on potential of averaged profit/loss for current opened trade (unrealized p/l):</span>
-        <span class="n">unrealised_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])</span>
-        <span class="n">f1</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-
-        <span class="c1"># Potential-based shaping function 2:</span>
-        <span class="c1"># based on potential of averaged broker value, normalized wrt to max drawdown and target bounds.</span>
-        <span class="n">norm_broker_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">])</span>
-        <span class="n">f2</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-
-        <span class="c1"># Main reward function: normalized realized profit/loss:</span>
-        <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-
-        <span class="c1"># Weights are subject to tune:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">*</span> <span class="n">f1</span> <span class="o">+</span> <span class="mf">1.0</span> <span class="o">*</span> <span class="n">f2</span> <span class="o">+</span> <span class="mf">10.0</span> <span class="o">*</span> <span class="n">realized_pnl</span>
-        <span class="c1"># TODO: ------ignore-----:</span>
-        <span class="c1"># &#39;Close-at-the-end&#39; shaping term:</span>
-        <span class="c1"># - 1.0 * self.exp_scale(avg_norm_episode_duration, gamma=6) * abs_max_norm_exposure</span>
-        <span class="c1"># &#39;Do-not-expose-for-too-long&#39; shaping term:</span>
-        <span class="c1"># - 1.0 * self.exp_scale(avg_norm_position_duration, gamma=3)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span></div></div>
+        <span class="k">return</span> <span class="n">x_market</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span></div>
 
 
 <div class="viewcode-block" id="DevStrat_4_7"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_7">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_7</span><span class="p">(</span><span class="n">DevStrat_4_6</span><span class="p">):</span>
@@ -512,97 +434,14 @@
     <span class="k">def</span> <span class="nf">get_internal_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">x_broker</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
             <span class="p">[</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_cash&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;cash&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
             <span class="p">]</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">x_broker</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
-
-    <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_external_state</span><span class="p">(),</span>
-            <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_internal_state</span><span class="p">(),</span>
-            <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_metadata_state</span><span class="p">(),</span>
-        <span class="p">}</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span>
-
-<div class="viewcode-block" id="DevStrat_4_7.get_reward"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_7.get_reward">[docs]</a>    <span class="k">def</span> <span class="nf">get_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Shapes reward function as normalized single trade realized profit/loss,</span>
-<span class="sd">        augmented with potential-based reward shaping functions in form of:</span>
-<span class="sd">        F(s, a, s`) = gamma * FI(s`) - FI(s);</span>
-
-<span class="sd">        - potential FI_1 is current normalized unrealized profit/loss;</span>
-<span class="sd">        - potential FI_2 is current normalized broker value.</span>
-<span class="sd">        - FI_3: penalizing exposure toward the end of episode</span>
-
-<span class="sd">        Paper:</span>
-<span class="sd">            &quot;Policy invariance under reward transformations:</span>
-<span class="sd">             Theory and application to reward shaping&quot; by A. Ng et al., 1999;</span>
-<span class="sd">             http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="c1"># All sliding statistics for this step are already updated by get_state().</span>
-        <span class="n">debug</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="c1"># Potential-based shaping function 1:</span>
-        <span class="c1"># based on potential of averaged profit/loss for current opened trade (unrealized p/l):</span>
-        <span class="n">unrealised_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])</span>
-        <span class="n">f1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-        <span class="c1">#f1 = self.p.gamma * discounted_average(unrealised_pnl[1:], self.p.gamma)\</span>
-        <span class="c1">#     - discounted_average(unrealised_pnl[:-1], self.p.gamma)</span>
-
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f1</span>
-
-        <span class="c1"># Potential-based shaping function 2:</span>
-        <span class="c1"># based on potential of averaged broker value, normalized wrt to max drawdown and target bounds.</span>
-        <span class="n">norm_broker_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">])</span>
-        <span class="n">f2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-        <span class="c1">#f2 = self.p.gamma * discounted_average(norm_broker_value[1:], self.p.gamma)\</span>
-        <span class="c1">#     - discounted_average(norm_broker_value[:-1], self.p.gamma)</span>
-
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f2</span>
-
-        <span class="c1"># Potential-based shaping function 3:</span>
-        <span class="c1"># negative potential of abs. size of position, exponentially weighted wrt. episode steps</span>
-        <span class="n">abs_exposure</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">]))</span>
-        <span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;episode_step&#39;</span><span class="p">])</span>
-        <span class="c1">#time_w = exp_scale(np.average(time[:-1]), gamma=5)</span>
-        <span class="c1">#time_w_prime = exp_scale(np.average(time[1:]), gamma=5)</span>
-        <span class="c1">#f3 = - 1.0 * time_w_prime * np.average(abs_exposure[1:]) #+ time_w * np.average(abs_exposure[:-1])</span>
-        <span class="n">f3</span> <span class="o">=</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">exp_scale</span><span class="p">(</span><span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">gamma</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="n">abs_exposure</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> \
-             <span class="n">exp_scale</span><span class="p">(</span><span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">gamma</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="n">abs_exposure</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f3</span>
-
-        <span class="c1"># Main reward function: normalized realized profit/loss:</span>
-        <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f_real_pnl&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">realized_pnl</span>
-
-        <span class="c1"># Weights are subject to tune:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">*</span> <span class="n">f1</span> <span class="o">+</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">f2</span> <span class="o">+</span> <span class="mf">0.0</span> <span class="o">*</span> <span class="n">f3</span> <span class="o">+</span> <span class="mf">10.0</span> <span class="o">*</span> <span class="n">realized_pnl</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span>
-
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;b_v&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;unreal_pnl&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;iteration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span>
-
-        <span class="c1">#for k, v in debug.items():</span>
-        <span class="c1">#    print(&#39;{}: {}&#39;.format(k, v))</span>
-        <span class="c1">#print(&#39;\n&#39;)</span>
-
-        <span class="c1"># TODO: ------ignore-----:</span>
-        <span class="c1"># &#39;Do-not-expose-for-too-long&#39; shaping term:</span>
-        <span class="c1"># - 1.0 * self.exp_scale(avg_norm_position_duration, gamma=3)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span></div></div>
+        <span class="k">return</span> <span class="n">x_broker</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span></div>
 
 
 <div class="viewcode-block" id="DevStrat_4_8"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_8">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_8</span><span class="p">(</span><span class="n">DevStrat_4_7</span><span class="p">):</span>
@@ -697,11 +536,11 @@
     <span class="k">def</span> <span class="nf">get_internal_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">x_broker</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
             <span class="p">[</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_cash&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;cash&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
                 <span class="c1"># np.asarray(self.sliding_stat[&#39;episode_step&#39;])[..., None],</span>
                 <span class="c1"># np.asarray(self.sliding_stat[&#39;reward&#39;])[..., None],</span>
                 <span class="c1"># np.asarray(self.sliding_stat[&#39;action&#39;])[..., None],</span>
@@ -711,19 +550,7 @@
             <span class="p">],</span>
             <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">x_broker</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
-
-    <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_external_state</span><span class="p">(),</span>
-            <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_internal_state</span><span class="p">(),</span>
-            <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_metadata_state</span><span class="p">(),</span>
-        <span class="p">}</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span></div>
+        <span class="k">return</span> <span class="n">x_broker</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span></div>
 
 
 <div class="viewcode-block" id="DevStrat_4_9"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_9">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_9</span><span class="p">(</span><span class="n">DevStrat_4_7</span><span class="p">):</span>
@@ -849,102 +676,83 @@
 
         <span class="c1"># Log-scale:</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">log_transform</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">x</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
-
-    <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_external_state</span><span class="p">(),</span>
-            <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_internal_state</span><span class="p">(),</span>
-            <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_metadata_state</span><span class="p">(),</span>
-        <span class="p">}</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span></div>
+        <span class="k">return</span> <span class="n">x</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span></div>
 
 
 <div class="viewcode-block" id="DevStrat_4_10"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_10">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_10</span><span class="p">(</span><span class="n">DevStrat_4_7</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    4_7 + Reward search: log-normalised potential functions</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    4_7 + Reward search: log-normalised potential functions. Nope.</span>
+<span class="sd">    &quot;&quot;&quot;</span></div>
 
-<div class="viewcode-block" id="DevStrat_4_10.get_reward"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_10.get_reward">[docs]</a>    <span class="k">def</span> <span class="nf">get_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Shapes reward function as normalized single trade realized profit/loss,</span>
-<span class="sd">        augmented with potential-based reward shaping functions in form of:</span>
-<span class="sd">        F(s, a, s`) = gamma * FI(s`) - FI(s);</span>
-
-<span class="sd">        - potential FI_1 is current normalized unrealized profit/loss;</span>
-<span class="sd">        - potential FI_2 is current normalized broker value.</span>
-<span class="sd">        - FI_3: penalizing exposure toward the end of episode</span>
-
-<span class="sd">        Paper:</span>
-<span class="sd">            &quot;Policy invariance under reward transformations:</span>
-<span class="sd">             Theory and application to reward shaping&quot; by A. Ng et al., 1999;</span>
-<span class="sd">             http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="c1"># All sliding statistics for this step are already updated by get_state().</span>
-        <span class="n">debug</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">scale</span> <span class="o">=</span> <span class="mf">10.0</span>
-        <span class="c1"># Potential-based shaping function 1:</span>
-        <span class="c1"># based on log potential of averaged profit/loss for current opened trade (unrealized p/l):</span>
-        <span class="n">unrealised_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span> <span class="c1"># shift [-1,1] -&gt; [0,1]</span>
-        <span class="c1"># TODO: make normalizing util func to return in [0,1] by default</span>
-        <span class="n">f1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
-
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f1</span>
-
-        <span class="c1"># Potential-based shaping function 2:</span>
-        <span class="c1"># based on potential of averaged broker value, log-normalized wrt to max drawdown and target bounds.</span>
-        <span class="n">norm_broker_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span> <span class="c1"># shift [-1,1] -&gt; [0,1]</span>
-        <span class="n">f2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
-
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f2</span>
-
-        <span class="c1"># Potential-based shaping function 3: NOT USED</span>
-        <span class="c1"># negative potential of abs. size of position, exponentially weighted wrt. episode steps</span>
-        <span class="n">abs_exposure</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">]))</span>
-        <span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;episode_step&#39;</span><span class="p">])</span>
-        <span class="c1">#time_w = exp_scale(np.average(time[:-1]), gamma=5)</span>
-        <span class="c1">#time_w_prime = exp_scale(np.average(time[1:]), gamma=5)</span>
-        <span class="c1">#f3 = - 1.0 * time_w_prime * np.average(abs_exposure[1:]) #+ time_w * np.average(abs_exposure[:-1])</span>
-        <span class="n">f3</span> <span class="o">=</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">exp_scale</span><span class="p">(</span><span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">gamma</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="n">abs_exposure</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> \
-             <span class="n">exp_scale</span><span class="p">(</span><span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">gamma</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="n">abs_exposure</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f3</span>
-
-        <span class="c1"># `Spike` reward function: normalized realized profit/loss:</span>
-        <span class="n">realized_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f_real_pnl&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">realized_pnl</span>
-
-        <span class="c1"># Weights are subject to tune:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">*</span> <span class="n">f1</span> <span class="o">+</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">f2</span> <span class="o">+</span> <span class="mf">0.0</span> <span class="o">*</span> <span class="n">f3</span> <span class="o">+</span> <span class="mf">10.0</span> <span class="o">*</span> <span class="n">realized_pnl</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span>
-
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;b_v&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;unreal_pnl&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;iteration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span>
-
-        <span class="c1">#for k, v in debug.items():</span>
-        <span class="c1">#    print(&#39;{}: {}&#39;.format(k, v))</span>
-        <span class="c1">#print(&#39;\n&#39;)</span>
-
-        <span class="c1"># ------ignore-----:</span>
-        <span class="c1"># &#39;Do-not-expose-for-too-long&#39; shaping term:</span>
-        <span class="c1"># - 1.0 * self.exp_scale(avg_norm_position_duration, gamma=3)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span></div>
-
-    <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">method</span><span class="p">()</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_get_state_methods</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span></div>
+    <span class="c1"># def get_reward(self):</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     Shapes reward function as normalized single trade realized profit/loss,</span>
+    <span class="c1">#     augmented with potential-based reward shaping functions in form of:</span>
+    <span class="c1">#     F(s, a, s`) = gamma * FI(s`) - FI(s);</span>
+    <span class="c1">#</span>
+    <span class="c1">#     - potential FI_1 is current normalized unrealized profit/loss;</span>
+    <span class="c1">#     - potential FI_2 is current normalized broker value.</span>
+    <span class="c1">#     - FI_3: penalizing exposure toward the end of episode</span>
+    <span class="c1">#</span>
+    <span class="c1">#     Paper:</span>
+    <span class="c1">#         &quot;Policy invariance under reward transformations:</span>
+    <span class="c1">#          Theory and application to reward shaping&quot; by A. Ng et al., 1999;</span>
+    <span class="c1">#          http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # All sliding statistics for this step are already updated by get_state().</span>
+    <span class="c1">#     debug = {}</span>
+    <span class="c1">#     scale = 10.0</span>
+    <span class="c1">#     # Potential-based shaping function 1:</span>
+    <span class="c1">#     # based on log potential of averaged profit/loss for current opened trade (unrealized p/l):</span>
+    <span class="c1">#     unrealised_pnl = np.asarray(self.broker_stat[&#39;unrealized_pnl&#39;]) / 2 + 1 # shift [-1,1] -&gt; [0,1]</span>
+    <span class="c1">#     # TODO: make normalizing util func to return in [0,1] by default</span>
+    <span class="c1">#     f1 = self.p.gamma * np.log(np.average(unrealised_pnl[1:])) - np.log(np.average(unrealised_pnl[:-1]))</span>
+    <span class="c1">#</span>
+    <span class="c1">#     debug[&#39;f1&#39;] = f1</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Potential-based shaping function 2:</span>
+    <span class="c1">#     # based on potential of averaged broker value, log-normalized wrt to max drawdown and target bounds.</span>
+    <span class="c1">#     norm_broker_value = np.asarray(self.broker_stat[&#39;value&#39;]) / 2 + 1 # shift [-1,1] -&gt; [0,1]</span>
+    <span class="c1">#     f2 = self.p.gamma * np.log(np.average(norm_broker_value[1:])) - np.log(np.average(norm_broker_value[:-1]))</span>
+    <span class="c1">#</span>
+    <span class="c1">#     debug[&#39;f2&#39;] = f2</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Potential-based shaping function 3: NOT USED</span>
+    <span class="c1">#     # negative potential of abs. size of position, exponentially weighted wrt. episode steps</span>
+    <span class="c1">#     # abs_exposure = np.abs(np.asarray(self.broker_stat[&#39;exposure&#39;]))</span>
+    <span class="c1">#     # time = np.asarray(self.broker_stat[&#39;episode_step&#39;])</span>
+    <span class="c1">#     # #time_w = exp_scale(np.average(time[:-1]), gamma=5)</span>
+    <span class="c1">#     # #time_w_prime = exp_scale(np.average(time[1:]), gamma=5)</span>
+    <span class="c1">#     # #f3 = - 1.0 * time_w_prime * np.average(abs_exposure[1:]) #+ time_w * np.average(abs_exposure[:-1])</span>
+    <span class="c1">#     # f3 = - self.p.gamma * exp_scale(time[-1], gamma=3) * abs_exposure[-1] + \</span>
+    <span class="c1">#     #      exp_scale(time[-2], gamma=3) * abs_exposure[-2]</span>
+    <span class="c1">#     # debug[&#39;f3&#39;] = f3</span>
+    <span class="c1">#     f3 = 1</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # `Spike` reward function: normalized realized profit/loss:</span>
+    <span class="c1">#     realized_pnl = self.broker_stat[&#39;realized_pnl&#39;][-1]</span>
+    <span class="c1">#     debug[&#39;f_real_pnl&#39;] = 10 * realized_pnl</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Weights are subject to tune:</span>
+    <span class="c1">#     self.reward = (1.0 * f1 + 2.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl) * self.p.reward_scale</span>
+    <span class="c1">#</span>
+    <span class="c1">#     debug[&#39;r&#39;] = self.reward</span>
+    <span class="c1">#     debug[&#39;b_v&#39;] = self.broker_stat[&#39;value&#39;][-1]</span>
+    <span class="c1">#     debug[&#39;unreal_pnl&#39;] = self.broker_stat[&#39;unrealized_pnl&#39;][-1]</span>
+    <span class="c1">#     debug[&#39;iteration&#39;] = self.iteration</span>
+    <span class="c1">#</span>
+    <span class="c1">#     #for k, v in debug.items():</span>
+    <span class="c1">#     #    print(&#39;{}: {}&#39;.format(k, v))</span>
+    <span class="c1">#     #print(&#39;\n&#39;)</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # ------ignore-----:</span>
+    <span class="c1">#     # &#39;Do-not-expose-for-too-long&#39; shaping term:</span>
+    <span class="c1">#     # - 1.0 * self.exp_scale(avg_norm_position_duration, gamma=3)</span>
+    <span class="c1">#</span>
+    <span class="c1">#     self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)</span>
+    <span class="c1">#</span>
+    <span class="c1">#     return self.reward</span>
 
 
 <div class="viewcode-block" id="DevStrat_4_11"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_11">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_11</span><span class="p">(</span><span class="n">DevStrat_4_10</span><span class="p">):</span>
@@ -977,7 +785,7 @@
         <span class="n">state_shape</span><span class="o">=</span>
         <span class="p">{</span>
             <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">100</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">time_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
-            <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">avg_period</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">avg_period</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
             <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="n">DictSpace</span><span class="p">(</span>
                 <span class="p">{</span>
                     <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
@@ -1073,17 +881,130 @@
 
         <span class="n">x_broker</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
             <span class="p">[</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_cash&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;cash&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;pos_direction&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+
+                <span class="c1"># np.asarray(self.broker_stat[&#39;value&#39;])[-self.p.skip_frame:, None],</span>
+                <span class="c1"># np.asarray(self.broker_stat[&#39;unrealized_pnl&#39;])[-self.p.skip_frame:, None],</span>
+                <span class="c1"># np.asarray(self.broker_stat[&#39;realized_pnl&#39;])[-self.p.skip_frame:, None],</span>
+                <span class="c1"># np.asarray(self.broker_stat[&#39;cash&#39;])[-self.p.skip_frame:, None],</span>
+                <span class="c1"># np.asarray(self.broker_stat[&#39;exposure&#39;])[-self.p.skip_frame:, None],</span>
+                <span class="c1"># np.asarray(self.broker_stat[&#39;pos_direction&#39;])[-self.p.skip_frame:, None],</span>
             <span class="p">],</span>
             <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
         <span class="p">)</span>
         <span class="n">x_broker</span> <span class="o">=</span> <span class="n">tanh</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">x_broker</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_int_scale</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">x_broker</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span></div>
+        <span class="c1"># return x_broker[:, None, :]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">x_broker</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:],</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span></div>
 
+
+<span class="k">class</span> <span class="nc">DevStrat_4_11_1</span><span class="p">(</span><span class="n">DevStrat_4_11</span><span class="p">):</span>
+    <span class="c1"># Time embedding period:</span>
+    <span class="n">time_dim</span> <span class="o">=</span> <span class="mi">30</span>  <span class="c1"># NOTE: changed this --&gt; change Policy  UNREAL for aux. pix control task upsampling params</span>
+    <span class="c1"># Number of environment steps to skip before returning next response,</span>
+    <span class="c1"># e.g. if set to 10 -- agent will interact with environment every 10th step;</span>
+    <span class="c1"># every other step agent action is assumed to be &#39;hold&#39;:</span>
+    <span class="n">skip_frame</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="c1"># Number of timesteps reward estimation statistics are averaged over, should be:</span>
+    <span class="c1"># skip_frame_period &lt;= avg_period &lt;= time_embedding_period:</span>
+    <span class="n">avg_period</span> <span class="o">=</span> <span class="mi">20</span>
+    <span class="c1"># Possible agent actions:</span>
+    <span class="n">portfolio_actions</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;hold&#39;</span><span class="p">,</span> <span class="s1">&#39;buy&#39;</span><span class="p">,</span> <span class="s1">&#39;sell&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">)</span>
+    <span class="n">gamma</span> <span class="o">=</span> <span class="mf">0.99</span>  <span class="c1"># fi_gamma, should be MDP gamma decay</span>
+    <span class="n">reward_scale</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># reward multiplicator</span>
+    <span class="n">state_ext_scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">3e3</span><span class="p">,</span> <span class="mf">1e3</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="c1"># Note: fake `Width` dimension to use 2d conv etc.:</span>
+        <span class="n">state_shape</span><span class="o">=</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="n">DictSpace</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;diff&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">100</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">time_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                    <span class="s1">&#39;avg&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">100</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">time_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                <span class="p">}</span>
+            <span class="p">),</span>
+            <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">avg_period</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="n">DictSpace</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                        <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                        <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">high</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span>
+                    <span class="p">),</span>
+                    <span class="s1">&#39;trial_num&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                        <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                        <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">high</span><span class="o">=</span><span class="mi">10</span> <span class="o">**</span> <span class="mi">10</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span>
+                    <span class="p">),</span>
+                    <span class="s1">&#39;trial_type&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                        <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                        <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">high</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span>
+                    <span class="p">),</span>
+                    <span class="s1">&#39;sample_num&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                        <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                        <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">high</span><span class="o">=</span><span class="mi">10</span> <span class="o">**</span> <span class="mi">10</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span>
+                    <span class="p">),</span>
+                    <span class="s1">&#39;first_row&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                        <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                        <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">high</span><span class="o">=</span><span class="mi">10</span> <span class="o">**</span> <span class="mi">10</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span>
+                    <span class="p">),</span>
+                    <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                        <span class="n">shape</span><span class="o">=</span><span class="p">(),</span>
+                        <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">high</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span>
+                    <span class="p">),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+        <span class="p">},</span>
+        <span class="n">cash_name</span><span class="o">=</span><span class="s1">&#39;default_cash&#39;</span><span class="p">,</span>
+        <span class="n">asset_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;default_asset&#39;</span><span class="p">],</span>
+        <span class="n">start_cash</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">commission</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">leverage</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">drawdown_call</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">target_call</span><span class="o">=</span><span class="mi">19</span><span class="p">,</span>
+        <span class="n">portfolio_actions</span><span class="o">=</span><span class="n">portfolio_actions</span><span class="p">,</span>
+        <span class="n">initial_action</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">initial_portfolio_action</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">skip_frame</span><span class="o">=</span><span class="n">skip_frame</span><span class="p">,</span>
+        <span class="n">gamma</span><span class="o">=</span><span class="n">gamma</span><span class="p">,</span>
+        <span class="n">reward_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">state_ext_scale</span><span class="o">=</span><span class="n">state_ext_scale</span><span class="p">,</span>  <span class="c1"># EURUSD</span>
+        <span class="n">state_int_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{},</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_external_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">x_sma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_16</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_32</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_64</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_128</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sma_256</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_dim</span><span class="p">)),</span>
+            <span class="p">],</span>
+            <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="c1"># Gradient along features axis:</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">x_sma</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_ext_scale</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">tanh</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span>
+        <span class="n">avg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">x_sma</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">state_ext_scale</span>
+        <span class="n">avg</span> <span class="o">=</span> <span class="n">tanh</span><span class="p">(</span><span class="n">avg</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;avg&#39;</span><span class="p">:</span> <span class="n">avg</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:],</span> <span class="s1">&#39;diff&#39;</span><span class="p">:</span> <span class="n">diff</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]}</span>
 
 <div class="viewcode-block" id="DevStrat_4_12"><a class="viewcode-back" href="../../../btgym.research.html#btgym.research.strategy_gen_4.DevStrat_4_12">[docs]</a><span class="k">class</span> <span class="nc">DevStrat_4_12</span><span class="p">(</span><span class="n">DevStrat_4_11</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -1210,11 +1131,11 @@
 
         <span class="n">x_broker</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
             <span class="p">[</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_value&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;broker_cash&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliding_stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;cash&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
             <span class="p">],</span>
             <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
         <span class="p">)</span>
@@ -1234,22 +1155,8 @@
         <span class="n">mm</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">minute</span> <span class="o">/</span> <span class="mi">60</span>
 
         <span class="n">encoded_stamp</span> <span class="o">=</span> <span class="p">[</span><span class="n">mn</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">wd</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">mm</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">encoded_stamp</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">encoded_stamp</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span></div>
 
-    <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># Update inner state statistic and compose state:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">method</span><span class="p">()</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_get_state_methods</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-
-        <span class="c1"># self.state = {</span>
-        <span class="c1">#     &#39;external&#39;: self.get_external_state(),</span>
-        <span class="c1">#     &#39;internal&#39;: self.get_internal_state(),</span>
-        <span class="c1">#     &#39;datetime&#39;: self.get_datetime_state(),</span>
-        <span class="c1">#     &#39;metadata&#39;: self.get_metadata_state(),</span>
-        <span class="c1"># }</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span></div>
 
 </pre></div>
 

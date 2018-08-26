@@ -213,6 +213,7 @@
                  <span class="n">lstm_class_ref</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">rnn</span><span class="o">.</span><span class="n">LayerNormBasicLSTMCell</span><span class="p">,</span>
                  <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">256</span><span class="p">),</span>
                  <span class="n">linear_layer_ref</span><span class="o">=</span><span class="n">noisy_linear</span><span class="p">,</span>
+                 <span class="n">share_encoder_params</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="n">dropout_keep_prob</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
                  <span class="n">action_dp_alpha</span><span class="o">=</span><span class="mf">200.0</span><span class="p">,</span>
                  <span class="n">aux_estimate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -232,6 +233,7 @@
 <span class="sd">            lstm_class_ref:         tf.nn.lstm class to use</span>
 <span class="sd">            lstm_layers:            tuple of LSTM layers sizes</span>
 <span class="sd">            linear_layer_ref:       linear layer class to use</span>
+<span class="sd">            share_encoder_params:   bool, whether to share encoder parameters for every &#39;external&#39; data stream</span>
 <span class="sd">            dropout_keep_prob:      in (0, 1] dropout regularisation parameter</span>
 <span class="sd">            action_dp_alpha:</span>
 <span class="sd">            aux_estimate:           (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary</span>
@@ -256,6 +258,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">aux_estimate</span> <span class="o">=</span> <span class="n">aux_estimate</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">encode_internal_state</span> <span class="o">=</span> <span class="n">encode_internal_state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">share_encoder_params</span> <span class="o">=</span> <span class="n">share_encoder_params</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_encoder_params</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reuse_encoder_params</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">AUTO_REUSE</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reuse_encoder_params</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">static_rnn</span> <span class="o">=</span> <span class="n">static_rnn</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dropout_keep_prob</span> <span class="o">=</span> <span class="n">dropout_keep_prob</span>
         <span class="k">assert</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">dropout_keep_prob</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;Dropout keep_prob value should be in (0, 1]&#39;</span>
@@ -327,14 +335,18 @@
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="k">if</span> <span class="s1">&#39;external&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>  <span class="c1"># got dictionary of data streams</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_encoder_params</span><span class="p">:</span>
+                        <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_shared&#39;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span>
                     <span class="n">encoded_streams</span> <span class="o">=</span> <span class="p">{</span>
                         <span class="n">name</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">state_encoder_class_ref</span><span class="p">(</span>
                                 <span class="n">x</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
                                 <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">name</span><span class="p">],</span>
                                 <span class="n">ac_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span>
-                                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
-                                <span class="n">reuse</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">AUTO_REUSE</span><span class="p">,</span>  <span class="c1"># shared params for all streams in mode</span>
+                                <span class="n">name</span><span class="o">=</span><span class="n">layer_name_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
+                                <span class="n">reuse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reuse_encoder_params</span><span class="p">,</span>  <span class="c1"># shared params for all streams in mode</span>
                                 <span class="o">**</span><span class="n">kwargs</span>
                             <span class="p">)</span>
                         <span class="p">)</span>
@@ -538,13 +550,17 @@
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="k">if</span> <span class="s1">&#39;external&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>  <span class="c1"># got dictionary of data streams</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_encoder_params</span><span class="p">:</span>
+                        <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_shared&#39;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span>
                     <span class="n">encoded_streams</span> <span class="o">=</span> <span class="p">{</span>
                         <span class="n">name</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">state_encoder_class_ref</span><span class="p">(</span>
                                 <span class="n">x</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
                                 <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">name</span><span class="p">],</span>
                                 <span class="n">ac_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span>
-                                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+                                <span class="n">name</span><span class="o">=</span><span class="n">layer_name_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
                                 <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># shared params for all streams in mode</span>
                                 <span class="o">**</span><span class="n">kwargs</span>
                             <span class="p">)</span>
@@ -743,13 +759,17 @@
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rp_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="k">if</span> <span class="s1">&#39;external&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rp_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>  <span class="c1"># got dictionary of data streams</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_encoder_params</span><span class="p">:</span>
+                        <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_shared&#39;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span>
                     <span class="n">encoded_streams</span> <span class="o">=</span> <span class="p">{</span>
                         <span class="n">name</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">state_encoder_class_ref</span><span class="p">(</span>
                                 <span class="n">x</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
                                 <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">name</span><span class="p">],</span>
                                 <span class="n">ac_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span>
-                                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+                                <span class="n">name</span><span class="o">=</span><span class="n">layer_name_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
                                 <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># shared params for all streams in mode</span>
                                 <span class="o">**</span><span class="n">kwargs</span>
                             <span class="p">)</span>

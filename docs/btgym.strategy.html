@@ -258,7 +258,7 @@ should contain at least these keys:</p>
 <code class="descname">next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.next" title="Permalink to this definition">¶</a></dt>
 <dd><p>Default implementation for built-in backtrader method.
 Defines one step environment routine;
-At least, it should handle order execution logic according to action received.
+Handles order execution logic according to action received.
 Note that orders can only be submitted for data_lines in action_space (assets).
 <cite>self.action</cite> attr. is updated by btgym.server._BTgymAnalyzer, and <cite>None</cite> actions
 are emitted while doing <cite>skip_frame</cite> loop.</p>
@@ -268,22 +268,127 @@ are emitted while doing <cite>skip_frame</cite> loop.</p>
 <dt id="btgym.strategy.base.BTgymBaseStrategy.update_broker_stat">
 <code class="descname">update_broker_stat</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.update_broker_stat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.update_broker_stat" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="docutils">
-<dt>Updates all sliding statistics deques with latest-step values:</dt>
+<dt>Updates all sliding broker statistics deques with latest-step values such as:</dt>
 <dd><ul class="first last simple">
 <li>normalized broker value</li>
 <li>normalized broker cash</li>
 <li>normalized exposure (position size)</li>
-<li>position duration in steps, normalized wrt. max possible episode steps</li>
 <li>exp. scaled episode duration in steps, normalized wrt. max possible episode steps</li>
 <li>normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)</li>
 <li>normalized profit/loss for current opened trade (unrealized p/l);</li>
-<li>normalized best possible up to present point unrealized result for current opened trade;</li>
-<li>normalized worst possible up to present point unrealized result for current opened trade;</li>
-<li>DELETED: one hot encoding for actions received;</li>
-<li>rewards received (based on self.reward variable values);</li>
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.get_broker_value">
+<code class="descname">get_broker_value</code><span class="sig-paren">(</span><em>current_value</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_broker_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_broker_value" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>current_value</strong> – current portfolio value</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">normalized broker value.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.get_broker_cash">
+<code class="descname">get_broker_cash</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_broker_cash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_broker_cash" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">normalized broker cash</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.get_broker_exposure">
+<code class="descname">get_broker_exposure</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_broker_exposure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_broker_exposure" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">normalized exposure (position size)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.get_broker_pos_direction">
+<code class="descname">get_broker_pos_direction</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_broker_pos_direction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_broker_pos_direction" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">short/long/out position indicator</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.get_broker_realized_pnl">
+<code class="descname">get_broker_realized_pnl</code><span class="sig-paren">(</span><em>current_value</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_broker_realized_pnl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_broker_realized_pnl" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>current_value</strong> – current portfolio value</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.get_broker_unrealized_pnl">
+<code class="descname">get_broker_unrealized_pnl</code><span class="sig-paren">(</span><em>current_value</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_broker_unrealized_pnl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_broker_unrealized_pnl" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>current_value</strong> – current portfolio value</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">normalized profit/loss for current opened trade</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.get_broker_episode_step">
+<code class="descname">get_broker_episode_step</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_broker_episode_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_broker_episode_step" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">exp. scaled episode duration in steps, normalized wrt. max possible episode steps</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.get_broker_drawdown">
+<code class="descname">get_broker_drawdown</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_broker_drawdown"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_broker_drawdown" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">current drawdown value</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -316,11 +421,18 @@ n - time-embedding length  == state_shape[0] == &lt;set by user&gt;.</td>
 </dd></dl>
 
 <dl class="method">
+<dt id="btgym.strategy.base.BTgymBaseStrategy.get_internal_state">
+<code class="descname">get_internal_state</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_internal_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_internal_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Composes internal state tensor by calling all statistics from broker_stat dictionary.
+Generally, this method should not be modified, implement corresponding get_broker_[mode]() methods.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="btgym.strategy.base.BTgymBaseStrategy.get_state">
 <code class="descname">get_state</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_state" title="Permalink to this definition">¶</a></dt>
 <dd><p>Collects estimated values for every mode of observation space by calling methods from
 <cite>collection_get_state_methods</cite> dictionary.
-As a rule, this method should not be modified, override or implement correspondig get_[mode]_state() methods,
+As a rule, this method should not be modified, override or implement corresponding get_[mode]_state() methods,
 defining necessary calculations and return arbitrary shaped tensors for every space mode.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -341,23 +453,23 @@ defining necessary calculations and return arbitrary shaped tensors for every sp
 <dl class="method">
 <dt id="btgym.strategy.base.BTgymBaseStrategy.get_reward">
 <code class="descname">get_reward</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/strategy/base.html#BTgymBaseStrategy.get_reward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.strategy.base.BTgymBaseStrategy.get_reward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Default reward estimator.</p>
-<p>Computes <cite>dummy</cite> reward as log utility of current to initial portfolio value ratio.
-Same principles as for state composer apply.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">scalar, float</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">self.reward value</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">should update self.reward variable.</p>
-</div>
+<dd><p>Shapes reward function as normalized single trade realized profit/loss,
+augmented with potential-based reward shaping functions in form of:
+F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
+<ul class="simple">
+<li>potential FI_1 is current normalized unrealized profit/loss;</li>
+<li>potential FI_2 is current normalized broker value.</li>
+<li>FI_3: penalizing exposure toward the end of episode</li>
+</ul>
+<dl class="docutils">
+<dt>Paper:</dt>
+<dd><dl class="first last docutils">
+<dt>“Policy invariance under reward transformations:</dt>
+<dd>Theory and application to reward shaping” by A. Ng et al., 1999;
+<a class="reference external" href="http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf">http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</a></dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">

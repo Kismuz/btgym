@@ -260,27 +260,6 @@ time_embedded vector of rewards</dd>
 </tr>
 </tbody>
 </table>
-<dl class="method">
-<dt id="btgym.research.strategy_gen_4.DevStrat_4_6.get_reward">
-<code class="descname">get_reward</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_gen_4.html#DevStrat_4_6.get_reward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_gen_4.DevStrat_4_6.get_reward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Shapes reward function as normalized single trade realized profit/loss,
-augmented with potential-based reward shaping functions in form of:
-F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
-<ul class="simple">
-<li>potential FI_1 is current normalized unrealized profit/loss;</li>
-<li>potential FI_2 is current normalized broker value.</li>
-</ul>
-<dl class="docutils">
-<dt>Paper:</dt>
-<dd><dl class="first last docutils">
-<dt>“Policy invariance under reward transformations:</dt>
-<dd>Theory and application to reward shaping” by A. Ng et al., 1999;
-<a class="reference external" href="http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf">http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</a></dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="class">
@@ -289,28 +268,6 @@ F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
 <dd><p>4_6 + Sliding statistics avg_period disentangled from time embedding dim;
 Only one last step sliding stats are used for internal state;
 Reward weights: 1, 2, 10 , reward scale factor aded;</p>
-<dl class="method">
-<dt id="btgym.research.strategy_gen_4.DevStrat_4_7.get_reward">
-<code class="descname">get_reward</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_gen_4.html#DevStrat_4_7.get_reward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_gen_4.DevStrat_4_7.get_reward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Shapes reward function as normalized single trade realized profit/loss,
-augmented with potential-based reward shaping functions in form of:
-F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
-<ul class="simple">
-<li>potential FI_1 is current normalized unrealized profit/loss;</li>
-<li>potential FI_2 is current normalized broker value.</li>
-<li>FI_3: penalizing exposure toward the end of episode</li>
-</ul>
-<dl class="docutils">
-<dt>Paper:</dt>
-<dd><dl class="first last docutils">
-<dt>“Policy invariance under reward transformations:</dt>
-<dd>Theory and application to reward shaping” by A. Ng et al., 1999;
-<a class="reference external" href="http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf">http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</a></dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="class">
@@ -328,29 +285,7 @@ F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
 <dl class="class">
 <dt id="btgym.research.strategy_gen_4.DevStrat_4_10">
 <em class="property">class </em><code class="descclassname">btgym.research.strategy_gen_4.</code><code class="descname">DevStrat_4_10</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_gen_4.html#DevStrat_4_10"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_gen_4.DevStrat_4_10" title="Permalink to this definition">¶</a></dt>
-<dd><p>4_7 + Reward search: log-normalised potential functions</p>
-<dl class="method">
-<dt id="btgym.research.strategy_gen_4.DevStrat_4_10.get_reward">
-<code class="descname">get_reward</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/research/strategy_gen_4.html#DevStrat_4_10.get_reward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.research.strategy_gen_4.DevStrat_4_10.get_reward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Shapes reward function as normalized single trade realized profit/loss,
-augmented with potential-based reward shaping functions in form of:
-F(s, a, s`) = gamma * FI(s`) - FI(s);</p>
-<ul class="simple">
-<li>potential FI_1 is current normalized unrealized profit/loss;</li>
-<li>potential FI_2 is current normalized broker value.</li>
-<li>FI_3: penalizing exposure toward the end of episode</li>
-</ul>
-<dl class="docutils">
-<dt>Paper:</dt>
-<dd><dl class="first last docutils">
-<dt>“Policy invariance under reward transformations:</dt>
-<dd>Theory and application to reward shaping” by A. Ng et al., 1999;
-<a class="reference external" href="http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf">http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf</a></dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
+<dd><p>4_7 + Reward search: log-normalised potential functions. Nope.</p>
 </dd></dl>
 
 <dl class="class">
