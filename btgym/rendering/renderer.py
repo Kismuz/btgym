@@ -328,7 +328,7 @@ class BTgymRendering():
         if line_labels is None:
             # If got no labels - make it numbers:
             if len(data.shape) > 1:
-                line_labels = ['line_{}'.format(i) for i in data.shape[-1]]
+                line_labels = ['line_{}'.format(i) for i in range(data.shape[-1])]
             else:
                 line_labels = ['line_0']
                 data = data[:, None]
