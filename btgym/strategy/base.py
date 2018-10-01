@@ -354,14 +354,15 @@ class BTgymBaseStrategy(bt.Strategy):
             # see: https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1
             self.env.broker.set_checksubmit(False)
             self.next_process_fn = self._next_target_percent
-            # Do not repeat action for discrete:
-            self.num_action_repeats = 0
+            # Do not repeat action for discrete: (contionious?!!) swap!
+            self.num_action_repeats = 2
 
         else:
             # Use discrete handling method otherwise:
+            self.env.broker.set_checksubmit(True)
             self.next_process_fn = self._next_discrete
             # Repeat action 2 times:
-            self.num_action_repeats = 2
+            self.num_action_repeats = 0  # ?!!
 
     def prenext(self):
         self.update_broker_stat()
