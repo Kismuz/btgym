@@ -914,8 +914,9 @@ class BaseAAC(object):
 
         return {key: [stream[key] for stream in data_streams] for key in data_streams[0].keys()}
 
-    def get_sample_config(self, _new_trial=False, **kwargs):
+    def get_sample_config(self, _new_trial=True, **kwargs):
         """
+        WARNING: _new_trial=True is quick fix, TODO: fix it properly!
         Returns environment configuration parameters for next episode to sample.
         By default is simple stateful iterator,
         works correctly with `DTGymDataset` data class, repeating cycle:
@@ -1359,6 +1360,14 @@ class BaseAAC(object):
 
             except KeyError:
                 is_train = True
+
+            self.log.debug(
+                'Got rollout episode. type: {}, trial_type: {}, is_train: {}'.format(
+                    np.asarray([env['state']['metadata']['type'] for env in data['on_policy']]).any(),
+                    np.asarray([env['state']['metadata']['trial_type'] for env in data['on_policy']]).any(),
+                    is_train
+                )
+            )
 
             if is_train:
                 # If there is no any test rollouts  - do a train step:
