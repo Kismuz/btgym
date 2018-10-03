@@ -42,7 +42,7 @@ def null_generator(num_points=10, **kwargs):
         num_points: trajectory length
 
     Returns:
-        1d array of ones
+        1d array of uniform randoms in [0,1]
     """
     return np.random.random(num_points)
 
@@ -216,6 +216,10 @@ class BaseDataGenerator():
                 self.episode_num_records,
                 data_array.shape
             )
+        negs = data_array[data_array < 0]
+        if negs.any():
+            self.log.warning(' Set to zero {} negative generated values'.format(negs.shape[0]))
+            data_array[data_array < 0] = 0.0
         # Make dataframe:
         if type:
             index = self.test_index
@@ -346,54 +350,3 @@ class BaseDataGenerator():
 
     def set_global_timestamp(self, timestamp):
         pass
-
-
-#
-#
-#
-# class OUprocessDataGenerator(---):
-#     """
-#     Synthetic data provider class.
-#     Samples trajectories from Ornstein-Ulenbeck process with given parameters.
-#     """
-#
-#     def __int__(
-#             self,
-#             episode_duration,
-#             timeframe=1,
-#             start_value=0,
-#             mean_value=0,
-#             ou_lambda=1,
-#             ou_sigma=1,
-#             name='OUdataGenerator',
-#             **kwargs
-#     ):
-#         """
-#
-#         Args:
-#             episode_duration:       dict, duration of episode in days/hours/mins
-#             timeframe:              int, data periodicity in minutes
-#             start_value:            float, first data value in episode (OU x_0)
-#             mean_value:             float, Ornstein-Ulenbeck process mean value
-#             ou_lambda:              loat,O-U process trend-reverting parameter
-#             ou_sigma:               loat,O-U variance parameter
-#             **kwargs:
-#
-#         """
-#         # TODO: everything
-#         super(OUprocessDataGenerator, self).__init__(
-#             filename='SyntheticData',
-#             episode_duration=episode_duration,
-#             time_gap={'days': 0, 'hours': 0, 'minutes': 0},
-#             start_00=False,
-#             start_weekdays={0, 1, 2, 3, 4, 5, 6},
-#             parsing_params=None,
-#             target_period=episode_duration,
-#
-#         )
-#
-#     def reset(self,  **kwargs):
-#         self.sample_num = 0
-#         self.is_ready = True
-
-
