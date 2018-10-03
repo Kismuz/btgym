@@ -59,6 +59,7 @@ class BaseDataGenerator():
             generator_params=None,
             name='BaseSyntheticDataGenerator',
             data_names=('default_asset',),
+            global_time=None,
             task=0,
             log_level=WARNING,
             _nested_class_ref=None,
@@ -74,6 +75,7 @@ class BaseDataGenerator():
             timeframe:              int, data periodicity in minutes
             name:                   str
             data_names:             iterable of str
+            global_time:            dict {y, m, d} to set custom global time (only for plotting)
             task:                   int
             log_level:              logbook.Logger level
             **kwargs:
@@ -102,7 +104,7 @@ class BaseDataGenerator():
             self.nested_class_ref = _nested_class_ref
 
         if _nested_params is None:
-            self.nested_params=dict(
+            self.nested_params = dict(
                 episode_duration=episode_duration,
                 timeframe=timeframe,
                 generator_fn=generator_fn,
@@ -132,14 +134,23 @@ class BaseDataGenerator():
 
         # Btfeed parsing setup:
         self.timeframe = timeframe
-        self.datetime = 0,
-        self.open = 1,
-        self.high = -1,
-        self.low = -1,
-        self.close = -1,
-        self.volume = -1,
+        self.names=['open']
+        self.datetime = 0
+        self.open = 1
+        self.high = -1
+        self.low = -1
+        self.close = -1
+        self.volume = -1
         self.openinterest = -1
 
+        # base data feed related:
+        self.params = {}
+        if global_time is None:
+            self.global_time = datetime.datetime(year=2018, month=1, day=1)
+        else:
+            self.global_time = datetime.datetime(**global_time)
+
+        self.global_timestamp = self.global_time.timestamp()
 
         # Infer time indexes and sample number of records:
         self.train_index = pd.timedelta_range(
@@ -152,6 +163,8 @@ class BaseDataGenerator():
             periods=len(self.train_index),
             freq='{}min'.format(self.timeframe)
         )
+        self.train_index += self.global_time
+        self.test_index += self.global_time
         self.episode_num_records = len(self.train_index)
 
         self.generator_fn = generator_fn
@@ -208,16 +221,11 @@ class BaseDataGenerator():
             index = self.test_index
         else:
             index = self.train_index
-        df = pd.DataFrame(
-            {
-                'hh:mm:ss': index,
-                'open': data_array,
-                # 'high': data_array,
-                # 'low': data_array,
-                # 'close': data_array
-            }
-        )
-        df = df.set_index('hh:mm:ss')
+
+        # data_dict = {name: data_array for name in self.names}
+        # data_dict['hh:mm:ss'] = index
+        df = pd.DataFrame(data={name: data_array for name in self.names}, index=index)
+        # df = df.set_index('hh:mm:ss')
         return df
 
     def sample(self, get_new=True, sample_type=0,  **kwargs):
@@ -336,6 +344,8 @@ class BaseDataGenerator():
             self.log.error(msg)
             raise AssertionError(msg)
 
+    def set_global_timestamp(self, timestamp):
+        pass
 
 
 #
