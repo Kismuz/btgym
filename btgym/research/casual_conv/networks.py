@@ -129,7 +129,7 @@ def conv_1d_casual_encoder(
         #     axis=1,
         #     name='encoded_state'
         # )
-        print('encoder :', encoded)
+        # print('encoder :', encoded)
 
     return encoded
 
