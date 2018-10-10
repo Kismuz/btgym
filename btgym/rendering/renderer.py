@@ -334,7 +334,7 @@ class BTgymRendering():
                 data = data[:, None]
         else:
             assert len(line_labels) == data.shape[-1], \
-                'Expected `line_labels` kwarg consist of {} names, fot: {}'. format(data.shape[-1], line_labels)
+                'Expected `line_labels` kwarg consist of {} names, got: {}'. format(data.shape[-1], line_labels)
 
         fig = self.plt.figure(figsize=figsize, dpi=self.render_dpi, )
         #ax = fig.add_subplot(111)

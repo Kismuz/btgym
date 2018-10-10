@@ -107,7 +107,7 @@ class BaseAAC(object):
                  _use_global_network=True,
                  _use_target_policy=False,  # target policy tracking behavioral one with delay
                  _use_local_memory=False,  # in-place memory
-                 _aux_render_modes=None,
+                 aux_render_modes=None,
                  **kwargs):
         """
 
@@ -170,7 +170,7 @@ class BaseAAC(object):
             _use_global_network:    bool, either to use parameter server policy instance
             _use_target_policy:     bool, PPO: use target policy (aka pi_old), delayed by `pi_prime_update_period` delay
             _use_local_memory:      bool: use in-process replay memory instead of runner-based one
-            _aux_render_modes:      additional visualisationas to include in per-episode rendering summary, internal
+            aux_render_modes:      additional visualisations to include in per-episode rendering summary
 
         Note:
             - On `time_flat` arg:
@@ -380,8 +380,8 @@ class BaseAAC(object):
                 self.log.notice('vr_lambda: {:1.6f}, pc_lambda: {:1.6f}, rp_lambda: {:1.6f}'.
                               format(self.vr_lambda, self.pc_lambda, self.rp_lambda))
 
-            if _aux_render_modes is not None:
-                self.aux_render_modes = list(_aux_render_modes)
+            if aux_render_modes is not None:
+                self.aux_render_modes = list(aux_render_modes)
             else:
                 self.aux_render_modes = []
 
@@ -801,7 +801,8 @@ class BaseAAC(object):
                 ep_summary=self.ep_summary,
                 memory_config=memory_config,
                 log_level=self.log_level,
-                global_step_op=self.global_step
+                global_step_op=self.global_step,
+                aux_render_modes=self.aux_render_modes
             )
             kwargs.update(self.runner_config['kwargs'])
             # New runner instance:

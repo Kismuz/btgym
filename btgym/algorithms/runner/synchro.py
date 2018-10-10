@@ -35,30 +35,32 @@ class BaseSynchroRunner():
             test_conditions=None,
             slowdown_steps=0,
             global_step_op=None,
-            # aux_summaries=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
-            aux_summaries=None,
+            aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+            _implemented_aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
             name='synchro',
             log_level=WARNING,
+            **kwargs
     ):
         """
 
         Args:
-            env:                    BTgym environment instance
-            task:                   int, runner task id
-            rollout_length:         int
-            episode_summary_freq:   int
-            env_render_freq:        int
-            test:                   legacy, not used
-            ep_summary:             legacy, not used
-            policy:                 policy instance to execute
-            data_sample_config:     dict, data sampling configuration dictionary
-            memory_config:          dict, replay memory configuration
-            test_conditions:        dict or None,
-                                    dictionary of single experience conditions to check to mark it as test one.
-            slowdown_time:          time to sleep between steps
-            aux_summaries:          iterable of str, additional summaries to compute
-            name:                   str, name scope
-            log_level:              int, logbook.level
+            env:                            BTgym environment instance
+            task:                           int, runner task id
+            rollout_length:                 int
+            episode_summary_freq:           int
+            env_render_freq:                int
+            test:                           legacy, not used
+            ep_summary:                     legacy, not used
+            policy:                         policy instance to execute
+            data_sample_config:             dict, data sampling configuration dictionary
+            memory_config:                  dict, replay memory configuration
+            test_conditions:                dict or None,
+                                            dictionary of single experience conditions to check to mark it as test one.
+            slowdown_time:                  time to sleep between steps
+            aux_render_modes:               iterable of str, additional summaries to compute
+            _implemented_aux_render_modes   iterable of str, implemented additional summaries
+            name:                           str, name scope
+            log_level:                      int, logbook.level
         """
         self.env = env
         self.task = task
@@ -70,10 +72,23 @@ class BaseSynchroRunner():
         self.memory_config = memory_config
         self.policy = policy
         self.data_sample_config = data_sample_config
-        self.aux_summaries = aux_summaries
+
         self.log_level = log_level
         StreamHandler(sys.stdout).push_application()
         self.log = Logger('{}_Runner_{}'.format(self.name, self.task), level=self.log_level)
+
+        self.implemented_aux_render_modes = _implemented_aux_render_modes
+
+        self.aux_render_modes = [
+            mode
+            if mode in self.implemented_aux_render_modes
+            else self.log.warning('Render mode `{}` is not implemented, excluded'.format(mode))
+            for mode in aux_render_modes
+        ]
+        self.aux_render_modes = [mode for mode in self.aux_render_modes if mode is not None]
+
+        self.log.debug('self.aux_summaries: {}'.format(self.aux_render_modes))
+
         self.sess = None
         self.summary_writer = None
 
@@ -265,8 +280,10 @@ class BaseSynchroRunner():
             action_reward
         """
         # Update policy:
-        if policy_sync_op is not None:
-            self.sess.run(policy_sync_op)
+        # TODO: for contd. enable for meta-learning
+        # if policy_sync_op is not None:
+        #     self.sess.run(policy_sync_op)
+
             # TODO: meta-learning related; TEMPORAL, refract:
             # if hasattr(policy, 'meta') and self.task == 0:
             #     wait = 1
@@ -381,7 +398,7 @@ class BaseSynchroRunner():
         """
         Visualises episode environment and policy statistics.
         Relies on environmnet renderer class methods,
-        so it is only valid when envoronment rendering is enabled (typically master one).
+        so it is only valid when environment rendering is enabled (typically it is true for master runner).
 
         Returns:
             dictionary of images as rgb arrays
@@ -401,8 +418,10 @@ class BaseSynchroRunner():
             }
             # Update renderings with aux:
 
-            # log.notice('ep_logits shape: {}'.format(np.asarray(ep_a_logits).shape))
-            # log.notice('ep_value shape: {}'.format(np.asarray(ep_value).shape))
+            # ep_a_logits = self.ep_accum['logits']
+            # ep_value = self.ep_accum['value']
+            # self.log.notice('ep_logits shape: {}'.format(np.asarray(ep_a_logits).shape))
+            # self.log.notice('ep_value shape: {}'.format(np.asarray(ep_value).shape))
 
             # Unpack LSTM states:
             rnn_1, rnn_2 = zip(*self.ep_accum['context'])
@@ -411,31 +430,35 @@ class BaseSynchroRunner():
             c1, h1 = zip(*rnn_1)
             c2, h2 = zip(*rnn_2)
 
-            # aux_images = {
-            #     # 'action_prob': self.env.renderer.draw_plot(
-            #     #     # data=softmax(np.asarray(ep_a_logits)[:, 0, :] - np.asarray(ep_a_logits).max()),
-            #     #     data=softmax(np.asarray(self.ep_accum['logits'])[:, 0, :]),
-            #     #     title='Episode actions probabilities',
-            #     #     figsize=(12, 4),
-            #     #     box_text='',
-            #     #     xlabel='Backward env. steps',
-            #     #     ylabel='R+',
-            #     #     #line_labels=['Hold', 'Buy', 'Sell', 'Close']
-            #     # )[None, ...],
-            #     'value_fn': self.env.renderer.draw_plot(
-            #         data=np.asarray(self.ep_accum['value']),
-            #         title='Episode Value function',
-            #         figsize=(12, 4),
-            #         xlabel='Backward env. steps',
-            #         ylabel='R',
-            #         line_labels=['Value']
-            #     )[None, ...],
-            #     # 'lstm_1_c': norm_image(np.asarray(c1).T[None, :, 0, :, None]),
-            #     'lstm_1_h': self.norm_image(np.asarray(h1).T[None, :, 0, :, None]),
-            #     # 'lstm_2_c': norm_image(np.asarray(c2).T[None, :, 0, :, None]),
-            #     'lstm_2_h': self.norm_image(np.asarray(h2).T[None, :, 0, :, None])
-            # }
-            # render_stat.update(aux_images)
+            # Render everything implemented (doh!):
+            implemented_aux_images = {
+                'action_prob': self.env.renderer.draw_plot(
+                    # data=softmax(np.asarray(ep_a_logits)[:, 0, :] - np.asarray(ep_a_logits).max()),
+                    data=softmax(np.asarray(self.ep_accum['logits'])), #[:, 0, :]),
+                    title='Episode actions probabilities',
+                    figsize=(12, 4),
+                    box_text='',
+                    xlabel='Backward env. steps',
+                    ylabel='R+',
+                    line_labels=['Hold', 'Buy', 'Sell', 'Close']
+                )[None, ...],
+                'value_fn': self.env.renderer.draw_plot(
+                    data=np.asarray(self.ep_accum['value']),
+                    title='Episode Value function',
+                    figsize=(12, 4),
+                    xlabel='Backward env. steps',
+                    ylabel='R',
+                    line_labels=['Value']
+                )[None, ...],
+                # 'lstm_1_c': norm_image(np.asarray(c1).T[None, :, 0, :, None]),
+                'lstm_1_h': self.norm_image(np.asarray(h1).T[None, :, 0, :, None]),
+                # 'lstm_2_c': norm_image(np.asarray(c2).T[None, :, 0, :, None]),
+                'lstm_2_h': self.norm_image(np.asarray(h2).T[None, :, 0, :, None])
+            }
+
+            # Pick what has been set:
+            aux_images = {summary: implemented_aux_images[summary] for summary in self.aux_render_modes}
+            render_stat.update(aux_images)
 
         else:
             render_stat = None
