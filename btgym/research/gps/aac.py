@@ -96,7 +96,7 @@ class GuidedAAC(BaseAAC):
                 self.guided_lambda,
                 self.global_step + 1,
                 self.guided_decay_steps,
-                0,
+                0.0,
                 power=1,
                 cycle=False,
             )

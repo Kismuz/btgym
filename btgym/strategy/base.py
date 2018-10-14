@@ -300,6 +300,7 @@ class BTgymBaseStrategy(bt.Strategy):
             'exposure',
             'drawdown',
             'pos_direction',
+            'pos_duration',
             'realized_pnl',
             'unrealized_pnl',
             'min_unrealized_pnl',
@@ -315,7 +316,7 @@ class BTgymBaseStrategy(bt.Strategy):
             except AttributeError:
                 raise NotImplementedError('Callable get_broker_{}.() not found'.format(line))
 
-        # Broker and account related sliding staistics accumulators, globally normalized last `avg_perod` values,
+        # Broker and account related sliding statistics accumulators, globally normalized last `avg_perod` values,
         # so it's a bit more comp. efficient than use of bt.Observers:
         self.broker_stat = {key: deque(maxlen=self.avg_period) for key in self.broker_datalines}
 
@@ -421,6 +422,9 @@ class BTgymBaseStrategy(bt.Strategy):
         for key, method in self.collection_get_broker_stat_methods.items():
             self.broker_stat[key].append(method(current_value=current_value))
 
+        # Reset one-time flags:
+        self.trade_just_closed = False
+
     def get_broker_value(self, current_value, **kwargs):
         """
 
@@ -492,8 +496,8 @@ class BTgymBaseStrategy(bt.Strategy):
                 gamma=1
             )
             # Reset flag:
-            self.trade_just_closed = False
-            # print('POS_OBS: step {}, just closed.'.format(self.iteration))
+            # self.trade_just_closed = False
+            #print('broker_realized_pnl: step {}, just closed.'.format(self.iteration))
 
         else:
             pnl = 0.0
@@ -533,23 +537,22 @@ class BTgymBaseStrategy(bt.Strategy):
             dd = 0.0
         return dd
 
-    # def get_broker_pos_duration(self, current_value):
-    #     if self.position.size == 0:
-    #         self.current_pos_duration = 0
-    #         self.current_pos_min_value = current_value
-    #         self.current_pos_max_value = current_value
-    #         # print('ZERO_POSITION\n')
-    #
-    #     else:
-    #         self.current_pos_duration += 1
-    #         if self.current_pos_max_value < current_value:
-    #             self.current_pos_max_value = current_value
-    #
-    #         elif self.current_pos_min_value > current_value:
-    #             self.current_pos_min_value = current_value
-    #
-    #     return self.current_pos_duration / (self.data.numrecords - self.inner_embedding)
-    #
+    def get_broker_pos_duration(self, current_value):
+        if self.position.size == 0:
+            self.current_pos_duration = 0
+            # self.current_pos_min_value = current_value
+            # self.current_pos_max_value = current_value
+            # print('ZERO_POSITION\n')
+
+        else:
+            self.current_pos_duration += 1
+            # if self.current_pos_max_value < current_value:
+            #     self.current_pos_max_value = current_value
+            #
+            # elif self.current_pos_min_value > current_value:
+            #     self.current_pos_min_value = current_value
+
+        return self.current_pos_duration #/ (self.data.numrecords - self.inner_embedding)
 
     def get_broker_max_unrealized_pnl(self, current_value, **kwargs):
         if self.position.size == 0:
@@ -670,8 +673,8 @@ class BTgymBaseStrategy(bt.Strategy):
         F(s, a, s`) = gamma * FI(s`) - FI(s);
 
         - potential FI_1 is current normalized unrealized profit/loss;
-        - potential FI_2 is current normalized broker value.
-        - FI_3: penalizing exposure toward the end of episode
+        EXCLUDED/ - potential FI_2 is current normalized broker value.
+        EXCLUDED/ - FI_3: penalizing exposure toward the end of episode
 
         Paper:
             "Policy invariance under reward transformations:
@@ -680,45 +683,43 @@ class BTgymBaseStrategy(bt.Strategy):
         """
 
         # All sliding statistics for this step are already updated by get_state().
-        debug = {}
 
         # Potential-based shaping function 1:
         # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
         unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl'])
-        # f1 = self.p.gamma * np.average(unrealised_pnl[1:]) - np.average(unrealised_pnl[:-1])
-        f1 = self.p.gamma * np.average(unrealised_pnl[-self.skip_frame:]) \
-            - np.average(unrealised_pnl[- 2 * self.skip_frame:-self.skip_frame])
+        current_pos_duration = self.broker_stat['pos_duration'][-1]
 
-        debug['f1'] = f1
+        # We want to estimate potential `fi = gamma*fi_prime - fi` of current opened position,
+        # thus need to consider different cases given skip_fame parameter:
+        if current_pos_duration == 0:
+            # Set potential term to zero if there is no opened positions:
+            f1 = 0
 
-        # Potential-based shaping function 2:
-        # based on potential of averaged broker value, normalized wrt to max drawdown and target bounds.
-        norm_broker_value = np.asarray(self.broker_stat['value'])
-        # f2 = self.p.gamma * np.average(norm_broker_value[1:]) - np.average(norm_broker_value[:-1])
-        f2 = self.p.gamma * np.average(norm_broker_value[-self.skip_frame:]) \
-            - np.average(norm_broker_value[- 2 * self.skip_frame:-self.skip_frame])
+        else:
+            if current_pos_duration < self.p.skip_frame:
+                fi_1 = 0
+                fi_1_prime = np.average(unrealised_pnl[-current_pos_duration:])
 
-        debug['f2'] = f2
+            elif current_pos_duration < 2 * self.p.skip_frame:
+                fi_1 = np.average(
+                    unrealised_pnl[-(self.p.skip_frame + current_pos_duration):-self.p.skip_frame]
+                )
+                fi_1_prime = np.average(unrealised_pnl[-self.p.skip_frame:])
 
-        # Potential-based shaping function 3:
-        # based on negative potential of relative draw-down value.
-        # drawdown = np.asarray(self.broker_stat['drawdown'])
-        # f3 = - self.p.gamma * np.max(drawdown[-self.skip_frame:]) \
-        #     + np.max(drawdown[- 2 * self.skip_frame:-self.skip_frame])
-        f3 = 0.0
-        # debug['f3'] = f3
+            else:
+                fi_1 = np.average(
+                    unrealised_pnl[-2 * self.p.skip_frame:-self.p.skip_frame]
+                )
+                fi_1_prime = np.average(unrealised_pnl[-self.p.skip_frame:])
+
+            # Potential term:
+            f1 = self.p.gamma * fi_1_prime - fi_1
 
         # Main reward function: normalized realized profit/loss:
-        realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.skip_frame:].sum()
-        debug['f_real_pnl'] = 10 * realized_pnl
+        realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
 
         # Weights are subject to tune:
-        self.reward = (1.0 * f1 + 2.0 * f2 + 0.0 * f3 + 10.0 * realized_pnl) * self.p.reward_scale
-
-        debug['r'] = self.reward
-        debug['b_v'] = self.broker_stat['value'][-1]
-        debug['unreal_pnl'] = self.broker_stat['unrealized_pnl'][-1]
-        debug['iteration'] = self.iteration
+        self.reward = (10.0 * f1 + 10.0 * realized_pnl) * self.p.reward_scale
 
         self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
 
