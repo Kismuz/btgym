@@ -206,11 +206,14 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
  
 ### <a name="news"></a>[News and updates:](#title)
 
+- 14.10.2018: update:
+    - **base reward function redesign** -> noticeable algorithms performance gain;
+
 - 20.07.2018: major update to package:
-    - enchancements to agent architecture:
+    - **enchancements to agent architecture**:
         - casual convolution state encoder with attention for LSTM agent;
-        - dropout regularization added;
-    - strategy: new convention for naming `get_state` methods,  see `BaseStrategy` class for details;
+        - dropout regularization added for conv. and LSTM layers;
+    - **base strategy update**: new convention for naming `get_state` methods,  see `BaseStrategy` class for details;
 
     - **multiply datafeeds and assets trading** implemented in two flavors:
         - **discrete actions** space via MultiDiscreteEnv class;
