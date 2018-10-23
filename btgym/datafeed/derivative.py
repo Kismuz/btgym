@@ -204,7 +204,6 @@ class BTgymRandomDataDomain(BTgymBaseData):
 
         trial_params['test_period'] = target_period
 
-
         # Setting target backshift:
         if use_target_backshift:
             trial_params['_test_period_backshift_delta'] =\
@@ -258,11 +257,13 @@ class BTgymDataset(BTgymRandomDataDomain):
         To be improved.
 
     """
+
     class BTgymSimpleTrial(BTgymDataTrial):
         """
         Truncated Trial without test period: always samples from train,
         sampled episode inherits tarin/test metadata of parent trail.
         """
+
         def sample(self, sample_type=0, **kwargs):
             episode = self._sample(sample_type=0, **kwargs)
             episode.metadata['type'] = sample_type
