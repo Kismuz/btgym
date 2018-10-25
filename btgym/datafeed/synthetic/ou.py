@@ -102,12 +102,20 @@ def ornshtein_uhlenbeck_uniform_parameters_fn(mu=0, l=0.1, sigma=1.0, x0=None, d
     sigma_value = np.random.uniform(low=sigma[0], high=sigma[-1])
     mu_value = np.random.uniform(low=mu[0], high=mu[-1])
 
-    # Choose starting point equal to mean:
     if x0 is None:
+        # Choose starting point equal to mean:
         x0_value = mu_value
 
     else:
-        x0_value = x0
+        if type(x0) in [int, float, np.float64]:
+            x0 = [x0, x0]
+        else:
+            x0 = list(x0)
+
+        assert len(x0) == 2 and x0[0] <= x0[-1], \
+            'Expected OU x0 be float or ordered interval, got: {}'.format(x0)
+
+        x0_value = np.random.uniform(low=x0[0], high=x0[-1])
 
     return dict(
         l=l_value,
@@ -126,19 +134,14 @@ class UniformOUGenerator(BaseCombinedDataGenerator):
 
     OUp. paramters are randomly uniformly sampled from given intervals
     """
-    @staticmethod
-    def fix_args(fn, **kwargs):
-        def f_empty():
-            return fn(**kwargs)
-        return f_empty
-
-    def __init__(self, ou_mu=0, ou_lambda=0.1, ou_sigma=1, name='UniformOUData', **kwargs):
+    def __init__(self, ou_mu=0, ou_lambda=0.1, ou_sigma=1, ou_x0=None, name='UniformOUData', **kwargs):
         """
 
         Args:
             ou_mu:                      float or iterable of 2 floats, Ornstein-Uhlenbeck process mean value or interval
             ou_lambda:                  float or iterable of 2 floats, OUp. mean-reverting rate or interval
             ou_sigma:                   float or iterable of 2 floats, OUp. volatility value or interval
+            ou_x0:                      float or iterable of 2 floats, OUp. trajectory start value or interval
             filename:                   str, test data filename
             parsing_params:             dict test data parsing params
             episode_duration_train:     dict, duration of train episode in days/hours/mins
@@ -154,12 +157,8 @@ class UniformOUGenerator(BaseCombinedDataGenerator):
         """
         super(UniformOUGenerator, self).__init__(
             generator_fn=ornshtein_uhlenbeck_process_fn,
-            generator_parameters_fn=self.fix_args(
-                ornshtein_uhlenbeck_uniform_parameters_fn,
-                mu=ou_mu,
-                l=ou_lambda,
-                sigma=ou_sigma,
-            ),
+            generator_parameters_fn=ornshtein_uhlenbeck_uniform_parameters_fn,
+            generator_parameters_config={'mu': ou_mu, 'l': ou_lambda, 'sigma': ou_sigma, 'x0': ou_x0},
             name=name,
             **kwargs
         )
@@ -173,12 +172,6 @@ class OUGenerator(BaseCombinedDataGenerator):
 
     This class expects OUp. parameters no-args callable to be explicitly provided.
     """
-    @staticmethod
-    def fix_args(fn, **kwargs):
-        def f_empty():
-            return fn(**kwargs)
-        return f_empty
-
     def __init__(self, generator_parameters_fn, name='OUData', **kwargs):
         """
 

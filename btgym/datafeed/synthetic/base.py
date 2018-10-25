@@ -43,11 +43,10 @@ def base_generator_fn(num_points=10, **kwargs):
     return np.random.random(num_points)
 
 
-def base_generator_parameters_fn():
+def base_generator_parameters_fn(**kwargs):
     """
     Base parameters generating function. Provides arguments for data generating function.
-    It itself it should not accept any arguments;
-    decorate if needed (see UniformOUGenerator class as example).
+    It itself accept arguments specified via `generator_parameters_config` dictionart;
 
     Returns:
         dictionary of kwargs consistent with generating function used.
@@ -65,6 +64,7 @@ class BaseDataGenerator:
             timeframe=1,
             generator_fn=base_generator_fn,
             generator_parameters_fn=base_generator_parameters_fn,
+            generator_parameters_config=None,
             name='BaseSyntheticDataGenerator',
             data_names=('default_asset',),
             global_time=None,
@@ -77,15 +77,16 @@ class BaseDataGenerator:
         """
 
         Args:
-            episode_duration:           dict, duration of episode in days/hours/mins
-            generator_fn                callabale, should return generated data as 1D np.array
-            generator_parameters_fn:    callable, should return dictionary of generator_fn kwargs
-            timeframe:                  int, data periodicity in minutes
-            name:                       str
-            data_names:                 iterable of str
-            global_time:                dict {y, m, d} to set custom global time (only for plotting)
-            task:                       int
-            log_level:                  logbook.Logger level
+            episode_duration:               dict, duration of episode in days/hours/mins
+            generator_fn                    callabale, should return generated data as 1D np.array
+            generator_parameters_fn:        callable, should return dictionary of generator_fn kwargs
+            generator_parameters_config:    dict, generator_parameters_fn args
+            timeframe:                      int, data periodicity in minutes
+            name:                           str
+            data_names:                     iterable of str
+            global_time:                    dict {y, m, d} to set custom global time (only for plotting)
+            task:                           int
+            log_level:                      logbook.Logger level
             **kwargs:
 
         """
@@ -117,6 +118,7 @@ class BaseDataGenerator:
                 timeframe=timeframe,
                 generator_fn=generator_fn,
                 generator_parameters_fn=generator_parameters_fn,
+                generator_parameters_config=generator_parameters_config,
                 name=name,
                 data_names=data_names,
                 task=task,
@@ -178,6 +180,12 @@ class BaseDataGenerator:
         self.generator_fn = generator_fn
         self.generator_parameters_fn = generator_parameters_fn
 
+        if generator_parameters_config is not None:
+            self.generator_parameters_config = generator_parameters_config
+
+        else:
+            self.generator_parameters_config = {}
+
     def set_logger(self, level=None, task=None):
         """
         Sets logbook logger.
@@ -198,7 +206,7 @@ class BaseDataGenerator:
         self.is_ready = True
 
     def read_csv(self, **kwargs):
-        self.data = self.generate_data(self.generator_parameters_fn())
+        self.data = self.generate_data(self.generator_parameters_fn(**self.generator_parameters_config))
 
     def generate_data(self, generator_params, sample_type=0):
         """
@@ -295,7 +303,7 @@ class BaseDataGenerator:
             nested_class_ref instance
         """
         # Generate data:
-        generator_params = self.generator_parameters_fn()
+        generator_params = self.generator_parameters_fn(**self.generator_parameters_config)
         data = self.generate_data(generator_params, sample_type=sample_type)
 
         # Make data_class instance:
@@ -444,20 +452,21 @@ class BaseCombinedDataGenerator(BaseDataGenerator):
         """
 
         Args:
-            filename:                   str, test data filename
-            parsing_params:             dict test data parsing params
-            episode_duration_train:     dict, duration of train episode in days/hours/mins
-            episode_duration_test:      dict, duration of test episode in days/hours/mins
-            time_gap:                   dict test episode duration tolerance
-            start_00:                   bool, def=False
-            generator_fn                callabale, should return generated data as 1D np.array
-            generator_parameters_fn:    callable, should return dictionary of generator_fn kwargs
-            timeframe:                  int, data periodicity in minutes
-            name:                       str
-            data_names:                 iterable of str
-            global_time:                dict {y, m, d} to set custom global time (here for plotting only)
-            task:                       int
-            log_level:                  logbook.Logger level
+            filename:                       str, test data filename
+            parsing_params:                 dict test data parsing params
+            episode_duration_train:         dict, duration of train episode in days/hours/mins
+            episode_duration_test:          dict, duration of test episode in days/hours/mins
+            time_gap:                       dict test episode duration tolerance
+            start_00:                       bool, def=False
+            generator_fn                    callabale, should return generated data as 1D np.array
+            generator_parameters_fn:        callable, should return dictionary of generator_fn kwargs
+            generator_parameters_config:    dict, generator_parameters_fn args
+            timeframe:                      int, data periodicity in minutes
+            name:                           str
+            data_names:                     iterable of str
+            global_time:                    dict {y, m, d} to set custom global time (here for plotting only)
+            task:                           int
+            log_level:                      logbook.Logger level
             **kwargs:
 
         """
