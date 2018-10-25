@@ -20,34 +20,42 @@
 from logbook import Logger, StreamHandler, WARNING
 
 import datetime
-import random
-from numpy.random import beta as random_beta
-import copy
-import os
 import sys
 
 import backtrader.feeds as btfeeds
 import numpy as np
 import pandas as pd
 
-from .base import BTgymBaseData, DataSampleConfig, EnvResetConfig
-from .derivative import BTgymDataTrial, BTgymEpisode
+from btgym.datafeed.derivative import BTgymDataTrial, BTgymEpisode
 
 
-def null_generator(num_points=10, **kwargs):
+def base_generator_fn(num_points=10, **kwargs):
     """
-    Dummy generator class.
+    Base generating function. Provides synthetic data points.
 
     Args:
         num_points: trajectory length
+        kwargs:     any function parameters, not used here
 
     Returns:
-        1d array of uniform randoms in [0,1]
+        1d array of generated values; here: randoms in [0,1]
     """
     return np.random.random(num_points)
 
 
-class BaseDataGenerator():
+def base_generator_parameters_fn():
+    """
+    Base parameters generating function. Provides arguments for data generating function.
+    It itself it should not accept any arguments;
+    decorate if needed (see UniformOUGenerator class as example).
+
+    Returns:
+        dictionary of kwargs consistent with generating function used.
+    """
+    return dict()
+
+
+class BaseDataGenerator:
     """
     Base synthetic data provider class.
     """
@@ -55,8 +63,8 @@ class BaseDataGenerator():
             self,
             episode_duration=None,
             timeframe=1,
-            generator_fn=null_generator,
-            generator_params=None,
+            generator_fn=base_generator_fn,
+            generator_parameters_fn=base_generator_parameters_fn,
             name='BaseSyntheticDataGenerator',
             data_names=('default_asset',),
             global_time=None,
@@ -69,15 +77,15 @@ class BaseDataGenerator():
         """
 
         Args:
-            episode_duration:       dict, duration of episode in days/hours/mins
-            generator_fn            callabale, should return generated data as 1D np.array
-            generator_params        dict,
-            timeframe:              int, data periodicity in minutes
-            name:                   str
-            data_names:             iterable of str
-            global_time:            dict {y, m, d} to set custom global time (only for plotting)
-            task:                   int
-            log_level:              logbook.Logger level
+            episode_duration:           dict, duration of episode in days/hours/mins
+            generator_fn                callabale, should return generated data as 1D np.array
+            generator_parameters_fn:    callable, should return dictionary of generator_fn kwargs
+            timeframe:                  int, data periodicity in minutes
+            name:                       str
+            data_names:                 iterable of str
+            global_time:                dict {y, m, d} to set custom global time (only for plotting)
+            task:                       int
+            log_level:                  logbook.Logger level
             **kwargs:
 
         """
@@ -108,7 +116,7 @@ class BaseDataGenerator():
                 episode_duration=episode_duration,
                 timeframe=timeframe,
                 generator_fn=generator_fn,
-                generator_params=generator_params,
+                generator_parameters_fn=generator_parameters_fn,
                 name=name,
                 data_names=data_names,
                 task=task,
@@ -168,12 +176,7 @@ class BaseDataGenerator():
         self.episode_num_records = len(self.train_index)
 
         self.generator_fn = generator_fn
-
-        if generator_params is None:
-            self.generator_params = {}
-
-        else:
-            self.generator_params = generator_params
+        self.generator_parameters_fn = generator_parameters_fn
 
     def set_logger(self, level=None, task=None):
         """
@@ -195,31 +198,35 @@ class BaseDataGenerator():
         self.is_ready = True
 
     def read_csv(self, **kwargs):
-        self.data = self.generate_data(self.generator_params)
+        self.data = self.generate_data(self.generator_parameters_fn())
 
     def generate_data(self, generator_params, sample_type=0):
         """
-        Generates data trajectory (episode)
+        Generates data trajectory, performs base consistency checks.
 
         Args:
-            generator_params:       dict, data generating parmeters
+            generator_params:       dict, data_generating_function parameters
             sample_type:            0 - generate train data | 1 - generate test data
 
         Returns:
             data as pandas dataframe
         """
-        assert sample_type in [0, 1], 'Expected sample type be either 0 (train), or 1 (test) got: {}'.format(sample_type)
-        # Generate datapoints:
+        assert sample_type in [0, 1],\
+            'Expected sample type be either 0 (train), or 1 (test) got: {}'.format(sample_type)
+        # Generate data points:
         data_array = self.generator_fn(num_points=self.episode_num_records, **generator_params)
+
         assert len(data_array.shape) == 1 and data_array.shape[0] == self.episode_num_records,\
             'Expected generated data to be 1D array of length {},  got data shape: {}'.format(
                 self.episode_num_records,
                 data_array.shape
             )
+        # We need positive datapoints only due to backtrader limitation:
         negs = data_array[data_array < 0]
         if negs.any():
-            self.log.warning(' Set to zero {} negative generated values'.format(negs.shape[0]))
+            self.log.warning('{} negative generated values has been set to zero'.format(negs.shape[0]))
             data_array[data_array < 0] = 0.0
+
         # Make dataframe:
         if sample_type:
             index = self.test_index
@@ -242,7 +249,7 @@ class BaseDataGenerator():
                                             respectively.
 
         Returns:
-            Dataset instance with number of records ~ max_episode_len,
+            Dataset instance with number of records ~ max_episode_len.
 
         """
         try:
@@ -265,17 +272,9 @@ class BaseDataGenerator():
                 )
                 sample_type = self.metadata['type']
 
-        # Generate data:
-        sampled_data = self.generate_data(self.generator_params, sample_type=sample_type)
-        self.sample_instance = self.nested_class_ref(**self.nested_params)
-        self.sample_instance.filename += '_{}'.format(self.sample_num)
-        self.log.info('New sample id: <{}>.'.format(self.sample_instance.filename))
-        self.sample_instance.data = sampled_data
+        # Get sample:
+        self.sample_instance = self.sample_synthetic(sample_type)
 
-        # Add_metadata
-        self.sample_instance.metadata['type'] = 'synthetic_data_sample'
-        self.sample_instance.metadata['first_row'] = 0
-        self.sample_instance.metadata['last_row'] = self.episode_num_records
         self.sample_instance.metadata['type'] = sample_type
         self.sample_instance.metadata['sample_num'] = self.sample_num
         self.sample_instance.metadata['parent_sample_num'] = self.metadata['sample_num']
@@ -283,6 +282,34 @@ class BaseDataGenerator():
         self.sample_num += 1
 
         return self.sample_instance
+
+    def sample_synthetic(self, sample_type=0):
+        """
+        Get data_generator instance containing synthetic data.
+
+        Args:
+            sample_type (int or bool):      0 (train) or 1 (test) - get sample with train or test time periods
+                                            respectively.
+
+        Returns:
+            nested_class_ref instance
+        """
+        # Generate data:
+        generator_params = self.generator_parameters_fn()
+        data = self.generate_data(generator_params, sample_type=sample_type)
+
+        # Make data_class instance:
+        sample_instance = self.nested_class_ref(**self.nested_params)
+        sample_instance.filename += '_{}'.format(self.sample_num)
+        self.log.info('New sample id: <{}>.'.format(sample_instance.filename))
+
+        # Add data and metadata:
+        sample_instance.data = data
+        sample_instance.metadata['generator'] = generator_params
+        sample_instance.metadata['first_row'] = 0
+        sample_instance.metadata['last_row'] = self.episode_num_records
+
+        return sample_instance
 
     def describe(self):
         """
@@ -352,9 +379,9 @@ class BaseDataGenerator():
         pass
 
 
-class SimpleTestTrial(BTgymDataTrial):
+class TruncatedTestTrial(BTgymDataTrial):
     """
-    Truncated Trial without test period: always samples from train,
+    Utility Trial class without test period: always samples from train,
     sampled episode inherits tarin/test metadata of parent trail.
     """
     def __init__(
@@ -381,7 +408,7 @@ class SimpleTestTrial(BTgymDataTrial):
                 _config_stack=None,
             )
         )
-        super(SimpleTestTrial, self).__init__(
+        super(TruncatedTestTrial, self).__init__(
             filename=filename,
             parsing_params=parsing_params,
             sampling_params=sampling_params,
@@ -399,15 +426,16 @@ class SimpleTestTrial(BTgymDataTrial):
         return episode
 
 
-class CombinedDataGenerator(BaseDataGenerator):
+class BaseCombinedDataGenerator(BaseDataGenerator):
     """
-    Data provider class coupling synthetic train data and real test data.
+    Data provider class with synthetic train and real test data.
     """
     def __init__(
             self,
             filename=None,
             parsing_params=None,
-            episode_duration=None,
+            episode_duration_train=None,
+            episode_duration_test=None,
             time_gap=None,
             start_00=False,
             name='CombinedDataGenerator',
@@ -416,32 +444,36 @@ class CombinedDataGenerator(BaseDataGenerator):
         """
 
         Args:
-            episode_duration:       dict, duration of episode in days/hours/mins
-            generator_fn            callabale, should return generated data as 1D np.array
-            generator_params        dict,
-            timeframe:              int, data periodicity in minutes
-            name:                   str
-            data_names:             iterable of str
-            global_time:            dict {y, m, d} to set custom global time (only for plotting)
-            task:                   int
-            log_level:              logbook.Logger level
+            filename:                   str, test data filename
+            parsing_params:             dict test data parsing params
+            episode_duration_train:     dict, duration of train episode in days/hours/mins
+            episode_duration_test:      dict, duration of test episode in days/hours/mins
+            time_gap:                   dict test episode duration tolerance
+            start_00:                   bool, def=False
+            generator_fn                callabale, should return generated data as 1D np.array
+            generator_parameters_fn:    callable, should return dictionary of generator_fn kwargs
+            timeframe:                  int, data periodicity in minutes
+            name:                       str
+            data_names:                 iterable of str
+            global_time:                dict {y, m, d} to set custom global time (here for plotting only)
+            task:                       int
+            log_level:                  logbook.Logger level
             **kwargs:
 
         """
-        super(CombinedDataGenerator, self).__init__(episode_duration=episode_duration, name=name, **kwargs)
+        super(BaseCombinedDataGenerator, self).__init__(episode_duration=episode_duration_train, name=name, **kwargs)
         self.nested_params_test = dict(
             filename=filename,
             parsing_params=parsing_params,
             sampling_params=dict(
-                sample_duration=episode_duration,
+                sample_duration=episode_duration_test,
                 time_gap=time_gap,
                 start_00=start_00,
                 test_period={'days': 0, 'hours': 0, 'minutes': 0},
             ),
-
         )
         self.nested_params_test.update(self.nested_params)
-        self.nested_class_ref_test = SimpleTestTrial
+        self.nested_class_ref_test = TruncatedTestTrial
 
     def sample(self, get_new=True, sample_type=0,  **kwargs):
         """
@@ -469,7 +501,7 @@ class CombinedDataGenerator(BaseDataGenerator):
         if self.metadata['type'] is not None:
             if self.metadata['type'] != sample_type:
                 self.log.warning(
-                    'Attempted to sample type {} given current sample type {}, overriden.'.format(
+                    'Attempted to sample type {} given current sample type {}, overridden.'.format(
                         self.metadata['type'],
                         sample_type
                     )
@@ -478,21 +510,16 @@ class CombinedDataGenerator(BaseDataGenerator):
         if sample_type:
             # Got test, need natural-born data:
             self.sample_instance = self.nested_class_ref_test(**self.nested_params_test)
+            assert self.sample_instance.filename is not None,\
+                'Can`t get test sample: test data filename has not been provided.'
+
             self.log.info('New test sample id: <{}>.'.format(self.sample_instance.filename))
+            self.sample_instance.metadata['generator'] = {}
 
         else:
-            # Generate train data:
-            sampled_data = self.generate_data(self.generator_params, sample_type=sample_type)
-            self.sample_instance = self.nested_class_ref(**self.nested_params)
-            self.sample_instance.filename += '_{}'.format(self.sample_num)
-            self.log.info('New train sample id: <{}>.'.format(self.sample_instance.filename))
-            self.sample_instance.data = sampled_data
+            self.sample_instance = self.sample_synthetic(sample_type)
 
-            # Add_metadata:
-            #self.sample_instance.metadata['type'] = 'synthetic_data_sample'
-            self.sample_instance.metadata['first_row'] = 0
-            self.sample_instance.metadata['last_row'] = self.episode_num_records
-
+        # Common metadata:
         self.sample_instance.metadata['type'] = sample_type
         self.sample_instance.metadata['sample_num'] = self.sample_num
         self.sample_instance.metadata['parent_sample_num'] = self.metadata['sample_num']

@@ -56,7 +56,7 @@ dict: Conventional reset configuration template to pass to environment `reset()`
 
 class BTgymBaseData:
     """
-    Base BTgym data class.
+    Base BTgym data provider class.
     Provides core data loading, sampling, splitting  and converting functionality.
     Do not use directly.
 
