@@ -121,8 +121,8 @@ def ornshtein_uhlenbeck_uniform_parameters_fn(mu=0, l=0.1, sigma=1.0, x0=None, d
 class UniformOUGenerator(BaseCombinedDataGenerator):
     """
     Combined data iterator provides:
-    realisations of Ornstein-Uhlenbeck process as train data;
-    real historic data as test data;
+    - realisations of Ornstein-Uhlenbeck process as train data;
+    - real historic data as test data;
 
     OUp. paramters are randomly uniformly sampled from given intervals
     """
@@ -164,6 +164,46 @@ class UniformOUGenerator(BaseCombinedDataGenerator):
             **kwargs
         )
 
+
+class OUGenerator(BaseCombinedDataGenerator):
+    """
+    Combined data iterator provides:
+    - realisations of Ornstein-Uhlenbeck process as train data;
+    - real historic data as test data;
+
+    This class expects OUp. parameters no-args callable to be explicitly provided.
+    """
+    @staticmethod
+    def fix_args(fn, **kwargs):
+        def f_empty():
+            return fn(**kwargs)
+        return f_empty
+
+    def __init__(self, generator_parameters_fn, name='OUData', **kwargs):
+        """
+
+        Args:
+            generator_parameters_fn:    callable, should return dictionary of generator_fn kwargs: {l, mu, sigma};
+                                        this callable itself should not require any args
+            filename:                   str, test data filename
+            parsing_params:             dict test data parsing params
+            episode_duration_train:     dict, duration of train episode in days/hours/mins
+            episode_duration_test:      dict, duration of test episode in days/hours/mins
+            time_gap:                   dict test episode duration tolerance
+            start_00:                   bool, def=False
+            timeframe:                  int, data periodicity in minutes
+            name:                       str
+            data_names:                 iterable of str
+            global_time:                dict {y, m, d} to set custom global time (here for plotting only)
+            task:                       int
+            log_level:                  logbook.Logger level
+        """
+        super(OUGenerator, self).__init__(
+            generator_fn=ornshtein_uhlenbeck_process_fn,
+            generator_parameters_fn=generator_parameters_fn,
+            name=name,
+            **kwargs
+        )
 
 
 
