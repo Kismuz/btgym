@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from btgym.algorithms import BaseAAC
 from .loss import guided_aac_loss_def_0_0, guided_aac_loss_def_0_1, guided_aac_loss_def_0_3
-from btgym.algorithms.runner.synchro import BaseSynchroRunner
+from btgym.algorithms.runner.synchro import BaseSynchroRunner, VerboseSynchroRunner
 
 
 class GuidedAAC(BaseAAC):
@@ -39,7 +39,8 @@ class GuidedAAC(BaseAAC):
             guided_lambda=1.0,
             guided_decay_steps=None,
             runner_config=None,
-            # _aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+            # aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+            aux_render_modes=None,
             name='GuidedA3C',
             **kwargs
     ):
@@ -64,14 +65,14 @@ class GuidedAAC(BaseAAC):
                 runner_config = {
                     'class_ref': BaseSynchroRunner,
                     'kwargs': {
-                        'aux_summaries': ('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+                        'aux_render_modes': aux_render_modes,  # ('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
                     }
                 }
 
             super(GuidedAAC, self).__init__(
                 runner_config=runner_config,
                 name=name,
-                # _aux_render_modes=_aux_render_modes,
+                aux_render_modes=aux_render_modes,
                 **kwargs
             )
         except:
@@ -121,4 +122,29 @@ class GuidedAAC(BaseAAC):
         )
 
         return loss, summaries
+
+
+class VerboseGuidedAAC(GuidedAAC):
+    """
+    Extends parent `GuidedAAC` class with additional summaries.
+    """
+
+    def __init__(
+            self,
+            runner_config=None,
+            aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+            name='VerboseGuidedA3C',
+            **kwargs
+    ):
+        super(VerboseGuidedAAC, self).__init__(
+            name=name,
+            runner_config={
+                    'class_ref': VerboseSynchroRunner,
+                    'kwargs': {
+                        'aux_render_modes': aux_render_modes,
+                    }
+                },
+            aux_render_modes=aux_render_modes,
+            **kwargs
+        )
 

@@ -35,8 +35,8 @@ class BaseSynchroRunner():
             test_conditions=None,
             slowdown_steps=0,
             global_step_op=None,
-            aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
-            _implemented_aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+            aux_render_modes=None,
+            _implemented_aux_render_modes=None,
             name='synchro',
             log_level=WARNING,
             **kwargs
@@ -77,17 +77,25 @@ class BaseSynchroRunner():
         StreamHandler(sys.stdout).push_application()
         self.log = Logger('{}_Runner_{}'.format(self.name, self.task), level=self.log_level)
 
-        self.implemented_aux_render_modes = _implemented_aux_render_modes
+        # Aux rendering setup:
+        if _implemented_aux_render_modes is None:
+            self.implemented_aux_render_modes = []
 
-        self.aux_render_modes = [
-            mode
-            if mode in self.implemented_aux_render_modes
-            else self.log.warning('Render mode `{}` is not implemented, excluded'.format(mode))
-            for mode in aux_render_modes
-        ]
-        self.aux_render_modes = [mode for mode in self.aux_render_modes if mode is not None]
+        else:
+            self.implemented_aux_render_modes = _implemented_aux_render_modes
 
-        self.log.debug('self.aux_summaries: {}'.format(self.aux_render_modes))
+        self.aux_render_modes = []
+        if aux_render_modes is not None:
+            for mode in aux_render_modes:
+                if mode in self.implemented_aux_render_modes:
+                    self.aux_render_modes.append(mode)
+
+                else:
+                    msg = 'Render mode `{}` is not implemented.'.format(mode)
+                    self.log.error(msg)
+                    raise NotImplementedError(msg)
+
+        self.log.debug('self.render modes: {}'.format(self.aux_render_modes))
 
         self.sess = None
         self.summary_writer = None
@@ -144,8 +152,6 @@ class BaseSynchroRunner():
         # Episode accumulators:
         self.ep_accum = None
 
-        self.norm_image = lambda x: np.round((x - x.min()) / np.ptp(x) * 255)
-
         self.log.debug('__init__() done.')
 
     def sleep(self):
@@ -168,8 +174,8 @@ class BaseSynchroRunner():
         self.sess = sess
         self.summary_writer = summary_writer
 
-        # Hacky but we need env.renderer methods ready:
-        self.env.renderer.initialize_pyplot()
+        # # Hacky but we need env.renderer methods ready: NOT HERE, went to VerboseRunner
+        # self.env.renderer.initialize_pyplot()
 
         self.pre_experience, self.state, self.context, self.last_action, self.last_reward = self.get_init_experience(
             policy=self.policy,
@@ -396,8 +402,7 @@ class BaseSynchroRunner():
 
     def get_ep_render(self, is_test=False):
         """
-        Visualises episode environment and policy statistics.
-        Relies on environmnet renderer class methods,
+        Collects environment renderings. Relies on environment renderer class methods,
         so it is only valid when environment rendering is enabled (typically it is true for master runner).
 
         Returns:
@@ -416,49 +421,6 @@ class BaseSynchroRunner():
             render_stat = {
                 mode: self.env.render(mode)[None, :] for mode in self.env.render_modes
             }
-            # Update renderings with aux:
-
-            # ep_a_logits = self.ep_accum['logits']
-            # ep_value = self.ep_accum['value']
-            # self.log.notice('ep_logits shape: {}'.format(np.asarray(ep_a_logits).shape))
-            # self.log.notice('ep_value shape: {}'.format(np.asarray(ep_value).shape))
-
-            # Unpack LSTM states:
-            rnn_1, rnn_2 = zip(*self.ep_accum['context'])
-            rnn_1 = [state[0] for state in rnn_1]
-            rnn_2 = [state[0] for state in rnn_2]
-            c1, h1 = zip(*rnn_1)
-            c2, h2 = zip(*rnn_2)
-
-            # Render everything implemented (doh!):
-            implemented_aux_images = {
-                'action_prob': self.env.renderer.draw_plot(
-                    # data=softmax(np.asarray(ep_a_logits)[:, 0, :] - np.asarray(ep_a_logits).max()),
-                    data=softmax(np.asarray(self.ep_accum['logits'])), #[:, 0, :]),
-                    title='Episode actions probabilities',
-                    figsize=(12, 4),
-                    box_text='',
-                    xlabel='Backward env. steps',
-                    ylabel='R+',
-                    line_labels=['Hold', 'Buy', 'Sell', 'Close']
-                )[None, ...],
-                'value_fn': self.env.renderer.draw_plot(
-                    data=np.asarray(self.ep_accum['value']),
-                    title='Episode Value function',
-                    figsize=(12, 4),
-                    xlabel='Backward env. steps',
-                    ylabel='R',
-                    line_labels=['Value']
-                )[None, ...],
-                # 'lstm_1_c': norm_image(np.asarray(c1).T[None, :, 0, :, None]),
-                'lstm_1_h': self.norm_image(np.asarray(h1).T[None, :, 0, :, None]),
-                # 'lstm_2_c': norm_image(np.asarray(c2).T[None, :, 0, :, None]),
-                'lstm_2_h': self.norm_image(np.asarray(h2).T[None, :, 0, :, None])
-            }
-
-            # Pick what has been set:
-            aux_images = {summary: implemented_aux_images[summary] for summary in self.aux_render_modes}
-            render_stat.update(aux_images)
 
         else:
             render_stat = None
@@ -611,7 +573,7 @@ class BaseSynchroRunner():
 
     def get_episode(self, policy=None, policy_sync_op=None, init_context=None, data_sample_config=None):
         """
-        WRONG do not use
+        == WRONG DO NOT USE ===
         Collects entire episode trajectory as single rollout and bunch of summaries using specified policy.
         Updates episode statistics and replay memory.
 
@@ -807,10 +769,119 @@ class BaseSynchroRunner():
         return data
 
 
+class VerboseSynchroRunner(BaseSynchroRunner):
+    """
+    Extends `BaseSynchroRunner` class with additional visualisation summaries in some expense of running speed.
+    """
 
+    def __init__(
+            self,
+            name='verbose_synchro',
+            aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+            **kwargs
+    ):
 
+        super(VerboseSynchroRunner, self).__init__(
+            name=name,
+            aux_render_modes=aux_render_modes,
+            _implemented_aux_render_modes=('action_prob', 'value_fn', 'lstm_1_h', 'lstm_2_h'),
+            **kwargs
+        )
+        self.norm_image = lambda x: np.round((x - x.min()) / np.ptp(x) * 255)
 
+    def get_ep_render(self, is_test=False):
+        """
+        Collects episode, environment and policy visualisations. Relies on environment renderer class methods,
+        so it is only valid when environment rendering is enabled (typically it is true for master runner).
 
+        Returns:
+            dictionary of images as rgb arrays
+        """
+        # Only render chief worker and test (slave) environment:
+        # if self.task < 1 and (
+        #     is_test or(
+        #         self.local_episode % self.env_render_freq == 0 and not self.data_sample_config['mode']
+        #     )
+        # ):
+        if self.task < 1 and self.local_episode % self.env_render_freq == 0:
+
+            # Render environment (chief worker only):
+            render_stat = {
+                mode: self.env.render(mode)[None, :] for mode in self.env.render_modes
+            }
+            # Update renderings with aux:
+
+            # ep_a_logits = self.ep_accum['logits']
+            # ep_value = self.ep_accum['value']
+            # self.log.notice('ep_logits shape: {}'.format(np.asarray(ep_a_logits).shape))
+            # self.log.notice('ep_value shape: {}'.format(np.asarray(ep_value).shape))
+
+            # Unpack LSTM states:
+            rnn_1, rnn_2 = zip(*self.ep_accum['context'])
+            rnn_1 = [state[0] for state in rnn_1]
+            rnn_2 = [state[0] for state in rnn_2]
+            c1, h1 = zip(*rnn_1)
+            c2, h2 = zip(*rnn_2)
+
+            # Render everything implemented (doh!):
+            implemented_aux_images = {
+                'action_prob': self.env.renderer.draw_plot(
+                    # data=softmax(np.asarray(ep_a_logits)[:, 0, :] - np.asarray(ep_a_logits).max()),
+                    data=softmax(np.asarray(self.ep_accum['logits'])), #[:, 0, :]),
+                    title='Episode actions probabilities',
+                    figsize=(12, 4),
+                    box_text='',
+                    xlabel='Backward env. steps',
+                    ylabel='R+',
+                    line_labels=['Hold', 'Buy', 'Sell', 'Close']
+                )[None, ...],
+                'value_fn': self.env.renderer.draw_plot(
+                    data=np.asarray(self.ep_accum['value']),
+                    title='Episode Value function',
+                    figsize=(12, 4),
+                    xlabel='Backward env. steps',
+                    ylabel='R',
+                    line_labels=['Value']
+                )[None, ...],
+                # 'lstm_1_c': norm_image(np.asarray(c1).T[None, :, 0, :, None]),
+                'lstm_1_h': self.norm_image(np.asarray(h1).T[None, :, 0, :, None]),
+                # 'lstm_2_c': norm_image(np.asarray(c2).T[None, :, 0, :, None]),
+                'lstm_2_h': self.norm_image(np.asarray(h2).T[None, :, 0, :, None])
+            }
+
+            # Pick what has been set:
+            aux_images = {summary: implemented_aux_images[summary] for summary in self.aux_render_modes}
+            render_stat.update(aux_images)
+
+        else:
+            render_stat = None
+
+        return render_stat
+
+    def start(self, sess, summary_writer, init_context=None, data_sample_config=None):
+        """
+        Executes initial sequence; fills initial replay memory if any.
+        Extra: initialises environment renderer to get aux. images.
+        """
+        assert self.policy is not None, 'Initial policy not specified'
+        self.sess = sess
+        self.summary_writer = summary_writer
+
+        # Hacky but we need env.renderer methods ready:
+        self.env.renderer.initialize_pyplot()
+
+        self.pre_experience, self.state, self.context, self.last_action, self.last_reward = self.get_init_experience(
+            policy=self.policy,
+            init_context=init_context,
+            data_sample_config=data_sample_config
+        )
+
+        if self.memory_config is not None:
+            while not self.memory.is_full():
+                # collect some rollouts to fill memory:
+                _ = self.get_data()
+            self.log.notice('Memory filled')
+        self.log.notice('started collecting data.')
 
 
 

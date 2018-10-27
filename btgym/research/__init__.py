@@ -6,4 +6,4 @@
 from .gps import *
 from .policy_rl2 import AacRL2Policy
 from .strategy_gen_4 import *
-from .noisynet import NoisyNetUnreal
+from ._integrated_noisynet import NoisyNetUnreal

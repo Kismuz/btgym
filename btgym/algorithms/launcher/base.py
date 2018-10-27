@@ -378,6 +378,7 @@ class Launcher():
         self.log.notice('chief_worker_{} has joined.'.format(chief_worker.task))
 
         for ps in p_servers_list:
+            ps.terminate()
             ps.join()
             self.log.notice('parameter_server_{} has joined.'.format(ps.task))
 

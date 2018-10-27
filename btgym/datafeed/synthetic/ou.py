@@ -17,23 +17,12 @@
 #
 ###############################################################################
 
-from logbook import Logger, StreamHandler, WARNING
-
-import datetime
-import random
-from numpy.random import beta as random_beta
-import copy
-import os
-import sys
-
-import backtrader.feeds as btfeeds
 import numpy as np
-import pandas as pd
 
 from btgym.datafeed.synthetic.base import BaseCombinedDataGenerator
 
 
-def ornshtein_uhlenbeck_process_fn(num_points, mu=0, l=0.1, sigma=1.0, x0=0, dt=1):
+def ornshtein_uhlenbeck_process_fn(num_points, mu, l, sigma, x0=0, dt=1):
     """
     Generates Ornshtein-Uhlenbeck process realisation trajectory.
 
@@ -48,6 +37,7 @@ def ornshtein_uhlenbeck_process_fn(num_points, mu=0, l=0.1, sigma=1.0, x0=0, dt=
     Returns:
         generated data as 1D np.array
     """
+    # print('OU_p_fn got:: l: {}, sigma: {}, mu: {}'.format(l, sigma, mu))
 
     n = num_points
     x = np.zeros(n)
@@ -59,9 +49,10 @@ def ornshtein_uhlenbeck_process_fn(num_points, mu=0, l=0.1, sigma=1.0, x0=0, dt=
     return x
 
 
-def ornshtein_uhlenbeck_uniform_parameters_fn(mu=0, l=0.1, sigma=1.0, x0=None, dt=1):
+def ornshtein_uhlenbeck_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):
     """
-    If either mu, l and/or sigma is set in form of [a, b] - uniformly randomly samples parameters value
+    Provides parameters for OU process.
+    If parameter is set as iterable of form [a, b] - uniformly randomly samples parameters value
     form given interval.
 
     Args:
@@ -117,6 +108,8 @@ def ornshtein_uhlenbeck_uniform_parameters_fn(mu=0, l=0.1, sigma=1.0, x0=None, d
 
         x0_value = np.random.uniform(low=x0[0], high=x0[-1])
 
+    # print('OU_params_fn passed:: l: {}, sigma: {}, mu: {}'.format(l_value, sigma_value, mu_value))
+
     return dict(
         l=l_value,
         sigma=sigma_value,
@@ -134,7 +127,7 @@ class UniformOUGenerator(BaseCombinedDataGenerator):
 
     OUp. paramters are randomly uniformly sampled from given intervals
     """
-    def __init__(self, ou_mu=0, ou_lambda=0.1, ou_sigma=1, ou_x0=None, name='UniformOUData', **kwargs):
+    def __init__(self, ou_mu, ou_lambda, ou_sigma, ou_x0=None, name='UniformOUData', **kwargs):
         """
 
         Args:
