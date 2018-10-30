@@ -130,6 +130,7 @@ class BTgymEnv(gym.Env):
             log=None (logbook.Logger):                      external logbook logger,
                                                             overrides `log_level` and `verbose` args.
             task=0 (int):                                   environment id
+            random_seed(int):                               numpy random seed, def: None
 
         Environment kwargs applying logic::
 

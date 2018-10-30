@@ -206,6 +206,11 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
  
 ### <a name="news"></a>[News and updates:](#title)
 
+- 30.10.2018: updates and fixes:
+    - **fixed numpy random state issue** causing replicating of seeds among workers on POSIX os
+    - **new synthetic datafeed generators** - added simple Ornshtein-Uhlenbeck process data generating classes;
+        see `btgym/datafeed/synthetic/ou.py` and `btgym/research/ou_params_space_eval` for details;
+
 - 14.10.2018: update:
     - **base reward function redesign** -> noticeable algorithms performance gain;
 
