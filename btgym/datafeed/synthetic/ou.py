@@ -119,13 +119,110 @@ def ornshtein_uhlenbeck_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):
     )
 
 
+def log_uniform(lo_hi, size):
+    """
+    Samples from log-uniform distribution in range specified by `lo_hi`.
+    Takes:
+        lo_hi: either scalar or iterable in form [low_value, high_value]
+        size: sample size
+    Returns:
+         np.array or np.float (if size=1).
+    """
+    r = np.asarray(lo_hi)
+    try:
+        lo = r[0]
+        hi = r[-1]
+    except IndexError:
+        lo = hi = r
+    x = np.random.random(size)
+    log_lo = np.log(lo + 1e-12)
+    log_hi = np.log(hi + 1e-12)
+    v = log_lo * (1 - x) + log_hi * x
+    if size > 1:
+        return np.exp(v)
+    else:
+        return np.exp(v)[0]
+
+
+def ornshtein_uhlenbeck_log_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):
+    """
+    Provides parameters for OU process.
+    If `mu`, `sigma` is set as iterable of form [a, b] - uniformly randomly samples parameters value
+    form given interval; `l` is sampled from log-uniform distribution
+
+
+    Args:
+        mu:             float or iterable of 2 floats, mean;
+        l:              float or iterable of 2 floats, lambda, mean reversion rate;
+        sigma:          float or iterable of 2 floats, volatility;
+        x0:             float or iterable of 2 floats, starting point;
+        dt:             not used | int, time increment;
+
+    Returns:
+        dictionary of sampled values
+    """
+    if type(l) in [int, float, np.float64]:
+        l = [l, l]
+    else:
+        l = list(l)
+
+    if type(sigma) in [int, float, np.float64]:
+        sigma = [sigma, sigma]
+    else:
+        sigma = list(sigma)
+
+    if type(mu) in [int, float, np.float64]:
+        mu = [mu, mu]
+    else:
+        sigma = list(mu)
+
+    # Sanity checks:
+    assert len(l) == 2 and 0 < l[0] <= l[-1], \
+        'Expected OU mean reversion rate be positive float or ordered interval, got: {}'.format(l)
+    assert len(sigma) == 2 and 0 <= sigma[0] <= sigma[-1], \
+        'Expected OU sigma be non-negative float or ordered interval, got: {}'.format(sigma)
+    assert len(mu) == 2 and mu[0] <= mu[-1], \
+        'Expected OU mu be float or ordered interval, got: {}'.format(mu)
+
+    # Uniformly sample params:
+    l_value = log_uniform(l, 1)
+    sigma_value = np.random.uniform(low=sigma[0], high=sigma[-1])
+    mu_value = np.random.uniform(low=mu[0], high=mu[-1])
+
+    if x0 is None:
+        # Choose starting point equal to mean:
+        x0_value = mu_value
+
+    else:
+        if type(x0) in [int, float, np.float64]:
+            x0 = [x0, x0]
+        else:
+            x0 = list(x0)
+
+        assert len(x0) == 2 and x0[0] <= x0[-1], \
+            'Expected OU x0 be float or ordered interval, got: {}'.format(x0)
+
+        x0_value = np.random.uniform(low=x0[0], high=x0[-1])
+
+    # print('OU_params_fn sample intervals:: l: {}, sigma: {}, mu: {}'.format(l, sigma, mu))
+    # print('OU_params_fn passed:: l: {}, sigma: {}, mu: {}'.format(l_value, sigma_value, mu_value))
+
+    return dict(
+        l=l_value,
+        sigma=sigma_value,
+        mu=mu_value,
+        x0=x0_value,
+        #dt=dt
+    )
+
+
 class UniformOUGenerator(BaseCombinedDataGenerator):
     """
     Combined data iterator provides:
     - realisations of Ornstein-Uhlenbeck process as train data;
     - real historic data as test data;
 
-    OUp. paramters are randomly uniformly sampled from given intervals
+    OUp. paramters are randomly uniformly sampled from given intervals.
     """
     def __init__(self, ou_mu, ou_lambda, ou_sigma, ou_x0=None, name='UniformOUData', **kwargs):
         """
@@ -151,6 +248,45 @@ class UniformOUGenerator(BaseCombinedDataGenerator):
         super(UniformOUGenerator, self).__init__(
             generator_fn=ornshtein_uhlenbeck_process_fn,
             generator_parameters_fn=ornshtein_uhlenbeck_uniform_parameters_fn,
+            generator_parameters_config={'mu': ou_mu, 'l': ou_lambda, 'sigma': ou_sigma, 'x0': ou_x0},
+            name=name,
+            **kwargs
+        )
+
+
+class LogUniformOUGenerator(BaseCombinedDataGenerator):
+    """
+    Combined data iterator provides:
+    - realisations of Ornstein-Uhlenbeck process as train data;
+    - real historic data as test data;
+
+    Lambda parameter is sampled from log-uniform distribution,
+    Sigma, Mu parameters are sampled from uniform distributions defined by given intervals.
+    """
+    def __init__(self, ou_mu, ou_lambda, ou_sigma, ou_x0=None, name='LogUniformOUData', **kwargs):
+        """
+
+        Args:
+            ou_mu:                      float or iterable of 2 floats, Ornstein-Uhlenbeck process mean value or interval
+            ou_lambda:                  float or iterable of 2 floats, OUp. mean-reverting rate or interval
+            ou_sigma:                   float or iterable of 2 floats, OUp. volatility value or interval
+            ou_x0:                      float or iterable of 2 floats, OUp. trajectory start value or interval
+            filename:                   str, test data filename
+            parsing_params:             dict test data parsing params
+            episode_duration_train:     dict, duration of train episode in days/hours/mins
+            episode_duration_test:      dict, duration of test episode in days/hours/mins
+            time_gap:                   dict test episode duration tolerance
+            start_00:                   bool, def=False
+            timeframe:                  int, data periodicity in minutes
+            name:                       str
+            data_names:                 iterable of str
+            global_time:                dict {y, m, d} to set custom global time (here for plotting only)
+            task:                       int
+            log_level:                  logbook.Logger level
+        """
+        super(LogUniformOUGenerator, self).__init__(
+            generator_fn=ornshtein_uhlenbeck_process_fn,
+            generator_parameters_fn=ornshtein_uhlenbeck_log_uniform_parameters_fn,
             generator_parameters_config={'mu': ou_mu, 'l': ou_lambda, 'sigma': ou_sigma, 'x0': ou_x0},
             name=name,
             **kwargs

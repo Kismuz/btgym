@@ -186,6 +186,8 @@ class MultiDiscreteEnv(BTgymEnv):
     data_lines_names = ('default_asset',)
     cash_name = 'default_cash'
 
+    random_seed = None
+
     closed = True
 
     def __init__(self, engine, dataset=None, **kwargs):
@@ -242,6 +244,9 @@ class MultiDiscreteEnv(BTgymEnv):
                     if key == self.verbose:
                         self.log_level = value
             self.log = Logger('BTgymMultiDataShell_{}'.format(self.task), level=self.log_level)
+
+        # Random seeding:
+        np.random.seed(self.random_seed)
 
         # Network parameters:
         self.network_address += str(self.port)

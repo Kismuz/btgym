@@ -8,14 +8,13 @@
 
 from logbook import Logger, StreamHandler
 import sys
-sys.path.insert(0,'..')
-
 import os
-import logging
+import random
 import multiprocessing
 
-import cv2
 import tensorflow as tf
+
+sys.path.insert(0,'..')
 tf.logging.set_verbosity(tf.logging.INFO) # suppress tf.train.MonitoredTrainingSession deprecation warning
 # TODO: switch to tf.train.MonitoredTrainingSession
 
@@ -174,6 +173,9 @@ class Worker(multiprocessing.Process):
                 task_id = 0
 
             for port, data_port, is_render, is_master in zip(port_list, data_port_list, render_list, data_master_list):
+                # Get random seed for environments:
+                env_kwargs['random_seed'] = random.randint(0, 2 ** 30)
+
                 if not self.test_mode:
                     # Assume BTgym env. class:
                     self.log.debug('setting env at port_{} is data_master: {}'.format(port, data_master))
@@ -187,7 +189,7 @@ class Worker(multiprocessing.Process):
                                 data_port=data_port,
                                 data_master=is_master,
                                 render_enabled=is_render,
-                                task= self.task + task_id,
+                                task=self.task + task_id,
                                 **env_kwargs
                             )
                         )

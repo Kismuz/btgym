@@ -150,11 +150,11 @@ class Launcher():
         # Seeding:
         if self.root_random_seed is not None:
             np.random.seed(self.root_random_seed)
-        self.log.info('Random seed: {}'.format(self.root_random_seed))
+            self.log.info('Random seed: {}'.format(self.root_random_seed))
 
         # Seeding for workers:
         self.workers_rnd_seeds = list(
-            np.random.randint(0, 2**30, self.cluster_config['num_workers'] + self.cluster_config['num_ps'])
+            np.random.randint(0, 2 ** 30, self.cluster_config['num_workers'] + self.cluster_config['num_ps'])
         )
 
         # Log_dir:
@@ -383,6 +383,7 @@ class Launcher():
             self.log.notice('parameter_server_{} has joined.'.format(ps.task))
 
         # TODO: close tensorboard
+        # TODO: maybe export TB summaries accumlulators links
 
         self.log.notice('Launcher closed.')
 

@@ -97,6 +97,8 @@ class BTgymEnv(gym.Env):
     data_lines_names = ('default_asset',)
     cash_name = 'default_cash'
 
+    random_seed = None
+
     closed = True
 
     def __init__(self, **kwargs):
@@ -225,6 +227,9 @@ class BTgymEnv(gym.Env):
                     if key == self.verbose:
                         self.log_level = value
             self.log = Logger('BTgymAPIshell_{}'.format(self.task), level=self.log_level)
+
+        # Random seeding:
+        np.random.seed(self.random_seed)
 
         # Network parameters:
         self.network_address += str(self.port)
@@ -440,7 +445,8 @@ class BTgymEnv(gym.Env):
         Args:
             seed:   int or None
         """
-        np.random.seed(seed)
+        self.random_seed = seed
+        np.random.seed(self.random_seed)
 
     @staticmethod
     def _comm_with_timeout( socket, message,):
