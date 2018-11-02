@@ -78,7 +78,7 @@ def ornshtein_uhlenbeck_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):
     if type(mu) in [int, float, np.float64]:
         mu = [mu, mu]
     else:
-        sigma = list(mu)
+        mu = list(mu)
 
     # Sanity checks:
     assert len(l) == 2 and 0 < l[0] <= l[-1], \
@@ -108,7 +108,8 @@ def ornshtein_uhlenbeck_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):
 
         x0_value = np.random.uniform(low=x0[0], high=x0[-1])
 
-    # print('OU_params_fn passed:: l: {}, sigma: {}, mu: {}'.format(l_value, sigma_value, mu_value))
+    # print('OU_params_fn sample intervals:: l: {}, sigma: {}, mu: {}, x0: {}'.format(l, sigma, mu, x0))
+    # print('OU_params_fn passed:: l: {}, sigma: {}, mu: {}, x0: {}'.format(l_value, sigma_value, mu_value, x0_value))
 
     return dict(
         l=l_value,
@@ -174,7 +175,7 @@ def ornshtein_uhlenbeck_log_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):
     if type(mu) in [int, float, np.float64]:
         mu = [mu, mu]
     else:
-        sigma = list(mu)
+        mu = list(mu)
 
     # Sanity checks:
     assert len(l) == 2 and 0 < l[0] <= l[-1], \
@@ -204,8 +205,8 @@ def ornshtein_uhlenbeck_log_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):
 
         x0_value = np.random.uniform(low=x0[0], high=x0[-1])
 
-    # print('OU_params_fn sample intervals:: l: {}, sigma: {}, mu: {}'.format(l, sigma, mu))
-    # print('OU_params_fn passed:: l: {}, sigma: {}, mu: {}'.format(l_value, sigma_value, mu_value))
+    # print('OU_params_fn sample intervals:: l: {}, sigma: {}, mu: {}, x0: {}'.format(l, sigma, mu, x0))
+    # print('OU_params_fn passed:: l: {}, sigma: {}, mu: {}, x0: {}'.format(l_value, sigma_value, mu_value, x0_value))
 
     return dict(
         l=l_value,
