@@ -20,13 +20,15 @@
 from logbook import Logger, StreamHandler, WARNING
 
 import datetime
-import sys
+import sys, os
+import copy
 
 import backtrader.feeds as btfeeds
 import numpy as np
 import pandas as pd
 
 from btgym.datafeed.derivative import BTgymDataTrial, BTgymEpisode
+from btgym.datafeed.multi import BTgymMultiData
 
 
 def base_generator_fn(num_points=10, **kwargs):
@@ -202,6 +204,7 @@ class BaseDataGenerator:
             self.log = Logger('{}_{}'.format(self.name, self.task), level=level)
 
     def reset(self,  **kwargs):
+        self.read_csv()
         self.sample_num = 0
         self.is_ready = True
 
@@ -484,6 +487,64 @@ class BaseCombinedDataGenerator(BaseDataGenerator):
         self.nested_params_test.update(self.nested_params)
         self.nested_class_ref_test = TruncatedTestTrial
 
+    def __read_csv(self, data_filename=None, force_reload=False):
+        """
+        Populates instance by loading data: CSV file --> pandas dataframe.
+
+        Args:
+            data_filename: [opt] csv data filename as string or list of such strings.
+            force_reload:  ignore loaded data.
+        """
+        if self.filename is None and data_filename is None:
+            self.data = self.generate_data(self.generator_parameters_fn(**self.generator_parameters_config))
+            return
+
+        if self.data is not None and not force_reload:
+            data_range = pd.to_datetime(self.data.index)
+            self.total_num_records = self.data.shape[0]
+            self.data_range_delta = (data_range[-1] - data_range[0]).to_pytimedelta()
+            self.log.debug('data has been already loaded. Use `force_reload=True` to reload')
+            return
+
+        if data_filename:
+            self.filename = data_filename  # override data source if one is given
+        if type(self.filename) == str:
+            self.filename = [self.filename]
+
+        dataframes = []
+        for filename in self.filename:
+            try:
+                assert filename and os.path.isfile(filename)
+                current_dataframe = pd.read_csv(
+                    filename,
+                    sep=self.sep,
+                    header=self.header,
+                    index_col=self.index_col,
+                    parse_dates=self.parse_dates,
+                    names=self.names
+                )
+
+                # Check and remove duplicate datetime indexes:
+                duplicates = current_dataframe.index.duplicated(keep='first')
+                how_bad = duplicates.sum()
+                if how_bad > 0:
+                    current_dataframe = current_dataframe[~duplicates]
+                    self.log.warning('Found {} duplicated date_time records in <{}>.\
+                      Removed all but first occurrences.'.format(how_bad, filename))
+
+                dataframes += [current_dataframe]
+                self.log.info('Loaded {} records from <{}>.'.format(dataframes[-1].shape[0], filename))
+
+            except:
+                msg = 'Data file <{}> not specified / not found.'.format(str(filename))
+                self.log.error(msg)
+                raise FileNotFoundError(msg)
+
+        self.data = pd.concat(dataframes)
+        data_range = pd.to_datetime(self.data.index)
+        self.total_num_records = self.data.shape[0]
+        self.data_range_delta = (data_range[-1] - data_range[0]).to_pytimedelta()
+
     def sample(self, get_new=True, sample_type=0,  **kwargs):
         """
         Samples continuous subset of data.
@@ -536,3 +597,113 @@ class BaseCombinedDataGenerator(BaseDataGenerator):
         self.sample_num += 1
 
         return self.sample_instance
+
+
+class BaseTwoLinesCombinedDataGenerator(BTgymMultiData):
+    """
+    Provides two streams of simulated train spread data, real test data.
+    """
+    def __init__(
+            self,
+            assets_filenames=None,
+            data_names=None,
+            level_process_config=None,
+            spread_process_config=None,
+            name='2LinesCombinedDataGenerator',
+            **kwargs
+    ):
+        if level_process_config is None:
+            self.level_process_config = {
+                'generator_fn': base_generator_fn,
+                'generator_parameters_fn': base_generator_parameters_fn,
+                'generator_parameters_config': None,
+            }
+        else:
+            self.level_process_config = level_process_config
+
+        if spread_process_config is None:
+            self.spread_process_config = {
+                'generator_fn': base_generator_fn,
+                'generator_parameters_fn': base_generator_parameters_fn,
+                'generator_parameters_config': None,
+            }
+        else:
+            self.spread_process_config = spread_process_config
+
+        if assets_filenames is None:
+            try:
+                assert len(data_names) == 2
+            except (AssertionError, TypeError) as e:
+                raise ValueError('two `data_names` should be provided when `assets_filenames` not specified')
+            assets = data_names
+            data_config = {asset: {'filename': None} for asset in assets}
+
+        else:
+            assert isinstance(assets_filenames, dict) and len(assets_filenames.keys()) == 2, \
+                'Expected `assets_filenames` be dict. containing 2 assets names as keys and filenames as values'
+
+            assets = list(assets_filenames.keys())
+            data_config = {asset: {'filename': filename} for asset, filename in assets_filenames.items()}
+
+        self.level_asset = assets[0]
+        self.spread_asset = assets[-1]
+
+        # Let first asset hold level generating process:
+        data_config[self.level_asset].update(self.level_process_config)
+        # Second asset will hold spread generating process:
+        data_config[self.spread_asset].update(self.spread_process_config)
+
+        super(BaseTwoLinesCombinedDataGenerator, self).__init__(
+            data_class_ref=BaseCombinedDataGenerator,
+            data_config=data_config,
+            assets=assets,
+            name=name,
+            **kwargs
+        )
+
+    def sample(self, sample_type=0, **kwargs):
+        if sample_type:
+            self._sample_train(sample_type=sample_type, **kwargs)
+        else:
+            self._sample_test(sample_type=sample_type, **kwargs)
+
+    def _sample_test(self, **kwargs):
+
+        # Get sample to infer exact interval:
+        master_sample = self.master_data.sample(**kwargs)
+
+        self.log.debug('master_sample_data: {}'.format(master_sample.data))
+
+        # Prepare empty instance of multistream data:
+        sample = BaseTwoLinesCombinedDataGenerator(
+            level_process_config=self.level_process_config,
+            spread_process_config=self.spread_process_config,
+            data_names=self.data_names,
+            task=self.task,
+            log_level=self.log_level,
+            name='sub_' + self.name,
+        )
+        sample.metadata = copy.deepcopy(master_sample.metadata)
+
+        self.log.debug('sample.metadata: {}'.format(sample.metadata))
+        kwargs['interval'] = [sample.metadata['first_row'], sample.metadata['last_row']]
+
+        # Populate sample with data:
+        for key, stream in self.data.items():
+            sample.data[key] = stream.sample(force_interval=True, **kwargs)
+
+        self.filename = {key: stream.filename for key, stream in self.data.items()}
+
+        return sample
+
+    def _sample_train(self, **kwargs):
+        # Get level trajectory:
+        level_sample = self.data[self.level_asset].sample(**kwargs)
+
+        # Get spread trajectory:
+        spread_sample = self.data[self.spread_asset].sample(**kwargs)
+
+        # Combine and populate
+
+        pass
+
