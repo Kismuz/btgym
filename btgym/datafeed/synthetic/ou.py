@@ -19,7 +19,7 @@
 
 import numpy as np
 from scipy.stats import norm
-from btgym.datafeed.synthetic.base import BaseCombinedDataSet, BasePairCombinedDataSet
+from btgym.datafeed.synthetic.base import BaseCombinedDataSet, BasePairCombinedDataSet, base_spread_generator_fn
 
 
 def weiner_process_fn(num_points, delta, x0=0, dt=1):
@@ -401,8 +401,13 @@ class PairOUDataSet(BasePairCombinedDataSet):
             assets_filenames,
             ou_lambda,
             ou_sigma,
+            ou_mu,
             weiner_delta,
             x0,
+            spread_alpha,
+            spread_beta,
+            spread_max,
+            spread_min,
             name='PairedOuDataSet',
             **kwargs
     ):
@@ -415,6 +420,10 @@ class PairOUDataSet(BasePairCombinedDataSet):
             ou_sigma:                   float or iterable of 2 floats, OUp. volatility value or interval
             ou_x0:                      float or iterable of 2 floats, OUp. trajectory start value or interval
             weiner_delta:               float or iterable of 2 floats, Weiner p. trajectory speed parameter or interval
+            spread_alpha:               float, random spread beta-distributed alpha param
+            spread_beta:                float, random spread beta-distributed beta param
+            spread_max:                 float, random spread min. value
+            spread_min:                 float, random spread max. value
             train_episode_duration:     dict, duration of train episode in days/hours/mins
             test_episode_duration:      dict, duration of test episode in days/hours/mins
         """
@@ -422,11 +431,19 @@ class PairOUDataSet(BasePairCombinedDataSet):
             generator_fn=weiner_process_fn,
             generator_parameters_fn=weiner_process_uniform_parameters_fn,
             generator_parameters_config={'delta': weiner_delta, 'x0': x0},
+            spread_generator_fn=base_spread_generator_fn,
+            spread_generator_parameters={
+                'alpha': spread_alpha,
+                'beta': spread_beta,
+                'minimum': spread_min,
+                'maximum': spread_max
+            },
         )
         process_2_config = dict(
             generator_fn=ornshtein_uhlenbeck_process_fn,
             generator_parameters_fn=ornshtein_uhlenbeck_uniform_parameters_fn,
-            generator_parameters_config={'mu': 0, 'l': ou_lambda, 'sigma': ou_sigma, 'x0': 0},
+            generator_parameters_config={'mu': ou_mu, 'l': ou_lambda, 'sigma': ou_sigma, 'x0': None},
+            spread_generator_fn=None,
         )
         super(PairOUDataSet, self).__init__(
             assets_filenames=assets_filenames,

@@ -434,7 +434,7 @@ class BTgymBaseData:
                     header=self.header,
                     index_col=self.index_col,
                     parse_dates=self.parse_dates,
-                    names=self.names
+                    names=self.names,
                 )
 
                 # Check and remove duplicate datetime indexes:

@@ -72,6 +72,26 @@ def base_generator_parameters_fn(**kwargs):
     return dict()
 
 
+def base_spread_generator_fn(num_points=10, alpha=1, beta=1, minimum=0, maximum=0):
+    """
+    Generates spread values for single synthetic tragectory. Samples drawn from parametrized beta-distribution;
+    If base generated trajectory P is given, than High/Ask value = P + 1/2 * Spread; Low/Bid value = P - 1/2* Spread
+
+    Args:
+        num_points: trajectory length
+        alpha:      beta-distribution alpha param.
+        beta:       beta-distribution beta param.
+        minimum:    spread minimum value
+        maximum:    spread maximum value
+
+    Returns:
+        1d array of generated values;
+    """
+    assert alpha > 0 and beta > 0, 'Beta-distribution parameters should be non-negative, got: {},{}'.format(alpha, beta)
+    assert minimum <= maximum, 'Spread min/max values should form ordered pair, got: {}/{}'.format(minimum, maximum)
+    return minimum + np.random.beta(a=alpha, b=beta, size=num_points) * (maximum - minimum)
+
+
 class BaseDataGenerator:
     """
     Base synthetic data provider class.
@@ -83,8 +103,11 @@ class BaseDataGenerator:
             generator_fn=base_random_generator_fn,
             generator_parameters_fn=base_generator_parameters_fn,
             generator_parameters_config=None,
+            spread_generator_fn=None,
+            spread_generator_parameters=None,
             name='BaseSyntheticDataGenerator',
             data_names=('default_asset',),
+            parsing_params=None,
             target_period=-1,
             global_time=None,
             task=0,
@@ -100,6 +123,8 @@ class BaseDataGenerator:
             generator_fn                    callabale, should return generated data as 1D np.array
             generator_parameters_fn:        callable, should return dictionary of generator_fn kwargs
             generator_parameters_config:    dict, generator_parameters_fn args
+            spread_generator_fn:            callable, should return values of spread to form {High, Low}
+            spread_generator_parameters:    dict, spread_generator_fn args
             timeframe:                      int, data periodicity in minutes
             name:                           str
             data_names:                     iterable of str
@@ -164,15 +189,34 @@ class BaseDataGenerator:
             self.episode_duration = episode_duration
 
         # Btfeed parsing setup:
-        self.timeframe = timeframe
-        self.names=['open']
-        self.datetime = 0
-        self.open = 1
-        self.high = -1
-        self.low = -1
-        self.close = -1
-        self.volume = -1
-        self.openinterest = -1
+        if parsing_params is None:
+            self.parsing_params = dict(
+                names=['ask', 'bid', 'mid'],
+                datetime=0,
+                timeframe=1,
+                open='mid',
+                high='ask',
+                low='bid',
+                close='mid',
+                volume=-1,
+                openinterest=-1
+            )
+        else:
+            self.parsing_params = parsing_params
+
+        self.columns_map = {
+            'open': 'mean',
+            'high': 'maximum',
+            'low': 'minimum',
+            'close': 'mean',
+            'bid': 'minimum',
+            'ask': 'maximum',
+            'mid': 'mean',
+        }
+        self.nested_params['parsing_params'] = self.parsing_params
+
+        for key, value in self.parsing_params.items():
+            setattr(self, key, value)
 
         # base data feed related:
         self.params = {}
@@ -206,6 +250,14 @@ class BaseDataGenerator:
 
         else:
             self.generator_parameters_config = {}
+
+        self.spread_generator_fn = spread_generator_fn
+
+        if spread_generator_parameters is not None:
+            self.spread_generator_parameters = spread_generator_parameters
+
+        else:
+            self.spread_generator_parameters = {}
 
     def set_logger(self, level=None, task=None):
         """
@@ -251,22 +303,36 @@ class BaseDataGenerator:
                 self.episode_num_records,
                 data_array.shape
             )
-        # NOT HERE:
-        # We need positive datapoints only due to backtrader limitation:
-        # negs = data_array[data_array < 0]
+        if self.spread_generator_fn is not None:
+            spread_array = self.spread_generator_fn(
+                num_points=self.episode_num_records,
+                **self.spread_generator_parameters
+            )
+            assert len(spread_array.shape) == 1 and spread_array.shape[0] == self.episode_num_records, \
+                'Expected generated spread to be 1D array of length {},  got data shape: {}'.format(
+                    self.episode_num_records,
+                    spread_array.shape
+                )
+        else:
+            spread_array = np.zeros(self.episode_num_records)
+
+        data_dict = {
+            'mean': data_array,
+            'maximum': data_array + .5 * spread_array,
+            'minimum': data_array - .5 * spread_array,
+        }
+
+        # negs = data_dict['minimum'] < 0
         # if negs.any():
-        #     self.log.warning('{} negative generated values has been set to zero'.format(negs.shape[0]))
-        #     data_array[data_array < 0] = 0.0
+        #     self.log.warning('{} negative generated values detected'.format(negs.shape[0]))
 
         # Make dataframe:
         if sample_type:
             index = self.test_index
         else:
             index = self.train_index
-
-        # data_dict = {name: data_array for name in self.names}
-        # data_dict['hh:mm:ss'] = index
-        df = pd.DataFrame(data={name: data_array for name in self.names}, index=index)
+        # Map dictionary of data to dataframe columns:
+        df = pd.DataFrame(data={name: data_dict[self.columns_map[name]] for name in self.names}, index=index)
         # df = df.set_index('hh:mm:ss')
         return df
 
