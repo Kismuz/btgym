@@ -18,8 +18,65 @@
 ###############################################################################
 
 import numpy as np
+from scipy.stats import norm
+from btgym.datafeed.synthetic.base import BaseCombinedDataSet, BasePairCombinedDataSet
 
-from btgym.datafeed.synthetic.base import BaseCombinedDataGenerator
+
+def weiner_process_fn(num_points, delta, x0=0, dt=1):
+    """
+    Generates Weiner process realisation trajectory.
+
+    Args:
+        num_points:     int, trajectory length;
+        delta:          float, speed parameter;
+        x0:             float, starting point;
+        dt:             int, time increment;
+
+    Returns:
+        generated data as 1D np.array
+    """
+    x0 = np.asarray(x0)
+    r = norm.rvs(size=x0.shape + (num_points,), scale=delta * (dt**.5))
+
+    return np.cumsum(r, axis=-1) + np.expand_dims(x0, axis=-1)
+
+
+def weiner_process_uniform_parameters_fn(delta, x0, dt=1):
+    """
+    Provides parameters for Weiner process.
+    If parameter is set as iterable of form [a, b] - uniformly randomly samples parameters value
+    form given interval.
+
+    Args:
+        delta:          float or iterable of 2 floats, speed parameter;
+        x0:             float or iterable of 2 floats, starting point;
+
+    Returns:
+
+    """
+    if type(delta) in [int, float, np.float64]:
+        delta = [delta, delta]
+    else:
+        delta = list(delta)
+
+    if type(x0) in [int, float, np.float64]:
+        x0 = [x0, x0]
+    else:
+        x0 = list(x0)
+
+    assert len(delta) == 2 and 0 <= delta[0] <= delta[-1], \
+        'Expected Weiner delta be non-negative float or ordered interval, got: {}'.format(delta)
+
+    assert len(x0) == 2 and 0 <= x0[0] <= x0[-1], \
+        'Expected Weiner starting x0 be non-negative float or ordered interval, got: {}'.format(x0)
+
+    delta_value = np.random.uniform(low=delta[0], high=delta[-1])
+    x0_value = np.random.uniform(low=x0[0], high=x0[-1])
+
+    return dict(
+        delta=delta_value,
+        x0=x0_value
+    )
 
 
 def ornshtein_uhlenbeck_process_fn(num_points, mu, l, sigma, x0=0, dt=1):
@@ -217,7 +274,7 @@ def ornshtein_uhlenbeck_log_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):
     )
 
 
-class UniformOUGenerator(BaseCombinedDataGenerator):
+class UniformOUGenerator(BaseCombinedDataSet):
     """
     Combined data iterator provides:
     - realisations of Ornstein-Uhlenbeck process as train data;
@@ -255,7 +312,7 @@ class UniformOUGenerator(BaseCombinedDataGenerator):
         )
 
 
-class LogUniformOUGenerator(BaseCombinedDataGenerator):
+class LogUniformOUGenerator(BaseCombinedDataSet):
     """
     Combined data iterator provides:
     - realisations of Ornstein-Uhlenbeck process as train data;
@@ -294,7 +351,7 @@ class LogUniformOUGenerator(BaseCombinedDataGenerator):
         )
 
 
-class OUGenerator(BaseCombinedDataGenerator):
+class OUGenerator(BaseCombinedDataSet):
     """
     Combined data iterator provides:
     - realisations of Ornstein-Uhlenbeck process as train data;
@@ -329,5 +386,52 @@ class OUGenerator(BaseCombinedDataGenerator):
         )
 
 
+class PairOUDataSet(BasePairCombinedDataSet):
+    """
+    Combined data iterator provides:
+    - two time-consistent synthetic data lines as train data composed as:
+        line2 = Weiner_tragectory + .5 * OU_tragectory
+        line2 = Weiner_tragectory - .5 * OU_tragectory
 
+    - two real historic time-consistent data lines as test data;
+    """
 
+    def __init__(
+            self,
+            assets_filenames,
+            ou_lambda,
+            ou_sigma,
+            weiner_delta,
+            x0,
+            name='PairedOuDataSet',
+            **kwargs
+    ):
+        """
+
+        Args:
+            assets_filenames:           (req.) dict of str, test data filenames (two files expected)
+            ou_mu:                      float or iterable of 2 floats, Ornstein-Uhlenbeck process mean value or interval
+            ou_lambda:                  float or iterable of 2 floats, OUp. mean-reverting rate or interval
+            ou_sigma:                   float or iterable of 2 floats, OUp. volatility value or interval
+            ou_x0:                      float or iterable of 2 floats, OUp. trajectory start value or interval
+            weiner_delta:               float or iterable of 2 floats, Weiner p. trajectory speed parameter or interval
+            train_episode_duration:     dict, duration of train episode in days/hours/mins
+            test_episode_duration:      dict, duration of test episode in days/hours/mins
+        """
+        process_1_config = dict(
+            generator_fn=weiner_process_fn,
+            generator_parameters_fn=weiner_process_uniform_parameters_fn,
+            generator_parameters_config={'delta': weiner_delta, 'x0': x0},
+        )
+        process_2_config = dict(
+            generator_fn=ornshtein_uhlenbeck_process_fn,
+            generator_parameters_fn=ornshtein_uhlenbeck_uniform_parameters_fn,
+            generator_parameters_config={'mu': 0, 'l': ou_lambda, 'sigma': ou_sigma, 'x0': 0},
+        )
+        super(PairOUDataSet, self).__init__(
+            assets_filenames=assets_filenames,
+            process1_config=process_1_config,
+            process2_config=process_2_config,
+            name=name,
+            **kwargs
+        )

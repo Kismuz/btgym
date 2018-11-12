@@ -27,13 +27,13 @@ import backtrader.feeds as btfeeds
 import numpy as np
 import pandas as pd
 
-from btgym.datafeed.derivative import BTgymDataTrial, BTgymEpisode
+from btgym.datafeed.derivative import BTgymDataTrial, BTgymEpisode, BTgymDataset2
 from btgym.datafeed.multi import BTgymMultiData
 
 
-def base_generator_fn(num_points=10, **kwargs):
+def base_random_generator_fn(num_points=10, **kwargs):
     """
-    Base generating function. Provides synthetic data points.
+    Base random uniform generating function. Provides synthetic data points.
 
     Args:
         num_points: trajectory length
@@ -45,10 +45,26 @@ def base_generator_fn(num_points=10, **kwargs):
     return np.random.random(num_points)
 
 
+def base_bias_generator_fn(num_points=10, bias=1, **kwargs):
+    """
+    Base bias generating function. Provides constant synthetic data points.
+
+    Args:
+        num_points: trajectory length
+        bias:       data point constant value >=0
+        kwargs:     any function parameters, not used here
+
+    Returns:
+        1d array of generated values; here: randoms in [0,1]
+    """
+    assert bias >= 0, 'Only positive bias allowed, got: {}'.format(bias)
+    return np.ones(num_points) * bias
+
+
 def base_generator_parameters_fn(**kwargs):
     """
     Base parameters generating function. Provides arguments for data generating function.
-    It itself accept arguments specified via `generator_parameters_config` dictionart;
+    It itself accept arguments specified via `generator_parameters_config` dictionary;
 
     Returns:
         dictionary of kwargs consistent with generating function used.
@@ -64,11 +80,12 @@ class BaseDataGenerator:
             self,
             episode_duration=None,
             timeframe=1,
-            generator_fn=base_generator_fn,
+            generator_fn=base_random_generator_fn,
             generator_parameters_fn=base_generator_parameters_fn,
             generator_parameters_config=None,
             name='BaseSyntheticDataGenerator',
             data_names=('default_asset',),
+            target_period=-1,
             global_time=None,
             task=0,
             log_level=WARNING,
@@ -86,6 +103,7 @@ class BaseDataGenerator:
             timeframe:                      int, data periodicity in minutes
             name:                           str
             data_names:                     iterable of str
+            target_period:                  int or dict, if set to -1 - disables `test` sampling
             global_time:                    dict {y, m, d} to set custom global time (only for plotting)
             task:                           int
             log_level:                      logbook.Logger level
@@ -97,6 +115,7 @@ class BaseDataGenerator:
         self.task = task
         self.name = name
         self.filename = self.name + '_sample'
+        self.target_period = target_period
 
         self.data_names = data_names
         self.data_name = self.data_names[0]
@@ -232,11 +251,12 @@ class BaseDataGenerator:
                 self.episode_num_records,
                 data_array.shape
             )
+        # NOT HERE:
         # We need positive datapoints only due to backtrader limitation:
-        negs = data_array[data_array < 0]
-        if negs.any():
-            self.log.warning('{} negative generated values has been set to zero'.format(negs.shape[0]))
-            data_array[data_array < 0] = 0.0
+        # negs = data_array[data_array < 0]
+        # if negs.any():
+        #     self.log.warning('{} negative generated values has been set to zero'.format(negs.shape[0]))
+        #     data_array[data_array < 0] = 0.0
 
         # Make dataframe:
         if sample_type:
@@ -267,16 +287,19 @@ class BaseDataGenerator:
             assert sample_type in [0, 1]
 
         except AssertionError:
-            self.log.exception(
-                'Sampling attempt: expected sample type be in {}, got: {}'.\
-                format([0, 1], sample_type)
-            )
-            raise AssertionError
+            msg = 'Sampling attempt: expected sample type be in {}, got: {}'.format([0, 1], sample_type)
+            self.log.error(msg)
+            raise ValueError(msg)
+
+        if self.target_period == -1 and sample_type:
+            msg = 'Attempt to sample type {} given disabled target_period'.format(sample_type)
+            self.log.error(msg)
+            raise ValueError(msg)
 
         if self.metadata['type'] is not None:
             if self.metadata['type'] != sample_type:
                 self.log.warning(
-                    'Attempted to sample type {} given current sample type {}, overriden.'.format(
+                    'Attempt to sample type {} given current sample type {}, overriden.'.format(
                         self.metadata['type'],
                         sample_type
                     )
@@ -437,19 +460,17 @@ class TruncatedTestTrial(BTgymDataTrial):
         return episode
 
 
-class BaseCombinedDataGenerator(BaseDataGenerator):
+class BaseCombinedDataSet:
     """
-    Data provider class with synthetic train and real test data.
+    Data provider class wrapper incorporates synthetic train and real test data streams.
     """
     def __init__(
             self,
-            filename=None,
-            parsing_params=None,
-            episode_duration_train=None,
-            episode_duration_test=None,
-            time_gap=None,
-            start_00=False,
-            name='CombinedDataGenerator',
+            train_data_config,
+            test_data_config,
+            train_class_ref=BaseDataGenerator,
+            test_class_ref=BTgymDataset2,
+            name='CombinedDataSet',
             **kwargs
     ):
         """
@@ -470,87 +491,68 @@ class BaseCombinedDataGenerator(BaseDataGenerator):
             global_time:                    dict {y, m, d} to set custom global time (here for plotting only)
             task:                           int
             log_level:                      logbook.Logger level
-            **kwargs:
+            **kwargs:                       common kwargs
 
         """
-        super(BaseCombinedDataGenerator, self).__init__(episode_duration=episode_duration_train, name=name, **kwargs)
-        self.nested_params_test = dict(
-            filename=filename,
-            parsing_params=parsing_params,
-            sampling_params=dict(
-                sample_duration=episode_duration_test,
-                time_gap=time_gap,
-                start_00=start_00,
-                test_period={'days': 0, 'hours': 0, 'minutes': 0},
-            ),
-        )
-        self.nested_params_test.update(self.nested_params)
-        self.nested_class_ref_test = TruncatedTestTrial
+        self.name = name
+        self.log = None
 
-    def __read_csv(self, data_filename=None, force_reload=False):
-        """
-        Populates instance by loading data: CSV file --> pandas dataframe.
+        try:
+            self.task = kwargs['task']
+        except KeyError:
+            self.task = None
 
-        Args:
-            data_filename: [opt] csv data filename as string or list of such strings.
-            force_reload:  ignore loaded data.
-        """
-        if self.filename is None and data_filename is None:
-            self.data = self.generate_data(self.generator_parameters_fn(**self.generator_parameters_config))
-            return
+        self.train_data_config = train_data_config
+        self.test_data_config = test_data_config
+        self.train_data_config.update(kwargs)
+        self.test_data_config.update(kwargs)
+        self.train_data_config['name'] = self.name + '/train'
+        self.test_data_config['name'] = self.name + '/test'
 
-        if self.data is not None and not force_reload:
-            data_range = pd.to_datetime(self.data.index)
-            self.total_num_records = self.data.shape[0]
-            self.data_range_delta = (data_range[-1] - data_range[0]).to_pytimedelta()
-            self.log.debug('data has been already loaded. Use `force_reload=True` to reload')
-            return
+        # Declare all test data come from target domain:
+        self.test_data_config['target_period'] = -1
+        self.test_data_config['test_period'] = -1
 
-        if data_filename:
-            self.filename = data_filename  # override data source if one is given
-        if type(self.filename) == str:
-            self.filename = [self.filename]
+        self.streams = {
+            'train': train_class_ref(**self.train_data_config),
+            'test': test_class_ref(**self.test_data_config),
+        }
 
-        dataframes = []
-        for filename in self.filename:
-            try:
-                assert filename and os.path.isfile(filename)
-                current_dataframe = pd.read_csv(
-                    filename,
-                    sep=self.sep,
-                    header=self.header,
-                    index_col=self.index_col,
-                    parse_dates=self.parse_dates,
-                    names=self.names
-                )
+        self.sample_instance = None
+        self.sample_num = 0
+        self.is_ready = False
 
-                # Check and remove duplicate datetime indexes:
-                duplicates = current_dataframe.index.duplicated(keep='first')
-                how_bad = duplicates.sum()
-                if how_bad > 0:
-                    current_dataframe = current_dataframe[~duplicates]
-                    self.log.warning('Found {} duplicated date_time records in <{}>.\
-                      Removed all but first occurrences.'.format(how_bad, filename))
+    def set_logger(self, **kwargs):
+        for stream in self.streams.values():
+            stream.set_logger(**kwargs)
+        self.log = self.streams['test'].log
 
-                dataframes += [current_dataframe]
-                self.log.info('Loaded {} records from <{}>.'.format(dataframes[-1].shape[0], filename))
+    def reset(self, **kwargs):
+        for stream in self.streams.values():
+            stream.reset(**kwargs)
+        self.task = self.streams['test'].task
+        self.sample_num = 0
+        self.is_ready = True
 
-            except:
-                msg = 'Data file <{}> not specified / not found.'.format(str(filename))
-                self.log.error(msg)
-                raise FileNotFoundError(msg)
+    def read_csv(self, **kwargs):
+        for stream in self.streams.values():
+            stream.read_csv(**kwargs)
 
-        self.data = pd.concat(dataframes)
-        data_range = pd.to_datetime(self.data.index)
-        self.total_num_records = self.data.shape[0]
-        self.data_range_delta = (data_range[-1] - data_range[0]).to_pytimedelta()
+    def describe(self, **kwargs):
+        return self.streams['test'].describe()
 
-    def sample(self, get_new=True, sample_type=0,  **kwargs):
+    def set_global_timestamp(self, **kwargs):
+        for stream in self.streams.values():
+            stream.set_global_timestamp(**kwargs)
+
+    def to_btfeed(self):
+        raise NotImplementedError
+
+    def sample(self, sample_type=0,  **kwargs):
         """
         Samples continuous subset of data.
 
         Args:
-            get_new (bool):                 not used;
             sample_type (int or bool):      0 (train) or 1 (test) - get sample from train or test data subsets
                                             respectively.
 
@@ -568,142 +570,170 @@ class BaseCombinedDataGenerator(BaseDataGenerator):
             )
             raise AssertionError
 
-        if self.metadata['type'] is not None:
-            if self.metadata['type'] != sample_type:
-                self.log.warning(
-                    'Attempted to sample type {} given current sample type {}, overridden.'.format(
-                        self.metadata['type'],
-                        sample_type
-                    )
-                )
-                sample_type = self.metadata['type']
         if sample_type:
-            # Got test, need natural-born data:
-            self.sample_instance = self.nested_class_ref_test(**self.nested_params_test)
-            assert self.sample_instance.filename is not None,\
-                'Can`t get test sample: test data filename has not been provided.'
-
-            self.log.info('New test sample id: <{}>.'.format(self.sample_instance.filename))
+            self.sample_instance = self.streams['test'].sample(sample_type=sample_type, **kwargs)
             self.sample_instance.metadata['generator'] = {}
 
         else:
-            self.sample_instance = self.sample_synthetic(sample_type)
+            self.sample_instance = self.streams['train'].sample(sample_type=sample_type, **kwargs)
 
         # Common metadata:
         self.sample_instance.metadata['type'] = sample_type
         self.sample_instance.metadata['sample_num'] = self.sample_num
-        self.sample_instance.metadata['parent_sample_num'] = self.metadata['sample_num']
-        self.sample_instance.metadata['parent_sample_type'] = self.metadata['type']
+        self.sample_instance.metadata['parent_sample_num'] = 0
+        self.sample_instance.metadata['parent_sample_type'] = None
         self.sample_num += 1
 
         return self.sample_instance
 
 
-class BaseTwoLinesCombinedDataGenerator(BTgymMultiData):
+class BasePairDataGenerator(BTgymMultiData):
     """
-    Provides two streams of simulated train spread data, real test data.
+    Generates pair of data streams driven by single 2-level generating process.
+    TODO: make data generating process single stand-along function or class method, do not use BaseDataGenerator's
     """
     def __init__(
             self,
-            assets_filenames=None,
-            data_names=None,
-            level_process_config=None,
-            spread_process_config=None,
-            name='2LinesCombinedDataGenerator',
+            data_names,
+            process1_config=None,  # bias generator
+            process2_config=None,  # spread generator
+            data_class_ref=BaseDataGenerator,
+            name='PairDataGenerator',
+            _top_level=True,
             **kwargs
     ):
-        if level_process_config is None:
-            self.level_process_config = {
-                'generator_fn': base_generator_fn,
+        assert len(list(data_names)) == 2, 'Expected `data_names` be pair of `str`, got: {}'.format(data_names)
+        if process1_config is None:
+            self.process1_config = {
+                'generator_fn': base_bias_generator_fn,
                 'generator_parameters_fn': base_generator_parameters_fn,
                 'generator_parameters_config': None,
             }
         else:
-            self.level_process_config = level_process_config
+            self.process1_config = process1_config
 
-        if spread_process_config is None:
-            self.spread_process_config = {
-                'generator_fn': base_generator_fn,
+        if process2_config is None:
+            self.process2_config = {
+                'generator_fn': base_random_generator_fn,
                 'generator_parameters_fn': base_generator_parameters_fn,
                 'generator_parameters_config': None,
             }
         else:
-            self.spread_process_config = spread_process_config
+            self.process2_config = process2_config
 
-        if assets_filenames is None:
-            try:
-                assert len(data_names) == 2
-            except (AssertionError, TypeError) as e:
-                raise ValueError('two `data_names` should be provided when `assets_filenames` not specified')
-            assets = data_names
-            data_config = {asset: {'filename': None} for asset in assets}
+        data_config = {name: {'filename': None, 'config': {}} for name in data_names}
 
-        else:
-            assert isinstance(assets_filenames, dict) and len(assets_filenames.keys()) == 2, \
-                'Expected `assets_filenames` be dict. containing 2 assets names as keys and filenames as values'
+        # Let first asset hold p1 generating process:
+        self.p1_asset = data_names[0]
+        data_config[self.p1_asset]['config'].update(self.process1_config)
 
-            assets = list(assets_filenames.keys())
-            data_config = {asset: {'filename': filename} for asset, filename in assets_filenames.items()}
+        # Second asset will hold p2 generating process:
+        self.p2_asset = data_names[-1]
+        data_config[self.p2_asset]['config'].update(self.process2_config)
 
-        self.level_asset = assets[0]
-        self.spread_asset = assets[-1]
+        self.nested_kwargs = kwargs
+        self.get_new_sample = not _top_level
 
-        # Let first asset hold level generating process:
-        data_config[self.level_asset].update(self.level_process_config)
-        # Second asset will hold spread generating process:
-        data_config[self.spread_asset].update(self.spread_process_config)
-
-        super(BaseTwoLinesCombinedDataGenerator, self).__init__(
-            data_class_ref=BaseCombinedDataGenerator,
+        super(BasePairDataGenerator, self).__init__(
             data_config=data_config,
-            assets=assets,
+            data_names=data_names,
+            data_class_ref=data_class_ref,
             name=name,
             **kwargs
         )
 
     def sample(self, sample_type=0, **kwargs):
-        if sample_type:
-            self._sample_train(sample_type=sample_type, **kwargs)
+        if self.get_new_sample:
+            # Get process1 trajectory:
+            p1_sample = self.data[self.p1_asset].sample(sample_type=sample_type, **kwargs)
+
+            # Get p2 trajectory:
+            p2_sample = self.data[self.p2_asset].sample(sample_type=sample_type, **kwargs)
+
+            idx_intersected = p1_sample.data.index.intersection(p2_sample.data.index)
+
+            self.log.info('p1/p2 shared num. records: {}'.format(len(idx_intersected)))
+            # TODO: move this generating process to stand-along function
+
+            # Combine processes:
+            data1 = p1_sample.data + 0.5 * p2_sample.data
+            data2 = p1_sample.data - 0.5 * p2_sample.data
+            metadata = copy.deepcopy(p2_sample.metadata)
+
         else:
-            self._sample_test(sample_type=sample_type, **kwargs)
+            data1 = None
+            data2 = None
+            metadata = {}
 
-    def _sample_test(self, **kwargs):
-
-        # Get sample to infer exact interval:
-        master_sample = self.master_data.sample(**kwargs)
-
-        self.log.debug('master_sample_data: {}'.format(master_sample.data))
-
-        # Prepare empty instance of multistream data:
-        sample = BaseTwoLinesCombinedDataGenerator(
-            level_process_config=self.level_process_config,
-            spread_process_config=self.spread_process_config,
-            data_names=self.data_names,
-            task=self.task,
-            log_level=self.log_level,
-            name='sub_' + self.name,
+        metadata.update(
+            {'type': sample_type, 'sample_num': self.sample_num, 'parent_sample_type': self.sample_num, 'parent_sample_num': sample_type}
         )
-        sample.metadata = copy.deepcopy(master_sample.metadata)
-
-        self.log.debug('sample.metadata: {}'.format(sample.metadata))
-        kwargs['interval'] = [sample.metadata['first_row'], sample.metadata['last_row']]
+        # Prepare empty instance of multi_stream data:
+        sample = BasePairDataGenerator(
+            data_names=self.data_names,
+            process1_config=self.process1_config,
+            process2_config=self.process2_config,
+            data_class_ref=self.data_class_ref,
+            # task=self.task,
+            # log_level=self.log_level,
+            name='sub_' + self.name,
+            _top_level=False,
+            **self.nested_kwargs
+        )
+        # TODO: maybe add p1 metadata
+        sample.metadata = copy.deepcopy(metadata)
 
         # Populate sample with data:
-        for key, stream in self.data.items():
-            sample.data[key] = stream.sample(force_interval=True, **kwargs)
+        sample.data[self.p1_asset].data = data1
+        sample.data[self.p2_asset].data = data2
 
-        self.filename = {key: stream.filename for key, stream in self.data.items()}
-
+        sample.filename = {key: stream.filename for key, stream in self.data.items()}
+        self.sample_num += 1
         return sample
 
-    def _sample_train(self, **kwargs):
-        # Get level trajectory:
-        level_sample = self.data[self.level_asset].sample(**kwargs)
 
-        # Get spread trajectory:
-        spread_sample = self.data[self.spread_asset].sample(**kwargs)
+class BasePairCombinedDataSet(BaseCombinedDataSet):
+    """
+    Provides doubled streams of simulated train / real test data.
+    Suited for pairs or spread trading setup.
+    """
+    def __init__(
+            self,
+            assets_filenames,
+            process1_config=None,
+            process2_config=None,
+            train_episode_duration=None,
+            test_episode_duration=None,
+            name='PairCombinedDataSet',
+            **kwargs
+    ):
+        assert isinstance(assets_filenames, dict),\
+            'Expected `assets_filenames` type `dict`, got {} '.format(type(assets_filenames))
 
-        # Combine and populate
+        data_names = [name for name in assets_filenames.keys()]
+        assert len(data_names) == 2, 'Expected exactly two assets, got: {}'.format(data_names)
 
-        pass
+        train_data_config = dict(
+            data_names=data_names,
+            process1_config=process1_config,
+            process2_config=process2_config,
+            data_class_ref=BaseDataGenerator,
+            episode_duration=train_episode_duration,
+            # name=name,
+        )
+        test_data_config = dict(
+            data_class_ref=BTgymDataset2,
+            data_config={asset_name: {'filename': file_name} for asset_name, file_name in assets_filenames.items()},
+            episode_duration=test_episode_duration,
+            # name=name,
+        )
+
+        super(BasePairCombinedDataSet, self).__init__(
+            train_data_config=train_data_config,
+            test_data_config=test_data_config,
+            train_class_ref=BasePairDataGenerator,
+            test_class_ref=BTgymMultiData,
+            name=name,
+            **kwargs
+        )
 

@@ -342,50 +342,67 @@ class BTgymBaseData:
         # Maximum data time gap allowed within sample as pydatetimedelta obj:
         self.max_time_gap = datetime.timedelta(**self.time_gap)
 
+        # Max. gap number of records:
+        self.max_gap_num_records = int(self.max_time_gap.total_seconds() / (60 * self.timeframe))
+
         # ... maximum episode time duration:
         self.max_sample_len_delta = datetime.timedelta(**self.sample_duration)
 
         # Maximum possible number of data records (rows) within episode:
         self.sample_num_records = int(self.max_sample_len_delta.total_seconds() / (60 * self.timeframe))
 
-        # Train/test timedeltas:
-        self.test_range_delta = datetime.timedelta(**self.test_period)
-        self.train_range_delta = datetime.timedelta(**self.sample_duration) - datetime.timedelta(**self.test_period)
-
-        self.test_num_records = round(self.test_range_delta.total_seconds() / (60 * self.timeframe))
-        self.train_num_records = self.data.shape[0] - self.test_num_records
-
-        # self.backshift_delta = datetime.timedelta(**self._test_period_backshift)
         self.backshift_num_records = round(self._test_period_backshift_delta.total_seconds() / (60 * self.timeframe))
 
-        break_point = self.train_num_records
+        # Train/test timedeltas:
+        if self.train_period is None or self.test_period == -1:
+            # No train data assumed, test only:
+            self.train_num_records = 0
+            self.test_num_records = self.data.shape[0] - self.backshift_num_records
+            break_point = self.backshift_num_records
+            self.train_interval = [0, 0]
+            self.test_interval = [self.backshift_num_records, self.data.shape[0]]
 
-        try:
-            assert self.train_num_records >= self.sample_num_records
+        else:
+            # Train and maybe test data assumed:
+            if self.test_period is not None:
+                self.test_range_delta = datetime.timedelta(**self.test_period)
+                self.test_num_records = round(self.test_range_delta.total_seconds() / (60 * self.timeframe))
+                self.train_num_records = self.data.shape[0] - self.test_num_records
+                break_point = self.train_num_records
+                self.train_interval = [0, break_point]
+                self.test_interval = [break_point - self.backshift_num_records, self.data.shape[0]]
+            else:
+                self.test_num_records = 0
+                self.train_num_records = self.data.shape[0]
+                break_point = self.train_num_records
+                self.train_interval = [0, break_point]
+                self.test_interval = [0, 0]
 
-        except AssertionError:
-            self.log.exception(
-                'Train subset should contain at least one sample, got: train_set size: {} rows, sample_size: {} rows'.
-                format(self.train_num_records, self.sample_num_records)
-            )
-            raise AssertionError
-
-        if self.test_num_records > 0:
+        if self.train_num_records > 0:
             try:
-                assert self.test_num_records >= self.sample_num_records
+                assert self.train_num_records + self.max_gap_num_records >= self.sample_num_records
 
             except AssertionError:
                 self.log.exception(
-                    'Test subset should contain at least one sample, got: test_set size: {} rows, sample_size: {} rows'.
-                    format(self.test_num_records, self.sample_num_records)
+                    'Train subset should contain at least one sample, ' +
+                    'got: train_set size: {} rows, sample_size: {} rows, tolerance: {} rows'.
+                    format(self.train_num_records, self.sample_num_records, self.max_gap_num_records)
                 )
                 raise AssertionError
 
-        self.train_interval = [0, break_point]
-        self.test_interval = [break_point - self.backshift_num_records, self.data.shape[0]]
+        if self.test_num_records > 0:
+            try:
+                assert self.test_num_records + self.max_gap_num_records >= self.sample_num_records
+
+            except AssertionError:
+                self.log.exception(
+                    'Test subset should contain at least one sample, ' +
+                    'got: test_set size: {} rows, sample_size: {} rows, tolerance: {} rows'.
+                    format(self.test_num_records, self.sample_num_records, self.max_gap_num_records)
+                )
+                raise AssertionError
 
         self.sample_num = 0
-
         self.is_ready = True
 
     def read_csv(self, data_filename=None, force_reload=False):
@@ -432,7 +449,7 @@ class BTgymBaseData:
                 self.log.info('Loaded {} records from <{}>.'.format(dataframes[-1].shape[0], filename))
 
             except:
-                msg = 'Data file <{}> not specified / not found.'.format(str(filename))
+                msg = 'Data file <{}> not specified / not found / parser error.'.format(str(filename))
                 self.log.error(msg)
                 raise FileNotFoundError(msg)
 
@@ -508,16 +525,27 @@ class BTgymBaseData:
     def sample(self, **kwargs):
         return self._sample(**kwargs)
 
-    def _sample(self, get_new=True, sample_type=0, b_alpha=1.0, b_beta=1.0, **kwargs):
+    def _sample(
+            self,
+            get_new=True,
+            sample_type=0,
+            b_alpha=1.0,
+            b_beta=1.0,
+            force_interval=False,
+            interval=None,
+            **kwargs
+    ):
         """
         Samples continuous subset of data.
 
         Args:
-            get_new (bool):                 sample new (True) or reuse (False) last made sample;
-            sample_type (int or bool):      0 (train) or 1 (test) - get sample from train or test data subsets
-                                            respectively.
-            b_alpha (float):                beta-distribution sampling alpha > 0, valid for train episodes.
-            b_beta (float):                 beta-distribution sampling beta > 0, valid for train episodes.
+            get_new (bool):                     sample new (True) or reuse (False) last made sample;
+            sample_type (int or bool):          0 (train) or 1 (test) - get sample from train or test data subsets
+                                                respectively.
+            b_alpha (float):                    beta-distribution sampling alpha > 0, valid for train episodes.
+            b_beta (float):                     beta-distribution sampling beta > 0, valid for train episodes.
+            force_interval(bool):               use exact sampling interval (should be given)
+            interval(iterable of int, len2):    exact interval to sample from when force_interval=True
 
         Returns:
         if no sample_class_ref param been set:
@@ -538,26 +566,38 @@ class BTgymBaseData:
             assert self.is_ready
 
         except AssertionError:
-            self.log.exception(
-                'Sampling attempt: data not ready. Hint: forgot to call data.reset()?'
-            )
-            raise AssertionError
+            msg = 'sampling attempt: data not ready. Hint: forgot to call data.reset()?'
+            self.log.error(msg)
+            raise RuntimeError(msg)
 
         try:
             assert sample_type in [0, 1]
 
         except AssertionError:
-            self.log.exception(
-                'Sampling attempt: expected sample type be in {}, got: {}'.\
-                format([0, 1], sample_type)
-            )
-            raise AssertionError
+            msg = 'sampling attempt: expected sample type be in {}, got: {}'.format([0, 1], sample_type)
+            self.log.error(msg)
+            raise ValueError(msg)
+
+        if force_interval:
+            try:
+                assert interval is not None and len(list(interval)) == 2
+
+            except AssertionError:
+                msg = 'sampling attempt: got force_interval=True, expected interval=[a,b], got: <{}>'.format(interval)
+                self.log.error(msg)
+                raise ValueError(msg)
 
         if self.sample_instance is None or get_new:
             if sample_type == 0:
                 # Get beta_distributed sample in train interval:
+                if force_interval:
+                    sample_interval = interval
+                else:
+                    sample_interval = self.train_interval
+
                 self.sample_instance = self._sample_interval(
-                    self.train_interval,
+                    sample_interval,
+                    force_interval=force_interval,
                     b_alpha=b_alpha,
                     b_beta=b_beta,
                     name='train_' + self.sample_name,
@@ -566,8 +606,14 @@ class BTgymBaseData:
 
             else:
                 # Get uniform sample in test interval:
+                if force_interval:
+                    sample_interval = interval
+                else:
+                    sample_interval = self.test_interval
+
                 self.sample_instance = self._sample_interval(
-                    self.test_interval,
+                    sample_interval,
+                    force_interval=force_interval,
                     b_alpha=1,
                     b_beta=1,
                     name='test_' + self.sample_name,
@@ -661,10 +707,10 @@ class BTgymBaseData:
             sampled_data = self.data[first_row: last_row]
             sample_len = (sampled_data.index[-1] - sampled_data.index[0]).to_pytimedelta()
             self.log.debug('Actual sample duration: {}.'.format(sample_len, ))
-            self.log.debug('Total sample time gap: {}.'.format(sample_len - self.max_sample_len_delta))
+            self.log.debug('Total sample time gap: {}.'.format(self.max_sample_len_delta - sample_len))
 
             # Perform data gap check:
-            if sample_len - self.max_sample_len_delta < self.max_time_gap:
+            if self.max_sample_len_delta - sample_len < self.max_time_gap:
                 self.log.debug('Sample accepted.')
                 # If sample OK - compose and return sample:
                 new_instance = self.nested_class_ref(**self.nested_params)
@@ -757,10 +803,14 @@ class BTgymBaseData:
             )
             raise AssertionError
 
-        sample_num_records = self.sample_num_records
+        if interval[-1] - interval[0] + self.max_gap_num_records > self.sample_num_records:
+            sample_num_records = self.sample_num_records
+        else:
+            sample_num_records = interval[-1] - interval[0]
+
         self.log.debug('Sample interval: {}'.format(interval))
         self.log.debug('Maximum sample time duration set to: {}.'.format(self.max_sample_len_delta))
-        self.log.debug('Respective number of steps: {}.'.format(sample_num_records))
+        self.log.debug('Sample number of steps (adjusted to interval): {}.'.format(sample_num_records))
         self.log.debug('Maximum allowed data time gap set to: {}.\n'.format(self.max_time_gap))
 
         sampled_data = None
@@ -783,7 +833,7 @@ class BTgymBaseData:
             sample_first_day = self.data[first_row:first_row + 1].index[0]
             self.log.debug(
                 'Sample start row: {}, day: {}, weekday: {}.'.
-                    format(first_row, sample_first_day, sample_first_day.weekday())
+                format(first_row, sample_first_day, sample_first_day.weekday())
             )
 
             # Keep sampling until good day:
@@ -797,7 +847,7 @@ class BTgymBaseData:
                 sample_first_day = self.data[first_row:first_row + 1].index[0]
                 self.log.debug(
                     'Sample start row: {}, day: {}, weekday: {}.'.
-                        format(first_row, sample_first_day, sample_first_day.weekday())
+                    format(first_row, sample_first_day, sample_first_day.weekday())
                 )
                 attempts += 1
 
@@ -834,13 +884,12 @@ class BTgymBaseData:
                     sampled_data.shape
                 )
             )
-
             sample_len = (sampled_data.index[-1] - sampled_data.index[0]).to_pytimedelta()
             self.log.debug('Actual sample duration: {}.'.format(sample_len))
-            self.log.debug('Total sample time gap: {}.'.format(sample_len - self.max_sample_len_delta))
+            self.log.debug('Total sample time gap: {}.'.format(self.max_sample_len_delta - sample_len))
 
             # Perform data gap check:
-            if sample_len - self.max_sample_len_delta < self.max_time_gap:
+            if self.max_sample_len_delta - sample_len < self.max_time_gap:
                 self.log.debug('Sample accepted.')
                 # If sample OK - return new dataset:
                 new_instance = self.nested_class_ref(**self.nested_params)
@@ -854,7 +903,7 @@ class BTgymBaseData:
                 return new_instance
 
             else:
-                self.log.debug('Attempt {}: duration too big, resampling, ...\n'.format(attempts))
+                self.log.debug('Attempt {}: gap is too big, resampling, ...\n'.format(attempts))
                 attempts += 1
 
         # Got here -> sanity check failed:
