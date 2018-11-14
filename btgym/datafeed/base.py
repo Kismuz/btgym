@@ -26,6 +26,7 @@ import copy
 import os
 import sys
 
+from backtrader import TimeFrame
 import backtrader.feeds as btfeeds
 import pandas as pd
 
@@ -484,11 +485,16 @@ class BTgymBaseData:
         Returns:
              dict of type: {data_line_name: bt.datafeed instance}.
         """
+        def bt_timeframe(minutes):
+            timeframe = TimeFrame.Minutes
+            if minutes / 1440 == 1:
+                timeframe = TimeFrame.Days
+            return timeframe
         try:
             assert not self.data.empty
             btfeed = btfeeds.PandasDirectData(
                 dataname=self.data,
-                timeframe=self.timeframe,
+                timeframe=bt_timeframe(self.timeframe),
                 datetime=self.datetime,
                 open=self.open,
                 high=self.high,
