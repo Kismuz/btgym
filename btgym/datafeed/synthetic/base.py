@@ -27,7 +27,7 @@ import backtrader.feeds as btfeeds
 import numpy as np
 import pandas as pd
 
-from btgym.datafeed.derivative import BTgymDataTrial, BTgymEpisode, BTgymDataset2
+from btgym.datafeed.derivative import BTgymDataset2
 from btgym.datafeed.multi import BTgymMultiData
 
 
@@ -70,6 +70,33 @@ def base_generator_parameters_fn(**kwargs):
         dictionary of kwargs consistent with generating function used.
     """
     return dict()
+
+
+def base_random_uniform_parameters_fn(**kwargs):
+    """
+    Provides samples for kwargs given.
+    If parameter is set as float - returns exactly given value;
+    if parameter is set as iterable of form [a, b] - uniformly randomly samples parameters value
+    form given interval.
+
+    Args:
+        **kwargs: any kwarg specifying float or iterable of two ordered floats
+
+    Returns:
+        dictionary of kwargs holding sampled values
+    """
+    samples = {}
+    for key, value in kwargs.items():
+        if type(value) in [int, float, np.float64]:
+            interval = [value, value]
+        else:
+            interval = list(value)
+
+        assert len(interval) == 2 and interval[0] <= interval[-1], \
+            'Expected parameter <{}> be float or ordered interval, got: {}'.format(key, value)
+
+        samples[key] = np.random.uniform(low=interval[0], high=interval[-1])
+    return samples
 
 
 def base_spread_generator_fn(num_points=10, alpha=1, beta=1, minimum=0, maximum=0):
@@ -366,8 +393,8 @@ class BaseDataGenerator:
             if self.metadata['type'] != sample_type:
                 self.log.warning(
                     'Attempt to sample type {} given current sample type {}, overriden.'.format(
-                        self.metadata['type'],
-                        sample_type
+                        sample_type,
+                        self.metadata['type']
                     )
                 )
                 sample_type = self.metadata['type']
@@ -479,53 +506,6 @@ class BaseDataGenerator:
         pass
 
 
-class TruncatedTestTrial(BTgymDataTrial):
-    """
-    Utility Trial class without test period: always samples from train,
-    sampled episode inherits tarin/test metadata of parent trail.
-    """
-    def __init__(
-            self,
-            filename=None,
-            parsing_params=None,
-            sampling_params=None,
-            name=None,
-            data_names=('default_asset',),
-            frozen_time_split=None,
-            task=0,
-            log_level=WARNING,
-            _config_stack=None,
-            **kwargs
-    ):
-        nested_config = dict(
-            class_ref=BTgymEpisode,
-            kwargs=dict(
-                parsing_params=parsing_params,
-                sampling_params=sampling_params,
-                name=name,
-                task=task,
-                log_level=log_level,
-                _config_stack=None,
-            )
-        )
-        super(TruncatedTestTrial, self).__init__(
-            filename=filename,
-            parsing_params=parsing_params,
-            sampling_params=sampling_params,
-            name=name,
-            data_names=data_names,
-            frozen_time_split=frozen_time_split,
-            task=task,
-            log_level=log_level,
-            _config_stack=[nested_config],
-        )
-
-    def sample(self, sample_type=0, **kwargs):
-        episode = self._sample(sample_type=0, **kwargs)
-        episode.metadata['type'] = sample_type
-        return episode
-
-
 class BaseCombinedDataSet:
     """
     Data provider class wrapper incorporates synthetic train and real test data streams.
@@ -588,28 +568,77 @@ class BaseCombinedDataSet:
         self.sample_num = 0
         self.is_ready = False
 
-    def set_logger(self, **kwargs):
+        # Legacy parameters, left here for BTgym API_shell:
+        try:
+            self.parsing_params = kwargs['parsing_params']
+
+        except KeyError:
+            self.parsing_params = dict(
+                sep=',',
+                header=0,
+                index_col=0,
+                parse_dates=True,
+                names=['ask', 'bid', 'mid'],
+                dataname=None,
+                datetime=0,
+                nullvalue=0.0,
+                timeframe=1,
+                high=1,  # 'ask',
+                low=2,  # 'bid',
+                open=3,  # 'mid',
+                close=3,  # 'mid',
+                volume=-1,
+                openinterest=-1,
+            )
+
+        try:
+            self.sampling_params = kwargs['sampling_params']
+
+        except KeyError:
+            self.sampling_params = {}
+
+        self.params = {}
+        self.params.update(self.parsing_params)
+        self.params.update(self.sampling_params)
+
+        self.set_params(self.params)
+        self.data_names = self.streams['test'].data_names
+        self.global_timestamp = 0
+
+    def set_params(self, params_dict):
+        """
+        Batch attribute setter.
+
+        Args:
+            params_dict: dictionary of parameters to be set as instance attributes.
+        """
+        for key, value in params_dict.items():
+            setattr(self, key, value)
+
+    def set_logger(self, *args, **kwargs):
         for stream in self.streams.values():
-            stream.set_logger(**kwargs)
+            stream.set_logger(*args, **kwargs)
         self.log = self.streams['test'].log
 
-    def reset(self, **kwargs):
+    def reset(self, *args, **kwargs):
         for stream in self.streams.values():
-            stream.reset(**kwargs)
+            stream.reset(*args, **kwargs)
         self.task = self.streams['test'].task
+        self.global_timestamp = self.streams['test'].global_timestamp
         self.sample_num = 0
         self.is_ready = True
 
-    def read_csv(self, **kwargs):
+    def read_csv(self, *args, **kwargs):
         for stream in self.streams.values():
-            stream.read_csv(**kwargs)
+            stream.read_csv(*args, **kwargs)
 
-    def describe(self, **kwargs):
+    def describe(self,*args, **kwargs):
         return self.streams['test'].describe()
 
-    def set_global_timestamp(self, **kwargs):
+    def set_global_timestamp(self, *args, **kwargs):
         for stream in self.streams.values():
-            stream.set_global_timestamp(**kwargs)
+            stream.set_global_timestamp(*args, **kwargs)
+        self.global_timestamp = self.streams['test'].global_timestamp
 
     def to_btfeed(self):
         raise NotImplementedError
@@ -690,12 +719,12 @@ class BasePairDataGenerator(BTgymMultiData):
         data_config = {name: {'filename': None, 'config': {}} for name in data_names}
 
         # Let first asset hold p1 generating process:
-        self.p1_asset = data_names[0]
-        data_config[self.p1_asset]['config'].update(self.process1_config)
+        self.a1_name = data_names[0]
+        data_config[self.a1_name]['config'].update(self.process1_config)
 
         # Second asset will hold p2 generating process:
-        self.p2_asset = data_names[-1]
-        data_config[self.p2_asset]['config'].update(self.process2_config)
+        self.a2_name = data_names[-1]
+        data_config[self.a2_name]['config'].update(self.process2_config)
 
         self.nested_kwargs = kwargs
         self.get_new_sample = not _top_level
@@ -711,10 +740,10 @@ class BasePairDataGenerator(BTgymMultiData):
     def sample(self, sample_type=0, **kwargs):
         if self.get_new_sample:
             # Get process1 trajectory:
-            p1_sample = self.data[self.p1_asset].sample(sample_type=sample_type, **kwargs)
+            p1_sample = self.data[self.a1_name].sample(sample_type=sample_type, **kwargs)
 
             # Get p2 trajectory:
-            p2_sample = self.data[self.p2_asset].sample(sample_type=sample_type, **kwargs)
+            p2_sample = self.data[self.a2_name].sample(sample_type=sample_type, **kwargs)
 
             idx_intersected = p1_sample.data.index.intersection(p2_sample.data.index)
 
@@ -750,8 +779,8 @@ class BasePairDataGenerator(BTgymMultiData):
         sample.metadata = copy.deepcopy(metadata)
 
         # Populate sample with data:
-        sample.data[self.p1_asset].data = data1
-        sample.data[self.p2_asset].data = data2
+        sample.data[self.a1_name].data = data1
+        sample.data[self.a2_name].data = data2
 
         sample.filename = {key: stream.filename for key, stream in self.data.items()}
         self.sample_num += 1
@@ -770,6 +799,8 @@ class BasePairCombinedDataSet(BaseCombinedDataSet):
             process2_config=None,
             train_episode_duration=None,
             test_episode_duration=None,
+            train_class_ref=BasePairDataGenerator,
+            test_class_ref=BTgymMultiData,
             name='PairCombinedDataSet',
             **kwargs
     ):
@@ -797,8 +828,8 @@ class BasePairCombinedDataSet(BaseCombinedDataSet):
         super(BasePairCombinedDataSet, self).__init__(
             train_data_config=train_data_config,
             test_data_config=test_data_config,
-            train_class_ref=BasePairDataGenerator,
-            test_class_ref=BTgymMultiData,
+            train_class_ref=train_class_ref,
+            test_class_ref=test_class_ref,
             name=name,
             **kwargs
         )

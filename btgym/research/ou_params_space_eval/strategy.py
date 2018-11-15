@@ -15,16 +15,18 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
     Expects spread as single generated data stream.
     """
     # Time embedding period:
-    time_dim = 4  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
+    time_dim = 128  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
 
     # Number of timesteps reward estimation statistics are averaged over, should be:
     # skip_frame_period <= avg_period <= time_embedding_period:
     avg_period = 30
 
     # Possible agent actions;  Note: place 'hold' first! :
-    portfolio_actions = ('hold', 'buy', 'sell', 'close')
+    #portfolio_actions = ('hold', 'buy', 'sell', 'close')
 
-    features_parameters = (1, 4, 16, 64, 256, 512)
+    portfolio_actions = ('close', 'buy', 'sell', )
+
+    features_parameters = (1, 4, 16, 64, 256, 1024)
     num_features = len(features_parameters)
 
     params = dict(
@@ -70,6 +72,7 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
                         high=np.finfo(np.float64).max,
                         dtype=np.float64
                     ),
+                    # TODO: make generator parameters names standard
                     'generator': DictSpace(
                         {
                             'mu': spaces.Box(
@@ -136,17 +139,23 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
         self.state['metadata'] = self.metadata
 
         # Combined dataset related, infer OU generator params:
+        generator_keys = self.p.state_shape['metadata'].spaces['generator'].spaces.keys()
         if 'generator' not in self.p.metadata.keys() or self.p.metadata['generator'] == {}:
-            self.metadata['generator'] = {
-                'mu': np.asarray(0),
-                'sigma': np.asarray(0),
-                'l': np.asarray(0),
-                'x0': np.asarray(0),
-            }
+            self.metadata['generator'] = {key: np.asarray(0) for key in generator_keys}
 
         else:
-            self.metadata['generator'] = self.p.metadata['generator']
-            # Make scalars arrays to comply gym.spaces.Box specs:
+            # self.metadata['generator'] = {key: self.p.metadata['generator'][key] for key in generator_keys}
+
+            # TODO: clean up this mess, refine names:
+
+            self.metadata['generator'] = {
+                'l': self.p.metadata['generator']['ou_lambda'],
+                'mu': self.p.metadata['generator']['ou_mu'],
+                'sigma': self.p.metadata['generator']['ou_sigma'],
+                'x0': 0,
+            }
+
+            # Make scalars np arrays to comply gym.spaces.Box specs:
             for k, v in self.metadata['generator'].items():
                 self.metadata['generator'][k] = np.asarray(v)
 
@@ -173,7 +182,7 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
             ],
             axis=-1
         )
-        scale = np.clip(1 / (self.data.std[0]), 1e-10, None)
+        scale = 1 / np.clip(self.data.std[0], 1e-10, None)
         x_sma *= scale  # <-- more or less ok
 
         # Gradient along features axis:
@@ -210,4 +219,109 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
         """
         return np.zeros(len(self.p.portfolio_actions))
 
+
+class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
+    """
+    Expects pair of data streams. Forms spread as trading asset.
+    """
+    def __init__(self, **kwargs):
+        super(PairSpreadStrategy_0, self).__init__(**kwargs)
+
+        assert len(self.p.asset_names) == 1, 'Only one derivative spread asset is supported'
+        if isinstance(self.p.asset_names, str):
+            self.p.asset_names = [self.p.asset_names]
+        self.action_key = list(self.p.asset_names)[0]
+
+        self.last_action = None
+
+        assert len(self.getdatanames()) == 2, \
+            'Expected exactly two input datalines but {} where given'.format(self.getdatanames())
+
+    def set_datalines(self):
+
+        self.data.spread = btind.SimpleMovingAverage(self.datas[0] - self.datas[1], period=1)
+        self.data.spread.plotinfo.subplot = True
+        self.data.spread.plotinfo.plotabove = True
+        self.data.spread.plotinfo.plotname = list(self.p.asset_names)[0]
+
+        self.data.std = btind.StdDev(self.data.spread, period=self.p.time_dim, safepow=True)
+        self.data.std.plotinfo.plot = False
+
+        self.data.features = [
+            btind.SimpleMovingAverage(self.data.spread, period=period) for period in self.p.features_parameters
+        ]
+        initial_time_period = np.asarray(self.p.features_parameters).max() + self.p.time_dim
+        self.data.dim_sma = btind.SimpleMovingAverage(
+            self.datas[0],
+            period=initial_time_period
+        )
+        self.data.dim_sma.plotinfo.plot = False
+
+    def buy_spread(self):
+        """
+        Opens long spread `virtual position`,
+        sized 2x minimum single stake_size
+        """
+        name1 = self.datas[0]._name
+        name2 = self.datas[1]._name
+        self.order = self.buy(data=name1, size=self.p.order_size[name1])
+        self.order = self.sell(data=name2, size=self.p.order_size[name2])
+
+    def sell_spread(self):
+        name1 = self.datas[0]._name
+        name2 = self.datas[1]._name
+        self.order = self.sell(data=name1, size=self.p.order_size[name1])
+        self.order = self.buy(data=name2, size=self.p.order_size[name2])
+
+    def close_spread(self):
+        self.order = self.close(data=self.datas[0]._name)
+        self.order = self.close(data=self.datas[1]._name)
+
+    def ____next_discrete(self, action):
+        """
+        Manages spread virtual positions.
+
+        Args:
+            action:     dict, string encoding of btgym.spaces.ActionDictSpace
+
+        """
+        # Here we expect action dict to contain single key:
+        single_action = action[self.action_key]
+
+        if single_action == 'hold' or self.is_done_enabled:
+            pass
+        elif single_action == 'buy':
+            self.buy_spread()
+            self.broker_message = 'new {}_BUY created; '.format(self.action_key) + self.broker_message
+        elif single_action == 'sell':
+            self.sell_spread()
+            self.broker_message = 'new {}_SELL created; '.format(self.action_key) + self.broker_message
+        elif single_action == 'close':
+            self.close_spread()
+            self.broker_message = 'new {}_CLOSE created; '.format(self.action_key) + self.broker_message
+
+    def _next_discrete(self, action):
+        """
+        Manages spread virtual positions.
+
+        Args:
+            action:     dict, string encoding of btgym.spaces.ActionDictSpace
+
+        """
+        # Here we expect action dict to contain single key:
+        single_action = action[self.action_key]
+
+        if single_action == self.last_action or self.is_done_enabled:
+            pass
+        elif single_action == 'buy':
+            self.buy_spread()
+            self.broker_message = '{}_LONG created; '.format(self.action_key) + self.broker_message
+        elif single_action == 'sell':
+            self.sell_spread()
+            self.broker_message = 'new {}_SHORT created; '.format(self.action_key) + self.broker_message
+        elif single_action == 'close':
+            self.close_spread()
+            self.broker_message = 'new {}_CLOSE created; '.format(self.action_key) + self.broker_message
+
+        self.last_action = single_action
 

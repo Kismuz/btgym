@@ -251,8 +251,11 @@ class BaseStrategy5(bt.Strategy):
             self.p.order_size = {name: env_sizer_params['stake'] for name in self.p.asset_names}
 
         elif isinstance(self.p.order_size, int) or isinstance(self.p.order_size, float):
-            unimodal_stake = {name: self.p.order_size for name in self.p.asset_names}
+            unimodal_stake = {name: self.p.order_size for name in self.getdatanames()}
             self.p.order_size = unimodal_stake
+
+        # self.log.warning('asset names: {}'.format(self.p.asset_names))
+        # self.log.warning('data names: {}'.format(self.getdatanames()))
 
         self.trade_just_closed = False
         self.trade_result = 0
@@ -305,7 +308,6 @@ class BaseStrategy5(bt.Strategy):
             'value',
             'exposure',
             'drawdown',
-            'pos_direction',
             'pos_duration',
             'realized_pnl',
             'unrealized_pnl',
@@ -368,7 +370,7 @@ class BaseStrategy5(bt.Strategy):
             # Use discrete handling method otherwise:
             self.env.broker.set_checksubmit(True)
             self.next_process_fn = self._next_discrete
-
+            # self.log.warning('DISCRETE')
             # Do not repeat action for discrete:
             self.num_action_repeats = 0
 
@@ -408,10 +410,13 @@ class BaseStrategy5(bt.Strategy):
             # and store trade result:
             self.trade_just_closed = True
             # Note: `trade_just_closed` flag has to be reset manually after evaluating.
-            self.trade_result = trade.pnlcomm
+            self.trade_result += trade.pnlcomm
 
             # Store realized prtfolio value:
             self.realized_broker_value = self.broker.get_value()
+            # self.log.warning('notify_trade: trade_pnl: {}, cum_trade_result: {}, realized_value: {}'.format(
+            #     trade.pnlcomm, self.trade_result, self.realized_broker_value)
+            # )
 
     def update_broker_stat(self):
         """
@@ -423,13 +428,25 @@ class BaseStrategy5(bt.Strategy):
             - normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)
             - normalized profit/loss for current opened trade (unrealized p/l);
         """
+        # Current account value:
         current_value = self.env.broker.get_value()
 
+        # Individual positions for each instrument traded:
+        positions = [self.env.broker.getposition(data) for data in self.datas]
+        exposure = sum([abs(pos.size) for pos in positions])
+
         for key, method in self.collection_get_broker_stat_methods.items():
-            self.broker_stat[key].append(method(current_value=current_value))
+            self.broker_stat[key].append(
+                method(
+                    current_value=current_value,
+                    positions=positions,
+                    exposure=exposure,
+                )
+            )
 
         # Reset one-time flags:
         self.trade_just_closed = False
+        self.trade_result = 0
 
     def get_broker_value(self, current_value, **kwargs):
         """
@@ -460,28 +477,13 @@ class BaseStrategy5(bt.Strategy):
             self.p.target_call,
         )
 
-    def get_broker_exposure(self, **kwargs):
+    def get_broker_exposure(self, exposure, **kwargs):
         """
 
         Returns:
             normalized exposure (position size)
         """
-        return self.position.size / (self.env.broker.startingcash * self.env.broker.get_leverage() + 1e-2)
-
-    def get_broker_pos_direction(self, **kwargs):
-        """
-
-        Returns:
-            short/long/out position indicator
-        """
-        if self.position.size > 0:
-            return 1.0
-
-        elif self.position.size < 0:
-            return - 1.0
-
-        else:
-            return 0.0
+        return exposure / (self.env.broker.startingcash * self.env.broker.get_leverage() + 1e-2)
 
     def get_broker_realized_pnl(self, current_value, **kwargs):
         """
@@ -492,6 +494,7 @@ class BaseStrategy5(bt.Strategy):
         Returns:
             normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)
         """
+
         if self.trade_just_closed:
             pnl = decayed_result(
                 self.trade_result,
@@ -501,6 +504,7 @@ class BaseStrategy5(bt.Strategy):
                 self.p.target_call,
                 gamma=1
             )
+            # self.log.warning('get_broker_realized_pnl: got result: {} --> pnl: {}'.format(self.trade_result, pnl))
             # Reset flag:
             # self.trade_just_closed = False
             # print('broker_realized_pnl: step {}, just closed.'.format(self.iteration))
@@ -543,25 +547,19 @@ class BaseStrategy5(bt.Strategy):
             dd = 0.0
         return dd
 
-    def get_broker_pos_duration(self, current_value):
-        if self.position.size == 0:
+    def get_broker_pos_duration(self, exposure, **kwargs):
+
+        if exposure == 0:
             self.current_pos_duration = 0
-            # self.current_pos_min_value = current_value
-            # self.current_pos_max_value = current_value
             # print('ZERO_POSITION\n')
 
         else:
             self.current_pos_duration += 1
-            # if self.current_pos_max_value < current_value:
-            #     self.current_pos_max_value = current_value
-            #
-            # elif self.current_pos_min_value > current_value:
-            #     self.current_pos_min_value = current_value
 
-        return self.current_pos_duration  # / (self.data.numrecords - self.inner_embedding)
+        return self.current_pos_duration
 
-    def get_broker_max_unrealized_pnl(self, current_value, **kwargs):
-        if self.position.size == 0:
+    def get_broker_max_unrealized_pnl(self, current_value, exposure, **kwargs):
+        if exposure == 0:
             self.current_pos_max_value = current_value
 
         else:
@@ -569,8 +567,8 @@ class BaseStrategy5(bt.Strategy):
                 self.current_pos_max_value = current_value
         return (self.current_pos_max_value - self.realized_broker_value) * self.broker_value_normalizer
 
-    def get_broker_min_unrealized_pnl(self, current_value, **kwargs):
-        if self.position.size == 0:
+    def get_broker_min_unrealized_pnl(self, current_value, exposure, **kwargs):
+        if exposure == 0:
             self.current_pos_min_value = current_value
 
         else:
@@ -689,7 +687,7 @@ class BaseStrategy5(bt.Strategy):
         if current_pos_duration == 0:
             # Set potential term to zero if there is no opened positions:
             f1 = 0
-
+            fi_1_prime = 0
         else:
             if current_pos_duration < self.p.skip_frame:
                 fi_1 = 0
@@ -714,7 +712,7 @@ class BaseStrategy5(bt.Strategy):
         realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
 
         # Weights are subject to tune:
-        self.reward = (10.0 * f1 + 10.0 * realized_pnl) * self.p.reward_scale
+        self.reward = (0 * fi_1_prime + 1.0 * f1 + 10.0 * realized_pnl) * self.p.reward_scale
         self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
 
         return self.reward
@@ -845,7 +843,7 @@ class BaseStrategy5(bt.Strategy):
             self.broker_message = 'ORDER FAILED with status: ' + str(order.getstatusname())
             # Rise order_failed flag until get_reward() will [hopefully] use and reset it:
             self.order_failed += 1
-
+        # self.log.warning('BM: {}'.format(self.broker_message))
         self.order = None
 
     def _next_discrete(self, action):

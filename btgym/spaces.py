@@ -61,6 +61,8 @@ class ActionDictSpace(DictSpace):
                             if no actions provided - continuous 1D base action space is set in [0,1] interval.
             assets:         iterable of assets names
         """
+        assert not isinstance(assets, str),\
+            'ActionDictSpace: expected `assets` be iterable, got <{}> type <{}>'.format(assets, type(assets))
         self.assets = tuple(sorted(assets))
         if base_actions is not None:
             # Discrete base actions provided, will use binary encoding for encode/decode methods
