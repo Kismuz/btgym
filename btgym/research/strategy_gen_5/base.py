@@ -313,6 +313,7 @@ class BaseStrategy5(bt.Strategy):
             'unrealized_pnl',
             'min_unrealized_pnl',
             'max_unrealized_pnl',
+            'total_unrealized_pnl',
         ]
         # Define flat collection dictionary looking for methods for estimating broker statistics,
         # one method for one mode, should be named .get_broker_[mode_name]():
@@ -524,6 +525,17 @@ class BaseStrategy5(bt.Strategy):
         """
         return (current_value - self.realized_broker_value) * self.broker_value_normalizer
 
+    def get_broker_total_unrealized_pnl(self, current_value, **kwargs):
+        """
+
+        Args:
+            current_value: current portfolio value
+
+        Returns:
+            normalized profit/loss wrt. initial portfolio value
+        """
+        return (current_value - self.env.broker.startingcash) * self.broker_value_normalizer
+
     def get_broker_episode_step(self, **kwargs):
         """
 
@@ -712,7 +724,7 @@ class BaseStrategy5(bt.Strategy):
         realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
 
         # Weights are subject to tune:
-        self.reward = (0 * fi_1_prime + 1.0 * f1 + 10.0 * realized_pnl) * self.p.reward_scale
+        self.reward = (10.0 * f1 + 10.0 * realized_pnl) * self.p.reward_scale
         self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
 
         return self.reward
