@@ -38,7 +38,7 @@ def ou_mle_estimator(data, dt=1):
     elif len(data.shape) > 2:
         raise AssertionError('Only 1D and 2D data accepted')
 
-    # Remove bias forom every tragectory:
+    # Remove bias from every trajectory:
     bias = data.mean(axis=-1)
     data -= bias[:, None]
 
@@ -73,7 +73,7 @@ def ou_mle_estimator(data, dt=1):
 
 def ou_lsr_estimator(data, dt=1):
     """
-    Estimates vanill OU parameters via least squares method from given data of size [num_trajectories, num_points].
+    Estimates vanilla OU parameters via least squares method from given data of size [num_trajectories, num_points].
     Returns tuple of vectors (mu, lambda, sigma) of size [num_trajectories] each.
 
     Note: robust against highly biased data i.e. where data.mean / data.std  >> 1
@@ -83,7 +83,7 @@ def ou_lsr_estimator(data, dt=1):
     elif len(data.shape) > 2:
         raise AssertionError('Only 1D and 2D data accepted')
 
-    # Remove bias forom every tragectory:
+    # Remove bias from every trajectory:
     bias = data.mean(axis=-1)
     data -= bias[:, None]
 
@@ -111,7 +111,7 @@ def ou_lsr_estimator(data, dt=1):
     return np.squeeze(mu), np.squeeze(l), np.squeeze(sigma)
 
 
-def ou_variance(l, sigma, dt=1, **kwargs):
+def ou_variance(l, sigma, **kwargs):
     """
     Returns true OU process variance.
     """
