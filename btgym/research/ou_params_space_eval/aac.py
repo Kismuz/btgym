@@ -88,6 +88,7 @@ class OUpAAC(GuidedAAC):
         ep_summary['test_btgym_stat_op'] = tf.summary.merge(
             [
                 tf.summary.scalar('episode_test/total_reward', ep_summary['total_r']),
+                tf.summary.scalar('episode_test/final_value', ep_summary['final_value']),
             ],
             name='episode_test_btgym'
         )

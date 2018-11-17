@@ -312,15 +312,17 @@ class MultiDiscreteEnv(BTgymEnv):
         self.params['strategy']['initial_action'] = self.get_initial_action()
         self.params['strategy']['initial_portfolio_action'] = self.get_initial_portfolio_action()
 
-        try:
-            assert set(self.asset_names).issubset(set(self.data_lines_names))
+        # Disabling this check allows derivative assets:
 
-        except AssertionError:
-            msg = 'Assets names should be subset of data_lines names, but got: assets: {}, data_lines: {}'.format(
-                set(self.asset_names), set(self.data_lines_names)
-            )
-            self.log.error(msg)
-            raise ValueError(msg)
+        # try:
+        #     assert set(self.asset_names).issubset(set(self.data_lines_names))
+        #
+        # except AssertionError:
+        #     msg = 'Assets names should be subset of data_lines names, but got: assets: {}, data_lines: {}'.format(
+        #         set(self.asset_names), set(self.data_lines_names)
+        #     )
+        #     self.log.error(msg)
+        #     raise ValueError(msg)
 
         # ... Push it all back (don't ask):
         for key, value in self.params['strategy'].items():

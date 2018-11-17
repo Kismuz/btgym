@@ -206,6 +206,12 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
  
 ### <a name="news"></a>[News and updates:](#title)
 
+- 17.11.2018: updates and fixes:
+    - **minor fixes to base data provider** class episode sampling
+    - **update to btgym.datafeed.synthetic** subpackage: new stochastic processes generators added etc.
+    - **new btgym.research.startegy_gen_5 subpackage:**
+        efficient parameter-free signal preprocessing implemented, other minor improvements
+
 - 30.10.2018: updates and fixes:
     - **fixed numpy random state issue** causing replicating of seeds among workers on POSIX os
     - **new synthetic datafeed generators** - added simple Ornshtein-Uhlenbeck process data generating classes;

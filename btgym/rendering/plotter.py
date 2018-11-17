@@ -48,7 +48,7 @@ class BTgymPlotter(Plot_OldSync):
 class DrawCerebro(multiprocessing.Process):
     """That's the way we plot it...
     """
-    def __init__(self, cerebro, width, height, dpi, result_pipe, use=None, ):
+    def __init__(self, cerebro, width, height, dpi, result_pipe, use=None, rowsmajor=1):
         super(DrawCerebro, self).__init__()
         self.result_pipe = result_pipe
         self.cerebro = cerebro
@@ -57,6 +57,7 @@ class DrawCerebro(multiprocessing.Process):
         self.height = height
         self.dpi = dpi
         self.use = use
+        self.rowsmajor=rowsmajor
 
     def run(self):
         """
@@ -71,6 +72,7 @@ class DrawCerebro(multiprocessing.Process):
                                 dpi=self.dpi,
                                 use=self.use,
                                 iplot=False,
+                                rowsmajor=self.rowsmajor,
                                 figfilename='_tmp_btgym_render.png',
                                )[0][0]
         fig.canvas.draw()
