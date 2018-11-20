@@ -19,7 +19,7 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
 
     # Number of timesteps reward estimation statistics are averaged over, should be:
     # skip_frame_period <= avg_period <= time_embedding_period:
-    avg_period = 30
+    avg_period = 90
 
     # Possible agent actions;  Note: place 'hold' first! :
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
