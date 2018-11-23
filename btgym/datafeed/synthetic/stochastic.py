@@ -78,14 +78,14 @@ def ornshtein_uhlenbeck_process_fn(num_points, mu, l, sigma, x0=0, dt=1):
     """
     # print('OU_p_fn got:: l: {}, sigma: {}, mu: {}'.format(l, sigma, mu))
 
-    n = num_points
+    n = num_points + 1
     x = np.zeros(n)
     x[0] = x0
     for i in range(1, n):
         x[i] = x[i - 1] * np.exp(-l * dt) + mu * (1 - np.exp(-l * dt)) + \
                sigma * ((1 - np.exp(-2 * l * dt)) / (2 * l)) ** .5 * np.random.normal(0, 1)
 
-    return x
+    return x[1:]
 
 
 def ornshtein_uhlenbeck_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):
