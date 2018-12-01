@@ -10,18 +10,18 @@ except ImportError:
     raise ImportError('Locally required package `pykalman` seems not be installed.')
 
 PairModelObservation = namedtuple('PairModelObservation', ['p', 's', 'bias', 'std'])
-PairModelState = namedtuple('PairModelState', ['p_mean', 'p_cov', 's_mean', 's_cov', 'bias', 'std'])
+PairModelState = namedtuple('PairModelState', ['p_mean', 'p_cov', 's_mean', 's_cov', 'bias', 'std_mean', 'std_cov'])
 
 
 class PairFilteredModel:
     """
-    Generative model of 2x 1d [potentially integrated] processes
+    Generative model for 2x 1d [potentially co-integrated] processes
     as filtered evolution over base Ornshtein-Uhlenbeck model parameters space.
-
-    Uses PCA decomposition to separately model each component, motivating paper:
-        Harris, D. (1997) "Principal components analysis of cointegrated time series," in Econometric Theory, 13
+    Uses PCA decomposition to min./max. stationary (P,S) components
+    and builds separate AR(1) model for each;
+    motivating paper:
+    Harris, D. (1997) "Principal components analysis of cointegrated time series," in Econometric Theory, 13
     """
-
     def __init__(self):
         """
 
@@ -90,7 +90,7 @@ class PairFilteredModel:
     @staticmethod
     def restore(x_ps, u, bias, std):
         """
-        Restores data from decomposition.
+        Restores data from PS decomposition.
 
         Args:
             x_ps:   data projection to SVD eigenvectors  of size [2, num_pints]
@@ -107,7 +107,7 @@ class PairFilteredModel:
     def ready(self):
         assert self.is_ready, 'Model is not initialized. Hint: forgot to call model.reset()?'
 
-    def reset(self, init_trajectory, obs_covariance_factor=1e-3):
+    def reset(self, init_trajectory, obs_covariance_factor=1e-2):
         """
         Estimate model initial parameters and resets filtered trajectory.
 
@@ -134,26 +134,27 @@ class PairFilteredModel:
             observation_covariance=obs_covariance_factor * np.eye(3),
             n_dim_obs=3
         )
-
         self.track_s_filter = KalmanFilter(
             initial_state_mean=log_psi0[1, :].tolist(),
             #transition_covariance=obs_covariance_factor * np.eye(3),
             observation_covariance=obs_covariance_factor * np.eye(3),
             n_dim_obs=3
         )
-
         # TODO:
-        self.track_std_filter = None
-
+        self.track_std_filter = KalmanFilter(
+            initial_state_mean=std0[:, 0].tolist(),
+            #transition_covariance=obs_covariance_factor * np.eye(2),
+            observation_covariance=obs_covariance_factor * np.eye(2),
+            n_dim_obs=2
+        )
         # Initial observation:
         self.obs_trajectory.append(
             PairModelObservation(log_psi0[0, :], log_psi0[1, :], b0, std0)
         )
-
         # Compose initial hidden state:
         self.state_trajectory.append(
             PairModelState(
-                log_psi0[0, :], np.zeros([3, 3]), log_psi0[1, :], np.zeros([3, 3]), b0, std0
+                log_psi0[0, :], np.zeros([3, 3]), log_psi0[1, :], np.zeros([3, 3]), b0, std0[:, 0], np.zeros([2,2])
             )
         )
         self.is_ready = True
@@ -198,12 +199,17 @@ class PairFilteredModel:
             observation=log_psi[1, :],
         )
         # TODO: Kf -> std = {std_mean, std_cov}
+        z_mean_std, z_cov_std = self.track_std_filter.filter_update(
+            filtered_state_mean=z.std_mean,
+            filtered_state_covariance=z.std_cov,
+            observation=std[:, 0],
+        )
 
         self.obs_trajectory.append(
             PairModelObservation(log_psi[0, :], log_psi[1, :], b, std)
         )
         self.state_trajectory.append(
-            PairModelState(z_mean_p, z_cov_p, z_mean_s, z_cov_s, b, std)
+            PairModelState(z_mean_p, z_cov_p, z_mean_s, z_cov_s, b, z_mean_std, z_cov_std)
         )
 
     @staticmethod
@@ -224,6 +230,7 @@ class PairFilteredModel:
         # Sample Psi given Z:
         log_psi_p = np.random.multivariate_normal(mean=z.p_mean, cov=z.p_cov, size=batch_size)
         log_psi_s = np.random.multivariate_normal(mean=z.s_mean, cov=z.s_cov, size=batch_size)
+        psi_std = np.random.multivariate_normal(mean=z.std_mean, cov=z.std_cov, size=batch_size)
 
         log_psi = np.stack([log_psi_p, log_psi_s], axis=1)
 
@@ -238,7 +245,7 @@ class PairFilteredModel:
         psi_lambda = np.exp(log_psi[..., 1])
         psi_sigma = np.exp(log_psi[..., 2])
 
-        return psi_mu, psi_lambda, psi_sigma
+        return psi_mu, psi_lambda, psi_sigma, psi_std[..., None]
 
     def generate_state(self, batch_size, state=None, mu_as_mean=True):
         """
@@ -286,12 +293,12 @@ class PairFilteredModel:
         state_sampler = PairFilteredModel.sample_state_fn
 
         # Get init. trajectories points:
-        psi_mu, _, _ = state_sampler(batch_size, state, mu_as_mean)
+        psi_mu, _, _, psi_std = state_sampler(batch_size, state, mu_as_mean)
         xp_trajectory = [psi_mu.flatten()]
         for i in range(num_points):
             # Sample Psi given Z:
-            psi_mu, psi_lambda, psi_sigma = state_sampler(batch_size, state, mu_as_mean)
-            # print('m-l-s shapes: ', psi_mu.shape, psi_lambda.shape, psi_sigma.shape)
+            psi_mu, psi_lambda, psi_sigma, _ = state_sampler(batch_size, state, mu_as_mean)
+            # print('m-l-s-std shapes: ', psi_mu.shape, psi_lambda.shape, psi_sigma.shape, psi_std.shape)
 
             # Sample next x[t] point given Psi and x[t-1]:
             x_next = ornshtein_uhlenbeck_process_batch_fn(
@@ -307,7 +314,8 @@ class PairFilteredModel:
         xp_trajectory = xp_trajectory.reshape([batch_size, 2, -1])[..., 1:]
 
         if restore:
-            x = np.matmul(u, xp_trajectory) * state.std + state.bias
+            # x = np.matmul(u, xp_trajectory) * state.std + state.bias
+            x = np.matmul(u, xp_trajectory) * psi_std + state.bias
 
         else:
             x = None
