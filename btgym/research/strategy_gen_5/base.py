@@ -135,6 +135,7 @@ class BaseStrategy5(bt.Strategy):
         features_parameters=features_parameters,
         num_features=num_features,
         metadata={},
+        broadcast_message={},
         trial_stat=None,
         trial_metadata=None,
         portfolio_actions=portfolio_actions,
@@ -294,13 +295,16 @@ class BaseStrategy5(bt.Strategy):
             'metadata': None
         }
 
-        # This flag shows to the outer world if this episode can move global
-        # time forward (see: btgym.server._BTgymAnalyzer.next() method);
+        # If it is train or test episode?
         # default logic: true iff. it is test episode from target domain:
-        self.can_increment_global_time = self.metadata['type'] and self.metadata['trial_type']
+        self.is_test = self.metadata['type'] and self.metadata['trial_type']
+
+        # This flag shows to the outer world if this episode can broadcast world-state information, e.g. move global
+        # time forward (see: btgym.server._BTgymAnalyzer.next() method);
+        self.can_broadcast = self.is_test
 
         self.log.debug('strategy.metadata: {}'.format(self.metadata))
-        self.log.debug('can_increment_global_time: {}'.format(self.can_increment_global_time))
+        self.log.debug('is_test: {}'.format(self.is_test))
 
         # Broker data lines of interest (used for estimation inner state of agent:
         self.broker_datalines = [
@@ -656,6 +660,28 @@ class BaseStrategy5(bt.Strategy):
         self.time_stamp = self._get_time().timestamp()
 
         return self.time_stamp
+
+    def _get_broadcast_info(self):
+        """
+        Transmits broadcasting message.
+
+        Returns:
+            dictionary  or None
+        """
+        try:
+            return self.get_broadcast_message()
+
+        except AttributeError:
+            return None
+
+    def get_broadcast_message(self):
+        """
+        Override this.
+
+        Returns:
+            dictionary or None
+        """
+        return None
 
     def get_state(self):
         """

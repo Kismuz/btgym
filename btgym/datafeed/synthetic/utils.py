@@ -29,7 +29,9 @@ def log_uniform(lo_hi, size):
 def ou_mle_estimator(data, dt=1):
     """
     Estimates vanilla OU max. log-likelihood parameters from given data of size [num_trajectories, num_points].
-    Returns tuple of vectors (mu, lambda, sigma) of size [num_trajectories] each.
+
+    Returns:
+         tuple of vectors (mu, lambda, sigma) of size [num_trajectories] each.
 
     Note: robust against highly biased data i.e. where data.mean / data.std  >> 1
     """
@@ -51,18 +53,36 @@ def ou_mle_estimator(data, dt=1):
     sxy = (x * y).sum(axis=-1)
     syy = (y ** 2).sum(axis=-1)
 
-    mu = (sy * sxx - sx * sxy) / (n * (sxx - sxy) - (sx**2 - sx * sy))
+    mu_denom = (n * (sxx - sxy) - (sx**2 - sx * sy))
+    mu_denom[np.logical_and(0 <= mu_denom, mu_denom < 1e-10)] = 1e-10
+    mu_denom[np.logical_and(-1e-10 < mu_denom, mu_denom < 0)] = -1e-10
+    mu = (sy * sxx - sx * sxy) / mu_denom
+
+    l_denom = sxx - 2 * mu * sx + n * (mu ** 2)
+    l_denom[np.logical_and(0 <= l_denom, l_denom < 1e-10)] = 1e-10
+    l_denom[np.logical_and(-1e-10 < l_denom, l_denom < 0)] = -1e-10
 
     l = - (1 / dt) * np.log(
-        (sxy - mu * sx - mu * sy + n * (mu ** 2)) / (sxx - 2 * mu * sx + n * (mu ** 2))
+        np.clip(
+            (sxy - mu * sx - mu * sy + n * (mu ** 2)) / l_denom,
+            1e-10,
+            None
+        )
     )
+    l = np.clip(l, 1e-10, None)
+
     a = np.exp(-l * dt)
 
     sigma_sq_hat = (1 / n) * (
             syy - 2 * a * sxy + a ** 2 * sxx - 2 * mu * (1 - a) * (sy - a * sx) + n * (mu ** 2) * (1 - a) ** 2
     )
-    sigma_sq = sigma_sq_hat * (2 * l / (1 - a ** 2))
-    sigma = sigma_sq ** .5
+
+    sigma_sq_denom = 1 - a ** 2
+    sigma_sq_denom = np.clip(sigma_sq_denom, 1e-10, None)
+
+    sigma_sq = sigma_sq_hat * (2 * l / sigma_sq_denom)
+
+    sigma = np.clip(sigma_sq, 1e-10, None) ** .5
 
     # Set bias back:
     mu += bias

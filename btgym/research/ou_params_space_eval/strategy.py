@@ -6,6 +6,8 @@ from btgym import DictSpace
 
 import numpy as np
 
+import time
+
 from btgym.research.strategy_gen_5.base import BaseStrategy5
 from btgym.strategy.utils import tanh
 
@@ -119,6 +121,7 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
         features_parameters=features_parameters,
         num_features=num_features,
         metadata={},
+        broadcast_message={},
         trial_stat=None,
         trial_metadata=None,
         portfolio_actions=portfolio_actions,
@@ -159,6 +162,14 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
 
         self.last_delta_total_pnl = 0
         self.last_pnl = 0
+
+        self.log.debug('startegy got broadcast_msg: <<{}>>'.format(self.p.broadcast_message))
+
+    def get_broadcast_message(self):
+        return {
+            'data_model_psi': np.zeros([2, 3]),
+            'iteration': self.iteration
+        }
 
     def set_datalines(self):
         self.data.high = self.data.low = self.data.close = self.data.open
@@ -344,6 +355,19 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
             action:     dict, string encoding of btgym.spaces.ActionDictSpace
 
         """
+        if self.is_test:
+            if self.iteration % 10 == 0 or (self.iteration - 1) % 10 == 0:
+                self.log.notice(
+                    'test step: {}, broker_value: {:.2f}'.format(self.iteration, self.env.broker.get_value())
+                )
+            if self.iteration < 10 * self.p.skip_frame:
+                # Burn-in period:
+                time.sleep(600)
+
+            else:
+                # Regular pause:
+                time.sleep(10)
+
         # Here we expect action dict to contain single key:
         single_action = action[self.action_key]
 

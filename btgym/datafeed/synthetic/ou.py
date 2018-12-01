@@ -284,7 +284,7 @@ class PairWaveModelGenerator(BasePairDataGenerator):
 
         return df1, df2
 
-    def sample(self, sample_type=0, **kwargs):
+    def sample(self, sample_type=0, broadcast_message=None, **kwargs):
         """
         Overrides base method by employing single underlying stochastic process to generate two tragectories
         Args:
@@ -294,6 +294,8 @@ class PairWaveModelGenerator(BasePairDataGenerator):
         Returns:
             sample as PairWaveModelGenerator instance
         """
+        # self.log.debug('broadcast_message: <<{}>>'.format(broadcast_message))
+
         if self.metadata['type'] is not None:
             if self.metadata['type'] != sample_type:
                 self.log.warning(

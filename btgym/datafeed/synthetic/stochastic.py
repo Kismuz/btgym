@@ -1,7 +1,13 @@
 import numpy as np
 from scipy.stats import norm
 from .base import BaseCombinedDataSet, BasePairCombinedDataSet, base_spread_generator_fn
-from .utils import log_uniform
+from .utils import log_uniform, ou_mle_estimator
+
+try:
+    from pykalman import KalmanFilter
+
+except ImportError:
+    raise ImportError('Locally required package `pykalman` seems not be installed.')
 
 
 def weiner_process_fn(num_points, delta, x0=0, dt=1):
@@ -86,6 +92,40 @@ def ornshtein_uhlenbeck_process_fn(num_points, mu, l, sigma, x0=0, dt=1):
                sigma * ((1 - np.exp(-2 * l * dt)) / (2 * l)) ** .5 * np.random.normal(0, 1)
 
     return x[1:]
+
+
+def ornshtein_uhlenbeck_process_batch_fn(num_points, mu, l, sigma, x0, dt=1):
+    """
+    Generates batch of Ornshtein-Uhlenbeck process realisation trajectories.
+
+    Args:
+        num_points:     int, trajectory length
+        mu:             float or array of shape [batch_dim], mean;
+        l:              float or array of shape [batch_dim], lambda, mean reversion rate;
+        sigma:          float or array of shape [batch_dim], volatility;
+        x0:             float or array of shape [batch_dim], starting point;
+        dt:             int, time increment;
+
+    Returns:
+        generated data as np.array of shape [batch_dim, num_points]
+    """
+    # print('OU_p_fn got:: l: {}, sigma: {}, mu: {}'.format(l, sigma, mu))
+
+    n = num_points + 1
+    try:
+        batch_dim = x0.shape[0]
+        x = np.zeros([n, batch_dim])
+        x[0, :] = np.squeeze(x0)
+    except (AttributeError, IndexError) as e:
+        batch_dim = None
+        x = np.zeros([n, 1])
+        x[0, :] = x0
+
+    for i in range(1, n):
+        x[i, :] = x[i - 1, :] * np.exp(-l * dt) + mu * (1 - np.exp(-l * dt)) + \
+               sigma * ((1 - np.exp(-2 * l * dt)) / (2 * l)) ** .5 * np.random.normal(0, 1, size=batch_dim)
+
+    return x[1:, :]
 
 
 def ornshtein_uhlenbeck_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):
@@ -325,3 +365,5 @@ def coupled_wave_pair_generator_fn(
     x = np.asarray([[x_mid1, x_high1, x_low1, x_last1], [x_mid2, x_high2, x_low2, x_last2]])[:, :, 1:]
 
     return np.around(x, decimals=keep_decimals)
+
+

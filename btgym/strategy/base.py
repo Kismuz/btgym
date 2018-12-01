@@ -285,13 +285,13 @@ class BTgymBaseStrategy(bt.Strategy):
             'metadata': None
         }
 
-        # This flag shows to the outer world if this episode can move global
+        # This flag shows to the outer world if this episode can broadcast world-state information, e.g. move global
         # time forward (see: btgym.server._BTgymAnalyzer.next() method);
         # default logic: true iff. it is test episode from target domain:
-        self.can_increment_global_time = self.metadata['type'] and self.metadata['trial_type']
+        self.can_broadcast = self.metadata['type'] and self.metadata['trial_type']
 
         self.log.debug('strategy.metadata: {}'.format(self.metadata))
-        self.log.debug('can_increment_global_time: {}'.format(self.can_increment_global_time))
+        self.log.debug('can_broadcast: {}'.format(self.can_broadcast))
 
         # Broker data lines of interest (used for estimation inner state of agent:
         self.broker_datalines = [
@@ -640,6 +640,15 @@ class BTgymBaseStrategy(bt.Strategy):
         self.time_stamp = self._get_time().timestamp()
 
         return self.time_stamp
+
+    def _get_broadcast_info(self):
+        """
+        Transmits broadcasting message.
+
+        Returns:
+            dictionary of global settings
+        """
+        return dict()
 
     def get_state(self):
         """

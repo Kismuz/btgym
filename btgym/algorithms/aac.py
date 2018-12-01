@@ -689,12 +689,12 @@ class BaseAAC(object):
                 with tf.name_scope('model'):
                     model_summaries += [
                         tf.summary.scalar("grad_global_norm", self.grads_global_norm),
+                        # TODO: add gradient variance summary
                         #tf.summary.scalar("learn_rate", self.train_learn_rate),
                         tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
                         tf.summary.scalar("total_loss", self.loss),
-                        tf.summary.scalar('roll_reward', tf.reduce_mean(self.local_network.on_last_reward_in)),
-                        tf.summary.histogram('advantage', self.local_network.on_pi_adv_target),
-                        tf.summary.scalar('roll_advantage',tf.reduce_mean(self.local_network.on_pi_adv_target)),
+                        # tf.summary.scalar('roll_reward', tf.reduce_mean(self.local_network.on_last_reward_in)),
+                        # tf.summary.scalar('roll_advantage', tf.reduce_mean(self.local_network.on_pi_adv_target)),
                     ]
                     if policy is not None:
                         model_summaries += [ tf.summary.scalar("var_global_norm", tf.global_norm(policy.var_list))]
@@ -1331,7 +1331,8 @@ class BaseAAC(object):
 
 
         """
-        return self._process(sess)
+        # return self._process(sess)
+        self._process(sess)
 
     def _process(self, sess):
         """

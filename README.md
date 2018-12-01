@@ -1,5 +1,6 @@
 ## <a name="title"></a>Backtrader gym Environment
 
+
 **OpenAI Gym environment API for Backtrader backtesting library.**
 
 
@@ -393,3 +394,4 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
   first working alpha v0.0.2.
  
  
+<a href="https://stackexchange.com/users/10204071/andrew-muzikin"><img src="https://stackexchange.com/users/flair/10204071.png" width="208" height="58" alt="profile for Andrew Muzikin on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for Andrew Muzikin on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
