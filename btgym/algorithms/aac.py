@@ -555,7 +555,7 @@ class BaseAAC(object):
 
             # Off-policy losses:
             pi.off_pi_act_target = tf.placeholder(
-                tf.float32, [None, self.ref_env.action_space.tensor_shape[0]], name="off_policy_action_pl")
+                tf.float32, [None, self.ref_env.action_space.one_hot_depth], name="off_policy_action_pl")
             pi.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
             pi.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
 

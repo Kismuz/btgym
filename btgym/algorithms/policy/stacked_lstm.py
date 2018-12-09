@@ -633,7 +633,11 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         # Callbacks:
         if self.aux_estimate:
-            self.callback['pixel_change'] = self.get_pc_target
+            pass
+            # TEMP DISABLE: due to computation costs
+            # do not use pixel change aux. task; otherwise enable lines 533 - 553 & 640:
+            if False:
+                self.callback['pixel_change'] = self.get_pc_target
 
         # print('policy_debug_dict:\n', self.debug)
 
