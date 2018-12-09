@@ -424,6 +424,9 @@ class BTgymCasualDataDomain(BTgymRandomDataDomain):
         # Maximum data time gap allowed within sample as pydatetimedelta obj:
         self.max_time_gap = datetime.timedelta(**self.time_gap)
 
+        # Max. gap number of records:
+        self.max_gap_num_records = int(self.max_time_gap.total_seconds() / (60 * self.timeframe))
+
         # ... maximum episode time duration:
         self.max_sample_len_delta = datetime.timedelta(**self.sample_duration)
 
