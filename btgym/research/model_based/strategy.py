@@ -1,4 +1,3 @@
-import backtrader as bt
 import backtrader.indicators as btind
 
 from gym import spaces

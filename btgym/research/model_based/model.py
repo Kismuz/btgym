@@ -2,8 +2,8 @@ import numpy as np
 from scipy import stats
 from collections import namedtuple
 
-from btgym.datafeed.synthetic.utils import ou_mle_estimator
-from btgym.datafeed.synthetic.stochastic import ornshtein_uhlenbeck_process_batch_fn
+from .datafeed.utils import ou_mle_estimator
+from btgym.research.model_based.datafeed.stochastic import ornshtein_uhlenbeck_process_batch_fn
 try:
     from pykalman import KalmanFilter
 
