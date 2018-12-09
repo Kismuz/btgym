@@ -29,12 +29,12 @@ class PairFilteredModel:
     """
     Generative model for 2x 1d [potentially co-integrated] processes
     as filtered evolution over base Ornshtein-Uhlenbeck model parameters space.
-    Uses PCA decomposition to min./max. stationary (P,S) components
+    Uses PCA-like decomposition to min./max. variance (P, S) components
     and builds separate AR(1) model for each;
     motivating paper:
     Harris, D. (1997) "Principal components analysis of cointegrated time series," in Econometric Theory, 13
     """
-    # TODO: Z_mu <- narrower distr. <+ non-negativity data checks
+    # TODO: Z_mu <- narrower distr. <+ final data non-negativity checks
     def __init__(self):
         """
         Stateful model.
@@ -239,7 +239,7 @@ class PairFilteredModel:
     @staticmethod
     def sample_state_fn(batch_size, state, mu_as_mean=True):
         """
-        Generates batch of realisations of model hidden state Z.
+        Generates batch of realisations given model hidden state Z.
         Static method, can be used as stand-along function.
 
         Args:
@@ -273,7 +273,7 @@ class PairFilteredModel:
 
     def generate_state(self, batch_size, state=None, mu_as_mean=True):
         """
-        Generates batch of realisations of model hidden state Z.
+        Generates batch of realisations given model hidden state Z.
 
         Args:
             batch_size:     number of sample to draw
@@ -416,9 +416,9 @@ class PairFilteredModel:
 
 class HighLowSpreadModel:
     """
-    Models `High/Low` (bid/ask) spread dynamics at step `t`
+    Modells `High/Low` (bid/ask) spread dynamics at step `t`
     as normally distributed random variable conditioned on one-step data increments.
-    Models `Open` dynamics as t-distributed random variable.
+    Fits `Open` dynamics as t-distributed univariate random variable.
     """
     def __init__(self):
         """
@@ -526,8 +526,8 @@ class HighLowSpreadModel:
     @staticmethod
     def sample(data_mid, state, stochastic_open=True):
         """
-        Generates Open/Hi/Low values given Mid_values conditioned on model state
-        High/Low  spread N-distribution parameters (mean, covariance matrix) and
+        Generates Open/Hi/Low values given Mid_values conditioned on model state vector:
+        High/Low  spread N-distribution parameters (mean and covariance matrix) and
         parameters of t-distributed offsets for Open values
 
         Args:
@@ -583,24 +583,29 @@ class HighLowSpreadModel:
 class PairDataModel:
     """
     Domain specific hard-coded probabilistic encoder/decoder.
-    User-level class. Wraps `bid-ask spread` and principal components decomposition models.
+    User-level class. Wraps `bid-ask spread` and orthogonal components decomposition models.
 
     Brief:
-    Given a pair of matching Open/High/Low (OHL) data builds single generative probabilistic state-space model:
+    Given a pair of matching Open/High/Low (OHL) data lines builds single generative probabilistic state-space model:
+
     1. Pair OHL dataset of size [2, n, 3] is transformed into single-valued 'mean' pair set of size [2, n, 1]
     and 'OHL model' parameters vectors: `High/Low` (bid/ask) spread dynamics modeled as
-    normally distributed random variable conditioned on one-step data increments; `Open` dynamics modeled as
-    unconditioned t-distributed random variable.
-    2. Pair of mid-price data of size [2, n, 1] is decomposed into two principal components (of size [n, 2]) by
-    maximum and minimum explained variance of a pair (minimum and maximum stationarity components accordingly).
-    3. Each component is separately modelled as Ornshtein-Uhlenbeck stochastic process and an
-    entire model hidden vector Z is obtained as distribution over MLE estimated OU parameters via Kalman filtering.
-    4. Given series of consecutive input OHL data trajectory in state-space is obtained.
-    5. Given state vector Z required number of OHL data can be generated (decoded) by:
+    normally distributed random variable conditioned on one-step data increments; `Open` dynamics modelled as
+    univariate t-distributed random variable.
+
+    2. Pair of mid-price data of size [2, n, 1] is decomposed into two orthogonal components (of size [n, 2]) by
+    means of maximum and minimum explained variance of a pair (minimum and maximum stationarity components accordingly).
+
+    3. Each component is separately modelled as Ornshtein-Uhlenbeck stochastic process giving
+    single joint state-space observation.
+
+    4. Given series of consecutive inputs of OHL data, trajectory of observations is formed and model hidden vector Z
+    is obtained as Normal distributions over MLE estimated OU parameters via Kalman filtering.
+
+    5. Given state vector Z, required amount of OHL data can be generated (decoded) by:
         - sampling from distribution over possible realisations of OU processes | Z;
         - inverse transformation from principal components to pair of 'mean' values;
         - generating OHL values by inverse applying `bid-ask spread` model.
-
     """
     def __init__(self, decomp_model_ref=PairFilteredModel, spread_model_ref=HighLowSpreadModel):
         """
@@ -714,7 +719,7 @@ class PairDataModel:
         data1_mid, data1_sz = self.spread_model.fit(**data_dict1)
         data2_mid, data2_sz = self.spread_model.fit(**data_dict2)
 
-        # Get components decomposition:
+        # Get orthogonal decomposition:
         self.decomp_model.update(
             pair_trajectory=np.stack([data1_mid, data2_mid], axis=0),
             state_prev=state_prev.decomposition
@@ -740,7 +745,7 @@ class PairDataModel:
             restore:        bool, if True - restore to original timeseries X1|X2, return S|P decomposition otherwise
 
         Returns:
-            P, S projections decomposition as array of shape [batch_size, 2, num_points]
+            P, S decomposition projections as array of shape [batch_size, 2, num_points]
             base data process OHL realisations as array of shape [batch_size, 2, num_points, 3] or None
 
         """
