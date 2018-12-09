@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import stats
 from collections import namedtuple
 
 from btgym.datafeed.synthetic.utils import ou_mle_estimator
@@ -9,8 +10,19 @@ try:
 except ImportError:
     raise ImportError('Locally required package `pykalman` seems not be installed.')
 
-PairModelObservation = namedtuple('PairModelObservation', ['p', 's', 'bias', 'std'])
-PairModelState = namedtuple('PairModelState', ['p_mean', 'p_cov', 's_mean', 's_cov', 'bias', 'std_mean', 'std_cov'])
+PairModelObservation = namedtuple(
+    'PairModelObservation',
+    ['p', 's', 'bias', 'std']
+)
+PairModelState = namedtuple(
+    'PairModelState',
+    ['p_mean', 'p_cov', 's_mean', 's_cov', 'bias', 'std_mean', 'std_cov']
+)
+SpreadModelState = namedtuple(
+    'SpreadModelState',
+    ['spread_norm', 'd_mid_norm', 'spread_mean', 'spread_covariance', 'mid_t_params']
+)
+ModelState = namedtuple('ModelState', ['spread1', 'spread2', 'decomposition'])
 
 
 class PairFilteredModel:
@@ -22,9 +34,10 @@ class PairFilteredModel:
     motivating paper:
     Harris, D. (1997) "Principal components analysis of cointegrated time series," in Econometric Theory, 13
     """
+    # TODO: Z_mu <- narrower distr. <+ non-negativity data checks
     def __init__(self):
         """
-
+        Stateful model.
         """
         self.track_p_filter = None
         self.track_s_filter = None
@@ -38,6 +51,11 @@ class PairFilteredModel:
 
         # Decomposition matrix for max. correlated (colorized) data:
         self.u_colored, _, _ = np.linalg.svd(np.ones([2, 2]))
+
+        # Zero degree rotation:
+        # self.u_colored = np.asarray([1.0, 1.0], [1.0, -1.0])
+
+        self.svd_trajectory = None
 
         self.is_ready = False
 
@@ -80,12 +98,15 @@ class PairFilteredModel:
 
         # Center and colorize data:
         bias = x.mean(axis=-1)[..., None]
-        std = np.clip(x.std(axis=-1), 1e-8, None)[..., None]
-        x_c = (x - bias) / std
+        x_ub = x - bias
+        std = np.clip(x_ub.std(axis=-1), 1e-8, None)[..., None]
+        x_c = x_ub / std
+
+        u_, s_, v_ = np.linalg.svd(np.cov(x_c))
 
         x_ps = np.matmul(u.T, x_c)
 
-        return x_ps, bias, std
+        return x_ps, bias, std, (u_, s_, v_)
 
     @staticmethod
     def restore(x_ps, u, bias, std):
@@ -118,11 +139,12 @@ class PairFilteredModel:
         """
         self.obs_trajectory = []
         self.state_trajectory = []
+        self.svd_trajectory = []
 
         assert init_trajectory.shape[-1] > 1, 'Initial trajectory should be longer than 1'
 
         # Decompose to [Price, Spread] and get decomp. matrix:
-        xp0, b0, std0 = self.decompose(init_trajectory, self.u_colored)
+        xp0, b0, std0, svd0 = self.decompose(init_trajectory, self.u_colored)
 
         # Get Psi_price, Psi_spread, shaped [2x3] each:
         log_psi0 = self.base_model_estimator(xp0)
@@ -157,6 +179,7 @@ class PairFilteredModel:
                 log_psi0[0, :], np.zeros([3, 3]), log_psi0[1, :], np.zeros([3, 3]), b0, std0[:, 0], np.zeros([2,2])
             )
         )
+        self.svd_trajectory.append(svd0)
         self.is_ready = True
 
     def update(self, pair_trajectory, state_prev=None):
@@ -182,7 +205,7 @@ class PairFilteredModel:
             z = state_prev
 
         # Decompose down to `base line`, `spread line`:
-        x_decomp, b, std = self.decompose(pair_trajectory, u=self.u_colored)
+        x_decomp, b, std, svd = self.decompose(pair_trajectory, u=self.u_colored)
 
         # Estimate hidden state observation [Psi_p[t] | Psi_s[t]], shaped [2, 3]:
         log_psi = self.base_model_estimator(x_decomp)
@@ -211,6 +234,7 @@ class PairFilteredModel:
         self.state_trajectory.append(
             PairModelState(z_mean_p, z_cov_p, z_mean_s, z_cov_s, b, z_mean_std, z_cov_std)
         )
+        self.svd_trajectory.append(svd)
 
     @staticmethod
     def sample_state_fn(batch_size, state, mu_as_mean=True):
@@ -282,7 +306,7 @@ class PairFilteredModel:
             num_points:     uint, trajectory length to generate
             state:          model hidden state Z as (Z_means, Z_covariances) tuple.
             u:              [2,2] decomposition matrix, typically is: PairFilteredModel.u_colored
-            mu_as_mean:     bool, if True - se mu as value of Z_mean_mu, else sample same way as lambda and sigma.
+            mu_as_mean:     bool, if True - set mu as value of decomp.Z_mean_mu, else sample from distribution.
             restore:        bool, if True - restore to original timeseries X1|X2, return None otherwise
 
         Returns:
@@ -360,13 +384,12 @@ class PairFilteredModel:
             batch_size:     uint, number of trajectories to generates
             num_points:     uint, trajectory length to generate
             state:          instance of Z or None; if no state provided - last state from filtered trajectory is used.
-            mu_as_mean:     bool, if True - se mu as value of Z_mean_mu, else sample same way as lambda and sigma.
+            mu_as_mean:     bool, if True - set mu as value of decomp.Z_mean_mu, else sample from distribution.
             restore:        bool, if True - restore to original timeseries X1|X2, return S|P decomposition otherwise
 
         Returns:
-            Returns:
-            base data process realisations as array of shape [batch_size, 2, num_points] or
             P, S projections decomposition as array of shape [batch_size, 2, num_points]
+            base data process realisations as array of shape [batch_size, 2, num_points] or None
         """
         self.ready()
         if state is None:
@@ -389,3 +412,372 @@ class PairFilteredModel:
     #     if state is None:
     #         state = self.state_trajectory[-1]
     #     return self.generate_trajectory_fn_2(batch_size, num_points, state)
+
+
+class HighLowSpreadModel:
+    """
+    Models `High/Low` (bid/ask) spread dynamics at step `t`
+    as normally distributed random variable conditioned on one-step data increments.
+    Models `Open` dynamics as t-distributed random variable.
+    """
+    def __init__(self):
+        """
+        Stateless model.
+        """
+        pass
+
+    @staticmethod
+    def conditioned_bivariate_normal_sample(x1, mean, cov):
+        """
+        For a bivariate normally distributed r.v. X=(x0,x1) following N(mean, cov)
+        returns values of x0 given values of x1: x0 ~ N(mean, cov|x1)
+
+        Args:
+            x1:   1d conditioning data of size [batch_size, n]
+            mean: vector of means of size [2]
+            cov:  covariance matrix of size [2, 2]
+
+        Returns:
+            x2 values of size [batch_size, n]
+        """
+        mean0_c1 = mean[0] + cov[0, 1] / cov[1, 1] * (x1 - mean[1])
+        var0_c1 = cov[0, 0] - cov[0, 1] ** 2 / cov[1, 1]
+        return np.random.normal(mean0_c1, var0_c1 ** .5, )  # size=x1.shape)
+
+    @staticmethod
+    def fit(data_open, data_high, data_low):
+        """
+        Estimates model parameters for given data.
+
+        Args:
+            data_open:      data of size [batch_dim, num_points] or [num_points] or None
+            data_high:      data of size [batch_dim, num_points] or [num_points]
+            data_low:       data of size [batch_dim, num_points] or [num_points]
+
+        Returns:
+            data_mid:   data vector of size [batch_dim, num_points] or [num_points]
+            state:      instance of SpreadModelState, model estimated parameters
+        """
+        open_line = None
+        assert data_low.shape == data_high.shape
+
+        assert (data_low <= data_high).all()
+
+        if data_open is not None:
+            assert data_open.shape == data_high.shape
+            assert (data_open <= data_high).all()
+            assert (data_low <= data_open).all()
+
+        if len(data_low.shape) == 1:
+            low_line = data_low[None, :]
+            high_line = data_high[None, :]
+            if data_open is not None:
+                open_line = data_open[None, :]
+        else:
+            low_line = data_low
+            high_line = data_high
+            if data_open is not None:
+                open_line = data_open
+
+        # Resulting data line of:
+        data_mid = (high_line + low_line) / 2
+        dmid = np.diff(data_mid, axis=-1)
+        # dmid = np.concatenate([dmid[:, 0][None, :], dmid], axis=-1)
+        dmid = np.concatenate([dmid[:, 0][:, None], dmid], axis=-1)
+
+        # Model value of interest:
+        d_spread = (high_line - low_line) / 2
+
+        # Normalized data:
+        spread_norm = np.clip(d_spread.max(), 1e-10, None)
+        d_mid_norm = np.clip(abs(dmid).max(), 1e-10, None)
+
+        ns = d_spread / spread_norm
+        nm = abs(dmid) / d_mid_norm
+
+        # Transformed random variable,
+        # let say it loosly follows normal distribution (not actually; but
+        # defined this way, resulting model is worse than reality so it is ok):
+        # TODO: make it conditioned bivariate Inverse Gaussian
+        vx0 = ns - nm
+
+        # If batch is given - average across entire batch:
+        spread_mean = np.asarray([vx0.mean(), nm.mean()])
+        spread_covariance = np.cov(np.reshape(vx0, [-1, 1]), np.reshape(nm, [-1, 1]), rowvar=False)
+
+        # Fit differences in `open` and `mid` to follow Student-t:
+        if open_line is not None:
+            df, loc, scale = stats.t.fit(np.reshape(open_line - data_mid, [-1, 1]))
+            mid_t_params = dict(df=df, loc=loc, scale=scale)
+
+        else:
+            mid_t_params = None
+
+        z = SpreadModelState(
+            spread_norm=spread_norm,
+            d_mid_norm=d_mid_norm,
+            spread_mean=spread_mean,
+            spread_covariance=spread_covariance,
+            mid_t_params=mid_t_params,
+        )
+        # TODO: Kalman filtered z is overkill?
+        return np.squeeze(data_mid), z
+
+    @staticmethod
+    def sample(data_mid, state, stochastic_open=True):
+        """
+        Generates Open/Hi/Low values given Mid_values conditioned on model state
+        High/Low  spread N-distribution parameters (mean, covariance matrix) and
+        parameters of t-distributed offsets for Open values
+
+        Args:
+            data_mid:           data of size [batch_dim, n_points]
+            state:                  instance of SpreadModelState holding `High/Low` model
+                                parameters (mean, covariance matrix, normalisation constants) and
+                                parameters of t-distributed offsets for `Open` model;
+            stochastic_open:    bool, if True - use 'Open' model to generate values, return `data_mid` otherwise
+
+        Returns:
+            data of size [batch_dim, n_points, 3]
+        """
+        assert isinstance(state, SpreadModelState), 'Expexted `z` as instance of SpreadModelState, got: {}'.format(type(state))
+
+        data_mid = np.squeeze(data_mid)  # paranoid: if got [n, 1] shaped data
+        if len(data_mid.shape) == 1:
+            data_mid = data_mid[None, :]
+
+        dmid = np.diff(data_mid, axis=-1)
+        dmid = np.concatenate([dmid[:, 0][:, None], dmid], axis=-1)
+        # dmid = np.concatenate([dmid[:, 0][None, :], dmid], axis=-1)
+
+        # Transformed conditioning x1 (scaled absolute value of t-1 `mid` difference):
+        nm = abs(dmid) / state.d_mid_norm
+
+        # Conditioned transformed sample:
+        x0_cond_dmid = HighLowSpreadModel.conditioned_bivariate_normal_sample(nm, state.spread_mean, state.spread_covariance)
+
+        # Inverse transform:
+        d_spread = abs(x0_cond_dmid + nm) * state.spread_norm
+
+        # Make `high`, `low` lines:
+        high_line = data_mid + d_spread
+        low_line = data_mid - d_spread
+
+        if state.mid_t_params is not None and stochastic_open:
+            # Generate t-distributed offsets from `mid` line:
+            s = stats.t.rvs(size=d_spread.shape, **state.mid_t_params)
+
+            # Force outliers to stay within high/low interval:
+            trunc_idx = abs(s) > d_spread
+            s[trunc_idx] = d_spread[trunc_idx] * np.sign(s[trunc_idx])
+
+            # Compose `open` line:
+            open_line = data_mid + s
+
+            return np.stack([open_line, high_line, low_line], axis=-1)
+
+        else:
+            return np.stack([data_mid, high_line, low_line], axis=-1)
+
+
+class PairDataModel:
+    """
+    Domain specific hard-coded probabilistic encoder/decoder.
+    User-level class. Wraps `bid-ask spread` and principal components decomposition models.
+
+    Brief:
+    Given a pair of matching Open/High/Low (OHL) data builds single generative probabilistic state-space model:
+    1. Pair OHL dataset of size [2, n, 3] is transformed into single-valued 'mean' pair set of size [2, n, 1]
+    and 'OHL model' parameters vectors: `High/Low` (bid/ask) spread dynamics modeled as
+    normally distributed random variable conditioned on one-step data increments; `Open` dynamics modeled as
+    unconditioned t-distributed random variable.
+    2. Pair of mid-price data of size [2, n, 1] is decomposed into two principal components (of size [n, 2]) by
+    maximum and minimum explained variance of a pair (minimum and maximum stationarity components accordingly).
+    3. Each component is separately modelled as Ornshtein-Uhlenbeck stochastic process and an
+    entire model hidden vector Z is obtained as distribution over MLE estimated OU parameters via Kalman filtering.
+    4. Given series of consecutive input OHL data trajectory in state-space is obtained.
+    5. Given state vector Z required number of OHL data can be generated (decoded) by:
+        - sampling from distribution over possible realisations of OU processes | Z;
+        - inverse transformation from principal components to pair of 'mean' values;
+        - generating OHL values by inverse applying `bid-ask spread` model.
+
+    """
+    def __init__(self, decomp_model_ref=PairFilteredModel, spread_model_ref=HighLowSpreadModel):
+        """
+        Stateful model.
+        """
+        self.spread_model = spread_model_ref()  # stateless
+        self.decomp_model = decomp_model_ref()  # stateful
+
+        self.state_trajectory = None
+
+    @staticmethod
+    def data_to_dict(data):
+        """
+        Casts numpy data array to dictionary of 1d arrays
+        Args:
+            data: np.ndarray of size [num_points, 3] or [num_points, 2] or
+
+        Returns:
+            dict. with keys {'high', 'low', ['open']} holding [num_points] sized data.
+        """
+        map2 = {0: 'data_high', 1: 'data_low'}
+        map3 = {0: 'data_open', 1: 'data_high', 2: 'data_low'}
+
+        assert len(data.shape) == 2
+
+        if data.shape[-1] == 2:
+            row_map = map2
+
+        elif data.shape[-1] == 3:
+            row_map = map3
+
+        else:
+            raise ValueError('Expected input array first dim. be in [2, 3], got array shaped: {}'.format(data.shape))
+
+        data_dict = {}
+        for i in range(data.shape[-1]):
+            data_dict[row_map[i]] = data[:, i]
+
+        return data_dict
+
+    @staticmethod
+    def dict_to_data(data_dict):
+        """
+        Casts dictionary of three arrays of size[n] to np.ndarray of size [3, n] following OHL pattern.
+
+        Args:
+            data_dict:  dict. containing keys {'high', 'low', 'open'} holding [num_points] sized data each.
+
+        Returns:
+            np.ndarray of size [3, num_points]
+        """
+        row_map = {0: 'data_open', 1: 'data_high', 2: 'data_low'}
+
+        assert set(row_map.keys()) == set(data_dict.keys())
+
+        return np.concatenate([data_dict[row_map[i]] for i in range(3)], axis=0)
+
+    def reset(self, data1, data2, obs_covariance_factor=1e-2):
+        """
+        Estimate model initial parameters and resets filtered parameters trajectory.
+
+        Args:
+            data1:                  initial data 1 of size [n, 3] presenting OHL values, or [n, 2] presenting HL values
+            data2:                  initial data 2, size matching data 1
+            obs_covariance_factor:  ufloat, Kalman Filter identity observation matrix multiplier
+        """
+        self.state_trajectory = []
+
+        data_dict1 = self.data_to_dict(data1)
+        data_dict2 = self.data_to_dict(data2)
+
+        # Infer spread model params:
+        data1_mid, data1_sz = self.spread_model.fit(**data_dict1)
+        data2_mid, data2_sz = self.spread_model.fit(**data_dict2)
+
+        self.decomp_model.reset(
+            init_trajectory=np.stack([data1_mid, data2_mid], axis=0),
+            obs_covariance_factor=obs_covariance_factor
+        )
+        self.state_trajectory.append(
+            ModelState(
+                data1_sz,
+                data2_sz,
+                self.decomp_model.state_trajectory[-1]
+            )
+        )
+
+    def update(self, data1, data2, state_prev=None):
+        """
+
+        Args:
+            data1:          data 1 of size [n, 3] presenting OHL values, or [n, 2] presenting HL values
+            data2:          initial data 2, size matching data 1
+            state_prev:     `ModelState` instance, model state at t-1
+
+        Returns:
+
+        """
+        self.decomp_model.ready()
+        if state_prev is None:
+            state_prev = self.state_trajectory[-1]
+
+        else:
+            assert isinstance(state_prev, ModelState), \
+                'Expected model state as instance of `ModelState`, got: {}'.format(type(state_prev))
+
+        data_dict1 = self.data_to_dict(data1)
+        data_dict2 = self.data_to_dict(data2)
+
+        # Get spread model params:
+        data1_mid, data1_sz = self.spread_model.fit(**data_dict1)
+        data2_mid, data2_sz = self.spread_model.fit(**data_dict2)
+
+        # Get components decomposition:
+        self.decomp_model.update(
+            pair_trajectory=np.stack([data1_mid, data2_mid], axis=0),
+            state_prev=state_prev.decomposition
+        )
+        self.state_trajectory.append(
+            ModelState(
+                data1_sz,
+                data2_sz,
+                self.decomp_model.state_trajectory[-1]
+            )
+        )
+
+    def sample(self, batch_size, num_points, state=None, mu_as_mean=True, restore=True, stochastic_open=True):
+        """
+        Generates batch of realisations of pair base OHL processes given model hidden state.
+
+        Args:
+            batch_size:     uint, number of trajectories pairs to generate
+            num_points:     uint, trajectory length to generate
+            state:          instance of `ModelState` or None;
+                            if no state provided - last state from filtered trajectory is used.
+            mu_as_mean:     bool, if True - set mu as value of decomp.Z_mean_mu, else sample from distribution.
+            restore:        bool, if True - restore to original timeseries X1|X2, return S|P decomposition otherwise
+
+        Returns:
+            P, S projections decomposition as array of shape [batch_size, 2, num_points]
+            base data process OHL realisations as array of shape [batch_size, 2, num_points, 3] or None
+
+        """
+        self.decomp_model.ready()
+        if state is None:
+            state = self.state_trajectory[-1]
+
+        else:
+            assert isinstance(state, ModelState), \
+                'Expected model state as instance of `ModelState`, got: {}'.format(type(state))
+
+        decomposed_batch, data_mid = self.decomp_model.generate_trajectory(
+            batch_size=batch_size,
+            num_points=num_points,
+            state=state.decomposition,
+            mu_as_mean=mu_as_mean,
+            restore=restore,
+        )
+        if data_mid is not None:
+            x1_ohl = self.spread_model.sample(data_mid[:, 0, :], state=state.spread1, stochastic_open=stochastic_open)
+            x2_ohl = self.spread_model.sample(data_mid[:, 1, :], state=state.spread2, stochastic_open=stochastic_open)
+
+            if len(x1_ohl.shape) < 3:
+                axis = 0
+
+            else:
+                axis = 1
+
+            ohl_batch = np.stack([x1_ohl, x2_ohl], axis=axis)
+
+        else:
+            ohl_batch = None
+
+        return decomposed_batch, ohl_batch
+
+
+
+
+
+
