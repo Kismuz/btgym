@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.stats import norm
-from .utils import log_uniform
+from btgym.research.model_based.utils import log_uniform
 
 try:
     from pykalman import KalmanFilter

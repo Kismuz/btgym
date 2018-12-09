@@ -22,10 +22,10 @@ import pandas as pd
 
 from .base import BaseCombinedDataSet, BasePairCombinedDataSet, BasePairDataGenerator
 from .base import base_random_uniform_parameters_fn, base_spread_generator_fn
-from .stochastic import ornshtein_uhlenbeck_process_fn, ornshtein_uhlenbeck_uniform_parameters_fn
-from .stochastic import ornshtein_uhlenbeck_log_uniform_parameters_fn
-from .stochastic import weiner_process_fn, weiner_process_uniform_parameters_fn
-from .stochastic import coupled_wave_pair_generator_fn
+from btgym.research.model_based.stochastic import ornshtein_uhlenbeck_process_fn, ornshtein_uhlenbeck_uniform_parameters_fn
+from btgym.research.model_based.stochastic import ornshtein_uhlenbeck_log_uniform_parameters_fn
+from btgym.research.model_based.stochastic import weiner_process_fn, weiner_process_uniform_parameters_fn
+from btgym.research.model_based.stochastic import coupled_wave_pair_generator_fn
 from btgym.datafeed.derivative import BTgymDataset2
 from btgym.datafeed.multi import BTgymMultiData
 
