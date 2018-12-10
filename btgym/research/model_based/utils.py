@@ -135,7 +135,7 @@ def ou_variance(l, sigma, **kwargs):
     """
     Returns true OU process variance.
     """
-    return np.clip(sigma, 0, None) / ( 2 * np.clip(l, 1e-10, None))**.5
+    return np.clip(sigma**2, 0, None) / (2 * np.clip(l, 1e-10, None))
 
 
 

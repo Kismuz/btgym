@@ -24,19 +24,23 @@ class _FastSaver(tf.train.Saver):
     Disables write_meta_graph argument,
     which freezes entire process and is mostly useless.
     """
-    def save(self,
-             sess,
-             save_path,
-             global_step=None,
-             latest_filename=None,
-             meta_graph_suffix="meta",
-             write_meta_graph=True):
-        super(_FastSaver, self).save(sess,
-                                     save_path,
-                                     global_step,
-                                     latest_filename,
-                                     meta_graph_suffix,
-                                     False)
+    def save(
+        self,
+        sess,
+        save_path,
+        global_step=None,
+        latest_filename=None,
+        meta_graph_suffix="meta",
+        write_meta_graph=True
+    ):
+        super(_FastSaver, self).save(
+            sess,
+            save_path,
+            global_step,
+            latest_filename,
+            meta_graph_suffix,
+            False
+        )
 
 
 class Worker(multiprocessing.Process):
