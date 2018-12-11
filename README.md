@@ -207,6 +207,11 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
  
 ### <a name="news"></a>[News and updates:](#title)
 
+- 11.12.2018: updates and fixes:
+    - **training Launcher class** got convenience features to save and reload model parameters,
+        see https://github.com/Kismuz/btgym/blob/master/examples/unreal_stacked_lstm_strat_4_11.ipynb for details
+    - **combined model-based/model-free** aproach package in early development stage is added to `btgym.reserach`
+
 - 17.11.2018: updates and fixes:
     - **minor fixes to base data provider** class episode sampling
     - **update to btgym.datafeed.synthetic** subpackage: new stochastic processes generators added etc.

@@ -289,43 +289,47 @@ class BaseAacPolicy(object):
         Returns:
             Action as dictionary of several action encodings, actions logits, V-fn value, output RNN state
         """
-        sess = tf.get_default_session()
-        feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
-        feeder.update(feed_dict_from_nested(self.on_state_in, observation, expand_batch=True))
-        feeder.update(
-            {
-                self.on_last_a_in: last_action,
-                self.on_last_reward_in: last_reward,
-                self.on_batch_size: 1,
-                self.on_time_length: 1,
-                self.train_phase: False
+        try:
+            sess = tf.get_default_session()
+            feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
+            feeder.update(feed_dict_from_nested(self.on_state_in, observation, expand_batch=True))
+            feeder.update(
+                {
+                    self.on_last_a_in: last_action,
+                    self.on_last_reward_in: last_reward,
+                    self.on_batch_size: 1,
+                    self.on_time_length: 1,
+                    self.train_phase: False
+                }
+            )
+            # action_one_hot, logits, value, context = sess.run(
+            #     [self.on_sample, self.on_logits, self.on_vf, self.on_lstm_state_out],
+            #     feeder
+            # )
+            # return action_one_hot, logits, value, context
+            logits, value, context = sess.run([self.on_logits, self.on_vf, self.on_lstm_state_out], feeder)
+            logits = logits[0, ...]
+            if self.ac_space.is_discrete:
+                # Use multinomial to get sample (discrete):
+                sample = np.random.multinomial(1, softmax(logits))
+                sample = self.ac_space._cat_to_vec(np.argmax(sample))
+
+            else:
+                # Use DP to get sample (continuous):
+                sample = sample_dp(logits, alpha=self.action_dp_alpha)
+
+            # Get all needed action encodings:
+            action = self.ac_space._vec_to_action(sample)
+            one_hot = self.ac_space._vec_to_one_hot(sample)
+            action_pack = {
+                'environment': action,
+                'encoded': self.ac_space.encode(action),
+                'one_hot': one_hot,
             }
-        )
-        # action_one_hot, logits, value, context = sess.run(
-        #     [self.on_sample, self.on_logits, self.on_vf, self.on_lstm_state_out],
-        #     feeder
-        # )
-        # return action_one_hot, logits, value, context
-        logits, value, context = sess.run([self.on_logits, self.on_vf, self.on_lstm_state_out], feeder)
-        logits = logits[0, ...]
-        if self.ac_space.is_discrete:
-            # Use multinomial to get sample (discrete):
-            sample = np.random.multinomial(1, softmax(logits))
-            sample = self.ac_space._cat_to_vec(np.argmax(sample))
-
-        else:
-            # Use DP to get sample (continuous):
-            sample = sample_dp(logits, alpha=self.action_dp_alpha)
-
-        # Get all needed action encodings:
-        action = self.ac_space._vec_to_action(sample)
-        one_hot = self.ac_space._vec_to_one_hot(sample)
-        action_pack = {
-            'environment': action,
-            'encoded': self.ac_space.encode(action),
-            'one_hot': one_hot,
-        }
-        # print('action_pack: ', action_pack)
+            # print('action_pack: ', action_pack)
+        except Exception as e:
+            print(e)
+            raise e
 
         return action_pack, logits, value, context
 

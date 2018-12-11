@@ -828,6 +828,9 @@ class BaseAAC(object):
             ),
             trainable=False
         )
+        tf.add_to_collection(tf.GraphKeys.GLOBAL_STEP, self.global_step)
+        self.reset_global_step = self.global_step.assign(0)
+
         self.global_episode = tf.get_variable(
             "global_episode",
             [],
@@ -989,11 +992,11 @@ class BaseAAC(object):
             # Start thread_runners:
             self._start_runners(sess, summary_writer, **kwargs)
 
-        except:
+        except Exception as e:
             msg = 'start() exception occurred' + \
                 '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
             self.log.exception(msg)
-            raise RuntimeError(msg)
+            raise e
 
     def _start_runners(self, sess, summary_writer, **kwargs):
         """
