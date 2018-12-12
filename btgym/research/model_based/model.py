@@ -35,6 +35,10 @@ class PairFilteredModel:
     Harris, D. (1997) "Principal components analysis of cointegrated time series," in Econometric Theory, 13
     """
     # TODO: Z_mu <- narrower distr. <+ final data non-negativity checks
+
+    # Zero degree rotation matrix:
+    u_colored = np.asarray([[1.0, 1.0], [1.0, -1.0]])
+
     def __init__(self):
         """
         Stateful model.
@@ -50,10 +54,10 @@ class PairFilteredModel:
         self.state_trajectory = []
 
         # Decomposition matrix for max. correlated (colorized) data:
-        self.u_colored, _, _ = np.linalg.svd(np.ones([2, 2]))
+        # self.u_colored, _, _ = np.linalg.svd(np.ones([2, 2]))
 
         # Zero degree rotation:
-        # self.u_colored = np.asarray([1.0, 1.0], [1.0, -1.0])
+        # self.u_colored = np.asarray([[1.0, 1.0], [1.0, -1.0]])
 
         self.svd_trajectory = None
 

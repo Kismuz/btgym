@@ -354,18 +354,18 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
             action:     dict, string encoding of btgym.spaces.ActionDictSpace
 
         """
-        if self.is_test:
-            if self.iteration % 10 == 0 or (self.iteration - 1) % 10 == 0:
-                self.log.notice(
-                    'test step: {}, broker_value: {:.2f}'.format(self.iteration, self.env.broker.get_value())
-                )
-            if self.iteration < 10 * self.p.skip_frame:
-                # Burn-in period:
-                time.sleep(600)
-
-            else:
-                # Regular pause:
-                time.sleep(10)
+        # if self.is_test:
+        #     if self.iteration % 10 == 0 or (self.iteration - 1) % 10 == 0:
+        #         self.log.notice(
+        #             'test step: {}, broker_value: {:.2f}'.format(self.iteration, self.env.broker.get_value())
+        #         )
+        #     if self.iteration < 10 * self.p.skip_frame:
+        #         # Burn-in period:
+        #         time.sleep(600)
+        #
+        #     else:
+        #         # Regular pause:
+        #         time.sleep(10)
 
         # Here we expect action dict to contain single key:
         single_action = action[self.action_key]
