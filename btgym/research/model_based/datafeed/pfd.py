@@ -12,7 +12,7 @@ from btgym.research.model_based.model import PairFilteredModel, PairModelState
 def simple_filtered_decomp_generator_fn(num_points, state, keep_decimals=6, **kwargs):
     assert isinstance(state, PairModelState), \
         'Expected model state as instance of `PairModelState`, got: {}'.format(type(state))
-    _, x = PairFilteredModel.generate_trajectory_fn(1, num_points, state, u=PairFilteredModel.u_colored)
+    _, x = PairFilteredModel.generate_trajectory_fn(1, num_points, state, u=PairFilteredModel.u_recon)
     return np.around(x, decimals=keep_decimals)
 
 

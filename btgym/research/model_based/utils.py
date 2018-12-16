@@ -26,21 +26,24 @@ def log_uniform(lo_hi, size):
         return np.exp(v)[0]
 
 
-def ou_mle_estimator(data, dt=1):
+def ou_mle_estimator(data, dt=1, force_zero_mean=True):
     """
     Estimates vanilla OU max. log-likelihood parameters from given data of size [num_trajectories, num_points].
 
     Returns:
          tuple of vectors (mu, lambda, sigma) of size [num_trajectories] each.
 
-    Note: robust against highly biased data i.e. where data.mean / data.std  >> 1
+    Note:
+        robust against:
+            highly biased data i.e. where data.mean / data.std  >> 1
+            border conditions i.e. OU --> Weiner (unit root process)
     """
     if len(data.shape) == 1:
         data = data[None, :]
     elif len(data.shape) > 2:
         raise AssertionError('Only 1D and 2D data accepted')
 
-    # Remove bias from every trajectory:
+    # Center every trajectory:
     bias = data.mean(axis=-1)
     data -= bias[:, None]
 
@@ -53,10 +56,16 @@ def ou_mle_estimator(data, dt=1):
     sxy = (x * y).sum(axis=-1)
     syy = (y ** 2).sum(axis=-1)
 
-    mu_denom = (n * (sxx - sxy) - (sx**2 - sx * sy))
-    mu_denom[np.logical_and(0 <= mu_denom, mu_denom < 1e-10)] = 1e-10
-    mu_denom[np.logical_and(-1e-10 < mu_denom, mu_denom < 0)] = -1e-10
-    mu = (sy * sxx - sx * sxy) / mu_denom
+    if force_zero_mean:
+        # Assume OU mean is zero for centered data, compromises MLE but prevents
+        # trashy MU values for unit-root processes:
+        mu = 0
+
+    else:
+        mu_denom = (n * (sxx - sxy) - (sx**2 - sx * sy))
+        mu_denom[np.logical_and(0 <= mu_denom, mu_denom < 1e-10)] = 1e-10
+        mu_denom[np.logical_and(-1e-10 < mu_denom, mu_denom < 0)] = -1e-10
+        mu = (sy * sxx - sx * sxy) / mu_denom
 
     l_denom = sxx - 2 * mu * sx + n * (mu ** 2)
     l_denom[np.logical_and(0 <= l_denom, l_denom < 1e-10)] = 1e-10
@@ -95,7 +104,6 @@ def ou_lsr_estimator(data, dt=1):
     """
     Estimates vanilla OU parameters via least squares method from given data of size [num_trajectories, num_points].
     Returns tuple of vectors (mu, lambda, sigma) of size [num_trajectories] each.
-
     Note: robust against highly biased data i.e. where data.mean / data.std  >> 1
     """
     if len(data.shape) == 1:

@@ -16,7 +16,7 @@ PairModelObservation = namedtuple(
 )
 PairModelState = namedtuple(
     'PairModelState',
-    ['p_mean', 'p_cov', 's_mean', 's_cov', 'bias', 'std_mean', 'std_cov']
+    ['p_mean', 'p_cov', 's_mean', 's_cov', 'bias_mean', 'bias_cov', 'std_mean', 'std_cov']
 )
 SpreadModelState = namedtuple(
     'SpreadModelState',
@@ -37,7 +37,14 @@ class PairFilteredModel:
     # TODO: Z_mu <- narrower distr. <+ final data non-negativity checks
 
     # Zero degree rotation matrix:
-    u_colored = np.asarray([[1.0, 1.0], [1.0, -1.0]])
+    # u_colored = np.asarray([[1.0, 1.0], [1.0, -1.0]])
+    #u_decomp, _1, _2 = np.linalg.svd(np.ones([2, 2]))
+
+    # Decomposition matrix:
+    u_decomp = np.asarray([[.5, .5], [1., -1.]])
+
+    # Reconstruction (inverse u_decomp):
+    u_recon = np.asarray([[1.,  .5], [1., -.5]])
 
     def __init__(self):
         """
@@ -46,18 +53,13 @@ class PairFilteredModel:
         self.track_p_filter = None
         self.track_s_filter = None
         self.track_std_filter = None
+        self.track_bias_filter = None
 
         # Observations in OU parameters state-space:
         self.obs_trajectory = []
 
         # Filtered estimates in OU parameters state-space:
         self.state_trajectory = []
-
-        # Decomposition matrix for max. correlated (colorized) data:
-        # self.u_colored, _, _ = np.linalg.svd(np.ones([2, 2]))
-
-        # Zero degree rotation:
-        # self.u_colored = np.asarray([[1.0, 1.0], [1.0, -1.0]])
 
         self.svd_trajectory = None
 
@@ -88,7 +90,7 @@ class PairFilteredModel:
 
         Args:
             x:  data of shape [2, num_points]
-            u:  [2,2] decomp. matrix of orthonormal vectors
+            u:  [2,2] decomposition matrix
 
         Returns:
             x_ps:    data projection to eigenvectors (max./min. variance explained) of size [2, num_pints]
@@ -108,7 +110,8 @@ class PairFilteredModel:
 
         u_, s_, v_ = np.linalg.svd(np.cov(x_c))
 
-        x_ps = np.matmul(u.T, x_c)
+        # x_ps = np.matmul(u.T, x_c)
+        x_ps = np.matmul(u, x_c)
 
         return x_ps, bias, std, (u_, s_, v_)
 
@@ -118,7 +121,7 @@ class PairFilteredModel:
         Restores data from PS decomposition.
 
         Args:
-            x_ps:   data projection to SVD eigenvectors  of size [2, num_pints]
+            x_ps:   data projections of size [2, num_pints]
             u:      [2,2] decomposition matrix
             bias:   original data bias vector of size [2]
             std:     [X1, X2] standard deviation vector of size [2, 1]
@@ -148,7 +151,7 @@ class PairFilteredModel:
         assert init_trajectory.shape[-1] > 1, 'Initial trajectory should be longer than 1'
 
         # Decompose to [Price, Spread] and get decomp. matrix:
-        xp0, b0, std0, svd0 = self.decompose(init_trajectory, self.u_colored)
+        xp0, b0, std0, svd0 = self.decompose(init_trajectory, self.u_decomp)
 
         # Get Psi_price, Psi_spread, shaped [2x3] each:
         log_psi0 = self.base_model_estimator(xp0)
@@ -166,11 +169,18 @@ class PairFilteredModel:
             observation_covariance=obs_covariance_factor * np.eye(3),
             n_dim_obs=3
         )
-        # TODO:
         self.track_std_filter = KalmanFilter(
             initial_state_mean=std0[:, 0].tolist(),
             #transition_covariance=obs_covariance_factor * np.eye(2),
-            observation_covariance=obs_covariance_factor * np.eye(2),
+            # observation_covariance=obs_covariance_factor * np.eye(2),
+            observation_covariance=1e-6 * np.eye(2),
+            n_dim_obs=2
+        )
+        self.track_bias_filter = KalmanFilter(
+            initial_state_mean=b0[:, 0].tolist(),
+            #transition_covariance=obs_covariance_factor * np.eye(2),
+            # observation_covariance=obs_covariance_factor * np.eye(2),
+            observation_covariance=1e-4 * np.eye(2),
             n_dim_obs=2
         )
         # Initial observation:
@@ -180,7 +190,14 @@ class PairFilteredModel:
         # Compose initial hidden state:
         self.state_trajectory.append(
             PairModelState(
-                log_psi0[0, :], np.zeros([3, 3]), log_psi0[1, :], np.zeros([3, 3]), b0, std0[:, 0], np.zeros([2,2])
+                log_psi0[0, :],
+                np.zeros([3, 3]),
+                log_psi0[1, :],
+                np.zeros([3, 3]),
+                b0[:, 0],
+                np.zeros([2,2]),
+                std0[:, 0],
+                np.zeros([2,2])
             )
         )
         self.svd_trajectory.append(svd0)
@@ -209,7 +226,7 @@ class PairFilteredModel:
             z = state_prev
 
         # Decompose down to `base line`, `spread line`:
-        x_decomp, b, std, svd = self.decompose(pair_trajectory, u=self.u_colored)
+        x_decomp, b, std, svd = self.decompose(pair_trajectory, u=self.u_decomp)
 
         # Estimate hidden state observation [Psi_p[t] | Psi_s[t]], shaped [2, 3]:
         log_psi = self.base_model_estimator(x_decomp)
@@ -225,18 +242,31 @@ class PairFilteredModel:
             filtered_state_covariance=z.s_cov,
             observation=log_psi[1, :],
         )
-        # TODO: Kf -> std = {std_mean, std_cov}
         z_mean_std, z_cov_std = self.track_std_filter.filter_update(
             filtered_state_mean=z.std_mean,
             filtered_state_covariance=z.std_cov,
             observation=std[:, 0],
+        )
+        z_mean_bias, z_cov_bias = self.track_bias_filter.filter_update(
+            filtered_state_mean=z.bias_mean,
+            filtered_state_covariance=z.bias_cov,
+            observation=b[:, 0]
         )
 
         self.obs_trajectory.append(
             PairModelObservation(log_psi[0, :], log_psi[1, :], b, std)
         )
         self.state_trajectory.append(
-            PairModelState(z_mean_p, z_cov_p, z_mean_s, z_cov_s, b, z_mean_std, z_cov_std)
+            PairModelState(
+                z_mean_p,
+                z_cov_p,
+                z_mean_s,
+                z_cov_s,
+                z_mean_bias,
+                z_cov_bias,
+                z_mean_std,
+                z_cov_std
+            )
         )
         self.svd_trajectory.append(svd)
 
@@ -309,7 +339,7 @@ class PairFilteredModel:
             batch_size:     uint, number of trajectories to generates
             num_points:     uint, trajectory length to generate
             state:          model hidden state Z as (Z_means, Z_covariances) tuple.
-            u:              [2,2] decomposition matrix, typically is: PairFilteredModel.u_colored
+            u:              [2,2] reconstruction matrix, typically is: PairFilteredModel.u_recon
             mu_as_mean:     bool, if True - set mu as value of decomp.Z_mean_mu, else sample from distribution.
             restore:        bool, if True - restore to original timeseries X1|X2, return None otherwise
 
@@ -343,7 +373,9 @@ class PairFilteredModel:
 
         if restore:
             # x = np.matmul(u, xp_trajectory) * state.std + state.bias
-            x = np.matmul(u, xp_trajectory) * psi_std + state.bias
+            # Sample bias|Z:
+            bias = np.random.multivariate_normal(mean=state.bias_mean, cov=state.bias_cov, size=batch_size)
+            x = np.matmul(u, xp_trajectory) * psi_std + bias[..., None]
 
         else:
             x = None
@@ -398,7 +430,7 @@ class PairFilteredModel:
         self.ready()
         if state is None:
             state = self.state_trajectory[-1]
-        return self.generate_trajectory_fn(batch_size, num_points, state, self.u_colored, mu_as_mean, restore)
+        return self.generate_trajectory_fn(batch_size, num_points, state, self.u_recon, mu_as_mean, restore)
 
     # def generate_trajectory_2(self, batch_size, num_points, state=None, **kwargs):
     #     """
