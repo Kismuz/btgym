@@ -336,6 +336,32 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
         )
         self.data.dim_sma.plotinfo.plot = False
 
+    def get_external_state(self):
+        """
+        Attempt to include avg decomp. of original normalised spread
+        """
+        x_sma = np.stack(
+            [
+                feature.get(size=self.p.time_dim) for feature in self.data.features
+            ],
+            axis=-1
+        )
+        scale = 1 / np.clip(self.data.std[0], 1e-10, None)
+        x_sma *= scale  # <-- more or less ok
+
+        # Gradient along features axis:
+        dx = np.gradient(x_sma, axis=-1)
+
+        # # Add up: gradient  along time axis:
+        # dx2 = np.gradient(dx, axis=0)
+
+        # TODO: different conv. encoders for these two types of features:
+        x = np.concatenate([x_sma, dx], axis=-1)
+
+        # Crop outliers:
+        x = np.clip(x, -10, 10)
+        return x[:, None, :]
+
     def long_spread(self):
         """
         Opens long spread `virtual position`,
@@ -410,6 +436,42 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
             # self.log.warning('add_up check ok')
             return True
 
+    def get_broker_pos_duration(self, **kwargs):
+        """
+        Position duration is measured w.r.t. virtual spread position, not broker account exposure
+        """
+        if self.spread_position_size == 0:
+            self.current_pos_duration = 0
+            # self.log.warning('zero position')
+
+        else:
+            self.current_pos_duration += 1
+            # self.log.warning('position duration: {}'.format(self.current_pos_duration))
+
+        return self.current_pos_duration
+
+    def get_broker_unrealized_pnl(self, current_value, **kwargs):
+        """
+
+        Args:
+            current_value: current portfolio value
+
+        Returns:
+            normalized profit/loss for current opened trade
+        """
+        return (current_value - self.realized_broker_value) * self.broker_value_normalizer
+
+    def get_broker_total_unrealized_pnl(self, current_value, **kwargs):
+        """
+
+        Args:
+            current_value: current portfolio value
+
+        Returns:
+            normalized profit/loss wrt. initial portfolio value
+        """
+        return (current_value - self.env.broker.startingcash) * self.broker_value_normalizer
+
     def notify_order(self, order):
         """
         Shamelessly taken from backtrader tutorial.
@@ -441,6 +503,69 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
 
         # self.log.warning('BM: {}'.format(self.broker_message))
         self.order = None
+
+    def get_reward(self):
+        """
+        Shapes reward function as normalized single trade realized profit/loss,
+        augmented with potential-based reward shaping functions in form of:
+        F(s, a, s`) = gamma * FI(s`) - FI(s);
+        Potential FI_1 is current normalized unrealized profit/loss.
+
+        Paper:
+            "Policy invariance under reward transformations:
+             Theory and application to reward shaping" by A. Ng et al., 1999;
+             http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf
+        """
+
+        # All sliding statistics for this step are already updated by get_state().
+
+        # Potential-based shaping function 1:
+        # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
+        unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl'])
+        current_pos_duration = self.broker_stat['pos_duration'][-1]
+
+        # # We want to estimate potential `fi = gamma*fi_prime - fi` of current opened position,
+        # # thus need to consider different cases given skip_fame parameter:
+        # if current_pos_duration == 0:
+        #     # Set potential term to zero if there is no opened positions:
+        #     fi_1 = 0
+        #     fi_1_prime = 0
+        # else:
+        #     current_avg_period = min(self.avg_period, current_pos_duration)
+        #
+        #     fi_1 = self.last_pnl
+        #     fi_1_prime = np.average(unrealised_pnl[- current_avg_period:])
+
+        fi_1 = self.last_pnl
+        fi_1_prime = np.average(unrealised_pnl[-1])
+
+        # Potential term 1:
+        f1 = self.p.gamma * fi_1_prime - fi_1
+        self.last_pnl = fi_1_prime
+
+        # Potential-based shaping function 2:
+        # based on potential of averaged profit/loss for global unrealized pnl:
+        total_pnl = np.asarray(self.broker_stat['total_unrealized_pnl'])
+        delta_total_pnl = np.average(total_pnl[-self.p.skip_frame:]) - np.average(total_pnl[:-self.p.skip_frame])
+
+        fi_2 = delta_total_pnl
+        fi_2_prime = self.last_delta_total_pnl
+
+        # Potential term 2:
+        f2 = self.p.gamma * fi_2_prime - fi_2
+        self.last_delta_total_pnl = delta_total_pnl
+
+        # Potential term 3:
+        f3 = np.log(1 + current_pos_duration)
+
+        # Main reward function: normalized realized profit/loss:
+        realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
+
+        # Weights are subject to tune:
+        self.reward = (10 * f1 + 10.0 * realized_pnl) * self.p.reward_scale
+        self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
+
+        return self.reward
 
     def _next_discrete(self, action):
         """

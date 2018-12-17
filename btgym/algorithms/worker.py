@@ -328,7 +328,7 @@ class Worker(multiprocessing.Process):
                 #     self.log.warning(v)
 
                 self.saver = FastSaver(var_list=variables_to_save, max_to_keep=1, save_relative_paths=True)
-                self.summary_writer = tf.summary.FileWriter(self.summary_dir)
+
                 self.config = tf.ConfigProto(device_filters=["/job:ps", "/job:worker/task:{}/cpu:0".format(self.task)])
 
                 sess_manager = tf.train.SessionManager(
@@ -361,6 +361,7 @@ class Worker(multiprocessing.Process):
 
                     self.log.info("connecting to the parameter server... ")
 
+                    self.summary_writer = tf.summary.FileWriter(self.summary_dir, sess.graph)
                     trainer.start(sess, self.summary_writer)
 
                     # Note: `self.global_step` refers to number of environment steps
