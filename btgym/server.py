@@ -54,9 +54,10 @@ class _BTgymAnalyzer(bt.Analyzer):
 
         # Pass data serving methods:
         self.get_current_trial = self.strategy.env._get_data
-        self.can_increment_global_time = self.strategy.can_increment_global_time
+        self.can_broadcast = self.strategy.can_broadcast
         self.get_timestamp = self.strategy._get_timestamp
         self.get_dataset_info = self.strategy.env._get_info
+        self.get_broadcast_info = self.strategy._get_broadcast_info
 
         self.message = None
         self.step_to_render = None # Due to reset(), this will get populated before first render() call.
@@ -172,18 +173,20 @@ class _BTgymAnalyzer(bt.Analyzer):
             self.socket.send_pyobj((state, reward, is_done, info))
 
             # Increment global time by sending timestamp to data_server, if authorized;
-            if self.can_increment_global_time:
+            if self.can_broadcast:
                 global_timestamp = self.get_timestamp()
-                self.log.debug('got strategy timestamp: {}'.format(global_timestamp))
+                broadcast_info = self.get_broadcast_info()
+                self.log.debug('broadcasting timestamp: {}'.format(global_timestamp))
 
                 self.data_socket.send_pyobj(
                     {
-                        'ctrl': '_set_global_time',
-                        'timestamp': global_timestamp
+                        'ctrl': '_set_broadcast_message',
+                        'timestamp': global_timestamp,
+                        'broadcast_message': broadcast_info,
                     }
                 )
-                global_time_response = self.data_socket.recv_pyobj()
-                self.log.debug('DATA_COMM/glob.time received: {}'.format(global_time_response))
+                broadcast_set_response = self.data_socket.recv_pyobj()
+                self.log.debug('DATA_COMM/broadcast received: {}'.format(broadcast_set_response))
 
             # Back up step information for rendering.
             # It pays when using skip-frames: will'll get future state otherwise.
@@ -439,6 +442,28 @@ class BTgymServer(multiprocessing.Process):
 
         return data_server_response['message']['timestamp']
 
+    def get_broadcast_message(self):
+        """
+        Asks dataserver for current dataset global_time and broadcast message.
+
+        Returns:
+            POSIX timestamp
+        """
+        data_server_response = self._comm_with_timeout(
+            socket=self.data_socket,
+            message={'ctrl': '_get_broadcast_message'}
+        )
+        if data_server_response['status'] in 'ok':
+            pass
+
+        else:
+            msg = 'BtgymServer_sampling_attempt: data_server @{} unreachable with status: <{}>.'. \
+                format(self.data_network_address, data_server_response['status'])
+            self.log.error(msg)
+            raise ConnectionError(msg)
+
+        return data_server_response['message']['timestamp'], data_server_response['message']['broadcast_message']
+
     def run(self):
         """
         Server process runtime body. This method is invoked by env._start_server().
@@ -594,6 +619,10 @@ class BTgymServer(multiprocessing.Process):
             cerebro.addanalyzer(_BTgymAnalyzer, _name='_env_analyzer',)
 
             # Data preparation:
+
+            # Renew system state:
+            current_timestamp, current_broadcast_message = self.get_broadcast_message()
+
             # Parse args we got with _reset call:
             sample_config = dict(
                 episode_config=copy.deepcopy(DataSampleConfig),
@@ -607,6 +636,8 @@ class BTgymServer(multiprocessing.Process):
                     self.log.debug(
                         '_reset <{}> kwarg not found, using default values: {}'.format(key, config)
                     )
+            sample_config['trial_config']['broadcast_message'] = current_broadcast_message
+            sample_config['episode_config']['broadcast_message'] = current_broadcast_message
 
             # Get new Trial from data_server if requested,
             # despite bult-in new/reuse data object sampling option, perform checks here to avoid
@@ -625,7 +656,7 @@ class BTgymServer(multiprocessing.Process):
 
             else:
                 self.log.info('Reusing Trial <{}>'.format(self.trial_sample.filename))
-                current_timestamp = self.get_global_time()
+                # current_timestamp = self.get_global_time()
 
             self.log.debug(
                 'current global_time: {}'.format(datetime.datetime.fromtimestamp(current_timestamp))
@@ -649,6 +680,8 @@ class BTgymServer(multiprocessing.Process):
             cerebro.strats[0][0][2]['dataset_stat'] = self.dataset_stat
             cerebro.strats[0][0][2]['episode_stat'] = episode_sample.describe()
             cerebro.strats[0][0][2]['metadata'] = episode_sample.metadata
+
+            cerebro.strats[0][0][2]['broadcast_message'] = current_broadcast_message
 
             # Set nice broker cash plotting:
             cerebro.broker.set_shortcash(False)

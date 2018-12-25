@@ -13,15 +13,8 @@ Research_code_4_11, 07.01.18:
 - **[A3C_STACKED_LSTM](./unreal_stacked_lstm_strat_4_11.ipynb)**: Stacked_LSTM_Policy agent basic usage example.
 
 [<img src="https://kismuz.github.io/btgym/_images/a3c_stacked_lstm_agent.png" width="300">](https://kismuz.github.io/btgym/_images/a3c_stacked_lstm_agent.png)  
-****
-
-Research_code_4_6, 24.11.17:
-
-- **[A3C_4_6](./a3c_random_on_synth_or_real_data_4_6.ipynb)**: A3C demo on synthetic or real historic data 
-
-- **[UNREAL_4_6](./unreal_random_on_synth_or_real_data_4_6.ipynb)**: UNREAL/PPO demo on synthetic or real historic data
-
-[<img src="./img/2017-11-23_12.52.26.png" width="400">](./img/2017-11-23_12.52.26.png) [<img src="./img/2017-11-24_18.37.50.png" width="400">](./img/2017-11-24_18.37.50.png) 
+[<img src="./img/2017-11-23_12.52.26.png" width="400">](./img/2017-11-23_12.52.26.png)
+[<img src="./img/2017-11-24_18.37.50.png" width="400">](./img/2017-11-24_18.37.50.png)
 ****
 - **[Atari tests](./atari_tests)**: Gym-Atari tests for A3C, BaseAAC, PPO.
 ****

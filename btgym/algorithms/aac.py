@@ -555,7 +555,7 @@ class BaseAAC(object):
 
             # Off-policy losses:
             pi.off_pi_act_target = tf.placeholder(
-                tf.float32, [None, self.ref_env.action_space.tensor_shape[0]], name="off_policy_action_pl")
+                tf.float32, [None, self.ref_env.action_space.one_hot_depth], name="off_policy_action_pl")
             pi.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
             pi.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
 
@@ -689,12 +689,12 @@ class BaseAAC(object):
                 with tf.name_scope('model'):
                     model_summaries += [
                         tf.summary.scalar("grad_global_norm", self.grads_global_norm),
+                        # TODO: add gradient variance summary
                         #tf.summary.scalar("learn_rate", self.train_learn_rate),
                         tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
                         tf.summary.scalar("total_loss", self.loss),
-                        tf.summary.scalar('roll_reward', tf.reduce_mean(self.local_network.on_last_reward_in)),
-                        tf.summary.histogram('advantage', self.local_network.on_pi_adv_target),
-                        tf.summary.scalar('roll_advantage',tf.reduce_mean(self.local_network.on_pi_adv_target)),
+                        # tf.summary.scalar('roll_reward', tf.reduce_mean(self.local_network.on_last_reward_in)),
+                        # tf.summary.scalar('roll_advantage', tf.reduce_mean(self.local_network.on_pi_adv_target)),
                     ]
                     if policy is not None:
                         model_summaries += [ tf.summary.scalar("var_global_norm", tf.global_norm(policy.var_list))]
@@ -828,6 +828,9 @@ class BaseAAC(object):
             ),
             trainable=False
         )
+        tf.add_to_collection(tf.GraphKeys.GLOBAL_STEP, self.global_step)
+        self.reset_global_step = self.global_step.assign(0)
+
         self.global_episode = tf.get_variable(
             "global_episode",
             [],
@@ -989,11 +992,11 @@ class BaseAAC(object):
             # Start thread_runners:
             self._start_runners(sess, summary_writer, **kwargs)
 
-        except:
+        except Exception as e:
             msg = 'start() exception occurred' + \
                 '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
             self.log.exception(msg)
-            raise RuntimeError(msg)
+            raise e
 
     def _start_runners(self, sess, summary_writer, **kwargs):
         """
@@ -1331,7 +1334,8 @@ class BaseAAC(object):
 
 
         """
-        return self._process(sess)
+        # return self._process(sess)
+        self._process(sess)
 
     def _process(self, sess):
         """

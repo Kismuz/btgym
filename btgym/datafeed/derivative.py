@@ -145,10 +145,12 @@ class BTgymRandomDataDomain(BTgymBaseData):
             episode_params:         dict, describes episode parameters, should contain keys:
                                     {sample_duration, time_gap, start_00, start_weekdays};
 
-            target_period:          dict, domain target period, def={'days': 0, 'hours': 0, 'minutes': 0};
+            target_period:          dict, None or Int, domain target period, def={'days': 0, 'hours': 0, 'minutes': 0};
                                     setting this param to non-zero duration forces separation to source/target
                                     domains (which can be thought of as creating  top-level train/test subsets) with
-                                    target data duration equal to `target_period`.
+                                    target data duration equal to `target_period`;
+                                    if set to None - no target period assumed;
+                                    if set to -1 - no source period assumed;
                                     Source data always precedes target one.
             use_target_backshift:   bool, if true - target domain is shifted back by the duration of trial train period,
                                     thus allowing training on part of target domain data,
@@ -199,8 +201,8 @@ class BTgymRandomDataDomain(BTgymBaseData):
 
         episode_params.update({'test_period': trial_test_period})
 
-        if target_period is None:
-            target_period = {'days': 0, 'hours': 0, 'minutes': 0}
+        # if target_period is None:
+        #     target_period = {'days': 0, 'hours': 0, 'minutes': 0}
 
         trial_params['test_period'] = target_period
 
@@ -350,7 +352,8 @@ class BTgymDataset(BTgymRandomDataDomain):
             start_weekdays=start_weekdays,
             start_00=start_00,
             time_gap=self._time_gap,
-            test_period={'days': 0, 'hours': 0, 'minutes': 0},
+            # test_period={'days': 0, 'hours': 0, 'minutes': 0},
+            test_period=target_period,
             expanding=False
         )
         episode_params = trial_params.copy()
@@ -366,4 +369,84 @@ class BTgymDataset(BTgymRandomDataDomain):
         )
 
 
+class BTgymDataset2(BTgymRandomDataDomain):
+    """
+    Simple top-level data class, implements direct random episode sampling from data set induced by csv file,
+    i.e it is a special case for `Trial=def=Episode`.
+    """
+    def __init__(
+            self,
+            filename=None,
+            episode_duration=None,
+            time_gap=None,
+            start_00=False,
+            start_weekdays=None,
+            parsing_params=None,
+            target_period=None,
+            name='SimpleDataSet2',
+            data_names=('default_asset',),
+            log_level=WARNING,
+            **kwargs
+    ):
+        """
+        Args:
+            filename:           Str or list of str, file_names containing CSV historic data;
+            episode_duration:   dict, maximum episode duration in d:h:m, def={'days': 0, 'hours': 23, 'minutes': 55},
+                                alias for `sample_duration`;
+            time_gap:           dict, data time gap allowed within sample in d:h:m, def={'days': 0, 'hours': 6};
+            start_00:           bool, episode start point will be shifted back to first record;
+                                of the day (usually 00:00), def=False;
+            start_weekdays:     list, only weekdays from the list will be used for sample start,
+                                def=[0, 1, 2, 3, 4, 5, 6];
+            target_period:      domain test(aka target) period. def={'days': 0, 'hours': 0, 'minutes': 0};
+                                setting this param to non-zero duration forces data separation to train/test
+                                subsets. Train data always precedes test one.
+            parsing_params:     csv parsing options, see base class description for details;
+            name:               str, instance name;
+            log_level:          int, logbook.level;
+            **kwargs:
+        """
+        # Default sample time duration:
+        if episode_duration is None:
+            self._episode_duration = dict(
+                    days=0,
+                    hours=23,
+                    minutes=55,
+                )
+        else:
+            self._episode_duration = episode_duration
+
+        # Default data time gap allowed within sample:
+        if time_gap is None:
+            self._time_gap = dict(
+                days=0,
+                hours=6,
+            )
+        else:
+            self._time_gap = time_gap
+
+        # Default weekdays:
+        if start_weekdays is None:
+            start_weekdays = [0, 1, 2, 3, 4, 5, 6]
+
+        trial_params = dict(
+            sample_duration=self._episode_duration,
+            start_weekdays=start_weekdays,
+            start_00=start_00,
+            time_gap=self._time_gap,
+            # test_period={'days': 0, 'hours': 0, 'minutes': 0},
+            test_period=target_period,
+            expanding=False
+        )
+        episode_params = trial_params.copy()
+        super(BTgymDataset2, self).__init__(
+            filename=filename,
+            parsing_params=parsing_params,
+            trial_params=trial_params,
+            episode_params=episode_params,
+            target_period=target_period,
+            name=name,
+            data_names=data_names,
+            log_level=log_level,
+        )
 

@@ -40,6 +40,7 @@ class BTgymRendering():
         render_size_human=(6, 3.5),
         render_size_state=(7, 3.5),
         render_size_episode=(12,8),
+        render_rowsmajor_episode=1,
         render_dpi=75,
         render_plotstyle='seaborn',
         render_cmap='PRGn',
@@ -444,6 +445,7 @@ class BTgymRendering():
                                    height=self.render_size_episode[1],
                                    dpi=self.render_dpi,
                                    result_pipe=self.in_pipe,
+                                   rowsmajor=self.render_rowsmajor_episode,
                                    )
 
         draw_process.start()

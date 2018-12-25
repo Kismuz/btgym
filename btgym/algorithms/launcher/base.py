@@ -53,6 +53,7 @@ class Launcher():
                  policy_config=None,
                  trainer_config=None,
                  max_env_steps=None,
+                 save_secs=600,
                  root_random_seed=None,
                  test_mode=False,
                  purge_previous=1,
@@ -67,6 +68,7 @@ class Launcher():
             policy_config (dict):       policy class_config_dict holding corr. policy class args.
             trainer_config (dict):      trainer class_config_dict holding corr. trainer class args.
             max_env_steps (int):        total number of environment steps to run training on.
+            save_secs(int):             save model checkpoint every N secs.
             root_random_seed (int):     int or None
             test_mode (bool):           if True - use Atari gym env., BTGym otherwise.
             purge_previous (int):       keep or remove previous log files and saved checkpoints from log_dir:
@@ -104,6 +106,8 @@ class Launcher():
             num_workers=1,
             num_ps=1,
             log_dir='./tmp/btgym_aac_log',
+            initial_ckpt_dir=None,
+            log_ckpt_subdir='/current_train_checkpoint',
             num_envs=1,
         )
         self.policy_config = dict(
@@ -116,16 +120,19 @@ class Launcher():
             class_ref=A3C,
             kwargs={}
         )
-        self.max_env_steps = 100 * 10 ** 6
         self.ports_to_use = []
         self.root_random_seed = root_random_seed
         self.purge_previous = purge_previous
         self.test_mode = test_mode
         self.log_level = log_level
         self.verbose = verbose
+        self.save_secs = save_secs
 
         if max_env_steps is not None:
             self.max_env_steps = max_env_steps
+
+        else:
+            self.max_env_steps = 100 * 10 ** 6
 
         self.env_config = self._update_config_dict(self.env_config, env_config)
 
@@ -157,9 +164,9 @@ class Launcher():
             np.random.randint(0, 2 ** 30, self.cluster_config['num_workers'] + self.cluster_config['num_ps'])
         )
 
-        # Log_dir:
+        # Log_dir housekeeping:
         if os.path.exists(self.cluster_config['log_dir']):
-            # Remove previous log files and saved model if opted:
+            # Remove previous log files and saved model checkpoints if opted:
             if self.purge_previous > 0:
                 confirm = 'y'
                 if self.purge_previous < 2:
@@ -167,10 +174,10 @@ class Launcher():
                 if confirm in 'y':
                     files = glob.glob(self.cluster_config['log_dir'] + '/*')
                     p = psutil.Popen(['rm', '-R', ] + files, stdout=PIPE, stderr=PIPE)
-                    self.log.notice('Files in <{}> purged.'.format(self.cluster_config['log_dir']))
+                    self.log.notice('files in: {} purged.'.format(self.cluster_config['log_dir']))
 
             else:
-                self.log.notice('Appending to <{}>.'.format(self.cluster_config['log_dir']))
+                self.log.notice('writing to: {}.'.format(self.cluster_config['log_dir']))
 
         else:
             os.makedirs(self.cluster_config['log_dir'])
@@ -182,17 +189,17 @@ class Launcher():
         assert self.env_config['class_ref'] is not None
 
         # Make cluster specification dict:
-        self.cluster_spec = self.make_cluster_spec(self.cluster_config)
+        self.cluster_spec = self._make_cluster_spec(self.cluster_config)
 
         # Configure workers:
-        self.workers_config_list = self.make_workers_spec()
+        self.workers_config_list = self._make_workers_spec()
 
         # Ensure data_server port is clear:
         self.clear_port(self.env_config['kwargs']['data_port'])
 
         self.log.debug('Launcher ready.')
 
-    def make_workers_spec(self):
+    def _make_workers_spec(self):
         """
         Creates list of workers specifications.
         Returns:
@@ -240,7 +247,10 @@ class Launcher():
                         'task': task_index,
                         'test_mode': self.test_mode,
                         'log_dir': self.cluster_config['log_dir'],
+                        'initial_ckpt_dir': self.cluster_config['initial_ckpt_dir'],
+                        'log_ckpt_subdir': self.cluster_config['log_ckpt_subdir'],
                         'max_env_steps': self.max_env_steps,
+                        'save_secs': self.save_secs,
                         'log_level': self.log_level,
                         'random_seed': self.workers_rnd_seeds.pop()
                     }
@@ -251,7 +261,7 @@ class Launcher():
 
         return workers_config_list
 
-    def make_cluster_spec(self, config):
+    def _make_cluster_spec(self, config):
         """
         Composes cluster specification dictionary.
         """
@@ -383,9 +393,40 @@ class Launcher():
             self.log.notice('parameter_server_{} has joined.'.format(ps.task))
 
         # TODO: close tensorboard
-        # TODO: maybe export TB summaries accumlulators links
+        # TODO: maybe export TB summaries accumulators links
 
         self.log.notice('Launcher closed.')
+
+    def export_checkpoint(self, save_path):
+        """
+        Helper function: copies last saved checkpoint files to specified location;
+        usually to serve as pre-trained model.
+
+        Args:
+            save_path:  path to copy checkpoint files to;
+
+        """
+        source = self.cluster_config['log_dir'] + self.cluster_config['log_ckpt_subdir']
+        target = save_path
+
+        assert os.path.exists(source), 'Source dir not found: {}'.format(source)
+
+        if not os.path.exists(target):
+            os.makedirs(target)
+            self.log.notice('target dir created: {}'.format(target))
+
+        else:
+            old_files = glob.glob(target + '/*')
+            p = psutil.Popen(['rm', '-R', ] + old_files, stdout=PIPE, stderr=PIPE)
+            self.log.notice('target dir purged.')
+
+        p = os.popen('cp -R ' + source + '/* ' + target)
+
+        self.log.notice('copied to: {}'.format(target))
+
+
+
+
 
 
 

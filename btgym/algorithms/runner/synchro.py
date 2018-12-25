@@ -271,7 +271,7 @@ class BaseSynchroRunner():
         #self.log.warning('init_experience_context: {}'.format(context))
 
         # Take a nap:
-        self.sleep()
+        # self.sleep()
 
         return experience, next_state, next_context, action['encoded'], reward
 
@@ -285,26 +285,10 @@ class BaseSynchroRunner():
             next, policy RNN context
             action_reward
         """
-        # Update policy:
-        # TODO: for contd. enable for meta-learning
-        # if policy_sync_op is not None:
-        #     self.sess.run(policy_sync_op)
-
-            # TODO: meta-learning related; TEMPORAL, refract:
-            # if hasattr(policy, 'meta') and self.task == 0:
-            #     wait = 1
-            #     i = 0
-            #     while wait:
-            #         wait = policy.meta.act()
-            #         # self.log.warning('policy_meta_action: {}'.format(wait))
-            #         time.sleep(4)
-            #         # i += 1
-            #         self.sess.run([policy_sync_op, policy.meta.sync_slot_op])
-            #
-            #     policy.meta.reset()
-            #     policy.meta.global_reset()
-            #
-            #     # self.log.notice('waited: {}'.format(i))
+        # Update policy if operation has been provided:
+        if policy_sync_op is not None:
+            self.sess.run(policy_sync_op)
+            self.log.debug('Policy sync. ok!')
 
         # Continue adding experiences to rollout:
         next_action, logits, value, next_context = policy.act(
@@ -571,117 +555,6 @@ class BaseSynchroRunner():
         )
         return data
 
-    def get_episode(self, policy=None, policy_sync_op=None, init_context=None, data_sample_config=None):
-        """
-        == WRONG DO NOT USE ===
-        Collects entire episode trajectory as single rollout and bunch of summaries using specified policy.
-        Updates episode statistics and replay memory.
-
-        Args:
-            policy:                 policy to execute
-            policy_sync_op:         operation copying local behavioural policy params from global one
-            init_context:           if specified, overrides initial episode context provided bu self.context
-            data_sample_config:     environment configuration parameters for next episode to sample:
-                                    configuration dictionary of type `btgym.datafeed.base.EnvResetConfig
-
-        Returns:
-                data dictionary
-        """
-        if policy is None:
-            policy = self.policy
-
-        if init_context is None:
-            init_context = self.context
-
-        elif init_context == 0:  # mmm... TODO: fix this shame
-            init_context = None
-
-        rollout = Rollout()
-        train_ep_summary = None
-        test_ep_summary = None
-        render_ep_summary = None
-
-        # Start new episode:
-        self.pre_experience, self.state, self.context, self.last_action, self.last_reward = self.get_init_experience(
-            policy=policy,
-            policy_sync_op=policy_sync_op,
-            init_context=init_context,  # None (initially) or final context of previous episode
-            data_sample_config=data_sample_config
-        )
-
-        is_test = is_subdict(self.test_conditions, self.pre_experience)
-        # try:
-        #     # Was it test (`type` in metadata is not zero)?
-        #     # TODO: change to source/target?
-        #     if self.pre_experience['state']['metadata']['type']:
-        #         is_test = True
-        #
-        # except KeyError:
-        #     pass
-
-        # Collect data until episode is over:
-
-        while not self.terminal_end:
-            experience, self.state, self.context, self.last_action = self.get_experience(
-                policy=policy,
-                policy_sync_op=policy_sync_op,
-                state=self.state,
-                context=self.context,
-                action=self.last_action,
-                reward=self.last_reward,
-            )
-            # Complete previous experience by bootstrapping V from next one:
-            self.pre_experience['r'] = experience['value']
-            # Push:
-            rollout.add(self.pre_experience)
-
-            if not is_test:
-                self.memory.add(self.pre_experience)
-
-            # Move one step froward:
-            self.pre_experience = experience
-
-            self.reward_sum += experience['reward']
-
-            if self.pre_experience['terminal']:
-                # Episode has been just finished,
-                # need to complete and push last experience and update all episode summaries:
-                self.terminal_end = True
-
-        # Bootstrap:
-        # TODO: should be zero here
-        self.pre_experience['r'] = np.asarray(
-            [
-                policy.get_value(
-                    self.pre_experience['state'],
-                    self.pre_experience['context'],
-                    self.pre_experience['last_reward'][None, ...],
-                    self.pre_experience['last_reward'][None, ...],
-                )
-            ]
-        )
-        rollout.add(self.pre_experience)
-        if not is_test:
-            self.memory.add(self.pre_experience)
-
-        train_ep_summary = self.get_train_stat(is_test)
-        test_ep_summary = self.get_test_stat(is_test)
-        render_ep_summary = self.get_ep_render(is_test)
-
-        # self.log.warning('episodic_rollout.size: {}'.format(rollout.size))
-
-        data = dict(
-            on_policy=rollout,
-            terminal=self.terminal_end,
-            off_policy=self.memory.sample_uniform(sequence_size=self.rollout_length),
-            off_policy_rp=self.memory.sample_priority(exact_size=True),
-            ep_summary=train_ep_summary,
-            test_ep_summary=test_ep_summary,
-            render_summary=render_ep_summary,
-            is_test=is_test,
-        )
-        return data
-
     def get_batch(
             self,
             size,
@@ -767,6 +640,117 @@ class BaseSynchroRunner():
             terminal_context=terminal_context,
         )
         return data
+
+    # def get_episode(self, policy=None, policy_sync_op=None, init_context=None, data_sample_config=None):
+    #     """
+    #     == WRONG DO NOT USE ===
+    #     Collects entire episode trajectory as single rollout and bunch of summaries using specified policy.
+    #     Updates episode statistics and replay memory.
+    #
+    #     Args:
+    #         policy:                 policy to execute
+    #         policy_sync_op:         operation copying local behavioural policy params from global one
+    #         init_context:           if specified, overrides initial episode context provided bu self.context
+    #         data_sample_config:     environment configuration parameters for next episode to sample:
+    #                                 configuration dictionary of type `btgym.datafeed.base.EnvResetConfig
+    #
+    #     Returns:
+    #             data dictionary
+    #     """
+    #     if policy is None:
+    #         policy = self.policy
+    #
+    #     if init_context is None:
+    #         init_context = self.context
+    #
+    #     elif init_context == 0:  # mmm... TODO: fix this shame
+    #         init_context = None
+    #
+    #     rollout = Rollout()
+    #     train_ep_summary = None
+    #     test_ep_summary = None
+    #     render_ep_summary = None
+    #
+    #     # Start new episode:
+    #     self.pre_experience, self.state, self.context, self.last_action, self.last_reward = self.get_init_experience(
+    #         policy=policy,
+    #         policy_sync_op=policy_sync_op,
+    #         init_context=init_context,  # None (initially) or final context of previous episode
+    #         data_sample_config=data_sample_config
+    #     )
+    #
+    #     is_test = is_subdict(self.test_conditions, self.pre_experience)
+    #     # try:
+    #     #     # Was it test (`type` in metadata is not zero)?
+    #     #     # TODO: change to source/target?
+    #     #     if self.pre_experience['state']['metadata']['type']:
+    #     #         is_test = True
+    #     #
+    #     # except KeyError:
+    #     #     pass
+    #
+    #     # Collect data until episode is over:
+    #
+    #     while not self.terminal_end:
+    #         experience, self.state, self.context, self.last_action = self.get_experience(
+    #             policy=policy,
+    #             policy_sync_op=policy_sync_op,
+    #             state=self.state,
+    #             context=self.context,
+    #             action=self.last_action,
+    #             reward=self.last_reward,
+    #         )
+    #         # Complete previous experience by bootstrapping V from next one:
+    #         self.pre_experience['r'] = experience['value']
+    #         # Push:
+    #         rollout.add(self.pre_experience)
+    #
+    #         if not is_test:
+    #             self.memory.add(self.pre_experience)
+    #
+    #         # Move one step froward:
+    #         self.pre_experience = experience
+    #
+    #         self.reward_sum += experience['reward']
+    #
+    #         if self.pre_experience['terminal']:
+    #             # Episode has been just finished,
+    #             # need to complete and push last experience and update all episode summaries:
+    #             self.terminal_end = True
+    #
+    #     # Bootstrap:
+    #     # TODO: should be zero here
+    #     self.pre_experience['r'] = np.asarray(
+    #         [
+    #             policy.get_value(
+    #                 self.pre_experience['state'],
+    #                 self.pre_experience['context'],
+    #                 self.pre_experience['last_reward'][None, ...],
+    #                 self.pre_experience['last_reward'][None, ...],
+    #             )
+    #         ]
+    #     )
+    #     rollout.add(self.pre_experience)
+    #     if not is_test:
+    #         self.memory.add(self.pre_experience)
+    #
+    #     train_ep_summary = self.get_train_stat(is_test)
+    #     test_ep_summary = self.get_test_stat(is_test)
+    #     render_ep_summary = self.get_ep_render(is_test)
+    #
+    #     # self.log.warning('episodic_rollout.size: {}'.format(rollout.size))
+    #
+    #     data = dict(
+    #         on_policy=rollout,
+    #         terminal=self.terminal_end,
+    #         off_policy=self.memory.sample_uniform(sequence_size=self.rollout_length),
+    #         off_policy_rp=self.memory.sample_priority(exact_size=True),
+    #         ep_summary=train_ep_summary,
+    #         test_ep_summary=test_ep_summary,
+    #         render_summary=render_ep_summary,
+    #         is_test=is_test,
+    #     )
+    #     return data
 
 
 class VerboseSynchroRunner(BaseSynchroRunner):

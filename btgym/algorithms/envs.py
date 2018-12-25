@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 import gym
 from gym import spaces
-from btgym import DictSpace
+from btgym import DictSpace, ActionDictSpace
 
 
 def _process_frame42(frame):
@@ -28,7 +28,7 @@ class AtariRescale42x42(gym.ObservationWrapper):
     Makes Atari environment return state as dictionary with single key 'external' holding
     normalized in [0,1] grayscale 42x42 visual output.
     """
-
+    # TODO: INPRoGRESS: dict observation space, include metadata etc.
     def __init__(self, env_id=None):
         """
 
@@ -41,6 +41,22 @@ class AtariRescale42x42(gym.ObservationWrapper):
         self.observation_space = DictSpace(
             {'external': spaces.Box(0.0, 1.0, [42, 42, 1], dtype=np.float32)}
         )
+        self.asset_names = ['atari_player']
+        num_actions = self.action_space.n
+        self.action_space = ActionDictSpace(
+            base_actions=list(np.arange(num_actions)),
+            assets=self.asset_names
+        )
 
     def observation(self, observation):
         return {'external': _process_frame42(observation)}
+
+    def get_initial_action(self):
+        return {asset: 0 for asset in self.asset_names}
+
+    def step(self, action):
+        # TODO: fix it
+        action = action[self.asset_names[0]]
+        observation, reward, done, info = self.env.step(action)
+        reward = np.asarray(reward)
+        return self.observation(observation), reward, done, info

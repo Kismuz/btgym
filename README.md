@@ -1,5 +1,6 @@
 ## <a name="title"></a>Backtrader gym Environment
 
+
 **OpenAI Gym environment API for Backtrader backtesting library.**
 
 
@@ -206,6 +207,17 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
  
 ### <a name="news"></a>[News and updates:](#title)
 
+- 11.12.2018: updates and fixes:
+    - **training Launcher class** got convenience features to save and reload model parameters,
+        see https://github.com/Kismuz/btgym/blob/master/examples/unreal_stacked_lstm_strat_4_11.ipynb for details
+    - **combined model-based/model-free** aproach package in early development stage is added to `btgym.reserach`
+
+- 17.11.2018: updates and fixes:
+    - **minor fixes to base data provider** class episode sampling
+    - **update to btgym.datafeed.synthetic** subpackage: new stochastic processes generators added etc.
+    - **new btgym.research.startegy_gen_5 subpackage:**
+        efficient parameter-free signal preprocessing implemented, other minor improvements
+
 - 30.10.2018: updates and fixes:
     - **fixed numpy random state issue** causing replicating of seeds among workers on POSIX os
     - **new synthetic datafeed generators** - added simple Ornshtein-Uhlenbeck process data generating classes;
@@ -387,3 +399,4 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
   first working alpha v0.0.2.
  
  
+<a href="https://stackexchange.com/users/10204071/andrew-muzikin"><img src="https://stackexchange.com/users/flair/10204071.png" width="208" height="58" alt="profile for Andrew Muzikin on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for Andrew Muzikin on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>

@@ -72,6 +72,7 @@ class BTgymMultiData:
         self.log_level = log_level
         self.params = {}
         self.names = []
+        self.sample_num = 0
 
         # Logging:
         StreamHandler(sys.stdout).push_application()
@@ -189,7 +190,7 @@ class BTgymMultiData:
 
             self.global_timestamp = self.master_data.global_timestamp
             self.names = self.master_data.names
-
+        self.sample_num = 0
         self.is_ready = True
 
     def set_global_timestamp(self, timestamp):
@@ -204,7 +205,9 @@ class BTgymMultiData:
     def sample(self, **kwargs):
 
         # Get sample to infer exact interval:
+        self.log.debug('Making master sample...')
         master_sample = self.master_data.sample(**kwargs)
+        self.log.debug('Making master ok.')
 
         # Prepare empty instance of multistream data:
         sample = BTgymMultiData(
@@ -215,14 +218,15 @@ class BTgymMultiData:
         )
         sample.metadata = copy.deepcopy(master_sample.metadata)
 
-        kwargs['interval'] = [sample.metadata['first_row'], sample.metadata['last_row']]
+        interval = [master_sample.metadata['first_row'], master_sample.metadata['last_row']]
 
         # Populate sample with data:
         for key, stream in self.data.items():
-            sample.data[key] = stream.sample(force_interval=True, **kwargs)
+            self.log.debug('Sampling <{}> with interval: {}, kwargs: {}'.format(key, interval, kwargs))
+            sample.data[key] = stream.sample(interval=interval, force_interval=True, **kwargs)
 
-        self.filename = {key: stream.filename for key, stream in self.data.items()}
-
+        sample.filename = {key: stream.filename for key, stream in self.data.items()}
+        self.sample_num += 1
         return sample
 
     def to_btfeed(self):

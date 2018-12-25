@@ -44,7 +44,7 @@ class MetaLauncher(Launcher):
 
         super(MetaLauncher, self).__init__(**kwargs)
 
-    def make_workers_spec(self):
+    def _make_workers_spec(self):
         """
         Creates list of workers specifications.
         Overrides base class method. Sets master/slave pair of environments for every worker.

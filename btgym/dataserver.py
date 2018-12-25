@@ -29,7 +29,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
     """
     Data provider server class.
     Enables efficient data sampling for asynchronous multiply BTgym environments execution.
-    Manages global back-testing time.
+    Manages global back-testing time and broadcast messages.
     """
     process = None
     dataset_stat = None
@@ -53,6 +53,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
         self.dataset = dataset
         self.network_address = network_address
         self.default_sample_config = copy.deepcopy(DataSampleConfig)
+        self.broadcast_message = None
 
         self.debug_pre_sample_fails = 0
         self.debug_pre_sample_attempts = 0
@@ -204,12 +205,12 @@ class BTgymDataFeedServer(multiprocessing.Process):
                     socket.send_pyobj(info_dict)
 
                 # Set global time:
-                elif service_input['ctrl'] == '_set_global_time':
+                elif service_input['ctrl'] == '_set_broadcast_message':
                     if self.dataset.global_timestamp != 0 and self.dataset.global_timestamp > service_input['timestamp']:
                         message = 'Moving back in time not supported! ' +\
                                   'Current global_time: {}, '.\
                                       format(datetime.datetime.fromtimestamp(self.dataset.global_timestamp)) +\
-                                  'attempt to set: {}; nothing done. '.\
+                                  'attempt to set: {}; global_time and broadcast message not set.'.\
                                       format(datetime.datetime.fromtimestamp(service_input['timestamp'])) +\
                                   'Hint: check sampling logic consistency.'
 
@@ -217,6 +218,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
 
                     else:
                         self.dataset.global_timestamp = service_input['timestamp']
+                        self.broadcast_message = service_input['broadcast_message']
                         message = 'global_time set to: {} / stamp: {}'.\
                             format(
                                 datetime.datetime.fromtimestamp(self.dataset.global_timestamp),
@@ -230,9 +232,21 @@ class BTgymDataFeedServer(multiprocessing.Process):
                     message = {'timestamp': self.dataset.global_timestamp}
                     socket.send_pyobj(message)
 
+                elif service_input['ctrl'] == '_get_broadcast_message':
+                    # Tell:
+                    message = {
+                        'timestamp': self.dataset.global_timestamp,
+                        'broadcast_message': self.broadcast_message,
+                    }
+                    socket.send_pyobj(message)
+
                 else:  # ignore any other input
                     # NOTE: response dictionary must include 'ctrl' key
-                    message = {'ctrl': 'waiting for control keys:  <_reset_data>, <_get_data>, <_get_info>, <_stop>.'}
+                    message = {
+                        'ctrl':
+                            'waiting for control keys:  <_reset_data>, <_get_data>, ' +
+                            '<_get_info>, <_stop>, <_get_global_time>, <_get_broadcast_message>'
+                    }
                     self.log.debug('Sent: ' + str(message))
                     socket.send_pyobj(message)  # pairs any other input
 

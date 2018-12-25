@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# Copyright (C) 2017 Andrew Muzikin
+# Copyright (C) 2017-2018 Andrew Muzikin
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,8 +32,12 @@ from btgym.strategy.utils import norm_value, decayed_result, exp_scale
 ############################## Base BTgymStrategy Class ###################
 
 
-class BTgymBaseStrategy(bt.Strategy):
+class BaseStrategy5(bt.Strategy):
     """
+    'New and improved' base startegy class.
+    Incorporates state declaration and preprocessing improvements.
+    Current candidate to replace current BTgymBaseStrategy.
+
     Controls Environment inner dynamics and backtesting logic. Provides gym'my (State, Action, Reward, Done, Info) data.
     Any State, Reward and Info computation logic can be implemented by subclassing BTgymStrategy and overriding
     get_[mode]_state(), get_reward(), get_info(), is_done() and set_datalines() methods.
@@ -46,25 +50,18 @@ class BTgymBaseStrategy(bt.Strategy):
         - bt.observers.DrawDown observer will be automatically added to BTgymStrategy instance at runtime.
         - Since it is bt.Strategy subclass, refer to https://www.backtrader.com/docu/strategy.html for more information.
     """
-
     # Time embedding period:
     time_dim = 4  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
-
-    # Number of environment steps to skip before returning next response,
-    # e.g. if set to 10 -- agent will interact with environment every 10th step;
-    # every other step agent action is assumed to be 'hold':
-    skip_frame = 1
 
     # Number of timesteps reward estimation statistics are averaged over, should be:
     # skip_frame_period <= avg_period <= time_embedding_period:
     avg_period = time_dim
 
-    gamma = 0.99  # fi_gamma, should match MDP gamma decay
-
-    reward_scale = 1.0  # reward multiplicator
-
     # Possible agent actions;  Note: place 'hold' first! :
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
+
+    features_parameters = ()
+    num_features = len(features_parameters)
 
     params = dict(
         # Observation state shape is dictionary of Gym spaces,
@@ -76,7 +73,7 @@ class BTgymBaseStrategy(bt.Strategy):
         state_shape={
             'raw': spaces.Box(
                 shape=(time_dim, 4),
-                low=0, # will get overridden.
+                low=0,  # will get overridden.
                 high=0,
                 dtype=np.float32,
             ),
@@ -125,28 +122,35 @@ class BTgymBaseStrategy(bt.Strategy):
         asset_names=['default_asset'],
         start_cash=None,
         commission=None,
+        slippage=None,
         leverage=1.0,
-        gamma=gamma,
-        reward_scale=reward_scale,
-        drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.
-        target_call=10,  # finish episode when reaching profit target, in percent.
-        dataset_stat=None,  # Summary descriptive statistics for entire dataset and
-        episode_stat=None,  # current episode. Got updated by server.
+        gamma=0.99,             # fi_gamma, should match MDP gamma decay
+        reward_scale=1,         # reward multiplicator
+        drawdown_call=10,       # finish episode when hitting drawdown treshghold , in percent.
+        target_call=10,         # finish episode when reaching profit target, in percent.
+        dataset_stat=None,      # Summary descriptive statistics for entire dataset and
+        episode_stat=None,      # current episode. Got updated by server.
+        time_dim=time_dim,      # time embedding period
+        avg_period=avg_period,  # number of time steps reward estimation statistics are averaged over
+        features_parameters=features_parameters,
+        num_features=num_features,
         metadata={},
+        broadcast_message={},
         trial_stat=None,
         trial_metadata=None,
         portfolio_actions=portfolio_actions,
-        skip_frame=skip_frame,
+        skip_frame=1,       # number of environment steps to skip before returning next environment response
         order_size=None,
         initial_action=None,
         initial_portfolio_action=None,
+        state_int_scale=1,
+        state_ext_scale=1,
     )
 
     def __init__(self, **kwargs):
         """
         Keyword Args:
             params (dict):          parameters dictionary, see Note below.
-
 
             Notes:
                 Due to backtrader convention, any strategy arguments should be defined inside `params` dictionary
@@ -159,7 +163,8 @@ class BTgymBaseStrategy(bt.Strategy):
                     asset_names:        iterable of str, names for assets
                     start_cash:         float, broker starting cash
                     commission:         float, broker commission value, .01 stands for 1%
-                    leverage:           broker leverage, default is 1.0
+                    leverage:           float, broker leverage
+                    slippage:           float, broker execution slippage
                     order_size:         dict of fixed order stakes (floats); keys should match assets names.
                     drawdown_call:      finish episode when hitting this drawdown treshghold , in percent.
                     target_call:        finish episode when reaching this profit target, in percent.
@@ -175,6 +180,7 @@ class BTgymBaseStrategy(bt.Strategy):
                     asset_names=['default_asset']
                     start_cash=None
                     commission=None
+                    slippage=None,
                     leverage=1.0
                     drawdown_call=10
                     target_call=10
@@ -184,16 +190,11 @@ class BTgymBaseStrategy(bt.Strategy):
                     skip_frame=1
                     order_size=None
         """
-        try:
-            self.time_dim = self.p.state_shape['raw'].shape[0]
-        except KeyError:
-            pass
+        # Inherit logger from cerebro:
+        self.log = self.env._log
 
-        try:
-            self.skip_frame = self.p.skip_frame
-        except KeyError:
-            pass
-        
+        self.skip_frame = self.p.skip_frame
+
         self.iteration = 0
         self.env_iteration = 0
         self.inner_embedding = 1
@@ -212,8 +213,9 @@ class BTgymBaseStrategy(bt.Strategy):
         self.raw_state = None
         self.time_stamp = 0
 
-        # Inherit logger from cerebro:
-        self.log = self.env._log
+        # Configure state_shape:
+        if self.p.state_shape is None:
+            self.p.state_shape = self.set_state_shape()
 
         # Prepare broker:
         if self.p.start_cash is not None:
@@ -221,6 +223,11 @@ class BTgymBaseStrategy(bt.Strategy):
 
         if self.p.commission is not None:
             self.env.broker.setcommission(commission=self.p.commission, leverage=self.p.leverage)
+
+        if self.p.slippage is not None:
+            # Bid/ask workaround: set overkill 10% slippage + slip_out=False
+            # ensuring we always buy at current 'high'~'ask' and sell at 'low'~'bid':
+            self.env.broker.set_slippage_perc(self.p.slippage, slip_open=True, slip_match=True, slip_out=False)
 
         # Normalisation constant for statistics derived from account value:
         self.broker_value_normalizer = 1 / \
@@ -245,8 +252,11 @@ class BTgymBaseStrategy(bt.Strategy):
             self.p.order_size = {name: env_sizer_params['stake'] for name in self.p.asset_names}
 
         elif isinstance(self.p.order_size, int) or isinstance(self.p.order_size, float):
-            unimodal_stake = {name: self.p.order_size for name in self.p.asset_names}
+            unimodal_stake = {name: self.p.order_size for name in self.getdatanames()}
             self.p.order_size = unimodal_stake
+
+        # self.log.warning('asset names: {}'.format(self.p.asset_names))
+        # self.log.warning('data names: {}'.format(self.getdatanames()))
 
         self.trade_just_closed = False
         self.trade_result = 0
@@ -265,7 +275,7 @@ class BTgymBaseStrategy(bt.Strategy):
         # Service sma to get correct first features values:
         self.data.dim_sma = btind.SimpleMovingAverage(
             self.datas[0],
-            period=self.time_dim
+            period=self.p.time_dim
         )
         self.data.dim_sma.plotinfo.plot = False
 
@@ -285,13 +295,16 @@ class BTgymBaseStrategy(bt.Strategy):
             'metadata': None
         }
 
+        # If it is train or test episode?
+        # default logic: true iff. it is test episode from target domain:
+        self.is_test = self.metadata['type'] and self.metadata['trial_type']
+
         # This flag shows to the outer world if this episode can broadcast world-state information, e.g. move global
         # time forward (see: btgym.server._BTgymAnalyzer.next() method);
-        # default logic: true iff. it is test episode from target domain:
-        self.can_broadcast = self.metadata['type'] and self.metadata['trial_type']
+        self.can_broadcast = self.is_test
 
         self.log.debug('strategy.metadata: {}'.format(self.metadata))
-        self.log.debug('can_broadcast: {}'.format(self.can_broadcast))
+        self.log.debug('is_test: {}'.format(self.is_test))
 
         # Broker data lines of interest (used for estimation inner state of agent:
         self.broker_datalines = [
@@ -299,15 +312,15 @@ class BTgymBaseStrategy(bt.Strategy):
             'value',
             'exposure',
             'drawdown',
-            'pos_direction',
             'pos_duration',
             'realized_pnl',
             'unrealized_pnl',
             'min_unrealized_pnl',
             'max_unrealized_pnl',
+            'total_unrealized_pnl',
         ]
-        # Define collection dictionary looking for methods for estimating broker statistics, one method for one mode,
-        # should be named .get_broker_[mode_name]():
+        # Define flat collection dictionary looking for methods for estimating broker statistics,
+        # one method for one mode, should be named .get_broker_[mode_name]():
         self.collection_get_broker_stat_methods = {}
         for line in self.broker_datalines:
             try:
@@ -317,15 +330,15 @@ class BTgymBaseStrategy(bt.Strategy):
                 raise NotImplementedError('Callable get_broker_{}.() not found'.format(line))
 
         # Broker and account related sliding statistics accumulators, globally normalized last `avg_perod` values,
-        # so it's a bit more comp. efficient than use of bt.Observers:
+        # so it's a bit more computationally efficient than use of bt.Observers:
         self.broker_stat = {key: deque(maxlen=self.avg_period) for key in self.broker_datalines}
 
         # Add custom data Lines if any (convenience wrapper):
         self.set_datalines()
         self.log.debug('Kwargs:\n{}\n'.format(str(kwargs)))
 
-        # Define collection dictionary looking for methods for estimating observation state, one method for one mode,
-        # should be named .get_[mode_name]_state():
+        # Define flat collection dictionary looking for methods for estimating observation state,
+        # one method for one mode, should be named .get_[mode_name]_state():
         self.collection_get_state_methods = {}
         for key in self.p.state_shape.keys():
             try:
@@ -362,9 +375,9 @@ class BTgymBaseStrategy(bt.Strategy):
             # Use discrete handling method otherwise:
             self.env.broker.set_checksubmit(True)
             self.next_process_fn = self._next_discrete
-
+            # self.log.warning('DISCRETE')
             # Do not repeat action for discrete:
-            self.num_action_repeats = 0 
+            self.num_action_repeats = 0
 
     def prenext(self):
         self.update_broker_stat()
@@ -385,10 +398,10 @@ class BTgymBaseStrategy(bt.Strategy):
         self.update_broker_stat()
 
         if '_skip_this' in self.action.keys():
-                # print('a_skip, b_message: ', self.broker_message)
-                if self.action_repeated < self.num_action_repeats:
-                    self.next_process_fn(self.action_to_repeat)
-                    self.action_repeated += 1
+            # print('a_skip, b_message: ', self.broker_message)
+            if self.action_repeated < self.num_action_repeats:
+                self.next_process_fn(self.action_to_repeat)
+                self.action_repeated += 1
 
         else:
             self.next_process_fn(self.action)
@@ -402,10 +415,13 @@ class BTgymBaseStrategy(bt.Strategy):
             # and store trade result:
             self.trade_just_closed = True
             # Note: `trade_just_closed` flag has to be reset manually after evaluating.
-            self.trade_result = trade.pnlcomm
+            self.trade_result += trade.pnlcomm
 
             # Store realized prtfolio value:
             self.realized_broker_value = self.broker.get_value()
+            # self.log.warning('notify_trade: trade_pnl: {}, cum_trade_result: {}, realized_value: {}'.format(
+            #     trade.pnlcomm, self.trade_result, self.realized_broker_value)
+            # )
 
     def update_broker_stat(self):
         """
@@ -417,13 +433,25 @@ class BTgymBaseStrategy(bt.Strategy):
             - normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)
             - normalized profit/loss for current opened trade (unrealized p/l);
         """
+        # Current account value:
         current_value = self.env.broker.get_value()
 
+        # Individual positions for each instrument traded:
+        positions = [self.env.broker.getposition(data) for data in self.datas]
+        exposure = sum([abs(pos.size) for pos in positions])
+
         for key, method in self.collection_get_broker_stat_methods.items():
-            self.broker_stat[key].append(method(current_value=current_value))
+            self.broker_stat[key].append(
+                method(
+                    current_value=current_value,
+                    positions=positions,
+                    exposure=exposure,
+                )
+            )
 
         # Reset one-time flags:
         self.trade_just_closed = False
+        self.trade_result = 0
 
     def get_broker_value(self, current_value, **kwargs):
         """
@@ -454,28 +482,13 @@ class BTgymBaseStrategy(bt.Strategy):
             self.p.target_call,
         )
 
-    def get_broker_exposure(self, **kwargs):
+    def get_broker_exposure(self, exposure, **kwargs):
         """
 
         Returns:
             normalized exposure (position size)
         """
-        return self.position.size / (self.env.broker.startingcash * self.env.broker.get_leverage() + 1e-2)
-
-    def get_broker_pos_direction(self, **kwargs):
-        """
-
-        Returns:
-            short/long/out position indicator
-        """
-        if self.position.size > 0:
-            return 1.0
-
-        elif self.position.size < 0:
-            return - 1.0
-
-        else:
-            return 0.0
+        return exposure / (self.env.broker.startingcash * self.env.broker.get_leverage() + 1e-2)
 
     def get_broker_realized_pnl(self, current_value, **kwargs):
         """
@@ -486,6 +499,7 @@ class BTgymBaseStrategy(bt.Strategy):
         Returns:
             normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)
         """
+
         if self.trade_just_closed:
             pnl = decayed_result(
                 self.trade_result,
@@ -495,9 +509,10 @@ class BTgymBaseStrategy(bt.Strategy):
                 self.p.target_call,
                 gamma=1
             )
+            # self.log.warning('get_broker_realized_pnl: got result: {} --> pnl: {}'.format(self.trade_result, pnl))
             # Reset flag:
             # self.trade_just_closed = False
-            #print('broker_realized_pnl: step {}, just closed.'.format(self.iteration))
+            # print('broker_realized_pnl: step {}, just closed.'.format(self.iteration))
 
         else:
             pnl = 0.0
@@ -513,6 +528,17 @@ class BTgymBaseStrategy(bt.Strategy):
             normalized profit/loss for current opened trade
         """
         return (current_value - self.realized_broker_value) * self.broker_value_normalizer
+
+    def get_broker_total_unrealized_pnl(self, current_value, **kwargs):
+        """
+
+        Args:
+            current_value: current portfolio value
+
+        Returns:
+            normalized profit/loss wrt. initial portfolio value
+        """
+        return (current_value - self.env.broker.startingcash) * self.broker_value_normalizer
 
     def get_broker_episode_step(self, **kwargs):
         """
@@ -532,30 +558,24 @@ class BTgymBaseStrategy(bt.Strategy):
             current drawdown value
         """
         try:
-            dd = self.stats.drawdown.drawdown[-1] #/ self.p.drawdown_call
+            dd = self.stats.drawdown.drawdown[-1]  # / self.p.drawdown_call
         except IndexError:
             dd = 0.0
         return dd
 
-    def get_broker_pos_duration(self, current_value):
-        if self.position.size == 0:
+    def get_broker_pos_duration(self, exposure, **kwargs):
+
+        if exposure == 0:
             self.current_pos_duration = 0
-            # self.current_pos_min_value = current_value
-            # self.current_pos_max_value = current_value
             # print('ZERO_POSITION\n')
 
         else:
             self.current_pos_duration += 1
-            # if self.current_pos_max_value < current_value:
-            #     self.current_pos_max_value = current_value
-            #
-            # elif self.current_pos_min_value > current_value:
-            #     self.current_pos_min_value = current_value
 
-        return self.current_pos_duration #/ (self.data.numrecords - self.inner_embedding)
+        return self.current_pos_duration
 
-    def get_broker_max_unrealized_pnl(self, current_value, **kwargs):
-        if self.position.size == 0:
+    def get_broker_max_unrealized_pnl(self, current_value, exposure, **kwargs):
+        if exposure == 0:
             self.current_pos_max_value = current_value
 
         else:
@@ -563,8 +583,8 @@ class BTgymBaseStrategy(bt.Strategy):
                 self.current_pos_max_value = current_value
         return (self.current_pos_max_value - self.realized_broker_value) * self.broker_value_normalizer
 
-    def get_broker_min_unrealized_pnl(self, current_value, **kwargs):
-        if self.position.size == 0:
+    def get_broker_min_unrealized_pnl(self, current_value, exposure, **kwargs):
+        if exposure == 0:
             self.current_pos_min_value = current_value
 
         else:
@@ -646,9 +666,22 @@ class BTgymBaseStrategy(bt.Strategy):
         Transmits broadcasting message.
 
         Returns:
-            dictionary of global settings
+            dictionary  or None
         """
-        return dict()
+        try:
+            return self.get_broadcast_message()
+
+        except AttributeError:
+            return None
+
+    def get_broadcast_message(self):
+        """
+        Override this.
+
+        Returns:
+            dictionary or None
+        """
+        return None
 
     def get_state(self):
         """
@@ -664,15 +697,7 @@ class BTgymBaseStrategy(bt.Strategy):
         """
         # Update inner state statistic and compose state: <- moved to .next()
         # self.update_broker_stat()
-
         self.state = {key: method() for key, method in self.collection_get_state_methods.items()}
-        # Above line is generalisation of, say:
-        # self.state = {
-        #     'external': self.get_external_state(),
-        #     'internal': self.get_internal_state(),
-        #     'datetime': self.get_datetime_state(),
-        #     'metadata': self.get_metadata_state(),
-        # }
         return self.state
 
     def get_reward(self):
@@ -680,10 +705,7 @@ class BTgymBaseStrategy(bt.Strategy):
         Shapes reward function as normalized single trade realized profit/loss,
         augmented with potential-based reward shaping functions in form of:
         F(s, a, s`) = gamma * FI(s`) - FI(s);
-
-        - potential FI_1 is current normalized unrealized profit/loss;
-        EXCLUDED/ - potential FI_2 is current normalized broker value.
-        EXCLUDED/ - FI_3: penalizing exposure toward the end of episode
+        Potential FI_1 is current normalized unrealized profit/loss.
 
         Paper:
             "Policy invariance under reward transformations:
@@ -703,7 +725,7 @@ class BTgymBaseStrategy(bt.Strategy):
         if current_pos_duration == 0:
             # Set potential term to zero if there is no opened positions:
             f1 = 0
-
+            fi_1_prime = 0
         else:
             if current_pos_duration < self.p.skip_frame:
                 fi_1 = 0
@@ -729,7 +751,6 @@ class BTgymBaseStrategy(bt.Strategy):
 
         # Weights are subject to tune:
         self.reward = (10.0 * f1 + 10.0 * realized_pnl) * self.p.reward_scale
-
         self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
 
         return self.reward
@@ -817,7 +838,7 @@ class BTgymBaseStrategy(bt.Strategy):
         else:
             # Now in episode termination phase,
             # just keep hitting `Close` button:
-            self.steps_till_is_done -=1
+            self.steps_till_is_done -= 1
             self.broker_message = 'CLOSE, {}'.format(self.final_message)
             self.order = self.close()
             self.log.debug(
@@ -860,7 +881,7 @@ class BTgymBaseStrategy(bt.Strategy):
             self.broker_message = 'ORDER FAILED with status: ' + str(order.getstatusname())
             # Rise order_failed flag until get_reward() will [hopefully] use and reset it:
             self.order_failed += 1
-
+        # self.log.warning('BM: {}'.format(self.broker_message))
         self.order = None
 
     def _next_discrete(self, action):
@@ -899,8 +920,8 @@ class BTgymBaseStrategy(bt.Strategy):
         # TODO 1: filter similar actions to prevent excessive orders issue e.g by DKL on two consecutive ones
         # TODO 2: actions discretesation on level of execution
         for asset in self.p.asset_names:
-                # Reducing assets positions subj to 5% margin reserve:
-                single_action = round(float(action[asset]) * 0.9, 2)
-                self.order = self.order_target_percent(data=asset, target=single_action )
-                self.broker_message += ' new {}->{:1.0f}% created; '.format(asset, single_action * 100)
+            # Reducing assets positions subj to 5% margin reserve:
+            single_action = round(float(action[asset]) * 0.9, 2)
+            self.order = self.order_target_percent(data=asset, target=single_action)
+            self.broker_message += ' new {}->{:1.0f}% created; '.format(asset, single_action * 100)
 
