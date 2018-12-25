@@ -60,6 +60,9 @@ def conv_1d_casual_encoder(
 
             num_time_batches = int(length / conv_1d_filter_size)
 
+            stride = conv_1d_filter_size - conv_1d_overlap
+            assert stride > 0, 'conv_1d_filter_size should be greater then conv_1d_overlap'
+        
             # print('num_time_batches: ', num_time_batches)
 
             y = tf.reshape(y, [-1, conv_1d_filter_size, channels], name='layer_{}_t2b'.format(i))
@@ -68,7 +71,7 @@ def conv_1d_casual_encoder(
                 x=y,
                 num_filters=conv_1d_num_filters,
                 filter_size=conv_1d_filter_size,
-                stride=1,
+                stride=stride,
                 pad='VALID',
                 name='conv1d_layer_{}'.format(i)
             )
