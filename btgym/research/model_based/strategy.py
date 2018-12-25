@@ -291,6 +291,9 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
         return self.reward
 
 
+from pykalman import KalmanFilter
+
+
 class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
     """
     Expects pair of data streams. Forms spread as only virtual trading asset.
@@ -314,6 +317,25 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
 
         # Reserve 5% of initial cash when checking if it is possible to add up virtual spread:
         self.margin_reserve = self.env.broker.get_cash() * .05
+
+        self.kf = KalmanFilter(
+            initial_state_mean=0,
+            transition_covariance=.01,
+            observation_covariance=1,
+            n_dim_obs=1
+        )
+        self.kf_state = [0, 0]
+
+        self.reward_debug = dict(
+            n=0,
+            f1=0,
+            f1_mean=0,
+            f1_sum=0,
+            fp=0,
+            fp_mean=0,
+            r_mean=0,
+            r_sum=0,
+        )
 
     def set_datalines(self):
 
@@ -524,20 +546,28 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
         unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl'])
         current_pos_duration = self.broker_stat['pos_duration'][-1]
 
-        # # We want to estimate potential `fi = gamma*fi_prime - fi` of current opened position,
-        # # thus need to consider different cases given skip_fame parameter:
-        # if current_pos_duration == 0:
-        #     # Set potential term to zero if there is no opened positions:
-        #     fi_1 = 0
-        #     fi_1_prime = 0
-        # else:
+        # We want to estimate potential `fi = gamma*fi_prime - fi` of current opened position,
+        # thus need to consider different cases given skip_fame parameter:
+        if current_pos_duration == 0:
+            # Set potential term to zero if there is no opened positions:
+            fi_1 = 0
+            fi_1_prime = 0
+            # Reset filter state:
+            self.kf_state = [0, 0]
+        else:
         #     current_avg_period = min(self.avg_period, current_pos_duration)
         #
         #     fi_1 = self.last_pnl
         #     fi_1_prime = np.average(unrealised_pnl[- current_avg_period:])
 
-        fi_1 = self.last_pnl
-        fi_1_prime = np.average(unrealised_pnl[-1])
+            fi_1 = self.last_pnl
+            # fi_1_prime = np.average(unrealised_pnl[-1])
+            self.kf_state = self.kf.filter_update(
+                filtered_state_mean=self.kf_state[0],
+                filtered_state_covariance=self.kf_state[1],
+                observation=unrealised_pnl[-1],
+            )
+            fi_1_prime = np.squeeze(self.kf_state[0])
 
         # Potential term 1:
         f1 = self.p.gamma * fi_1_prime - fi_1
@@ -556,16 +586,43 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
         self.last_delta_total_pnl = delta_total_pnl
 
         # Potential term 3:
-        f3 = np.log(1 + current_pos_duration)
+        f3 = 1 + .5 * np.log(1 + current_pos_duration)
 
         # Main reward function: normalized realized profit/loss:
         realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
 
         # Weights are subject to tune:
-        self.reward = (10 * f1 + 10.0 * realized_pnl) * self.p.reward_scale
+        self.reward = (10 * f1 * f3 + 10.0 * realized_pnl) * self.p.reward_scale
         self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
 
+        self.reward_debug['n'] += 1
+        self.reward_debug['f1'] = f1
+        self.reward_debug['f1_mean'] = self.reward_debug['f1_mean'] + \
+            (f1 - self.reward_debug['f1_mean']) / self.reward_debug['n']
+        self.reward_debug['f1_sum'] += f1
+        self.reward_debug['fp'] += realized_pnl
+        self.reward_debug['fp_mean'] = self.reward_debug['fp_mean'] + \
+            (realized_pnl - self.reward_debug['fp_mean']) / self.reward_debug['n']
+        self.reward_debug['r_sum'] += self.reward
+        self.reward_debug['r_mean'] = self.reward_debug['r_mean'] + \
+            (self.reward - self.reward_debug['r_mean']) / self.reward_debug['n']
+
         return self.reward
+
+    # def stop(self):
+    #     self.log.warning(
+    #         'total: {:.4f}\nr_sum: {:.6f}, r_mean: {:.6f},\nf1: {:.6f}, f1_mean: {:.6f}, f1_sum: {:.6f},\nfp_sum: {:.6f}, fp_mean: {:.6f}'.
+    #             format(
+    #             self.env.broker.get_value(),
+    #             self.reward_debug['r_sum'],
+    #             self.reward_debug['r_mean'],
+    #             self.reward_debug['f1'],
+    #             self.reward_debug['f1_mean'],
+    #             self.reward_debug['f1_sum'],
+    #             self.reward_debug['fp'],
+    #             self.reward_debug['fp_mean'],
+    #         )
+    #     )
 
     def _next_discrete(self, action):
         """

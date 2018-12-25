@@ -279,7 +279,8 @@ class StackedLstmPolicy(BaseAacPolicy):
                 lstm_class=lstm_class_ref,
                 lstm_layers=(lstm_layers[0],),
                 static=static_rnn,
-                name='lstm_1'
+                name='lstm_1',
+                **kwargs,
             )
 
         # var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
@@ -328,7 +329,8 @@ class StackedLstmPolicy(BaseAacPolicy):
                 lstm_class=lstm_class_ref,
                 lstm_layers=(lstm_layers[-1],),
                 static=static_rnn,
-                name='lstm_2'
+                name='lstm_2',
+                **kwargs,
             )
 
         self.debug['on_x_lstm_2_out'] = on_x_lstm_2_out
@@ -472,7 +474,8 @@ class StackedLstmPolicy(BaseAacPolicy):
                 (lstm_layers[0],),
                 name='lstm_1',
                 static=static_rnn,
-                reuse=True
+                reuse=True,
+                **kwargs,
             )
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
@@ -502,7 +505,8 @@ class StackedLstmPolicy(BaseAacPolicy):
                 (lstm_layers[-1],),
                 name='lstm_2',
                 static=static_rnn,
-                reuse=True
+                reuse=True,
+                **kwargs,
             )
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:

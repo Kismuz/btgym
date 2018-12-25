@@ -11,16 +11,16 @@ class GuidedPolicy_0_0(AacStackedRL2Policy):
     def __init__(
         self,
         conv_2d_layer_config=(
-             (32, (3, 1), (2, 1)),
-             (32, (3, 1), (2, 1)),
-             (64, (3, 1), (2, 1)),
-             (64, (3, 1), (2, 1))
-         ),
-         lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
-         lstm_layers=(256, 256),
-         lstm_2_init_period=50,
-         linear_layer_ref=noisy_linear,
-        **kwargs
+                (32, (3, 1), (2, 1)),
+                (32, (3, 1), (2, 1)),
+                (64, (3, 1), (2, 1)),
+                (64, (3, 1), (2, 1))
+            ),
+            lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
+            lstm_layers=(256, 256),
+            lstm_2_init_period=50,
+            linear_layer_ref=noisy_linear,
+            **kwargs
     ):
         super(GuidedPolicy_0_0, self).__init__(
             conv_2d_layer_config=conv_2d_layer_config,

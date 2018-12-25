@@ -365,6 +365,7 @@ def beta_var_conv2d_autoencoder(
         z_sampled = mu + tf.exp(log_sigma / 2) * eps
 
         # D_KL(Q(z|X) || P(z|X)):
+        # TODO: where is sum?!
         d_kl = 0.5 * (tf.exp(log_sigma) + tf.square(mu) - 1. - log_sigma)
 
         # Reshape back and feed to decoder:
@@ -454,4 +455,3 @@ class KernelMonitor():
             signal += grads_value * step
 
         return signal
-
