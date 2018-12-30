@@ -1241,7 +1241,7 @@ class BaseAAC(object):
 
         return self._get_main_feeder(sess, on_policy_batch, off_policy_batch, rp_batch, is_train, pi, pi_prime)
 
-    def process_summary(self, sess, data, model_data=None, step=None, episode=None):
+    def process_summary(self, sess, data, model_data=None, step=None, episode=None, run_metadata=None):
         """
         Fetches and writes summary data from `data` and `model_data`.
         Args:
@@ -1250,6 +1250,7 @@ class BaseAAC(object):
             model_data(dict):   model summary data
             step:               int, global step or None
             episode:            int, global episode number or None
+            run_metadata(dict): model run statistics
         """
         if step is None:
             step = sess.run(self.global_step)
@@ -1320,7 +1321,8 @@ class BaseAAC(object):
                 self.summary_writer.flush()
 
         # Every worker writes train episode summaries:
-        if model_data is not None:
+        if model_data is not None and run_metadata is not None:
+            self.summary_writer.add_run_metadata(run_metadata, 'step%d' % step, global_step=step)
             self.summary_writer.add_summary(tf.Summary.FromString(model_data), step)
             self.summary_writer.flush()
 
@@ -1381,13 +1383,13 @@ class BaseAAC(object):
                 feed_dict = self.process_data(sess, data, is_train, self.local_network, self.local_network_prime)
 
                 # Say `No` to redundant summaries:
-                wirte_model_summary =\
+                write_model_summary =\
                     self.local_steps % self.model_summary_freq == 0
 
                 #fetches = [self.train_op, self.local_network.debug]  # include policy debug shapes
                 fetches = [self.train_op]
 
-                if wirte_model_summary:
+                if write_model_summary:
                     fetches_last = fetches + [self.model_summary_op, self.inc_step]
                 else:
                     fetches_last = fetches + [self.inc_step]
@@ -1396,10 +1398,17 @@ class BaseAAC(object):
                 # When doing more than one epoch, we actually use only last summary:
                 for i in range(self.num_epochs - 1):
                     fetched = sess.run(fetches, feed_dict=feed_dict)
+                    
+                run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+                run_metadata = tf.RunMetadata()    
 
-                fetched = sess.run(fetches_last, feed_dict=feed_dict)
+                fetched = sess.run(fetches_last,
+                                   feed_dict=feed_dict,
+                                   options=run_options,
+                                   run_metadata=run_metadata
+                                  )
 
-                if wirte_model_summary:
+                if write_model_summary:
                     model_summary = fetched[-2]
 
                 else:
