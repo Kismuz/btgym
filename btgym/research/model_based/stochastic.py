@@ -127,6 +127,47 @@ def ornshtein_uhlenbeck_process_batch_fn(num_points, mu, l, sigma, x0, dt=1):
     return x[1:, :]
 
 
+def ou_process_t_driver_batch_fn(num_points, mu, l, sigma, df, x0, dt=1):
+    """
+    Generates batch of realisation trajectories of Ornshtein-Uhlenbeck process
+    driven by t-distributed innovations.
+    Student-t driver params shoud be given in the “standardized” form, see:
+    https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.t.html#scipy.stats.t
+
+    Args:
+        num_points:     int, trajectory length
+        mu:             float or array of shape [batch_dim], mean;
+        l:              float or array of shape [batch_dim], lambda, mean reversion rate;
+        sigma:          float or array of shape [batch_dim], volatility;
+        df:             float or array of shape [batch_dim] > 2.0, standart Student-t degrees of freedom param.;
+        x0:             float or array of shape [batch_dim], starting point;
+        dt:             int, time increment;
+
+    Returns:
+        generated data as np.array of shape [batch_dim, num_points]
+    """
+
+    n = num_points + 1
+    try:
+        batch_dim = x0.shape[0]
+        x = np.zeros([n, batch_dim])
+        x[0, :] = np.squeeze(x0)
+    except (AttributeError, IndexError) as e:
+        batch_dim = None
+        x = np.zeros([n, 1])
+        x[0, :] = x0
+
+    for i in range(1, n):
+        driver = np.random.standard_t(df, size=df.size) * ((df - 2) / df) ** .5
+        # driver = stats.t.rvs(df, loc, scale, size=batch_dim)
+        # x_vol = df / (df - 2)
+        # driver = (driver - loc) / scale / x_vol**.5
+        x[i, :] = x[i - 1, :] * np.exp(-l * dt) + mu * (1 - np.exp(-l * dt)) + \
+                  sigma * ((1 - np.exp(-2 * l * dt)) / (2 * l)) ** .5 * driver
+
+    return x[1:, :]
+
+
 def ornshtein_uhlenbeck_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):
     """
     Provides parameters for OU process.

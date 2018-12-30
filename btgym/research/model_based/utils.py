@@ -146,5 +146,32 @@ def ou_variance(l, sigma, **kwargs):
     return np.clip(sigma**2, 0, None) / (2 * np.clip(l, 1e-10, None))
 
 
+def ou_log_likelihood(mu, l, sigma, data):
+    """
+    Estimates OU model parameters log likelihood given data log[P(mu, lambda, sigma|X)]
+    """
+    x = data[1:]
+    x_prev = data[:-1]
+    logL = - .5 * np.log(2 * np.pi) - np.log(sigma) \
+           - 1 / (2 * sigma ** 2) * ((x - x_prev * np.exp(-l) - mu * (1 - np.exp(-l))) ** 2).mean(axis=-1)
+    return logL
+
+
+def batch_covariance(x):
+    """
+    Batched covariance matrix estimation.
+    Credit to: Divakar@stackoverflow.com, see:
+    https://stackoverflow.com/questions/40394775/vectorizing-numpy-covariance-for-3d-array
+
+    Args:
+        x:  array of size [batch_dim, num_variables, num_observations]
+
+    Returns:
+        estimated covariance matrix of size [batch_dim, num_variables, num_variables]
+    """
+    n = x.shape[2]
+    m1 = x - x.sum(2, keepdims=1) / n
+    return np.einsum('ijk,ilk->ijl', m1, m1) / (n - 1)
+
 
 
