@@ -324,3 +324,135 @@ class dCovariance:
         self.mean, self.variance = self.stat.update(x)
         return self.covariance, self.mean, self.variance
 
+
+class OUEstimator:
+    """
+    DEPRECATED, use rec.OUEstimator
+    Recursive Ornshtein-Uhlenbeck process parameters estimation in exponentially decaying window.
+    """
+
+    def __init__(self, alpha):
+        """
+
+        Args:
+            alpha:      float, decaying factor in [0, 1]
+        """
+        self.alpha = alpha
+        self.covariance_estimator = dCovariance(2, alpha)
+        self.error_stat = dZscore(1, alpha)
+        self.ls_a = 0.0
+        self.ls_b = 0.0
+        self.mu = 0.0
+        self.l = 0.0
+        self.sigma = 0.0
+        self.x_prev = 0.0
+
+    def reset(self, trajectory=None):
+        """
+
+        Args:
+            trajectory:     initial 1D process observations trajectory of size [num_points] or None
+
+        Returns:
+            current estimated OU mu, lambda, sigma
+        """
+        # TODO: require init. trajectory
+        if trajectory is None:
+            self.ls_a = 0.0
+            self.ls_b = 0.0
+            self.mu = 0.0
+            self.mu = 0.0
+            self.l = 0.0
+            self.sigma = 0.0
+            self.x_prev = 0.0
+            self.covariance_estimator.reset(None)
+            self.error_stat.reset(None)
+
+        else:
+            # Fit trajectory:
+            x = trajectory[:-1]
+            y = trajectory[1:]
+            xy = np.stack([x,y], axis=0)
+
+            self.ls_a, self.ls_b = self.fit_ls_estimate(*self.covariance_estimator.reset(xy))
+
+            err = y - (self.ls_a * x + self.ls_b)
+
+            _, err_var = self.error_stat.reset(err)
+
+            _, self.l, self.sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, err_var)
+
+            self.mu = self.covariance_estimator.mean.mean()
+
+            self.x_prev = trajectory[-1]
+
+        return self.mu, self.l, self.sigma
+
+    def update(self, x):
+        # TODO: allow arbitrary update length
+        """
+        Updates OU parameters estimates given single new observation.
+        Args:
+            x:  single observation
+
+        Returns:
+            current estimated OU mu, lambda, sigma
+        """
+        xy = np.asarray([self.x_prev, np.squeeze(x)])
+
+        self.ls_a, self.ls_b = self.fit_ls_estimate(*self.covariance_estimator.update(xy))
+
+        err = xy[1] - (self.ls_a * xy[0] + self.ls_b)
+
+        _, err_var = self.error_stat.update(np.asarray(err)[None, None])
+
+        _, self.l, self.sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, np.squeeze(err_var))
+
+        # Stable:
+        self.mu = self.covariance_estimator.mean.mean()
+
+        self.x_prev = x
+
+        return self.mu, self.l, self.sigma
+
+    @staticmethod
+    def fit_ls_estimate(sigma_xy, mean, variance):
+        """
+        Computes LS parameters given data covariance matrix, mean and variance: y = a*x + b + e
+
+        Args:
+            sigma_xy:   x, y covariance matrix of size [2, 2]
+            mean:       x, y mean of size [2]
+            variance:   x, y variance of size [2]
+
+        Returns:
+            estimated least squares parameters
+        """
+        # a = sigma_xy / np.clip(variance[0], 1e-8, None)
+        a = (sigma_xy / np.clip((variance[0] * variance[1])**.5, 1e-6, None))[0, 1]
+        # a = (a / np.clip(np.diag(a).mean(), 1e-10, None))[0, 1]
+        b = mean[1] - mean[0] * a
+
+        return np.clip(a, 1e-6, 0.999999), b
+
+    @staticmethod
+    def fit_ou_estimate(a, b, err_var, dt=1):
+        """
+        Given least squares parameters of data and error variance,
+        returns parameters of OU process.
+
+        Args:
+            a:          ls slope value
+            b:          ls bias value
+            err_var:    error variance
+            dt:         time increment
+
+        Returns:
+            mu, lambda, sigma
+        """
+        l = - np.log(a) / dt
+        mu = 0.0 #b / (1 - a)  # unstable for a --> 0
+        sigma = (err_var * -2 * np.log(a) / (dt * (1 - a ** 2))) ** .5
+
+        return mu, l, sigma
+

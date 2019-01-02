@@ -38,7 +38,7 @@ class SSA:
             max_length:     uint, maximum embedded signal trajectory length to keep, should be > window
             grouping:       SSA decomposition triples grouping, iterable of pairs convertible to python slices, i.e.:
                             grouping=[[0,1], [1,2], [2, None]]
-            alpha:          float in [0, 1], observation weight decaying factor.
+            alpha:          float in [0, 1], decaying factor; roughly: alpha = 1 / effective_window_length
         """
         self.window = window
         assert max_length > window,\
@@ -449,14 +449,15 @@ class Covariance:
 
 class OUEstimator:
     """
-    Recursive Ornshtein-Uhlenbeck process parameters estimation in exponentially decaying window.
+    Recursive Ornshtein-Uhlenbeck process parameters estimation in exponentially decaying window
+    with arbitrary consecutive updates length.
     """
 
     def __init__(self, alpha):
         """
 
         Args:
-            alpha:      float, decaying factor in [0, 1]
+            alpha:  float in [0, 1], decaying window factor; roughly: alpha = 1 / effective_window_length
         """
         self.alpha = alpha
         self.covariance_estimator = Covariance(2, alpha)
@@ -464,77 +465,78 @@ class OUEstimator:
         self.ls_a = 0.0
         self.ls_b = 0.0
         self.mu = 0.0
-        self.l = 0.0
+        self.theta = 0.0
         self.sigma = 0.0
         self.x_prev = 0.0
 
-    def reset(self, trajectory=None):
+    def reset(self, trajectory):
         """
+        Resets estimator parameters for process dX = -Theta *(X - Mu) + Sigma * dW
+        given initial data.
 
         Args:
-            trajectory:     initial 1D process observations trajectory of size [num_points] or None
+            trajectory:     initial 1D process observations trajectory of size [num_points]
 
         Returns:
-            current estimated OU mu, lambda, sigma
+            current estimated Mu, Theta, Sigma
         """
-        # TODO: require init. trajectory
-        if trajectory is None:
-            self.ls_a = 0.0
-            self.ls_b = 0.0
-            self.mu = 0.0
-            self.mu = 0.0
-            self.l = 0.0
-            self.sigma = 0.0
-            self.x_prev = 0.0
-            self.covariance_estimator.reset(None)
-            self.error_stat.reset(None)
+        # Fit trajectory:
+        x = trajectory[:-1]
+        y = trajectory[1:]
+        xy = np.stack([x, y], axis=0)
 
-        else:
-            # Fit trajectory:
-            x = trajectory[:-1]
-            y = trajectory[1:]
-            xy = np.stack([x,y], axis=0)
+        self.ls_a, self.ls_b = self.fit_ls_estimate(*self.covariance_estimator.reset(xy))
 
-            self.ls_a, self.ls_b = self.fit_ls_estimate(*self.covariance_estimator.reset(xy))
+        err = y - (self.ls_a * x + self.ls_b)
 
-            err = y - (self.ls_a * x + self.ls_b)
+        _, err_var = self.error_stat.reset(err[None, :])
 
-            _, err_var = self.error_stat.reset(err)
+        _, self.theta, self.sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, err_var)
 
-            _, self.l, self.sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, err_var)
-
-            self.mu = self.covariance_estimator.mean.mean()
-
-            self.x_prev = trajectory[-1]
-
-        return self.mu, self.l, self.sigma
-
-    def update(self, x):
-        # TODO: allow arbitrary update length
-        """
-        Updates OU parameters estimates given single new observation.
-        Args:
-            x:  single observation
-
-        Returns:
-            current estimated OU mu, lambda, sigma
-        """
-        xy = np.asarray([self.x_prev, np.squeeze(x)])
-
-        self.ls_a, self.ls_b = self.fit_ls_estimate(*self.covariance_estimator.update(xy))
-
-        err = xy[1] - (self.ls_a * xy[0] + self.ls_b)
-
-        _, err_var = self.error_stat.update(np.asarray(err)[None, None])
-
-        _, self.l, self.sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, np.squeeze(err_var))
-
-        # Stable:
         self.mu = self.covariance_estimator.mean.mean()
 
-        self.x_prev = x
+        self.x_prev = trajectory[-1]
 
-        return self.mu, self.l, self.sigma
+        return self.mu, self.theta, self.sigma
+
+    def update(self, trajectory, disjoint=False):
+        """
+        Updates OU parameters estimates for process dX = -Theta *(X - Mu) + Sigma * dW
+        given new observations.
+
+        Args:
+            trajectory:  1D process observations trajectory update of size [num_points]
+            disjoint:    bool, indicates whether update given is continuous or disjoint w.r.t. previous update
+
+        Returns:
+            current estimated  Mu, Theta, Sigma
+        """
+        if disjoint:
+            x = trajectory[:-1]
+            y = trajectory[1:]
+
+        else:
+            # continious update, can use backed-up value:
+            x = np.concatenate([[self.x_prev], trajectory[:-1]])
+            y = trajectory
+
+        xy = np.stack([x, y], axis=0)
+
+        # Fit least squares params:
+        self.ls_a, self.ls_b = self.fit_ls_estimate(*self.covariance_estimator.update(xy))
+
+        # Get LS errors and variance:
+        err = y - (self.ls_a * x + self.ls_b)
+        _, err_var = self.error_stat.update(err[None, :])
+
+        # Get OU params:
+        _, self.theta, self.sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, np.squeeze(err_var))
+        # Stable mean:
+        self.mu = self.covariance_estimator.mean.mean()
+
+        self.x_prev = trajectory[-1]
+
+        return self.mu, self.theta, self.sigma
 
     @staticmethod
     def fit_ls_estimate(sigma_xy, mean, variance):
@@ -547,11 +549,9 @@ class OUEstimator:
             variance:   x, y variance of size [2]
 
         Returns:
-            estimated least squares parameters
+            fitted least squares parameters
         """
-        # a = sigma_xy / np.clip(variance[0], 1e-8, None)
-        a = (sigma_xy / np.clip((variance[0] * variance[1])**.5, 1e-6, None))[0, 1]
-        # a = (a / np.clip(np.diag(a).mean(), 1e-10, None))[0, 1]
+        a = (sigma_xy / np.clip((variance[0] * variance[1]) ** .5, 1e-6, None))[0, 1]
         b = mean[1] - mean[0] * a
 
         return np.clip(a, 1e-6, 0.999999), b
@@ -559,7 +559,7 @@ class OUEstimator:
     @staticmethod
     def fit_ou_estimate(a, b, err_var, dt=1):
         """
-        Given least squares parameters of data and error variance,
+        Given least squares parameters of data and errors variance,
         returns parameters of OU process.
 
         Args:
@@ -571,14 +571,11 @@ class OUEstimator:
         Returns:
             mu, lambda, sigma
         """
-        l = - np.log(a) / dt
-        mu = 0.0 #b / (1 - a)  # unstable for a --> 0
+        theta = - np.log(a) / dt
+        mu = 0.0  # b / (1 - a)  # unstable for a --> 0
         sigma = (err_var * -2 * np.log(a) / (dt * (1 - a ** 2))) ** .5
 
-        return mu, l, sigma
-
-
-
+        return mu, theta, sigma
 
 
 
