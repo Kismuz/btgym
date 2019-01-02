@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from btgym.research.model_based.utils import ou_mle_estimator
 from btgym.research.model_based.stochastic import ou_process_t_driver_batch_fn
-from btgym.research.model_based.ssa import RecSSA, ExpZscore
+from btgym.research.model_based.rec import SSA, Zscore
 from btgym.research.model_based.utils import batch_covariance
 
 try:
@@ -178,8 +178,8 @@ class PairFilteredModelT:
         )
         # Fit SSA parameters for S and P:
         length = xp0.shape[-1]
-        self.p_ssa_estimator = RecSSA(self.ssa_depth, length, self.grouping, self.alpha)
-        self.s_ssa_estimator = RecSSA(self.ssa_depth, length, self.grouping, self.alpha)
+        self.p_ssa_estimator = SSA(self.ssa_depth, length, self.grouping, self.alpha)
+        self.s_ssa_estimator = SSA(self.ssa_depth, length, self.grouping, self.alpha)
 
         _, p_ssa_state = self.p_ssa_estimator.reset(xp0[0, :])
         _, s_ssa_state = self.s_ssa_estimator.reset(xp0[1, :])
@@ -250,8 +250,8 @@ class PairFilteredModelT:
         )
         # SSA parameters for S and P; as we've got trajectories - forced to fit from scratch:
         length = x_decomp.shape[-1]
-        self.p_ssa_estimator = RecSSA(self.ssa_depth, length, self.grouping, self.alpha)
-        self.s_ssa_estimator = RecSSA(self.ssa_depth, length, self.grouping, self.alpha)
+        self.p_ssa_estimator = SSA(self.ssa_depth, length, self.grouping, self.alpha)
+        self.s_ssa_estimator = SSA(self.ssa_depth, length, self.grouping, self.alpha)
 
         _, p_ssa_state = self.p_ssa_estimator.reset(x_decomp[0, :])
         _, s_ssa_state = self.s_ssa_estimator.reset(x_decomp[1, :])
@@ -462,8 +462,8 @@ class PairFilteredModelT:
             s2 = xp_trajectory[:, 2, :]
 
             # No batched SSA. oblom. :(
-            # s1 = RecSSA._transform(RecSSA._delay_embed(s1, state.s_ssa_state.window), state.s_ssa_state).sum(axis=1)
-            # s2 = RecSSA._transform(RecSSA._delay_embed(s2, state.s_ssa_state.window), state.s_ssa_state).sum(axis=1)
+            # s1 = SSA._transform(SSA._delay_embed(s1, state.s_ssa_state.window), state.s_ssa_state).sum(axis=1)
+            # s2 = SSA._transform(SSA._delay_embed(s2, state.s_ssa_state.window), state.s_ssa_state).sum(axis=1)
 
             # Mixing two spread realisations, scaling batch-wise to match variance:
             mean_cov = batch_covariance(xp_trajectory[:, 1:, :]).sum(axis=(1, 2))[None, :]

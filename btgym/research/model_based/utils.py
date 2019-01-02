@@ -47,7 +47,7 @@ def ou_mle_estimator(data, dt=1, force_zero_mean=True):
     bias = data.mean(axis=-1)
     data -= bias[:, None]
 
-    n = data.shape[-1]
+    n = data.shape[-1] - 1
     x = data[:, :-1]
     y = data[:, 1:]
     sx = x.sum(axis=-1)
@@ -115,7 +115,7 @@ def ou_lsr_estimator(data, dt=1):
     bias = data.mean(axis=-1)
     data -= bias[:, None]
 
-    n = data.shape[-1]
+    n = data.shape[-1] - 1
     x = data[:, :-1]
     y = data[:, 1:]
     sx = x.sum(axis=-1)
