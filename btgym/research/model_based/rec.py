@@ -38,7 +38,11 @@ class SSA:
             max_length:     uint, maximum embedded signal trajectory length to keep, should be > window
             grouping:       SSA decomposition triples grouping, iterable of pairs convertible to python slices, i.e.:
                             grouping=[[0,1], [1,2], [2, None]]
-            alpha:          float in [0, 1], decaying factor; roughly: alpha = 1 / effective_window_length
+            alpha:          float in [0, 1], decaying factor;
+
+            Notes:
+                alpha ~ 1 / effective_window_length;
+                alpha ~ 1 - forgetting_factor,  in terms of Recursive Least Squares
         """
         self.window = window
         assert max_length > window,\
@@ -457,7 +461,13 @@ class OUEstimator:
         """
 
         Args:
-            alpha:  float in [0, 1], decaying window factor; roughly: alpha = 1 / effective_window_length
+            alpha:  float in [0, 1], decaying window factor.
+
+        Notes:
+            alpha ~ 1 / effective_window_length;
+            alpha ~ 1 - forgetting_factor,  in terms of Recursive Least Squares
+
+            parameters fitted are: Mu, Theta, Sigma, for process: dX = -Theta *(X - Mu) + Sigma * dW
         """
         self.alpha = alpha
         self.covariance_estimator = Covariance(2, alpha)
