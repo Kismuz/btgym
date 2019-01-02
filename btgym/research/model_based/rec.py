@@ -91,9 +91,9 @@ class SSA:
             embedded trajectory of size [window, init_num_points - window + 1]
         """
 
-        assert self.max_length_adj + self.window > x_init.shape[0] > self.window, \
-            'Expected initial trajectory length be in [{}, {}], got: {}'.format(
-                self.window + 1, self.max_length_adj + self.window, x_init.shape[0]
+        assert self.max_length >= x_init.shape[0] > self.window, \
+            'Expected initial trajectory length be in [{}, ..., {}], got: {}'.format(
+                self.window + 1, self.max_length, x_init.shape[0]
             )
         init_embedding = self._update_embed(x_init, disjoint=True)
         self.covariance, self.mean, self.variance = self.cov_estimator.reset(init_embedding)
@@ -118,7 +118,7 @@ class SSA:
         self.ready()
         if not disjoint:
             assert self.max_length_adj >= x.shape[0] > 0,\
-                'Expected continuous update length be less than: {}, got: {}'.format(self.max_length_adj, x.shape[0])
+                'Expected continuous update length be less than: {}, got: {}'.format(self.max_length, x.shape[0])
         embedded_update = self._update_embed(x, disjoint=disjoint)
         self.covariance, self.mean, self.variance = self.cov_estimator.update(embedded_update)
         self._update_svd()
@@ -164,9 +164,9 @@ class SSA:
         assert len(x.shape) == 1, 'Expected 1d trajectory, got input shaped: {}'.format(x.shape)
         if disjoint:
             # Been told trajectory given is NOT continuous input:
-            assert self.max_length_adj + self.window > x.shape[0] > self.window, \
-                            'Expected disjoint/initial trajectory length be in [{}, {}], got: {}'.format(
-                                self.window + 1, self.max_length_adj + self.window, x.shape[0]
+            assert self.max_length >= x.shape[0] > self.window, \
+                            'Expected disjoint/initial trajectory length be in [{}, ..., {}], got: {}'.format(
+                                self.window + 1, self.max_length, x.shape[0]
             )
             self.x_embedding = self._delay_embed(x, self.window)
             return self.x_embedding
