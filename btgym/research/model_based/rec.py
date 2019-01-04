@@ -37,7 +37,7 @@ class SSA:
         """
 
         Args:
-            window:         uint, time embedding window, should be
+            window:         uint, time embedding window
             max_length:     uint, maximum embedded signal trajectory length to keep, should be > window
             grouping:       SSA decomposition triples grouping, iterable of pairs convertible to python slices, i.e.:
                             grouping=[[0,1], [1,2], [2, None]]
@@ -53,7 +53,7 @@ class SSA:
         self.max_length = max_length
         self.max_length_adj = max_length - window + 1
         self.grouping = grouping
-        self.x_embedding = None
+        self.x_embedded = None
         self.cov_estimator = Covariance(window, alpha=alpha)
         self.covariance = None
         self.mean = None
@@ -87,34 +87,35 @@ class SSA:
         )
         return self.state
 
-    def reset(self, x_init):
+    def reset(self, init_trajectory):
         """
         Resets estimator state and stored trajectory.
 
         Args:
-            x_init: initial trajectory of size [init_num_points], such as: length + window > init_num_points > window
+            init_trajectory:    initial trajectory of size [init_num_points],
+                                such as: length + window > init_num_points > window
 
         Returns:
             embedded trajectory of size [window, init_num_points - window + 1]
         """
 
-        assert self.max_length >= x_init.shape[0] > self.window, \
+        assert self.max_length >= init_trajectory.shape[0] > self.window, \
             'Expected initial trajectory length be in [{}, ..., {}], got: {}'.format(
-                self.window + 1, self.max_length, x_init.shape[0]
+                self.window + 1, self.max_length, init_trajectory.shape[0]
             )
-        init_embedding = self._update_embed(x_init, disjoint=True)
+        init_embedding = self._update_embed(init_trajectory, disjoint=True)
         self.covariance, self.mean, self.variance = self.cov_estimator.reset(init_embedding)
         self._update_svd()
         self.is_ready = True
 
         return init_embedding
 
-    def update(self, x, disjoint=False):
+    def update(self, trajectory, disjoint=False):
         """
         Updates estimator state and embedded trajectory.
 
         Args:
-            x:          observation trajectory of size [num_points], such as: length >= num_points > 0
+            trajectory: observation trajectory of size [num_points], such as: length >= num_points > 0
             disjoint:   bool, indicates whether update given is continuous or disjoint w.r.t. previous update
                         if set to True - discards embedded trajectory already being kept.
 
@@ -124,35 +125,46 @@ class SSA:
 
         self.ready()
         if not disjoint:
-            assert self.max_length_adj >= x.shape[0] > 0,\
-                'Expected continuous update length be less than: {}, got: {}'.format(self.max_length, x.shape[0])
-        embedded_update = self._update_embed(x, disjoint=disjoint)
+            assert self.max_length_adj >= trajectory.shape[0] > 0,\
+                'Expected continuous update length be less than: {}, got: {}'.format(self.max_length, trajectory.shape[0])
+        embedded_update = self._update_embed(trajectory, disjoint=disjoint)
         self.covariance, self.mean, self.variance = self.cov_estimator.update(embedded_update)
         self._update_svd()
 
         return embedded_update
 
-    def transform(self, x=None, state=None):
+    def transform(self, x=None, state=None, size=None):
         """
         Return SSA signal decomposition.
 
         Args:
             x:      lag-embedded signal of size [window, length] or None
             state:  instance of SSAstate or None
+            size:   uint or None, if given - trajectory size to transform, counting from most recent observation
 
         Returns:
             SSA signal decomposition of given X w.r.t. state
             if no arguments provided - returns decomposition of kept trajectory;
         """
         if x is None:
-            x = self.x_embedding
+            x = self.x_embedded
+
         else:
             assert state is not None, 'SSAstate is expected when outer X is given, but got: None'
 
         if state is None:
             state = self.get_state()
 
-        return self._transform(x, state)
+        if size is not None:
+            assert size > self.window - 1, 'Expected `size` no less than: {} but got: {}'.format(self.window, size)
+            idx = - size + self.window - 1
+            if - idx > x.shape[-1]:
+                idx = None
+        
+        else:
+            idx = None
+
+        return self._transform(x[:, idx:], state)
 
     def _update_embed(self, x, disjoint=False):
         """
@@ -167,31 +179,30 @@ class SSA:
             embedded update
 
         """
-
-        assert len(x.shape) == 1, 'Expected 1d trajectory, got input shaped: {}'.format(x.shape)
+        assert len(x.shape) == 1, 'Expected 1d trajectory but got input shaped: {}'.format(x.shape)
         if disjoint:
             # Been told trajectory given is NOT continuous input:
             assert self.max_length >= x.shape[0] > self.window, \
                             'Expected disjoint/initial trajectory length be in [{}, ..., {}], got: {}'.format(
                                 self.window + 1, self.max_length, x.shape[0]
             )
-            self.x_embedding = self._delay_embed(x, self.window)
-            return self.x_embedding
+            self.x_embedded = self._delay_embed(x, self.window)
+            return self.x_embedded
 
         else:
-            head = self.x_embedding[-1, 1 - self.window:]
+            head = self.x_embedded[-1, 1 - self.window:]
 
             upd = np.concatenate([head, x])
 
             upd_embedding = self._delay_embed(upd, self.window)
 
             truncate_idx = np.clip(
-                self.x_embedding.shape[-1] + upd_embedding.shape[-1] - self.max_length_adj,
+                self.x_embedded.shape[-1] + upd_embedding.shape[-1] - self.max_length_adj,
                 0,
                 None
             )
-            self.x_embedding = np.concatenate(
-                [self.x_embedding[:, truncate_idx:], upd_embedding],
+            self.x_embedded = np.concatenate(
+                [self.x_embedded[:, truncate_idx:], upd_embedding],
                 axis=1
             )
             return upd_embedding
@@ -262,6 +273,39 @@ class SSA:
             x_comp.append(np.squeeze(J.T.dot(B) * s))
 
         return np.asarray(x_comp)
+
+    def get_trajectory(self, size=None):
+        """
+        Retrieve stored fragment of original time-series data.
+
+        Args:
+            size:   uint, fragment length in [0, ..., max_length] or None
+
+        Returns:
+            1d series as [ x[-size], x[-size+1], ... x[-1] ], up to length [size]
+            if no size arg is given - returns entire stored trajectory, up to length [max_length]
+        """
+        self.ready()
+        if size is not None:
+            assert 1 <= size <= self.max_length, \
+                'Can only retrieve from 1 up to {} last values, but got size: {}'.format(self.max_length, size)
+        else:
+            size = self.max_length
+
+        v, h = self.x_embedded.shape
+
+        if size > v + h - 1:
+            size = v + h - 1
+
+        if size <= h:
+            i_1 = - size
+            i_0 = -1
+
+        else:
+            i_1 = None
+            i_0 = h - size - 1
+
+        return np.concatenate([self.x_embedded[i_0:-1, 0], self.x_embedded[-1, i_1:]], axis=-1)
 
 
 ZscoreState = namedtuple('ZscoreState', ['mean', 'variance'])
@@ -502,7 +546,7 @@ class OUEstimator:
 
         Notes:
             alpha ~ 1 / effective_window_length;
-            parameters fitted are: Mu, Theta, Sigma, for process: dX = -Theta *(X - Mu) + Sigma * dW;
+            parameters fitted are: Mu, Log_Theta, Log_Sigma, for process: dX = -Theta *(X - Mu) + Sigma * dW;
         """
         self.alpha = alpha
         self.covariance_estimator = Covariance(2, alpha)
@@ -559,12 +603,12 @@ class OUEstimator:
 
     def update(self, trajectory, disjoint=False):
         """
-        Updates OU parameters estimates for process dX = -Theta *(X - Mu) + Sigma * dW
+        Updates OU parameters values for process dX = -Theta *(X - Mu) + Sigma * dW
         given new observations.
 
         Args:
             trajectory:  1D process observations trajectory update of size [num_points]
-            disjoint:    bool, indicates whether update given is continuous or disjoint w.r.t. previous update
+            disjoint:    bool, indicates whether update given is continuous or disjoint w.r.t. previous one
 
         Returns:
             current estimated  Mu, Theta, Sigma
@@ -574,7 +618,7 @@ class OUEstimator:
             y = trajectory[1:]
 
         else:
-            # continious update, can use backed-up value:
+            # continuous update, can use backed-up value:
             x = np.concatenate([[self.x_prev], trajectory[:-1]])
             y = trajectory
 

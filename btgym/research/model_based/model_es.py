@@ -11,8 +11,6 @@ from btgym.research.model_based.rec import SSA,  SSAState, OUEstimator, OUEstima
 from btgym.research.model_based.utils import batch_covariance
 
 
-TimeSeriesState = namedtuple('TimeSeriesState', ['ssa', 'ou'])
-
 TimeSeriesEstimator = namedtuple('TimeSeriesEstimator', ['ssa', 'ou', 'ou_filter'])
 
 PairState = namedtuple('PairState', ['p', 's', 'mean', 'variance'])
@@ -27,7 +25,7 @@ OUProcessState = namedtuple('OUProcessState', ['observation', 'filtered', 'drive
 
 class OUProcess:
     """
-    Provides essential functionality for recursive state-space modeling
+    Provides essential functionality for recursive time series modeling
     as Ornshteinh-Uhlenbeck stochastic process: parameters estimation, filtering, trajectories generation;
     """
     def __init__(self, alpha=None, filter_alpha=None):
@@ -48,13 +46,10 @@ class OUProcess:
 
     def get_state(self):
         """
-        Convenience wrapper.
-
-        Args:
-            fit_driver:
+        Returns model state tuple.
 
         Returns:
-            current state as instance of OUProcessState tuple
+            current state as instance of OUProcessState
         """
         return OUProcessState(
             observation=self.estimator.get_state(),
@@ -236,35 +231,61 @@ class OUProcess:
         return self.generate_trajectory_fn_3(batch_size, size, parameters, t_df)
 
 
+TimeSeriesModelState = namedtuple('TimeSeriesState', ['process', 'analyzer'])
+
+
 class TimeSeriesModel:
     """
-    Basic assumption is that observed data is a realisation of some underlying stochastic process;
-    model class itself consist of two functional parts:
+    Time-series modeling and decomposition wrapper class.
+    Basic idea is that observed data are treated as a realisation of some underlying stochastic process.
+
+    Model class itself consist of two functional parts (both based on empirical covariance estimation):
     - stochastic process modeling (fitting and tracking of unobserved parameters, new data generation);
-    - realisation trajectory analysis (decomposition, filtering, features extraction);
+    - realisation trajectory analysis and decomposition;
 
     """
 
-    def __init__(self, process=OUProcess, analyzer=SSA, **kwargs):
-        self.process = process()
-        self.analyzer = analyzer(window=None, max_length=None, grouping=None, alpha=None)
+    def __init__(self, max_length, analyzer_window, analyzer_grouping=None, alpha=None, filter_alpha=None):
+        """
 
+        Args:
+            max_length:         uint, maximum trajectory length to keep;
+            analyzer_window:    uint, SSA embedding window;
+            analyzer_grouping:  SSA decomposition triples grouping,
+                                iterable of pairs convertible to python slices, i.e.:
+                                grouping=[[0,1], [1,2], [2, None]];
+            alpha:              float in [0, 1], SSA and process estimator decaying factor;
+            filter_alpha:       float in [0, 1], process smoothing decaying factor;
+        """
+        self.process = OUProcess(alpha=alpha, filter_alpha=filter_alpha)
+        self.analyzer = SSA(window=analyzer_window, max_length=max_length, grouping=analyzer_grouping, alpha=alpha)
 
     def get_state(self):
-        pass
+        return TimeSeriesModelState(
+            process=self.process.get_state(),
+            analyzer=self.analyzer.get_state(),
+        )
 
-    def reset(self):
-        pass
+    def ready(self):
+        assert self.process.is_ready and self.analyzer.is_ready,\
+            'TimeSeriesModel is not initialized. Hint: forgot to call .reset()?'
 
-    def update(self):
-        pass
+    def reset(self, *args, **kwargs):
+        self.process.reset(*args, **kwargs)
+        _ = self.analyzer.reset(*args, **kwargs)
 
-    def get_decomposition(self):
-        pass
+    def update(self, *args, **kwargs):
+        _ = self.analyzer.update(*args, **kwargs)
+        self.process.update(*args, **kwargs)
 
-    def get_trajectory(self):
-        """Get stored trajectory"""
-        pass
+    def get_decomposition(self, *args, **kwargs):
+        return self.analyzer.transform(*args, **kwargs)
+
+    def get_trajectory(self, *args, **kwargs):
+        return self.analyzer.get_trajectory(*args, **kwargs)
+
+    def generate(self, *args, **kwargs):
+        return self.process.generate(*args, **kwargs)
 
 
 class DummyAnalyzer:
