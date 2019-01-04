@@ -1,12 +1,15 @@
+# Exponentially smoothed recursive versions
+# of some useful statistics and estimators
+# for time-series analysis
+
 import numpy as np
 from scipy.linalg import toeplitz
 import copy
 from collections import namedtuple
 
-# from profilestats import profile
 
-SSAstate = namedtuple(
-    'SSAstate',
+SSAState = namedtuple(
+    'SSAState',
     ['window', 'max_length', 'grouping', 'alpha', 'covariance', 'u', 'singular_values', 'mean', 'variance']
 )
 
@@ -42,7 +45,7 @@ class SSA:
 
             Notes:
                 alpha ~ 1 / effective_window_length;
-                alpha ~ 1 - forgetting_factor,  in terms of Recursive Least Squares
+                alpha ~ 1 - forgetting_factor,  in terms of Recursive Least Squares Filter
         """
         self.window = window
         assert max_length > window,\
@@ -71,7 +74,7 @@ class SSA:
         Returns:
             instance of SSAstate: named tuple holding current estimator statistics
         """
-        self.state = SSAstate(
+        self.state = SSAState(
             self.window,
             self.max_length,
             self.grouping,
@@ -241,7 +244,7 @@ class SSA:
             x:      embedded vector
             state:  instance of `SSAstate` holding fitted decomposition parameters
         """
-        assert isinstance(state, SSAstate),\
+        assert isinstance(state, SSAState),\
             'Expected `state` be instance of SSAstate, got {}'.format(type(state))
 
         n = x.shape[-1] + state.window - 1
@@ -259,6 +262,9 @@ class SSA:
             x_comp.append(np.squeeze(J.T.dot(B) * s))
 
         return np.asarray(x_comp)
+
+
+ZscoreState = namedtuple('ZscoreState', ['mean', 'variance'])
 
 
 class Zscore:
@@ -288,6 +294,18 @@ class Zscore:
         self.g = None
         self.dx = None
         self.num_obs = 0
+
+    def get_state(self):
+        """
+        Convenience wrapper.
+
+        Returns:
+            current state as instance of ZscoreState tuple
+        """
+        return ZscoreState(
+            mean=self.mean,
+            variance=self.variance,
+        )
 
     def reset(self, init_x):
         """
@@ -383,6 +401,9 @@ class Zscore:
         return self.mean, self.variance
 
 
+CovarianceState = namedtuple('CovarianceState', ['mean', 'variance', 'covariance'])
+
+
 class Covariance:
     """
     Recursive exponentially decaying mean, variance and covariance matrix estimation for time-series
@@ -401,6 +422,19 @@ class Covariance:
         self.covariance = None
         self.mean = None
         self.variance = None
+
+    def get_state(self):
+        """
+        Convenience wrapper.
+
+        Returns:
+            current state as instance of CovarianceState tuple
+        """
+        return CovarianceState(
+            mean=self.mean,
+            variance=self.variance,
+            covariance=self.covariance,
+        )
 
     def reset(self, init_x):
         """
@@ -451,6 +485,9 @@ class Covariance:
         return self.covariance, self.mean, self.variance
 
 
+OUEstimatorState = namedtuple('OUEstimatorState', ['mu', 'log_theta', 'log_sigma'])
+
+
 class OUEstimator:
     """
     Recursive Ornshtein-Uhlenbeck process parameters estimation in exponentially decaying window
@@ -465,19 +502,30 @@ class OUEstimator:
 
         Notes:
             alpha ~ 1 / effective_window_length;
-            alpha ~ 1 - forgetting_factor,  in terms of Recursive Least Squares
-
-            parameters fitted are: Mu, Theta, Sigma, for process: dX = -Theta *(X - Mu) + Sigma * dW
+            parameters fitted are: Mu, Theta, Sigma, for process: dX = -Theta *(X - Mu) + Sigma * dW;
         """
         self.alpha = alpha
         self.covariance_estimator = Covariance(2, alpha)
         self.error_stat = Zscore(1, alpha)
-        self.ls_a = 0.0
-        self.ls_b = 0.0
-        self.mu = 0.0
-        self.theta = 0.0
-        self.sigma = 0.0
+        self.ls_a = None
+        self.ls_b = None
+        self.mu = None
+        self.log_theta = None
+        self.log_sigma = None
         self.x_prev = 0.0
+
+    def get_state(self):
+        """
+        Convenience wrapper.
+
+        Returns:
+            current state as instance of OUProcessParams tuple
+        """
+        return OUEstimatorState(
+            mu=self.mu,
+            log_theta=self.log_theta,
+            log_sigma=self.log_sigma
+        )
 
     def reset(self, trajectory):
         """
@@ -501,13 +549,13 @@ class OUEstimator:
 
         _, err_var = self.error_stat.reset(err[None, :])
 
-        _, self.theta, self.sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, err_var)
+        _, self.log_theta, self.log_sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, err_var)
 
         self.mu = self.covariance_estimator.mean.mean()
 
         self.x_prev = trajectory[-1]
 
-        return self.mu, self.theta, self.sigma
+        return self.mu, self.log_theta, self.log_sigma
 
     def update(self, trajectory, disjoint=False):
         """
@@ -540,13 +588,13 @@ class OUEstimator:
         _, err_var = self.error_stat.update(err[None, :])
 
         # Get OU params:
-        _, self.theta, self.sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, np.squeeze(err_var))
+        _, self.log_theta, self.log_sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, np.squeeze(err_var))
         # Stable mean:
         self.mu = self.covariance_estimator.mean.mean()
 
         self.x_prev = trajectory[-1]
 
-        return self.mu, self.theta, self.sigma
+        return self.mu, self.log_theta, self.log_sigma
 
     @staticmethod
     def fit_ls_estimate(sigma_xy, mean, variance):
@@ -579,13 +627,13 @@ class OUEstimator:
             dt:         time increment
 
         Returns:
-            mu, lambda, sigma
+            mu, log_theta, log_sigma
         """
         theta = - np.log(a) / dt
         mu = 0.0  # b / (1 - a)  # unstable for a --> 0
         sigma = (err_var * -2 * np.log(a) / (dt * (1 - a ** 2))) ** .5
 
-        return mu, theta, sigma
+        return mu, np.log(np.clip(theta, 1e-8, None)), np.log(np.clip(sigma, 1e-10, None))
 
 
 
