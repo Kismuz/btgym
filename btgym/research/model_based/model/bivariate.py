@@ -2,14 +2,10 @@ import numpy as np
 from scipy import stats
 from collections import namedtuple
 
-from btgym.research.model_based.utils import ou_mle_estimator
-from btgym.research.model_based.stochastic import ou_process_t_driver_batch_fn
+from btgym.research.model_based.model.stochastic import ou_process_t_driver_batch_fn
 
-from btgym.research.model_based.rec import Zscore, ZscoreState, Covariance, CovarianceState
-from btgym.research.model_based.rec import SSA,  SSAState, OUEstimator, OUEstimatorState
-
-from btgym.research.model_based.utils import batch_covariance
-
+from btgym.research.model_based.model.rec import Zscore, ZscoreState, Covariance, CovarianceState
+from btgym.research.model_based.model.rec import SSA, OUEstimator, OUEstimatorState
 
 OUProcessState = namedtuple('OUProcessState', ['observation', 'filtered', 'driver_df'])
 

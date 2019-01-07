@@ -2,10 +2,10 @@ import numpy as np
 from scipy import stats
 from collections import namedtuple
 
-from btgym.research.model_based.utils import ou_mle_estimator
-from btgym.research.model_based.stochastic import ou_process_t_driver_batch_fn
-from btgym.research.model_based.rec import SSA, Zscore
-from btgym.research.model_based.utils import batch_covariance
+from btgym.research.model_based.model.utils import ou_mle_estimator
+from btgym.research.model_based.model.stochastic import ou_process_t_driver_batch_fn
+from btgym.research.model_based.model.rec import SSA
+from btgym.research.model_based.model.utils import batch_covariance
 
 try:
     from pykalman import KalmanFilter

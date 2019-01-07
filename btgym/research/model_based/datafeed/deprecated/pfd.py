@@ -6,7 +6,7 @@ from btgym.datafeed.derivative import BTgymDataset2
 from btgym.datafeed.multi import BTgymMultiData
 
 from btgym.research.model_based.datafeed.base import BasePairDataGenerator, BaseCombinedDataSet
-from btgym.research.model_based.model import PairFilteredModel, PairModelState
+from btgym.research.model_based.model.deprecated.pfd import PairFilteredModel, PairModelState
 
 
 def simple_filtered_decomp_generator_fn(num_points, state, keep_decimals=6, **kwargs):
