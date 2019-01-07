@@ -133,12 +133,12 @@ class SSA:
 
         return embedded_update
 
-    def transform(self, x=None, state=None, size=None):
+    def transform(self, x_embedded=None, state=None, size=None):
         """
         Return SSA signal decomposition.
 
         Args:
-            x:      lag-embedded signal of size [window, length] or None
+            x_embedded:      lag-embedded signal of size [window, length] or None
             state:  instance of SSAstate or None
             size:   uint or None, if given - trajectory size to transform, counting from most recent observation
 
@@ -146,8 +146,8 @@ class SSA:
             SSA signal decomposition of given X w.r.t. state
             if no arguments provided - returns decomposition of kept trajectory;
         """
-        if x is None:
-            x = self.x_embedded
+        if x_embedded is None:
+            x_embedded = self.x_embedded
 
         else:
             assert state is not None, 'SSAstate is expected when outer X is given, but got: None'
@@ -158,13 +158,13 @@ class SSA:
         if size is not None:
             assert size > self.window - 1, 'Expected `size` no less than: {} but got: {}'.format(self.window, size)
             idx = - size + self.window - 1
-            if - idx > x.shape[-1]:
+            if - idx > x_embedded.shape[-1]:
                 idx = None
-        
+
         else:
             idx = None
 
-        return self._transform(x[:, idx:], state)
+        return self._transform(x_embedded[:, idx:], state)
 
     def _update_embed(self, x, disjoint=False):
         """
@@ -279,7 +279,7 @@ class SSA:
         Retrieve stored fragment of original time-series data.
 
         Args:
-            size:   uint, fragment length in [0, ..., max_length] or None
+            size:   uint, fragment length in [1, ..., max_length] or None
 
         Returns:
             1d series as [ x[-size], x[-size+1], ... x[-1] ], up to length [size]
@@ -333,8 +333,8 @@ class Zscore:
             self.alpha = alpha
             self.is_decayed = True
 
-        self.mean = np.zeros(dim)
-        self.variance = np.zeros(dim)
+        self.mean = None
+        self.variance = None
         self.g = None
         self.dx = None
         self.num_obs = 0
@@ -364,7 +364,7 @@ class Zscore:
         """
         if init_x is None:
             self.mean = np.zeros(self.dim)
-            self.variance = np.zeros(self.dim)
+            self.variance = np.ones(self.dim) * 1e-8
             self.g = np.zeros(self.dim)
             self.dx = np.zeros(self.dim)
             self.num_obs = 1
@@ -678,6 +678,120 @@ class OUEstimator:
         sigma = (err_var * -2 * np.log(a) / (dt * (1 - a ** 2))) ** .5
 
         return mu, np.log(np.clip(theta, 1e-8, None)), np.log(np.clip(sigma, 1e-10, None))
+
+
+class EMA:
+    """
+    Recursive exponentially decayed mean estimation for time-series
+    with arbitrary consecutive updates length.
+    """
+
+    def __init__(self, dim, alpha):
+        """
+
+        Args:
+            dim:        observation dimensionality
+            alpha:      float, decaying factor in [0, 1]
+
+        """
+        self.dim = dim
+        if alpha is None:
+            self.alpha = 1
+            self.is_decayed = False
+        else:
+            self.alpha = alpha
+            self.is_decayed = True
+
+        self.mean = None
+        self.g = None
+        self.num_obs = 0
+
+    def get_state(self):
+        """
+
+        Returns:
+            current mean value
+        """
+        return self.mean
+
+    def reset(self, init_x):
+        """
+        Resets statistics estimates.
+
+        Args:
+            init_x:  np.array of initial observations of size [dim, num_init_observations]
+
+        Returns:
+            initial dimension-wise mean estimates of sizes [dim, 1]
+
+        """
+        if init_x is None:
+            self.mean = np.zeros(self.dim)
+            self.g = np.zeros(self.dim)
+            self.num_obs = 1
+            if not self.is_decayed:
+                self.alpha = 1
+
+        else:
+            assert init_x.ndim == 2 and init_x.shape[0] == self.dim, \
+                'Expected init. value as 2D array of size: [{}, num_init_points], got: {}'.format(self.dim,
+                                                                                                  init_x.shape)
+            self.mean = init_x.mean(axis=-1)
+            self.num_obs = init_x.shape[-1]
+
+            if not self.is_decayed:
+                self.alpha = 1 / (self.num_obs - 1)
+
+        return self.mean[:, None]
+
+    def update(self, x):
+        """
+        Updates statistics estimates.
+
+        Args:
+            x: np.array, partial trajectory of shape [dim, num_updating_points]
+
+        Returns:
+            current dimension-wise mean estimates of size [dim, num_updating_points]
+        """
+        assert x.ndim == 2 and x.shape[0] == self.dim, \
+            'Expected update value as 2D array of size: [{}, num_points], got: {}'.format(self.dim, x.shape)
+
+        # Update length:
+        k = x.shape[-1]
+
+        self.num_obs += k
+        if not self.is_decayed:
+            self.alpha = 1 / (self.num_obs - 1)
+
+        # Mean estimation:
+
+        # Broadcast input to [dim, update_len, update_len]:
+        xx = np.tile(x[:, None, :], [1, k, 1])
+
+        gamma = 1 - self.alpha
+
+        # Exp. decays as powers of (1-alpha):
+        g = np.cumprod(np.repeat(gamma, k))
+
+        # Diag. matrix of decayed coeff:
+        tp = toeplitz(g / gamma, r=np.zeros(k))[::-1, ::1]
+
+        # Backward-ordered mean updates as sums of decayed inputs:
+        k_step_mean_update = np.sum(xx * tp[None, ...], axis=2)  # tp expanded for sure broadcast
+
+        # Broadcast stored value of mean to [dim, 1] and apply decay:
+        k_decayed_old_mean = (np.tile(self.mean[..., None], [1, k]) * g)
+
+        # Get backward-recursive array of mean values from (num_obs - update_len) to (num_obs):
+        means = k_decayed_old_mean + self.alpha * k_step_mean_update[:, ::-1]
+
+        self.g = g
+
+        # Update current value:
+        self.mean = means[:, -1]
+
+        return means
 
 
 

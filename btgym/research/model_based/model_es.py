@@ -10,11 +10,6 @@ from btgym.research.model_based.rec import SSA,  SSAState, OUEstimator, OUEstima
 
 from btgym.research.model_based.utils import batch_covariance
 
-
-TimeSeriesEstimator = namedtuple('TimeSeriesEstimator', ['ssa', 'ou', 'ou_filter'])
-
-PairState = namedtuple('PairState', ['p', 's', 'mean', 'variance'])
-
 # TODO: stochastic process estimator wrapper: base estimator + smoothing filter
 # TODO: time-series decomposition (analyzer?) wrapper: SSA + process estimator
 # TODO: pair decomposition/reconstruction wrapper
@@ -37,7 +32,7 @@ class OUProcess:
 
         # Driver is Student-t:
         self.driver_estimator = stats.t
-        self.driver_df = None
+        self.driver_df = 1e6
 
         self.is_ready = False
 
@@ -51,6 +46,7 @@ class OUProcess:
         Returns:
             current state as instance of OUProcessState
         """
+        self.ready()
         return OUProcessState(
             observation=self.estimator.get_state(),
             filtered=self.filter.get_state(),
@@ -63,13 +59,13 @@ class OUProcess:
         TODO: make recursive update.
 
         Args:
-            trajectory: full observed data of size [max_length]
+            trajectory: full observed data of size ~[max_length]
 
         Returns:
             Estimated shape parameter.
         """
         self.ready()
-        if self.driver_df is None:
+        if self.driver_df >= 1e6:
 
             self.driver_df, _, _ = self.driver_estimator.fit(trajectory)
             if self.driver_df <= 2.0:
@@ -91,7 +87,7 @@ class OUProcess:
         init_observation = np.stack([init_observation, init_observation], axis=-1)
         _ = self.filter.reset(init_observation)
 
-        self.driver_df = None
+        self.driver_df = 1e6
         self.is_ready = True
 
     def update(self, trajectory, disjoint=False):
@@ -101,7 +97,7 @@ class OUProcess:
 
         Args:
             trajectory:  1D process observations trajectory update of size [num_points]
-            disjoint:    bool, indicates whether update given is continuous or disjoint w.r.t. previous update
+            disjoint:    bool, indicates whether update given is continuous or disjoint w.r.t. previous one
         """
         self.ready()
         # Get new state-space observation:
@@ -110,12 +106,12 @@ class OUProcess:
         # Smooth and make it random variable:
         _ = self.filter.update(np.asarray(observation)[:, None])
 
-        self.driver_df = None
+        self.driver_df = 1e6
 
     @staticmethod
     def sample_from_filtered(filter_state, size=1):
         """
-        Samples process parameters values given filtered parameters distribution.
+        Samples process parameters values given smoothed observations.
         Static method, can be used as stand-along function.
 
         Args:
@@ -130,6 +126,33 @@ class OUProcess:
             'Expected filter_state as instance of CovarianceState, got: {}'.format(type(filter_state))
 
         sample = np.random.multivariate_normal(filter_state.mean, filter_state.covariance, size=size)
+
+        return OUEstimatorState(
+            mu=sample[:, 0],
+            log_theta=sample[:, 1],
+            log_sigma=sample[:, 2],
+        )
+
+    @staticmethod
+    def sample_naive_unbiased(state, size=1):
+        """
+        Samples process parameters values given observed values and smoothed values.
+        Static method, can be used as stand-along function.
+
+        Args:
+            state:  instance of OUProcessState
+            size:   int or None, number of samples to draw
+
+        Returns:
+            sampled process parameters of size [size] each, packed as OUEstimatorState tuple
+
+        """
+        assert isinstance(state, OUProcessState), \
+            'Expected filter_state as instance of `OUProcessState`, got: {}'.format(type(state))
+
+        # naive_mean = (np.asarray(state.observation) + state.filtered.mean) / 2
+        naive_mean = np.asarray(state.observation)
+        sample = np.random.multivariate_normal(naive_mean, state.filtered.covariance, size=size)
 
         return OUEstimatorState(
             mu=sample[:, 0],
@@ -156,10 +179,11 @@ class OUProcess:
             assert isinstance(state, OUProcessState),\
                 'Expected state as instance of OUProcessState, got: {}'.format(type(state))
 
-        return self.sample_from_filtered(state.filtered, size=size)
+        # return self.sample_from_filtered(state.filtered, size=size)
+        return self.sample_naive_unbiased(state, size=size)
 
     @staticmethod
-    def generate_trajectory_fn_3(batch_size, size, parameters, t_df):
+    def generate_trajectory_fn(batch_size, size, parameters, t_df):
         """
         Generates batch of realisations of given process parameters.
         Static method, can be used as stand-along function.
@@ -212,23 +236,19 @@ class OUProcess:
                             if no value provided - current value is used;
 
         Returns:
+            process realisations of size [batch_size, size]
 
         """
         self.ready()
         parameters = self.sample_parameters(state, size=batch_size)
 
         if driver_df is None:
-            if self.driver_df is None:
-                # Make it gaussian:
-                t_df = 1e6
-
-            else:
-                t_df = self.driver_df
+            t_df = self.driver_df
 
         else:
             t_df = driver_df
 
-        return self.generate_trajectory_fn_3(batch_size, size, parameters, t_df)
+        return self.generate_trajectory_fn(batch_size, size, parameters, t_df)
 
 
 TimeSeriesModelState = namedtuple('TimeSeriesState', ['process', 'analyzer'])
@@ -270,518 +290,476 @@ class TimeSeriesModel:
         assert self.process.is_ready and self.analyzer.is_ready,\
             'TimeSeriesModel is not initialized. Hint: forgot to call .reset()?'
 
-    def reset(self, *args, **kwargs):
-        self.process.reset(*args, **kwargs)
-        _ = self.analyzer.reset(*args, **kwargs)
+    def reset(self, init_trajectory):
+        """
+        Resets model parameters and trajectory given initial data.
 
-    def update(self, *args, **kwargs):
-        _ = self.analyzer.update(*args, **kwargs)
-        self.process.update(*args, **kwargs)
+        Args:
+            init_trajectory:    initial time-series observations of size [1, ..., num_points]
+        """
+        self.process.reset(init_trajectory)
+        _ = self.analyzer.reset(init_trajectory)
 
-    def get_decomposition(self, *args, **kwargs):
-        return self.analyzer.transform(*args, **kwargs)
+    def update(self, trajectory, disjoint=False):
+        """
+        Updates model parameters and trajectory given new data.
 
-    def get_trajectory(self, *args, **kwargs):
-        return self.analyzer.get_trajectory(*args, **kwargs)
+        Args:
+            trajectory: time-series update observations of size [1, ..., num_points],
+                        where num_points <= max_length to keep model trajectory continuous
+            disjoint:   bool, indicates whether update given is continuous or disjoint w.r.t. previous one
+        """
+        _ = self.analyzer.update(trajectory, disjoint)
+        self.process.update(trajectory, disjoint)
 
-    def generate(self, *args, **kwargs):
-        return self.process.generate(*args, **kwargs)
+    def transform(self, trajectory=None, state=None, size=None):
+        """
+        Returns analyzer data decomposition.
+
+        Args:
+            trajectory:     data to decompose of size [num_points] or None
+            state:          instance of TimeSeriesModelState or None
+            size:           uint, size of decomposition to get, or None
+
+        Returns:
+            SSA decomposition of given trajectory w.r.t. given state
+            if no `trajectory` is given - returns stored data decomposition
+            if no `state` arg. is given - uses stored analyzer state.
+            if no 'size` arg is given - decomposes full [stored or given] trajectory
+        """
+        # Ff 1d signal is given - need to embed it first:
+        if trajectory is not None:
+            trajectory = np.squeeze(trajectory)
+            assert trajectory.ndim == 1, 'Expected 1D array but got shape: {}'.format(trajectory.shape)
+            x_embedded = self.analyzer._delay_embed(trajectory, self.analyzer.window)
+        else:
+            x_embedded = None
+
+        if state is not None:
+            assert isinstance(state, TimeSeriesModelState), \
+                'Expected `state` as instance of TimeSeriesModelState, got: {}'.format(type(state))
+            # Unpack:
+            state = state.analyzer
+
+        return self.analyzer.transform(x_embedded, state, size)
+
+    def get_trajectory(self, size=None):
+        """
+        Returns stored fragment of original time-series data.
+
+        Args:
+            size:   uint, fragment length in [1, ..., max_length] or None
+
+        Returns:
+            1d series as [ x[-size], x[-size+1], ... x[-1] ], up to length [size];
+            if no `size` arg. is given - returns entire stored trajectory, up to length [max_length].
+        """
+        return self.analyzer.get_trajectory(size)
+
+    def generate(self, batch_size, size, state=None, driver_df=None, fit_driver=True):
+        """
+        Generates batch of realisations given process parameters.
+
+        Args:
+            batch_size:     uint, number of realisations to draw
+            size:           uint, length of each one
+            state:          instance TimeSeriesModelState or None, model parameters to use
+            driver_df:      t-student process driver degree of freedom parameter or None
+            fit_driver:     bool, if True and no `driver_df` arg. is given -
+                            fit stochastic process driver parameters w.r.t. stored data
+
+        Returns:
+            process realisations batch of size [batch_size, size]
+        """
+        if state is not None:
+            assert isinstance(state, TimeSeriesModelState), \
+                'Expected `state` as instance of TimeSeriesModelState, got: {}'.format(type(state))
+            # Unpack:
+            state = state.process
+            if driver_df is None:
+                # Get driver param from given state:
+                driver_df = state.process.driver_df
+
+        if driver_df is None and fit_driver:
+            # Fit student-t df on half-length of stored trajectory:
+            # TODO: get trajectory as half-effective window: ~1/(2*alpha), clipped to max_len
+            self.process.fit_driver(self.analyzer.get_trajectory(size=self.analyzer.max_length//2))
+
+        return self.process.generate(batch_size, size, state, driver_df)
 
 
-class DummyAnalyzer:
+BivariateTSModelState = namedtuple('BivariateTSsModelState', ['p', 's', 'stat'])
+
+
+class BivariateTSModel:
     """
-    When data analysis is not required.
-    Just keep that data.
+    Bivariate time-series model.
     """
-    def __init__(self):
-        pass
 
-    def get_trajectory(self):
-        """Get stored trajectory"""
-        pass
-#
-#
-# class PairESModel:
-#     """
-#     New & improved:
-#     t-drivers, better mixing, exponentially smoothing windows, non-isotropic covariance
-#
-#     Generative model for 2x 1d [potentially co-integrated] processes
-#     as exponentiallt smoothed evolution over base Ornshtein-Uhlenbeck model parameters space.
-#     Uses orthogonal decomposition to min./max. variance (P, S) components
-#     and builds separate AR(1) model for each;
-#     motivating paper:
-#     Harris, D. (1997) "Principal components analysis of cointegrated time series," in Econometric Theory, 13
-#     """
-#     # TODO: final data non-negativity checks
-#
-#     # Decomposition matrix:
-#     u_decomp = np.asarray([[.5, .5], [1., -1.]])
-#
-#     # Reconstruction (inverse u_decomp):
-#     u_recon = np.asarray([[1.,  .5], [1., -.5]])
-#
-#     def __init__(self, ssa_depth, max_length, grouping=None, alpha=None, ou_filter_alpha=None):
-#
-#         """
-#         Stateful model.
-#         """
-#         self.ssa_depth = ssa_depth
-#         self.max_length = max_length
-#         self.grouping = grouping
-#         self.alpha = alpha
-#         self.ou_filter_alpha = ou_filter_alpha
-#
-#         # Pair:
-#         # TODO: pair wrapper + generator IS A model, uh?
-#
-#         # Components:
-#         # TODO: make single timeseries wrapper
-#         self.p = TimeSeriesEstimator(
-#             ssa=SSA(self.ssa_depth, self.max_length, self.grouping, self.alpha),
-#             ou=OUEstimator(self.alpha),
-#             ou_filter=Covariance(3, self.ou_filter_alpha)
-#         )
-#
-#         self.is_ready = False
-#
-#     @staticmethod
-#     def base_process_estimator(x):
-#         """
-#         Returns MLE estimated parameters of OU process on given data
-#         Log-scales sigma and lambda.
-#         Args:
-#             x: data array
-#
-#         Returns:
-#             mu, log_lambda, log_sigma estimates
-#         """
-#         _mu, _theta, _sigma = ou_mle_estimator(x)
-#         log_psi = np.asarray(
-#             [_mu, np.log(np.clip(_theta, 1e-10, None)), np.log(np.clip(_sigma, 1e-10, None))]
-#         ).T
-#         return log_psi
-#
-#     @staticmethod
-#     def decompose(x, u):
-#         """
-#         Returns orthogonal decomposition of pair [X1, X2] and data statistics: std, bias:
-#
-#         Args:
-#             x:  data of shape [2, num_points]
-#             u:  [2,2] decomposition matrix
-#
-#         Returns:
-#             x_ps:    data projection to eigenvectors (max./min. variance explained) of size [2, num_pints]
-#             u:       [2,2] decomp. matrix of orthonormal vectors
-#             bias:    [X1, X2] bias vector of size [2, 1]
-#             std:     [X1, X2] standard deviation vector of size [2, 1]
-#
-#         """
-#         assert len(x.shape) == 2, 'Expected data as 2d array, got: {}'.format(x.shape)
-#         assert len(u.shape) == 2, 'Expected U as 2x2 matrix, got: {}'.format(u.shape)
-#
-#         # Z-score data:
-#         bias = x.mean(axis=-1)[..., None]
-#         x_ub = x - bias
-#         std = np.clip(x_ub.std(axis=-1), 1e-8, None)[..., None]
-#
-#         x_c = x_ub / std
-#         x_ps = np.matmul(u, x_c)
-#
-#         return x_ps, bias, std
-#
-#     @staticmethod
-#     def restore(x_ps, u, bias, std):
-#         """
-#         Restores data from PS decomposition.
-#
-#         Args:
-#             x_ps:   data projections of size [2, num_pints]
-#             u:      [2,2] decomposition matrix
-#             bias:   original data bias vector of size [2]
-#             std:     [X1, X2] standard deviation vector of size [2, 1]
-#
-#         Returns:
-#             x:  data of shape [2, num_points]
-#         """
-#         # Decolorize and decenter:
-#         return np.matmul(u, x_ps) * std + bias
-#
-#     def ready(self):
-#         assert self.is_ready, 'Model is not initialized. Hint: forgot to call model.reset()?'
-#
-#     def reset(self, init_trajectory, obs_covariance_factor=1e-2):
-#         """
-#         Estimate model initial parameters and resets filtered trajectory.
-#
-#         Args:
-#             init_trajectory:        2d trajectory of process [X1, X2] values
-#                                     initial filter parameters are estimated over of size [2, len]
-#             obs_covariance_factor:  ufloat, Kalman Filter identity observation matrix multiplier
-#         """
-#         self.obs_trajectory = []
-#         self.state_trajectory = []
-#
-#         assert init_trajectory.shape[-1] > 1, 'Initial trajectory should be longer than 1'
-#
-#         # Decompose to [Price, Spread] and get decomp. matrix:
-#         xp0, b0, std0 = self.decompose(init_trajectory, self.u_decomp)
-#
-#         # Get Psi_price, Psi_spread, shaped [2x3] each:
-#         log_psi0 = self.base_process_estimator(xp0)
-#
-#         # Use two independent filters to track P and S streams:
-#         self.track_p_filter = KalmanFilter(
-#             initial_state_mean=log_psi0[0, :].tolist(),
-#             #transition_covariance=obs_covariance_factor * np.eye(3),
-#             observation_covariance=obs_covariance_factor * np.eye(3),
-#             n_dim_obs=3
-#         )
-#         self.track_s_filter = KalmanFilter(
-#             initial_state_mean=log_psi0[1, :].tolist(),
-#             #transition_covariance=obs_covariance_factor * np.eye(3),
-#             observation_covariance=obs_covariance_factor * np.eye(3),
-#             n_dim_obs=3
-#         )
-#         # Fit SSA parameters for S and P:
-#         length = xp0.shape[-1]
-#         self.p_ssa_estimator = SSA(self.ssa_depth, length, self.grouping, self.alpha)
-#         self.s_ssa_estimator = SSA(self.ssa_depth, length, self.grouping, self.alpha)
-#
-#         _, p_ssa_state = self.p_ssa_estimator.reset(xp0[0, :])
-#         _, s_ssa_state = self.s_ssa_estimator.reset(xp0[1, :])
-#
-#         # Fit t distribution shape for  S, P values:
-#         s_tdf, _, _ = stats.t.fit(xp0[1, :])
-#
-#         # Initial observation:
-#         self.obs_trajectory.append(
-#             PairESMobservation(log_psi0[0, :], log_psi0[1, :], b0, std0)
-#         )
-#         # Compose initial hidden state:
-#         self.state_trajectory.append(
-#             PairESMstate(
-#                 p_mean=log_psi0[0, :],
-#                 p_cov=np.zeros([3, 3]),
-#                 s_mean=log_psi0[1, :],
-#                 s_cov=np.zeros([3, 3]),
-#                 bias=b0,
-#                 std=std0,
-#                 p_ssa_state=p_ssa_state,
-#                 s_ssa_state=s_ssa_state,
-#                 p_tdf=1e6,
-#                 s_tdf=s_tdf,
-#             )
-#         )
-#         self.is_ready = True
-#
-#     def update(self, pair_trajectory, state_prev=None):
-#         """
-#         Update model given trajectories:
-#         Estimates Z[t] given a trajectories of two base 1d process and previous hidden state Z[t-1]
-#         Args:
-#             pair_trajectory:    trajectory of n past base process observations X = (x[t-n], x[t-n+1], ..., x[t]),
-#                                 where x[i] = (p1[i], p2[i]), shaped [2, n]
-#             state_prev:         instance of 'PairModelState' - previous state of the model, Z[t-1]
-#
-#         Returns:
-#             instance of 'PairModelState', Z[t]
-#         """
-#         self.ready()
-#
-#         # Use last available Z if no state is given:
-#         if state_prev is None:
-#             z = self.state_trajectory[-1]
-#
-#         else:
-#             assert isinstance(state_prev, PairESMstate), \
-#                 'Expected model state as instance of `PairModelState`, got: {}'.format(type(state_prev))
-#             z = state_prev
-#
-#         # Decompose down to `base line`, `spread line`:
-#         x_decomp, b, std = self.decompose(pair_trajectory, u=self.u_decomp)
-#
-#         # Estimate hidden state observation [Psi_p[t] | Psi_s[t]], shaped [2, 3]:
-#         log_psi = self.base_process_estimator(x_decomp)
-#
-#         # Estimate Z[t] given Z[t-1] and Psi[t]:
-#         z_mean_p, z_cov_p = self.track_p_filter.filter_update(
-#             filtered_state_mean=z.p_mean,
-#             filtered_state_covariance=z.p_cov,
-#             observation=log_psi[0,:],
-#         )
-#         z_mean_s, z_cov_s = self.track_s_filter.filter_update(
-#             filtered_state_mean=z.s_mean,
-#             filtered_state_covariance=z.s_cov,
-#             observation=log_psi[1, :],
-#         )
-#         # SSA parameters for S and P; as we've got trajectories - forced to fit from scratch:
-#         length = x_decomp.shape[-1]
-#         self.p_ssa_estimator = SSA(self.ssa_depth, length, self.grouping, self.alpha)
-#         self.s_ssa_estimator = SSA(self.ssa_depth, length, self.grouping, self.alpha)
-#
-#         _, p_ssa_state = self.p_ssa_estimator.reset(x_decomp[0, :])
-#         _, s_ssa_state = self.s_ssa_estimator.reset(x_decomp[1, :])
-#
-#         s_tdf, _, _ = stats.t.fit(x_decomp[1, :])
-#
-#         self.obs_trajectory.append(
-#             PairESMobservation(log_psi[0, :], log_psi[1, :], b, std)
-#         )
-#         self.state_trajectory.append(
-#             PairESMstate(
-#                 p_mean=z_mean_p,
-#                 p_cov=z_cov_p,
-#                 s_mean=z_mean_s,
-#                 s_cov=z_cov_s,
-#                 bias=b,
-#                 std=std,
-#                 p_ssa_state=p_ssa_state,
-#                 s_ssa_state=s_ssa_state,
-#                 p_tdf=1e6,
-#                 s_tdf=s_tdf,
-#             )
-#         )
-#
-#     @staticmethod
-#     def sample_state_fn(batch_size, state, mu_as_mean=True):
-#         """
-#         Generates batch of realisations given model hidden state Z.
-#         Static method, can be used as stand-along function.
-#
-#         Args:
-#             batch_size:     number of sample to draw
-#             state:          instance of hidden state Z
-#             mu_as_mean:    bool, if True - return mu as value of Z_mean_mu, else return sample N(Z_mean_mu, Z_cov)
-#
-#         Returns:
-#             Psi values as tuple: (mu[batch_size, 2], lambda[batch_size, 2], sigma[batch_size, 2])
-#         """
-#         z = state
-#         # Sample Psi given Z:
-#         log_psi_p = np.random.multivariate_normal(mean=z.p_mean, cov=z.p_cov, size=batch_size)
-#         log_psi_s = np.random.multivariate_normal(mean=z.s_mean, cov=z.s_cov, size=batch_size)
-#
-#         log_psi = np.stack([log_psi_p, log_psi_s], axis=1)
-#
-#         # Fighting the caveat: sampled mu values can cause excessive jumps; alternative is to use Z mean:
-#         if mu_as_mean:
-#             mu_mean = np.stack([z.p_mean, z.s_mean], axis=0)
-#             psi_mu = np.ones([batch_size, 2]) * mu_mean[:, 0]
-#
-#         else:
-#             psi_mu = log_psi[..., 0]
-#
-#         psi_lambda = np.exp(log_psi[..., 1])
-#         psi_sigma = np.exp(log_psi[..., 2])
-#
-#         return psi_mu, psi_lambda, psi_sigma
-#
-#     @staticmethod
-#     def sample_state_fn_3(batch_size, state, mu_as_mean=True):
-#         """
-#         Generates batch of realisations given model hidden state Z.
-#         Get triplet: one sample for P and two for S.
-#         Static method, can be used as stand-along function.
-#
-#         Args:
-#             batch_size:     number of sample to draw
-#             state:          instance of hidden state Z
-#             mu_as_mean:    bool, if True - return mu as value of Z_mean_mu, else return sample N(Z_mean_mu, Z_cov)
-#
-#         Returns:
-#             Psi values as tuple: (mu[batch_size, 3], lambda[batch_size, 3], sigma[batch_size, 3])
-#         """
-#         z = state
-#         # Sample Psi given Z:
-#         log_psi_p = np.random.multivariate_normal(mean=z.p_mean, cov=z.p_cov, size=batch_size)
-#         log_psi_s1 = np.random.multivariate_normal(mean=z.s_mean, cov=z.s_cov, size=batch_size)
-#         log_psi_s2 = np.random.multivariate_normal(mean=z.s_mean, cov=z.s_cov, size=batch_size)
-#
-#         log_psi = np.stack([log_psi_p, log_psi_s1, log_psi_s2], axis=1)
-#
-#         # Fighting the caveat: sampled mu values can cause excessive jumps; alternative is to use Z mean:
-#         if mu_as_mean:
-#             mu_mean = np.stack([z.p_mean, z.s_mean, z.s_mean], axis=0)
-#             psi_mu = np.ones([batch_size, 3]) * mu_mean[:, 0]
-#
-#         else:
-#             psi_mu = log_psi[..., 0]
-#
-#         psi_lambda = np.exp(log_psi[..., 1])
-#         psi_sigma = np.exp(log_psi[..., 2])
-#
-#         return psi_mu, psi_lambda, psi_sigma
-#
-#     def generate_state(self, batch_size, state=None, mu_as_mean=True):
-#         """
-#         Generates batch of realisations given model hidden state Z.
-#
-#         Args:
-#             batch_size:     number of sample to draw
-#             state:          instance of Z or None; if no state provided - last state from filtered trajectory is used
-#             mu_as_mean:     bool, if True - return mu as value of Z_mean_mu, else return sample N(Z_mean_mu, Z_cov)
-#
-#         Returns:
-#             Z samples as tuple: (mu[batch_size], lambda[batch_size], sigma[batch_size])
-#         """
-#         self.ready()
-#         if state is None:
-#             z = self.state_trajectory[-1]
-#
-#         else:
-#             assert isinstance(state, PairESMstate), \
-#                 'Expected model state as instance of `PairModelState`, got: {}'.format(type(state))
-#             z = state
-#
-#         return self.sample_state_fn(batch_size, z, mu_as_mean)
-#
-#     @staticmethod
-#     def generate_trajectory_fn(batch_size, num_points, state, u, mu_as_mean=True, restore=True):
-#         """
-#         Generates batch of realisations of pair base 1d processes given model hidden state Z in fully sequential
-#         fashion i.e. state value Psi is re-sampled for every X[i].
-#         Static method, can be used as stand-along function.
-#
-#         Args:
-#             batch_size:     uint, number of trajectories to generates
-#             num_points:     uint, trajectory length to generate
-#             state:          model hidden state Z as (Z_means, Z_covariances) tuple.
-#             u:              [2,2] reconstruction matrix, typically is: PairFilteredModel.u_recon
-#             mu_as_mean:     bool, if True - set mu as value of decomp.Z_mean_mu, else sample from distribution.
-#             restore:        bool, if True - restore to original timeseries X1|X2, return None otherwise
-#
-#         Returns:
-#             P, S projections decomposition as array of shape [batch_size, 2, num_points]
-#             base data process realisations as array of shape [batch_size, 2, num_points] or None
-#
-#         """
-#         state_sampler = PairFilteredModelT.sample_state_fn
-#
-#         # Get init. trajectories points:
-#         psi_mu, _, _ = state_sampler(batch_size, state, mu_as_mean)
-#         xp_trajectory = [psi_mu.flatten()]
-#         for i in range(num_points):
-#             # Sample Psi given Z:
-#             psi_mu, psi_lambda, psi_sigma = state_sampler(batch_size, state, mu_as_mean)
-#             # print('m-l-s-std shapes: ', psi_mu.shape, psi_lambda.shape, psi_sigma.shape, psi_std.shape)
-#
-#             # Sample next x[t] point given Psi and x[t-1]:
-#             x_next = ou_process_t_driver_batch_fn(
-#                 1,
-#                 mu=psi_mu.flatten(),
-#                 l=psi_lambda.flatten(),
-#                 sigma=psi_sigma.flatten(),
-#                 df=np.tile([state.p_tdf, state.s_tdf], batch_size),
-#                 x0=xp_trajectory[-1]
-#             )
-#             xp_trajectory.append(np.squeeze(x_next))
-#
-#         xp_trajectory = np.asarray(xp_trajectory).T
-#         xp_trajectory = xp_trajectory.reshape([batch_size, 2, -1])[..., 1:]
-#
-#         # Todo: 1. check tdf's; 2. put it through original SSA decomp; 3. sample three processes than mix
-#         if restore:
-#             x = np.matmul(u, xp_trajectory) * state.std + state.bias
-#             # x = np.matmul(u, xp_trajectory) * state.std[..., None] + state.bias[..., None]
-#
-#         else:
-#             x = None
-#
-#         return xp_trajectory, x
-#
-#     @staticmethod
-#     def generate_trajectory_fn_3(batch_size, num_points, state, restore=True):
-#         """
-#         Generates batch of realisations of base 1d process given model hidden state Z.
-#         State value Psi sampled only once for entire trajectory.
-#         S compoment is mixture of two realisations.
-#         Static method, can be used as stand-along function.
-#
-#         Args:
-#             batch_size: uint, number of trajectories to generates
-#             num_points: uint, trajectory length to generate
-#             state:      model hidden state Z as (Z_means, Z_covariances) tuple.
-#             restore:    bool, if True - restore to original timeseries X1|X2, return None otherwise
-#
-#         Returns:
-#             base data process realisations as 2d array of shape [batch_size, num_points]
-#         """
-#         state_sampler = PairFilteredModelT.sample_state_fn_3
-#
-#         # Sample Psi given Z:
-#         psi_mu, psi_lambda, psi_sigma = state_sampler(batch_size, state)
-#
-#         xp_trajectory = ou_process_t_driver_batch_fn(
-#             num_points,
-#             mu=psi_mu.flatten(),
-#             l=psi_lambda.flatten(),
-#             sigma=psi_sigma.flatten(),
-#             df=np.tile([state.p_tdf, state.s_tdf, state.s_tdf], batch_size),
-#             x0=psi_mu.flatten(),
-#             )
-#         xp_trajectory = xp_trajectory.T.reshape([batch_size, 3, -1])#[..., 1:]
-#
-#         if restore:
-#             p = xp_trajectory[:, 0, :]
-#
-#             s1 = xp_trajectory[:, 1, :]
-#             s2 = xp_trajectory[:, 2, :]
-#
-#             # No batched SSA. oblom. :(
-#             # s1 = SSA._transform(SSA._delay_embed(s1, state.s_ssa_state.window), state.s_ssa_state).sum(axis=1)
-#             # s2 = SSA._transform(SSA._delay_embed(s2, state.s_ssa_state.window), state.s_ssa_state).sum(axis=1)
-#
-#             # Mixing two spread realisations, scaling batch-wise to match variance:
-#             mean_cov = batch_covariance(xp_trajectory[:, 1:, :]).sum(axis=(1, 2))[None, :]
-#             rho = ((s1 - s2).var(axis=-1) / mean_cov * (2 ** .5)).T
-#
-#             x = np.stack([p + .5 * rho * s1, p - .5 * rho * s2], axis=1)
-#
-#             x = x * state.std + state.bias
-#
-#         else:
-#             x = None
-#
-#         return xp_trajectory, x
-#
-#     def generate_trajectory(self, batch_size, num_points, state=None, mu_as_mean=True, restore=True):
-#         """
-#         Generates batch of realisations of pair base 1d processes given model hidden state Z.
-#
-#         Args:
-#             batch_size:     uint, number of trajectories to generates
-#             num_points:     uint, trajectory length to generate
-#             state:          instance of Z or None; if no state provided - last state from filtered trajectory is used.
-#             mu_as_mean:     bool, if True - set mu as value of decomp.Z_mean_mu, else sample from distribution.
-#             restore:        bool, if True - restore to original timeseries X1|X2, return S|P decomposition otherwise
-#
-#         Returns:
-#             P, S realisations decomposition as array of shape [batch_size, 2, num_points]
-#             base data process realisations as array of shape [batch_size, 2, num_points] or None
-#         """
-#         self.ready()
-#         if state is None:
-#             state = self.state_trajectory[-1]
-#         return self.generate_trajectory_fn(batch_size, num_points, state, self.u_recon, mu_as_mean, restore)
-#
-#     def generate_trajectory_3(self, batch_size, num_points, state=None, restore=True, **kwargs):
-#         """
-#         Generates batch of realisations of base 1d process given model hidden state Z.
-#
-#         Args:
-#             batch_size: uint, number of trajectories to generates
-#             num_points: uint, trajectory length to generate
-#             state:      instance of Z or None; if no state provided - last state from filtered trajectory is used.
-#             restore:    bool, if True - restore to original timeseries X1|X2, return S|P decomposition otherwise
-#
-#         Returns:
-#             P, S1, S2 realisations decomposition as array of shape [batch_size, 3, num_points]
-#             base data process realisations as array of shape [batch_size, 2, num_points] or None
-#         """
-#         self.ready()
-#         if state is None:
-#             state = self.state_trajectory[-1]
-#         return self.generate_trajectory_fn_3(batch_size, num_points, state, restore)
-#
+    # Decomposition matrix:
+    u_decomp = np.asarray([[.5, .5], [.5, -.5]])
+
+    # Reconstruction (inverse u_decomp):
+    u_recon = np.asarray([[1.,  1.], [1., -1.]])
+
+    def __init__(
+            self,
+            max_length,
+            analyzer_window,
+            p_analyzer_grouping=None,
+            s_analyzer_grouping=None,
+            alpha=None,
+            filter_alpha=None,
+            stat_alpha=None,
+    ):
+        max_length = np.atleast_1d(max_length)
+        analyzer_window = np.atleast_1d(analyzer_window)
+        alpha = np.atleast_1d(alpha)
+        filter_alpha = np.atleast_1d(filter_alpha)
+
+        # Max. variance component (average):
+        self.p = TimeSeriesModel(
+            max_length[0],
+            analyzer_window[0],
+            p_analyzer_grouping,
+            alpha[0],
+            filter_alpha[0]
+        )
+
+        # Max. stationarity component (difference):
+        self.s = TimeSeriesModel(
+            max_length[-1],
+            analyzer_window[-1],
+            s_analyzer_grouping,
+            alpha[-1],
+            filter_alpha[-1]
+        )
+
+        # Statistics of original data:
+        self.stat = Zscore(2, stat_alpha)
+
+    def ready(self):
+        return self.s.ready() and self.p.ready()
+
+    def get_state(self):
+        return BivariateTSModelState(
+            p=self.p.get_state(),
+            s=self.s.get_state(),
+            stat=self.stat.get_state()
+        )
+
+    @staticmethod
+    def _decompose(trajectory, mean, variance, u):
+        """
+        Returns orthonormal decomposition of pair [X1, X2].
+        Static method, can be used as stand-along function.
+
+        Args:
+            trajectory: time-series data of shape [2, num_points]
+            mean:       data mean of size [2]
+            variance:   data variance of size [2]
+            u:          [2, 2] decomposition matrix
+
+        Returns:
+            data projection of size [2, num_pints], where first (P) component is average and second (S) is difference
+            of original time-series.
+        """
+        # TODO: remove norm?
+        assert len(trajectory.shape) == 2 and trajectory.shape[0] == 2, \
+            'Expected data as array of size [2, num_points], got: {}'.format(trajectory.shape)
+
+        assert mean.shape == (2,) and variance.shape == (2,), \
+            'Expected mean and variance as vectors of size [2], got: {}, {}'.format(mean.shape, variance.shape)
+
+        assert u.shape == (2, 2), 'Expected U as 2x2 matrix, got: {}'.format(u.shape)
+
+        # Z-score data:
+        norm_data = (trajectory - mean[:, None]) / np.clip(variance[:, None], 1e-8, None) ** .5
+        ps_decomposition = np.matmul(u, norm_data)
+
+        return ps_decomposition
+
+    @staticmethod
+    def _reconstruct(ps_decomposition, mean, variance, u):
+        """
+        Returns original data [X1, X2] given orthonormal P|S decomposition .
+        Static method, can be used as stand-along function.
+
+        Args:
+            ps_decomposition:   data ps-decomposition of size [2, num_points]
+            mean:               original data mean of size [2]
+            variance:           original data variance of size [2]
+            u:                  [2, 2] reconstruction matrix
+
+        Returns:
+            reconstructed data of size [2, num_pints]
+        """
+        assert len(ps_decomposition.shape) == 2 and ps_decomposition.shape[0] == 2, \
+            'Expected data as array of size [2, num_points], got: {}'.format(ps_decomposition.shape)
+
+        assert mean.shape == (2,) and variance.shape == (2,), \
+            'Expected mean and variance as vectors of size [2], got: {}, {}'.format(mean.shape, variance.shape)
+
+        assert u.shape == (2, 2), 'Expected U as 2x2 matrix, got: {}'.format(u.shape)
+
+        return np.matmul(u, ps_decomposition) * variance[:, None] ** .5 + mean[:, None]
+
+    def decompose(self, trajectory):
+        """
+        Returns orthonormal decomposition of pair [X1, X2] w.r.t current statistics.
+
+        Args:
+            trajectory: time-series data of shape [2, num_points]
+
+        Returns:
+            tuple (P, S), where first (P) component is average and second (S) is difference
+            of original time-series, of size [num_points] each
+        """
+        ps_decomp = self._decompose(trajectory, self.stat.mean, self.stat.variance, self.u_decomp)
+        return ps_decomp[0, :], ps_decomp[1, :]
+
+    def reconstruct(self, p, s, mean=None, variance=None):
+        """
+        Returns original data [X1, X2] given orthonormal P|S decomposition.
+
+        Args:
+            p:          data p-component of shape [num_points]
+            s:          data s-component of shape [num_points]
+            mean:       original data mean of size [2] or None
+            variance:   original data variance of size [2] or None
+
+        Returns:
+            reconstructed data of size [2, num_pints]
+
+        Notes:
+            if either mean or variance arg is not given - stored mean and variance are used.
+        """
+        assert p.shape == s.shape, ' Expected components be same size but got: {} and {}'.format(p.shape, s.shape)
+
+        if mean is None or variance is None:
+            mean = self.stat.mean
+            variance = self.stat.variance
+
+        ps = np.stack([p, s], axis=0)
+        return self._reconstruct(ps, mean, variance, self.u_recon)
+
+    def reset(self, init_trajectory):
+        _ = self.stat.reset(init_trajectory)
+        p_data, s_data = self.decompose(init_trajectory)
+        self.p.reset(p_data)
+        self.s.reset(s_data)
+
+    def update(self, trajectory, disjoint=False):
+        _ = self.stat.update(trajectory)  # todo: this stat.estimator does not respect `disjoint` arg.; ?!!
+        p_data, s_data = self.decompose(trajectory)
+        self.p.update(p_data, disjoint)
+        self.s.update(s_data, disjoint)
+
+    def transform(self, trajectory=None, state=None, size=None):
+        """
+        Returns per-component analyzer data decomposition.
+
+        Args:
+            trajectory:     bivariate data to decompose of size [2, num_points] or None
+            state:          instance of BivariateTSModelState or None
+            size:           uint, size of decomposition to get, or None
+
+        Returns:
+            array of [size or num_points], array of [size or num_points], ZscoreState(2)
+
+            - SSA transformations of P, S components of given trajectory w.r.t. given state
+            - bivariate trajectory statistics (means and variances)
+
+        Notes:
+            if no `trajectory` is given - returns stored data decomposition
+            if no `state` arg. is given - uses stored analyzer state.
+            if no 'size` arg is given - decomposes full [stored or given] trajectory
+        """
+        if state is not None:
+            assert isinstance(state, BivariateTSModelState),\
+                'Expected `state as instance of BivariateTSModelState but got: {}`'.format(type(state))
+            s_state = state.s
+            p_state = state.p
+            stat = state.stat
+
+        else:
+            assert trajectory is None, 'When `trajectory` arg. is given, `state` is required'
+            p_state = None
+            s_state = None
+            stat = self.stat.get_state()
+
+        if trajectory is not None:
+            ps_data = self._decompose(trajectory, stat.mean, stat.variance, self.u_decomp)
+            p_data = ps_data[0, :]
+            s_data = ps_data[1, :]
+
+        else:
+            p_data = None
+            s_data = None
+
+        p_transformed = self.p.transform(p_data, p_state, size)
+        s_transformed = self.s.transform(s_data, s_state, size)
+
+        return p_transformed, s_transformed, stat
+
+    def get_trajectory(self, size=None, reconstruct=True):
+        """
+        Returns stored decomposition fragment and [optionally] time-series reconstruction.
+
+        Args:
+            size:           uint, fragment length to get in [1, ..., max_length] or None
+            reconstruct:    bool, if True - also return data reconstruction
+
+        Returns:
+            array of [size ... max_length], array of [size ... max_length], array of size [2, size ... max_length]
+            or
+            array of [size ... max_length], array of [size ... max_length], None
+
+            P,C [, and 2D trajectory] series as [ x[-size], x[-size+1], ... x[-1] ], up to length [size];
+            if no `size` arg. is given - returns entire stored trajectory, up to length [max_length].
+
+        """
+        p_data = self.p.get_trajectory(size)
+        s_data = self.s.get_trajectory(size)
+
+        if reconstruct:
+            trajectory = self.reconstruct(p_data, s_data)
+
+        else:
+            trajectory = None
+
+        return p_data, s_data, trajectory
+
+    def generate(self, batch_size, size, state=None, fit_driver=True, reconstruct=True):
+        """
+
+        Args:
+            batch_size:
+            size:
+            state:
+            fit_driver:
+            reconstruct:
+
+        Returns:
+
+        """
+        if state is not None:
+            assert isinstance(state, BivariateTSModelState), \
+                'Expected `state` as instance of BivariateTSModelState, got: {}'.format(type(state))
+
+        else:
+            if fit_driver:
+                # Fit student-t df on half-length of stored trajectory:
+                self.p.process.fit_driver(self.p.analyzer.get_trajectory(size=self.s.analyzer.max_length // 2))
+                self.s.process.fit_driver(self.s.analyzer.get_trajectory(size=self.s.analyzer.max_length // 2))
+
+            state = self.get_state()
+
+        # Unpack:
+        p_state = state.p.process
+        s_state = state.s.process
+
+        # Access sampling functions directly to get samples as single batch (faster):
+        p_params = self.p.process.sample_parameters(p_state, batch_size)
+        s_params = self.s.process.sample_parameters(s_state, batch_size)
+
+        # Concatenate batch-wise:
+        parameters = OUEstimatorState(
+            mu=np.concatenate([p_params.mu, s_params.mu]),
+            log_theta=np.concatenate([p_params.log_theta, s_params.log_theta]),
+            log_sigma=np.concatenate([p_params.log_sigma, s_params.log_sigma]),
+        )
+        driver_df = np.concatenate(
+            [
+                np.tile(p_state.driver_df, batch_size),
+                np.tile(s_state.driver_df, batch_size),
+            ]
+        )
+        # Get combined batch:
+        batch_2x = self.p.process.generate_trajectory_fn(2 * batch_size, size, parameters, driver_df)
+        batch_2x = np.reshape(batch_2x, [2, batch_size, -1])
+        batch_2x = np.swapaxes(batch_2x, 0, 1)
+
+        p = batch_2x[:, 0, :]
+        s = batch_2x[:, 1, :]
+
+        if reconstruct:
+
+            x = np.matmul(self.u_recon, batch_2x) * state.stat.variance[None, :, None] ** .5 \
+                + state.stat.mean[None, :, None]
+
+        else:
+            x = None
+
+        return batch_2x, x
+
+    # def generate_3(self, batch_size, size, state=None, fit_driver=True, reconstruct=True):
+    #     if state is not None:
+    #         assert isinstance(state, BivariateTSModelState), \
+    #             'Expected `state` as instance of BivariateTSModelState, got: {}'.format(type(state))
+    #
+    #     else:
+    #         if fit_driver:
+    #             # Fit student-t df on half-length of stored trajectory:
+    #             self.p.process.fit_driver(self.p.analyzer.get_trajectory(size=self.s.analyzer.max_length // 2))
+    #             self.s.process.fit_driver(self.s.analyzer.get_trajectory(size=self.s.analyzer.max_length // 2))
+    #
+    #         state = self.get_state()
+    #
+    #     # Unpack:
+    #     p_state = state.p.process
+    #     s_state = state.s.process
+    #
+    #     # Access sampling functions directly to get samples as single batch (faster):
+    #     p_params = self.p.process.sample_parameters(p_state, batch_size)
+    #     s_params = self.s.process.sample_parameters(s_state, 2 * batch_size)
+    #
+    #     # Concatenate batch-wise:
+    #     parameters = OUEstimatorState(
+    #         mu=np.concatenate([p_params.mu, s_params.mu]),
+    #         log_theta=np.concatenate([p_params.log_theta, s_params.log_theta]),
+    #         log_sigma=np.concatenate([p_params.log_sigma, s_params.log_sigma]),
+    #     )
+    #     driver_df = np.concatenate(
+    #         [
+    #             np.tile(p_state.driver_df, batch_size),
+    #             np.tile(s_state.driver_df, 2 * batch_size),
+    #         ]
+    #     )
+    #     # Get combined batch:
+    #     batch_3x = self.p.process.generate_trajectory_fn(3 * batch_size, size, parameters, driver_df)
+    #     batch_3x = np.reshape(batch_3x, [3, batch_size, -1])
+    #     batch_3x = np.swapaxes(batch_3x, 0, 1)
+    #     # p = batch_3x[: batch_size, :]
+    #     # s1 = batch_3x[batch_size: 2 * batch_size, :]
+    #     # s2 = batch_3x[2 * batch_size:, :]
+    #
+    #     p = batch_3x[:, 0, :]
+    #     s1 = batch_3x[:, 1, :]
+    #     s2 = batch_3x[:, 2, :]
+    #
+    #     if reconstruct:
+    #         # Mix two spreads to get better de-correlation, scale batch-wise to match variance:
+    #         covar = batch_covariance(batch_3x[:, 1:, :])
+    #         var_sum = covar[:, 0, 0] + covar[:, 1, 1]
+    #         covar_sum = covar[:, 0, 1] + covar[:, 1, 0]
+    #         rho = np.sqrt(.5 * var_sum / np.clip(var_sum + covar_sum, 1e-8, None) * 1.010101)[:, None]
+    #
+    #         print(rho)
+    #
+    #         x = np.stack([p + 1.0 * rho * s1, p + 1.0 * rho * s2], axis=1)
+    #
+    #         x = x * state.stat.variance[None, :, None] ** .5 + state.stat.mean[None, :, None]
+    #
+    #     else:
+    #         x = None
+    #
+    #     return batch_3x, x
+
+
+
+
+
+
+
+
