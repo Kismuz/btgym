@@ -102,7 +102,7 @@ class SimplePFDGenerator(BasePairDataGenerator):
 
     def sample(self, sample_type=0, broadcast_message=None, **kwargs):
         """
-        Overrides base method by employing single underlying stochastic process to generate two tragectories
+        Overrides base method by employing single underlying stochastic process to generate two price trajectories
         Args:
             sample_type:    bool, train/test
             **kwargs:

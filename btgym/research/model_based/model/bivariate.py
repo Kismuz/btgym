@@ -721,6 +721,63 @@ class BivariateTSModel:
 
         return p_data, s_data, trajectory
 
+    @staticmethod
+    def generate_trajectory_fn(batch_size, size, state, reconstruct=False, u_recon=None):
+        """
+        Generates batch of time-series realisations given model state.
+        Static method, can be used as stand-along function.
+
+        Args:
+            batch_size:     uint, number of trajectories to generates
+            size:           uint, trajectory length to generate
+            state:          instance of BivariateTSModelState;
+            reconstruct:    bool, if True - return time-series along with P, S trajectories, return None otherwise
+            u_recon:        reconstruction matrix of size [2, 2] or None; required if reconstruct=True;
+
+        Returns:
+            generated P and S processes realisations of size [batch_size, 2, size];
+            generated time-series reconstructions of size [batch_size, 2, size] or None;
+        """
+        assert isinstance(state, BivariateTSModelState), \
+            'Expected `state` as instance of BivariateTSModelState, got: {}'.format(type(state))
+
+        if reconstruct:
+            assert u_recon is not None, 'reconstruct=True but reconstruction matrix is not provided.'
+
+        # Unpack:
+        p_state = state.p.process
+        s_state = state.s.process
+
+        # Get all samples for single batch (faster):
+        p_params = OUProcess.sample_naive_unbiased(p_state, batch_size)
+        s_params = OUProcess.sample_naive_unbiased(s_state, batch_size)
+
+        # Concatenate batch-wise:
+        parameters = OUEstimatorState(
+            mu=np.concatenate([p_params.mu, s_params.mu]),
+            log_theta=np.concatenate([p_params.log_theta, s_params.log_theta]),
+            log_sigma=np.concatenate([p_params.log_sigma, s_params.log_sigma]),
+        )
+        driver_df = np.concatenate(
+            [
+                np.tile(p_state.driver_df, batch_size),
+                np.tile(s_state.driver_df, batch_size),
+            ]
+        )
+        # Access generator_fn directly to get combined batch:
+        batch_2x = OUProcess.generate_trajectory_fn(2 * batch_size, size, parameters, driver_df)
+        batch_2x = np.reshape(batch_2x, [2, batch_size, -1])
+        batch_2x = np.swapaxes(batch_2x, 0, 1)
+
+        if reconstruct:
+            x = np.matmul(u_recon, batch_2x) * state.stat.variance[None, :, None] ** .5 \
+                + state.stat.mean[None, :, None]
+
+        else:
+            x = None
+
+        return batch_2x, x
+
     def generate(self, batch_size, size, state=None, fit_driver=True, reconstruct=True):
         """
         Generates batch of time-series realisations given model state.
@@ -738,11 +795,7 @@ class BivariateTSModel:
             generated P and S processes realisations of size [batch_size, 2, size];
             generated time-series reconstructions of size [batch_size, 2, size] or None;
         """
-        if state is not None:
-            assert isinstance(state, BivariateTSModelState), \
-                'Expected `state` as instance of BivariateTSModelState, got: {}'.format(type(state))
-
-        else:
+        if state is None:
             if fit_driver:
                 # Fit student-t df on half-length of stored trajectory:
                 self.p.process.fit_driver(self.p.analyzer.get_trajectory(size=self.s.analyzer.max_length // 2))
@@ -750,39 +803,8 @@ class BivariateTSModel:
 
             state = self.get_state()
 
-        # Unpack:
-        p_state = state.p.process
-        s_state = state.s.process
+        return self.generate_trajectory_fn(batch_size, size, state, reconstruct, self.u_recon)
 
-        # Access sampling functions directly to get all samples as single batch (faster):
-        p_params = self.p.process.sample_parameters(p_state, batch_size)
-        s_params = self.s.process.sample_parameters(s_state, batch_size)
-
-        # Concatenate batch-wise:
-        parameters = OUEstimatorState(
-            mu=np.concatenate([p_params.mu, s_params.mu]),
-            log_theta=np.concatenate([p_params.log_theta, s_params.log_theta]),
-            log_sigma=np.concatenate([p_params.log_sigma, s_params.log_sigma]),
-        )
-        driver_df = np.concatenate(
-            [
-                np.tile(p_state.driver_df, batch_size),
-                np.tile(s_state.driver_df, batch_size),
-            ]
-        )
-        # Get combined batch:
-        batch_2x = OUProcess.generate_trajectory_fn(2 * batch_size, size, parameters, driver_df)
-        batch_2x = np.reshape(batch_2x, [2, batch_size, -1])
-        batch_2x = np.swapaxes(batch_2x, 0, 1)
-
-        if reconstruct:
-            x = np.matmul(self.u_recon, batch_2x) * state.stat.variance[None, :, None] ** .5 \
-                + state.stat.mean[None, :, None]
-
-        else:
-            x = None
-
-        return batch_2x, x
 
     # def generate_3(self, batch_size, size, state=None, fit_driver=True, reconstruct=True):
     #     if state is not None:
