@@ -10,10 +10,6 @@ from btgym.research.model_based.rec import SSA,  SSAState, OUEstimator, OUEstima
 
 from btgym.research.model_based.utils import batch_covariance
 
-# TODO: stochastic process estimator wrapper: base estimator + smoothing filter
-# TODO: time-series decomposition (analyzer?) wrapper: SSA + process estimator
-# TODO: pair decomposition/reconstruction wrapper
-# TODO: model: decomposition/reconstruction/generating
 
 OUProcessState = namedtuple('OUProcessState', ['observation', 'filtered', 'driver_df'])
 
@@ -21,7 +17,8 @@ OUProcessState = namedtuple('OUProcessState', ['observation', 'filtered', 'drive
 class OUProcess:
     """
     Provides essential functionality for recursive time series modeling
-    as Ornshteinh-Uhlenbeck stochastic process: parameters estimation, filtering, trajectories generation;
+    as Ornshteinh-Uhlenbeck stochastic process:
+    parameters estimation, state filtering and sampling, trajectories generation.
     """
     def __init__(self, alpha=None, filter_alpha=None):
         self.alpha = alpha
@@ -51,6 +48,50 @@ class OUProcess:
             observation=self.estimator.get_state(),
             filtered=self.filter.get_state(),
             driver_df=self.driver_df,
+        )
+
+    @staticmethod
+    def get_random_state(mu=(0, 0), theta=(.1, 1), sigma=(0.1, 1), driver_df=(5, 50), variance=.1):
+        """
+        Samples random uniform process state w.r.t. parameters intervals given.
+
+        Args:
+            mu:         iterable of floats as [lower_bound, upper_bound], OU Mu sampling interval
+            theta:      iterable of positive floats as [lower_bound, upper_bound], OU Theta sampling interval
+            sigma:      iterable of positive floats as [lower_bound, upper_bound], OU Sigma sampling interval
+            driver_df:  iterable of positive floats as [lower_bound > 2, upper_bound],
+                        student-t driver degrees of freedom sampling interval
+            variance:   filtered observation variance (same fixed for all params., covariance assumed diagonal)
+
+        Returns:
+            instance of OUProcessState
+        """
+        sample = dict()
+        for name, param, low_threshold in zip(
+                ['mu', 'theta', 'sigma', 'driver_df'], [mu, theta, sigma, driver_df], [-np.inf, 1e-8, 1e-8, 2]):
+            interval = np.asarray(param)
+            assert interval.ndim == 1 and interval[0] <= interval[-1], \
+                ' Expected param `{}` as iterable of ordered values as: [lower_bound, upper_bound], got: {}'.format(
+                    name, interval
+                )
+            assert interval[0] > low_threshold, \
+                'Expected param `{}` lower bound be bigger than {}, got: {}'.format(name, low_threshold, interval[0])
+            sample[name] = np.random.uniform(low=interval[0], high=interval[-1])
+
+        observation = OUEstimatorState(
+            mu=sample['mu'],
+            log_theta=np.log(sample['theta']),
+            log_sigma=np.log(sample['sigma'])
+        )
+        filtered = CovarianceState(
+            mean=np.asarray(observation),
+            variance=np.ones(3) * variance,
+            covariance=np.eye(3) * variance,
+        )
+        return OUProcessState(
+            observation=observation,
+            filtered=filtered,
+            driver_df=sample['driver_df'],
         )
 
     def fit_driver(self, trajectory):
@@ -136,7 +177,7 @@ class OUProcess:
     @staticmethod
     def sample_naive_unbiased(state, size=1):
         """
-        Samples process parameters values given observed values and smoothed values.
+        Samples process parameters values given observed values and smoothed covariance.
         Static method, can be used as stand-along function.
 
         Args:
@@ -219,8 +260,6 @@ class OUProcess:
             df=t_df,
             x0=parameters.mu,
         )
-        # trajectory = trajectory.T.reshape([batch_size, 3, -1])  # [..., 1:]
-
         return trajectory.T
 
     def generate(self, batch_size, size, state=None, driver_df=None):
@@ -251,7 +290,7 @@ class OUProcess:
         return self.generate_trajectory_fn(batch_size, size, parameters, t_df)
 
 
-TimeSeriesModelState = namedtuple('TimeSeriesState', ['process', 'analyzer'])
+TimeSeriesModelState = namedtuple('TimeSeriesModelState', ['process', 'analyzer'])
 
 
 class TimeSeriesModel:
@@ -284,6 +323,22 @@ class TimeSeriesModel:
         return TimeSeriesModelState(
             process=self.process.get_state(),
             analyzer=self.analyzer.get_state(),
+        )
+
+    @staticmethod
+    def get_random_state(**kwargs):
+        """
+        Random state sample wrapper.
+
+        Args:
+            kwargs:   dict, stochastic process parameters, see kwargs at: OUProcess.get_random_state
+
+        Returns:
+            instance of TimeSeriesModelState with `analyser` set to None
+        """
+        return TimeSeriesModelState(
+            process=OUProcess.get_random_state(**kwargs),
+            analyzer=None,
         )
 
     def ready(self):
@@ -388,7 +443,7 @@ class TimeSeriesModel:
         return self.process.generate(batch_size, size, state, driver_df)
 
 
-BivariateTSModelState = namedtuple('BivariateTSsModelState', ['p', 's', 'stat'])
+BivariateTSModelState = namedtuple('BivariateTSModelState', ['p', 's', 'stat'])
 
 
 class BivariateTSModel:
@@ -446,6 +501,45 @@ class BivariateTSModel:
             p=self.p.get_state(),
             s=self.s.get_state(),
             stat=self.stat.get_state()
+        )
+
+    @staticmethod
+    def get_random_state(p_params, s_params, mean=(100, 100), variance=(1, 1)):
+        """
+        Samples random uniform model state w.r.t. parameters intervals given.
+
+        Args:
+            p_params:   dict, P stochastic process parameters, see kwargs at: OUProcess.get_random_state
+            s_params:   dict, S stochastic process parameters, see kwargs at: OUProcess.get_random_state
+            mean:       iterable of floats as [lower_bound, upper_bound], time-series means sampling interval.
+            variance:   iterable of floats as [lower_bound, upper_bound], time-series variances sampling interval.
+
+        Returns:
+            instance of BivariateTSModelState
+
+        Note:
+            negative means are allowed.
+        """
+        sample = dict()
+        for name, param, low_threshold in zip(
+                ['mean', 'variance'], [mean, variance], [-np.inf, 1e-8]):
+            interval = np.asarray(param)
+            assert interval.ndim == 1 and interval[0] <= interval[-1], \
+                ' Expected param `{}` as iterable of ordered values as: [lower_bound, upper_bound], got: {}'.format(
+                    name, interval
+                )
+            assert interval[0] > low_threshold, \
+                'Expected param `{}` lower bound be bigger than {}, got: {}'.format(name, low_threshold, interval[0])
+
+            sample[name] = np.random.uniform(low=interval[0], high=interval[-1], size=2)
+
+        return BivariateTSModelState(
+            p=TimeSeriesModel.get_random_state(**p_params),
+            s=TimeSeriesModel.get_random_state(**s_params),
+            stat=ZscoreState(
+                mean=sample['mean'],
+                variance=sample['variance']
+            )
         )
 
     @staticmethod
@@ -605,6 +699,7 @@ class BivariateTSModel:
     def get_trajectory(self, size=None, reconstruct=True):
         """
         Returns stored decomposition fragment and [optionally] time-series reconstruction.
+        TODO: reconstruction is freaky due to only last stored statistic is used
 
         Args:
             size:           uint, fragment length to get in [1, ..., max_length] or None
@@ -632,16 +727,20 @@ class BivariateTSModel:
 
     def generate(self, batch_size, size, state=None, fit_driver=True, reconstruct=True):
         """
+        Generates batch of time-series realisations given model state.
 
         Args:
-            batch_size:
-            size:
-            state:
-            fit_driver:
-            reconstruct:
+            batch_size:     uint, number of trajectories to generates
+            size:           uint, trajectory length to generate
+            state:          instance of BivariateTSModelState or None;
+                            if no state provided - current state is used.
+            fit_driver:     bool, if True - fit t-student process driver degree of freedom parameter to data,
+                            use gaussian driver otherwise;
+            reconstruct:    bool, if True - return time-series along with P, S trajectories, return None otherwise
 
         Returns:
-
+            generated P and S processes realisations of size [batch_size, 2, size];
+            generated time-series reconstructions of size [batch_size, 2, size] or None;
         """
         if state is not None:
             assert isinstance(state, BivariateTSModelState), \
@@ -659,7 +758,7 @@ class BivariateTSModel:
         p_state = state.p.process
         s_state = state.s.process
 
-        # Access sampling functions directly to get samples as single batch (faster):
+        # Access sampling functions directly to get all samples as single batch (faster):
         p_params = self.p.process.sample_parameters(p_state, batch_size)
         s_params = self.s.process.sample_parameters(s_state, batch_size)
 
@@ -676,15 +775,11 @@ class BivariateTSModel:
             ]
         )
         # Get combined batch:
-        batch_2x = self.p.process.generate_trajectory_fn(2 * batch_size, size, parameters, driver_df)
+        batch_2x = OUProcess.generate_trajectory_fn(2 * batch_size, size, parameters, driver_df)
         batch_2x = np.reshape(batch_2x, [2, batch_size, -1])
         batch_2x = np.swapaxes(batch_2x, 0, 1)
 
-        p = batch_2x[:, 0, :]
-        s = batch_2x[:, 1, :]
-
         if reconstruct:
-
             x = np.matmul(self.u_recon, batch_2x) * state.stat.variance[None, :, None] ** .5 \
                 + state.stat.mean[None, :, None]
 
