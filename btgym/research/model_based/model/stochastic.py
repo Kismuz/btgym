@@ -1,12 +1,6 @@
 import numpy as np
 from scipy.stats import norm
-from btgym.research.model_based.model.utils import log_uniform
-
-try:
-    from pykalman import KalmanFilter
-
-except ImportError:
-    raise ImportError('Locally required package `pykalman` seems not be installed.')
+from btgym.research.model_based.model.utils import log_uniform, multivariate_t_rvs, cov2corr
 
 
 def weiner_process_fn(num_points, delta, x0=0, dt=1):
@@ -131,8 +125,6 @@ def ou_process_t_driver_batch_fn(num_points, mu, l, sigma, df, x0, dt=1):
     """
     Generates batch of realisation trajectories of Ornshtein-Uhlenbeck process
     driven by t-distributed innovations.
-    Student-t driver params shoud be given in the “standardized” form, see:
-    https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.t.html#scipy.stats.t
 
     Args:
         num_points:     int, trajectory length
@@ -163,9 +155,57 @@ def ou_process_t_driver_batch_fn(num_points, mu, l, sigma, df, x0, dt=1):
         # x_vol = df / (df - 2)
         # driver = (driver - loc) / scale / x_vol**.5
         x[i, :] = x[i - 1, :] * np.exp(-l * dt) + mu * (1 - np.exp(-l * dt)) + \
-                  sigma * ((1 - np.exp(-2 * l * dt)) / (2 * l)) ** .5 * driver
+            sigma * ((1 - np.exp(-2 * l * dt)) / (2 * l)) ** .5 * driver
 
     return x[1:, :]
+
+
+def multivariate_ou_process_t_driver_batch_fn(batch_size, num_points, mu, theta, sigma, cov, df, x0, dt=1):
+    """
+    Generates batch of realisations of multivariate Ornshtein-Uhlenbeck process
+    driven by t-distributed innovations.
+
+    Args:
+        batch_size:     int, batch_size
+        num_points:     int, trajectory length
+        mu:             array of shape [process_dim], process mean;
+        theta:          array of shape [process_dim], mean reversion rate;
+        sigma:          array of shape [process_dim], process deviation parameter;
+        cov:            array of shape [process_dim, process_dim],
+                        covariance or correlation matrix of process innovations
+        df:             array of shape [process_dim] > 2.0, Student-t degree of freedom params.;
+        x0:             array of shape [process_dim], starting points;
+        dt:             int, time increment;
+
+    Returns:
+        generated data as np.array of size: [batch_size,  num_points, process_dim]
+    """
+    assert mu.shape == theta.shape == sigma.shape == df.shape == x0.shape and mu.ndim == 1, \
+        'Expected parameters mu, theta, sigma, df, x0 as 1d vectors o same size...'
+
+    dim = mu.shape[0]
+    n = num_points + 1
+
+    x = np.zeros([batch_size, n, dim])
+    x[:, 0, :] = x0[None, :]
+
+    # Normalize covariance:
+    rho = cov2corr(cov)
+    print('rho: ', rho)
+
+    # Get multivariate t-innovations scaled to unit variance:
+    driver = multivariate_t_rvs(mean=np.zeros(dim), cov=rho, df=df, size=[batch_size, n]) * ((df - 2) / df) ** .5
+
+    # Get trajectory:
+    for i in range(1, n):
+        x[:, i, :] = x[:, i - 1, :] * np.exp(-theta * dt) + mu * (1 - np.exp(-theta * dt))
+
+        # Scale to OU innovation amplitude:
+        innovation = sigma * ((1 - np.exp(-2 * theta * dt)) / (2 * theta)) ** .5 * driver[:, i, :]
+
+        x[:, i, :] += innovation
+
+    return x[:, 1:, :]
 
 
 def ornshtein_uhlenbeck_uniform_parameters_fn(mu, l, sigma, x0=None, dt=1):

@@ -20,6 +20,7 @@ class OUProcess:
         self.alpha = alpha
         self.filter_alpha = filter_alpha
         self.estimator = OUEstimator(alpha)
+
         # Just use exponential smoothing as state-space trajectory filter:
         self.filter = Covariance(3, alpha=filter_alpha)
 
@@ -444,7 +445,7 @@ BivariateTSModelState = namedtuple('BivariateTSModelState', ['p', 's', 'stat'])
 
 class BivariateTSModel:
     """
-    Bivariate time-series model.
+     Two-factor bivariate time-series model.
     """
 
     # Decomposition matrix:
@@ -634,12 +635,27 @@ class BivariateTSModel:
         return self._reconstruct(ps, mean, variance, self.u_recon)
 
     def reset(self, init_trajectory):
+        """
+        Resets model parameters and trajectories given initial data.
+
+        Args:
+            init_trajectory:    initial time-series observations of size [2, num_points]
+        """
         _ = self.stat.reset(init_trajectory)
         p_data, s_data = self.decompose(init_trajectory)
         self.p.reset(p_data)
         self.s.reset(s_data)
 
     def update(self, trajectory, disjoint=False):
+        """
+        Updates model parameters and trajectories given new data.
+
+        Args:
+            trajectory: time-series update observations of size [2, num_points], where:
+                        num_points <= min{p_params[max_length], s_params[max_length]} is necessary
+                        to keep model trajectory continuous
+            disjoint:   bool, indicates whether update given is continuous or disjoint w.r.t. previous one
+        """
         _ = self.stat.update(trajectory)  # todo: this stat.estimator does not respect `disjoint` arg.; ?!!
         p_data, s_data = self.decompose(trajectory)
         self.p.update(p_data, disjoint)

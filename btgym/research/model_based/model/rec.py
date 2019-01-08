@@ -445,7 +445,7 @@ class Zscore:
         return self.mean, self.variance
 
 
-CovarianceState = namedtuple('CovarianceState', ['mean', 'variance', 'covariance'])
+CovarianceState = namedtuple('CovarianceState', ['covariance', 'mean', 'variance'])
 
 
 class Covariance:
@@ -475,9 +475,9 @@ class Covariance:
             current state as instance of CovarianceState tuple
         """
         return CovarianceState(
+            covariance=self.covariance,
             mean=self.mean,
             variance=self.variance,
-            covariance=self.covariance,
         )
 
     def reset(self, init_x):
@@ -550,7 +550,8 @@ class OUEstimator:
         """
         self.alpha = alpha
         self.covariance_estimator = Covariance(2, alpha)
-        self.error_stat = Zscore(1, alpha)
+        self.residuals_stat = Zscore(1, alpha)
+        self.residuals = None
         self.ls_a = None
         self.ls_b = None
         self.mu = None
@@ -589,11 +590,11 @@ class OUEstimator:
 
         self.ls_a, self.ls_b = self.fit_ls_estimate(*self.covariance_estimator.reset(xy))
 
-        err = y - (self.ls_a * x + self.ls_b)
+        self.residuals = y - (self.ls_a * x + self.ls_b)
 
-        _, err_var = self.error_stat.reset(err[None, :])
+        _, residuals_var = self.residuals_stat.reset(self.residuals[None, :])
 
-        _, self.log_theta, self.log_sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, err_var)
+        _, self.log_theta, self.log_sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, residuals_var)
 
         self.mu = self.covariance_estimator.mean.mean()
 
@@ -628,11 +629,11 @@ class OUEstimator:
         self.ls_a, self.ls_b = self.fit_ls_estimate(*self.covariance_estimator.update(xy))
 
         # Get LS errors and variance:
-        err = y - (self.ls_a * x + self.ls_b)
-        _, err_var = self.error_stat.update(err[None, :])
+        self.residuals = y - (self.ls_a * x + self.ls_b)
+        _, residuals_var = self.residuals_stat.update(self.residuals[None, :])
 
         # Get OU params:
-        _, self.log_theta, self.log_sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, np.squeeze(err_var))
+        _, self.log_theta, self.log_sigma = self.fit_ou_estimate(self.ls_a, self.ls_b, np.squeeze(residuals_var))
         # Stable mean:
         self.mu = self.covariance_estimator.mean.mean()
 
