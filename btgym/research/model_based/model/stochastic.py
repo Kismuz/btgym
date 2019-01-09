@@ -191,7 +191,6 @@ def multivariate_ou_process_t_driver_batch_fn(batch_size, num_points, mu, theta,
 
     # Normalize covariance:
     rho = cov2corr(cov)
-    print('rho: ', rho)
 
     # Get multivariate t-innovations scaled to unit variance:
     driver = multivariate_t_rvs(mean=np.zeros(dim), cov=rho, df=df, size=[batch_size, n]) * ((df - 2) / df) ** .5

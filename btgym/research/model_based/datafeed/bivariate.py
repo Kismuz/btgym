@@ -21,7 +21,7 @@ def bivariate_generator_fn(num_points, state, keep_decimals=6, **kwargs):
     Returns:
         generated time-series of size [1, 2, size]
     """
-    _, x = BivariateTSModel.generate_trajectory_fn(1, num_points, state, True, BivariateTSModel.u_recon)
+    _, x = BivariateTSModel.generate_bivariate_trajectory_fn(1, num_points, state, True, BivariateTSModel.u_recon)
     return np.around(x, decimals=keep_decimals)
 
 
