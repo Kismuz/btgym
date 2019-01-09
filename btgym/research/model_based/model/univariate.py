@@ -5,7 +5,7 @@ from collections import namedtuple
 from btgym.research.model_based.model.stochastic import ou_process_t_driver_batch_fn
 from btgym.research.model_based.model.stochastic import multivariate_ou_process_t_driver_batch_fn
 
-from btgym.research.model_based.model.rec import Covariance, CovarianceState
+from btgym.research.model_based.model.rec import Zscore, ZscoreState, Covariance, CovarianceState
 from btgym.research.model_based.model.rec import SSA, OUEstimator, OUEstimatorState
 
 OUProcessState = namedtuple('OUProcessState', ['observation', 'filtered', 'driver_df'])
@@ -49,7 +49,7 @@ class OUProcess:
         )
 
     @staticmethod
-    def get_random_state(mu=(0, 0), theta=(.1, 1), sigma=(0.1, 1), driver_df=(5, 50), variance=.1):
+    def get_random_state(mu=(0, 0), theta=(.1, 1), sigma=(0.1, 1), driver_df=(5, 50), variance=1e-2):
         """
         Samples random uniform process state w.r.t. parameters intervals given.
 
@@ -325,12 +325,14 @@ TimeSeriesModelState = namedtuple('TimeSeriesModelState', ['process', 'analyzer'
 
 class TimeSeriesModel:
     """
-    Time-series modeling and decomposition wrapper class.
-    Basic idea is that observed data are treated as a realisation of some underlying stochastic process.
+    Base time-series modeling and decomposition wrapper class.
 
-    Model class itself consist of two functional parts (both based on empirical covariance estimation):
+    Consist of two [independent] functional parts:
     - stochastic process modeling (fitting and tracking of unobserved parameters, new data generation);
     - realisation trajectory analysis and decomposition;
+
+    Note that there this base class does not include data pre-processing, methods (normalisation, log_transform etc.).
+    Later should be added at user_level child classes.
 
     """
 
@@ -380,7 +382,7 @@ class TimeSeriesModel:
         Resets model parameters and trajectory given initial data.
 
         Args:
-            init_trajectory:    initial time-series observations of size [1, ..., num_points]
+            init_trajectory:    initial time-series observations of size from [1] to [num_points]
         """
         self.process.reset(init_trajectory)
         _ = self.analyzer.reset(init_trajectory)
@@ -390,7 +392,7 @@ class TimeSeriesModel:
         Updates model parameters and trajectory given new data.
 
         Args:
-            trajectory: time-series update observations of size [1, ..., num_points],
+            trajectory: time-series update observations of size from [1] to [num_points],
                         where num_points <= max_length to keep model trajectory continuous
             disjoint:   bool, indicates whether update given is continuous or disjoint w.r.t. previous one
         """
@@ -460,15 +462,226 @@ class TimeSeriesModel:
             assert isinstance(state, TimeSeriesModelState), \
                 'Expected `state` as instance of TimeSeriesModelState, got: {}'.format(type(state))
             # Unpack:
-            state = state.process
+            process_state = state.process
             if driver_df is None:
                 # Get driver param from given state:
                 driver_df = state.process.driver_df
+        else:
+            process_state = None
 
         if driver_df is None and fit_driver:
             # Fit student-t df on half-length of stored trajectory:
             # TODO: get trajectory as half-effective window: ~1/(2*alpha), clipped to max_len
             self.process.fit_driver(self.analyzer.get_trajectory(size=self.analyzer.max_length//2))
 
-        return self.process.generate(batch_size, size, state, driver_df)
+        return self.process.generate(batch_size, size, process_state, driver_df)
+
+
+PriceModelState = namedtuple('PriceModelState', ['process', 'analyzer', 'stat'])
+
+
+class PriceModel(TimeSeriesModel):
+    """
+    Wrapper class for positive-valued time-series.
+    Internally works with normalised log-transformed data.
+    """
+    def __init__(
+            self,
+            max_length,
+            analyzer_window,
+            analyzer_grouping=None,
+            alpha=None,
+            filter_alpha=None,
+            stat_alpha=None
+    ):
+        """
+
+        Args:
+            max_length:         uint, maximum trajectory length to keep;
+            analyzer_window:    uint, SSA embedding window;
+            analyzer_grouping:  SSA decomposition triples grouping,
+                                iterable of pairs convertible to python slices, i.e.:
+                                grouping=[[0,1], [1,2], [2, None]];
+            alpha:              float in [0, 1], SSA and process estimator decaying factor;
+            filter_alpha:       float in [0, 1], process smoothing decaying factor;
+            stat_alpha:         float in [0, 1], time-series statistics tracking decaying factor;
+        """
+        super().__init__(max_length, analyzer_window, analyzer_grouping, alpha, filter_alpha)
+
+        # Statistics of original data:
+        self.stat = Zscore(1, stat_alpha)
+
+    def get_state(self):
+        """
+        Returns model state tuple.
+
+        Returns:
+            current state as instance of PriceModelState
+        """
+        return PriceModelState(
+            process=self.process.get_state(),
+            analyzer=self.analyzer.get_state(),
+            stat=self.stat.get_state(),
+        )
+
+    @staticmethod
+    def normalise(trajectory, mean, variance):
+        return (trajectory - mean) / np.clip(variance, 1e-8, None) ** .5
+
+    @staticmethod
+    def denormalize(trajectory, mean, variance):
+        return trajectory * variance ** .5 + mean
+
+    def reset(self, init_trajectory):
+        """
+        Resets model parameters and trajectory given initial data.
+
+        Args:
+            init_trajectory:    initial time-series observations of size from [1] to [num_points]
+        """
+        log_data = np.log(init_trajectory)
+        mean, variance = self.stat.reset(log_data[None, :])
+        return super().reset(self.normalise(log_data, mean, variance))
+
+    def update(self, trajectory, disjoint=False):
+        """
+        Updates model parameters and trajectory given new data.
+
+        Args:
+            trajectory: time-series update observations of size from [1] to [num_points],
+                        where num_points <= max_length to keep model trajectory continuous
+            disjoint:   bool, indicates whether update given is continuous or disjoint w.r.t. previous one
+        """
+        log_data = np.log(trajectory)
+        mean, variance = self.stat.update(log_data[None, :])
+        return super().update(self.normalise(log_data, mean, variance), disjoint)
+
+    def transform(self, trajectory=None, state=None, size=None):
+        """
+        Returns analyzer data decomposition.
+
+        Args:
+            trajectory:     data to decompose of size [num_points] or None
+            state:          instance of PriceModelState or None
+            size:           uint, size of decomposition to get, or None
+
+        Returns:
+            SSA decomposition of given trajectory w.r.t. given state
+            if no `trajectory` is given - returns stored data decomposition
+            if no `state` arg. is given - uses stored analyzer state.
+            if no 'size` arg is given - decomposes full [stored or given] trajectory
+        """
+        if state is not None:
+            assert isinstance(state, PriceModelState), \
+                'Expected `state` as instance of PriceModelState, got: {}'.format(type(state))
+            # Unpack state:
+            state_base = TimeSeriesModelState(
+                analyzer=state.analyzer,
+                process=state.process
+            )
+        else:
+            state_base = None
+
+        # If 1d signal is given - need to normalize:
+        if trajectory is not None:
+            assert state is not None, 'State is expected when trajectory is given'
+            trajectory = self.normalise(np.log(trajectory), state.stat.mean, state.stat.variance)
+
+        return super().transform(trajectory, state_base, size)
+
+    def get_trajectory(self, size=None):
+        """
+        Returns stored fragment of original time-series data.
+
+        Args:
+            size:   uint, fragment length in [1, ..., max_length] or None
+
+        Returns:
+            1d series as [ x[-size], x[-size+1], ... x[-1] ], up to length [size];
+            if no `size` arg. is given - returns entire stored trajectory, up to length [max_length].
+        """
+        # TODO: reconstruction is freaky due to only last stored statistic is used
+        trajectory = super().get_trajectory(size)
+        state = self.get_state()
+
+        return np.exp(self.denormalize(trajectory, state.stat.mean, state.stat.variance))
+
+    def generate(self, batch_size, size, state=None, driver_df=None, fit_driver=True):
+        """
+        Generates batch of realisations given process parameters.
+
+        Args:
+            batch_size:     uint, number of realisations to draw
+            size:           uint, length of each one
+            state:          instance PriceModelState or None, model parameters to use
+            driver_df:      t-student process driver degree of freedom parameter or None
+            fit_driver:     bool, if True and no `driver_df` arg. is given -
+                            fit stochastic process driver parameters w.r.t. stored data
+
+        Returns:
+            process realisations batch of size [batch_size, size]
+        """
+        if state is not None:
+            assert isinstance(state, PriceModelState), \
+                'Expected `state` as instance of PriceModelState, got: {}'.format(type(state))
+            # Unpack:
+            state_base = TimeSeriesModelState(
+                analyzer=state.analyzer,
+                process=state.process
+            )
+        else:
+            state = self.get_state()
+            state_base = None
+
+
+        trajectory = super().generate(batch_size, size, state_base, driver_df, fit_driver)
+
+        return np.exp(self.denormalize(trajectory, state.stat.mean, state.stat.variance))
+
+    @staticmethod
+    def get_random_state(p_params, mean=(100, 100), variance=(1, 1)):
+        """
+        Samples random uniform model state w.r.t. intervals given.
+
+        Args:
+            p_params:       dict, stochastic process parameters, see kwargs at: OUProcess.get_random_state
+            mean:           iterable of floats as [0 < lower_bound, upper_bound], time-series means sampling interval.
+            variance:       iterable of floats as [0 < lower_bound, upper_bound], time-series variances sampling interval.
+
+        Returns:
+            instance of PriceModelState with `analyser` set to None
+
+        Note:
+            negative means are rejected;
+            stochastic process fitted on log_normalized data;
+        """
+        sample = dict()
+        for name, param, low_threshold in zip(
+                ['mean', 'variance', ], [mean, variance], [1e-8, 1e-8]):
+            interval = np.asarray(param)
+            assert interval.ndim == 1 and interval[0] <= interval[-1], \
+                ' Expected param `{}` as iterable of ordered values as: [lower_bound, upper_bound], got: {}'.format(
+                    name, interval
+                )
+            assert interval[0] >= low_threshold, \
+                'Expected param `{}` lower bound be no less than {}, got: {}'.format(name, low_threshold, interval[0])
+
+            sample[name] = np.random.uniform(low=interval[0], high=interval[-1], size=1)
+
+        # Log_transform mean and variance (those is biased estimates but ok for rnd. samples):
+        log_variance = np.log(sample['variance'] / sample['mean'] ** 2 + 1)
+        log_mean = np.log(sample['mean']) - .5 * log_variance
+
+        # Inverse transform memo:
+        # mean = exp(log_mean + 0.5 * log_var)
+        # var = mean**2 * (exp(log_var) -1)
+
+        return PriceModelState(
+            process=OUProcess.get_random_state(**p_params),
+            analyzer=None,
+            stat=ZscoreState(
+                mean=log_mean,
+                variance=log_variance
+            ),
+        )
 

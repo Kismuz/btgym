@@ -12,7 +12,7 @@ BivariateTSModelState = namedtuple('BivariateTSModelState', ['p', 's', 'stat', '
 
 class BivariateTSModel:
     """
-     Base two-factor bivariate time-series model.
+    Two-factor bivariate time-series model.
     """
 
     # Decomposition matrix:
@@ -32,6 +32,20 @@ class BivariateTSModel:
             stat_alpha=None,
             ps_alpha=None,
     ):
+        """
+
+        Args:
+            max_length:             uint, maximum time-series trajectory length to keep;
+            analyzer_window:        uint, SSA embedding window (shared for P and S analyzers);
+            p_analyzer_grouping:    P process SSA decomposition triples grouping,
+                                    iterable of pairs convertible to python slices, i.e.:
+                                    grouping=[[0,1], [1,2], [2, None]];
+            s_analyzer_grouping:    P process SSA decomposition triples grouping, se above;
+            alpha:                  float in [0, 1], SSA and processes estimators decaying factor;
+            filter_alpha:           float in [0, 1], processes smoothing decaying factor;
+            stat_alpha:             float in [0, 1], time-series statistics tracking decaying factor;
+            ps_alpha:               float in [0, 1], P|S processes covariance tracking decaying factor;
+        """
         max_length = np.atleast_1d(max_length)
         analyzer_window = np.atleast_1d(analyzer_window)
         alpha = np.atleast_1d(alpha)
