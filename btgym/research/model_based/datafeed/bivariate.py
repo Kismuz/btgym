@@ -6,7 +6,7 @@ from btgym.datafeed.derivative import BTgymDataset2
 from btgym.datafeed.multi import BTgymMultiData
 
 from btgym.research.model_based.datafeed.base import BasePairDataGenerator, BaseCombinedDataSet
-from btgym.research.model_based.model.bivariate import BivariateTSModel, BivariateTSModelState
+from btgym.research.model_based.model.bivariate import BivariatePriceModel
 
 
 def bivariate_generator_fn(num_points, state, keep_decimals=6, **kwargs):
@@ -21,7 +21,7 @@ def bivariate_generator_fn(num_points, state, keep_decimals=6, **kwargs):
     Returns:
         generated time-series of size [1, 2, size]
     """
-    _, x = BivariateTSModel.generate_bivariate_trajectory_fn(1, num_points, state, True, BivariateTSModel.u_recon)
+    _, x = BivariatePriceModel.generate_bivariate_trajectory_fn(1, num_points, state, True, BivariatePriceModel.u_recon)
     return np.around(x, decimals=keep_decimals)
 
 
@@ -35,7 +35,7 @@ def bivariate_random_state_fn(*args, **kwargs):
     Returns:
         dictionary holding instance of BivariateTSModelState and auxillary fields
     """
-    state = BivariateTSModel.get_random_state(*args, **kwargs)
+    state = BivariatePriceModel.get_random_state(*args, **kwargs)
     return dict(
         state=state,
         # for tf.summaries via strategy:
@@ -48,7 +48,7 @@ def bivariate_random_state_fn(*args, **kwargs):
 
 class SimpleBivariateGenerator(BasePairDataGenerator):
     """
-    Generates O=H=L=C data driven by Filtered Decomposition Model
+    Generates O=H=L=C data driven by `BivariatePriceModel`
     """
     def __init__(
             self,
@@ -95,7 +95,7 @@ class SimpleBivariateGenerator(BasePairDataGenerator):
         # Get data shaped [1, 2, num_points] and map to OHLC pattern:
         data = self.generator_fn(num_points=self.data[self.a1_name].episode_num_records, **generator_params)
 
-        # No fancy OHLC modelling here:
+        # No fancy OHLC modelling yet:
         p1_dict = {
             'mean': data[0, 0, :],
             'maximum': data[0, 0, :],
@@ -121,7 +121,7 @@ class SimpleBivariateGenerator(BasePairDataGenerator):
 
     def sample(self, sample_type=0, broadcast_message=None, **kwargs):
         """
-        Uses `BivariateTSModel` to generate two price trajectories and pack it as DataSet-type object.
+        Generates pair of price trajectories and pack it as DataSet_type object.
 
         Args:
             sample_type:        bool, train/test
@@ -193,7 +193,7 @@ class SimpleBivariateGenerator(BasePairDataGenerator):
 class BivariateDataSet(BaseCombinedDataSet):
     """
     Combined data iterator provides:
-    - train data as two trajectories of OHLC prices modeled by 'BivariateTSModel' classs
+    - train data as two trajectories of OHLC prices modeled by 'BivariatePriceModel';
     - test data as two historic timeindex-matching OHLC data lines;
 
     """
@@ -211,7 +211,7 @@ class BivariateDataSet(BaseCombinedDataSet):
         Args:
         assets_filenames:           dict. of two keys in form of {'asset_name`: 'data_file_name'}, test data
         model_params:               dict holding generative model parameters,
-                                    same as kwargs for: BivariateTSModel.get_random_state() method
+                                    same as kwargs for: BivariatePriceModel.get_random_state() method
         train_episode_duration:     dict of keys {'days', 'hours', 'minutes'} - train sample duration
         test_episode_duration:      dict of keys {'days', 'hours', 'minutes'} - test sample duration
         """

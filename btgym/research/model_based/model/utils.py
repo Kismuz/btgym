@@ -192,7 +192,7 @@ def multivariate_t_rvs(mean, cov, df, size):
     Returns:
         rvs as ndarray of size: size + [dim], i.e. if size=[m, n] than returned sample is: [m, n, dim]
     """
-    # variance memo: ((df - 2) / df) ** .5
+    # t-variance memo: ((df - 2) / df) ** .5
     mean = np.asarray(mean)
     df = np.asarray(df)
 
@@ -228,6 +228,27 @@ def cov2corr(cov):
     std = np.sqrt(np.clip(np.diag(cov), 1e-16, None))
     corr = cov / np.outer(std, std)
     return corr
+
+
+def log_stat2stat(log_mean, log_variance):
+    """
+    Converts mean and variance of log_transformed RV
+    to mean and variance of original near-normally distributed RV.
+
+    Args:
+        log_mean:       array_like
+        log_variance:   array_like
+
+    Returns:
+        mean, variance of the same size
+    """
+    mean = np.exp(log_mean + 0.5 * log_variance)
+    variance = mean**2 * (np.exp(log_variance) - 1)
+
+    return  mean, variance
+
+
+
 
 
 

@@ -555,7 +555,7 @@ class BivariatePriceModel(BivariateTSModel):
     @staticmethod
     def get_random_state(p_params, s_params, mean=(100, 100), variance=(1, 1), ps_corrcoef=(-1, 1)):
         """
-        Samples random uniform model state w.r.t. parameters intervals given.
+        Samples random uniform model state w.r.t. intervals given.
 
         Args:
             p_params:       dict, P stochastic process parameters, see kwargs at: OUProcess.get_random_state
