@@ -4,6 +4,7 @@
 
 import numpy as np
 from scipy.linalg import toeplitz
+from scipy.stats import t as student_t
 import copy
 from collections import namedtuple
 
@@ -534,7 +535,7 @@ OUEstimatorState = namedtuple('OUEstimatorState', ['mu', 'log_theta', 'log_sigma
 
 class OUEstimator:
     """
-    Recursive Ornshtein-Uhlenbeck process parameters estimation in exponentially decaying window
+    Recursive Ornstein-Uhlenbeck process parameters estimation in exponentially decaying window
     with arbitrary consecutive updates length.
     """
 
@@ -793,6 +794,110 @@ class EMA:
         self.mean = means[:, -1]
 
         return means
+
+
+STEstimatorState = namedtuple('STEstimatorState', ['df', 'loc', 'scale'])
+
+
+class STEstimator:
+    """
+    Standart student-t parameters estimation.
+    """
+    # TODO: implement true recursive decaying algorithm
+
+    def __init__(self, alpha):
+        """
+
+        Args:
+            alpha:  float in [0, 1], decaying window factor.
+
+        Notes:
+            alpha ~ 1 / effective_window_size;
+            parameters fitted are: df, loc, scale  - degree of freedom
+        """
+        assert alpha is not None and 0 < alpha <= 1.0,\
+            "expected alpha as float in [0, 1], got: {}".format(alpha)
+
+        self.alpha = alpha
+        # Half-effective tracking window:
+        self.window_size = int(np.clip(.5//alpha, 2, None))
+        self.trajectory = np.zeros(self.window_size)
+        self.mask_idx = 2
+        self.df = None
+        self.loc = None
+        self.scale = None
+
+    def get_state(self):
+        """
+        Convenience wrapper.
+
+        Returns:
+            current state as instance of STEstimatorState tuple
+        """
+        return STEstimatorState(
+            df=self.df,
+            loc=self.loc,
+            scale=self.scale
+        )
+
+    def fit(self, trajectory=None):
+        """
+        Fits parameters to currently stored or provided data.
+
+        Args:
+            trajectory:     array_like, data to fit or None
+
+        Returns:
+            fitted parameters: fd, loc, state
+        """
+        if trajectory is None:
+            if self.df is None:
+                self.df, self.loc, self.scale = student_t.fit(self.trajectory[-self.mask_idx:])
+                self.df = np.clip(self.df, 3, None)
+
+            return self.df, self.loc, self.scale
+
+        else:
+            df, loc, scale = student_t.fit(trajectory)
+            df = np.clip(df, 3, None)
+
+            return df, loc, scale
+
+    def reset(self, init_trajectory):
+        """
+        Resets estimator trajectory and parameters with initial data.
+
+        Args:
+            init_trajectory:     initial 1D process observations trajectory of size [num_points]
+        """
+        assert init_trajectory.ndim == 1, 'Expected 1D data, got shape: {}'.format(init_trajectory.shape)
+        self.trajectory = np.zeros(self.window_size)
+        self.mask_idx = np.clip(len(init_trajectory), None, self.window_size)
+        self.trajectory[-self.mask_idx:] = init_trajectory[-self.mask_idx:]
+
+        self.df = None
+        self.loc = None
+        self.scale = None
+
+    def update(self, trajectory):
+        """
+        Updates stored trajectory with new observations.
+
+        Args:
+            trajectory:  1D process observations trajectory update of size [num_points]
+
+        """
+        assert trajectory.ndim == 1, 'Expected 1D data, got shape: {}'.format(trajectory.shape)
+        upd_len = np.clip(len(trajectory), None, self.window_size)
+        self.mask_idx = np.clip(self.mask_idx + upd_len, None, self.window_size)
+        self.trajectory = np.concatenate([self.trajectory[upd_len:], trajectory[-upd_len:]])
+
+        self.df = None
+        self.loc = None
+        self.scale = None
+
+
+
 
 
 

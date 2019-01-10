@@ -6,7 +6,7 @@ from btgym.research.model_based.model.stochastic import ou_process_t_driver_batc
 from btgym.research.model_based.model.stochastic import multivariate_ou_process_t_driver_batch_fn
 
 from btgym.research.model_based.model.rec import Zscore, ZscoreState, Covariance, CovarianceState
-from btgym.research.model_based.model.rec import SSA, OUEstimator, OUEstimatorState
+from btgym.research.model_based.model.rec import SSA, OUEstimator, OUEstimatorState, STEstimator
 
 OUProcessState = namedtuple('OUProcessState', ['observation', 'filtered', 'driver_df'])
 
@@ -26,8 +26,7 @@ class OUProcess:
         self.filter = Covariance(3, alpha=filter_alpha)
 
         # Driver is Student-t:
-        self.driver_estimator = stats.t
-        self.driver_df = 1e6
+        self.driver_estimator = STEstimator(alpha)
 
         self.is_ready = False
 
@@ -45,11 +44,11 @@ class OUProcess:
         return OUProcessState(
             observation=self.estimator.get_state(),
             filtered=self.filter.get_state(),
-            driver_df=self.driver_df,
+            driver_df=self.driver_estimator.df,
         )
 
     @staticmethod
-    def get_random_state(mu=(0, 0), theta=(.1, 1), sigma=(0.1, 1), driver_df=(5, 50), variance=1e-2):
+    def get_random_state(mu=(0, 0), theta=(.1, 1), sigma=(0.1, 1), driver_df=(3, 50), variance=1e-2):
         """
         Samples random uniform process state w.r.t. parameters intervals given.
 
@@ -66,7 +65,7 @@ class OUProcess:
         """
         sample = dict()
         for name, param, low_threshold in zip(
-                ['mu', 'theta', 'sigma', 'driver_df'], [mu, theta, sigma, driver_df], [-np.inf, 1e-8, 1e-8, 2]):
+                ['mu', 'theta', 'sigma', 'driver_df'], [mu, theta, sigma, driver_df], [-np.inf, 1e-8, 1e-8, 2.999]):
             interval = np.asarray(param)
             assert interval.ndim == 1 and interval[0] <= interval[-1], \
                 ' Expected param `{}` as iterable of ordered values as: [lower_bound, upper_bound], got: {}'.format(
@@ -92,25 +91,21 @@ class OUProcess:
             driver_df=sample['driver_df'],
         )
 
-    def fit_driver(self, trajectory):
+    def fit_driver(self, trajectory=None):
         """
         Updates Student-t driver shape parameter. Needs entire trajectory for correct estimation.
         TODO: make recursive update.
 
         Args:
-            trajectory: full observed data of size ~[max_length]
+            trajectory: full observed data of size ~[max_length] or None
 
         Returns:
             Estimated shape parameter.
         """
         self.ready()
-        if self.driver_df >= 1e6:
+        driver_df, _, _ = self.driver_estimator.fit(trajectory)
 
-            self.driver_df, _, _ = self.driver_estimator.fit(trajectory)
-            if self.driver_df <= 2.0:
-                self.driver_df = 1e6
-
-        return self.driver_df
+        return driver_df
 
     def reset(self, init_trajectory):
         """
@@ -126,7 +121,7 @@ class OUProcess:
         init_observation = np.stack([init_observation, init_observation], axis=-1)
         _ = self.filter.reset(init_observation)
 
-        self.driver_df = 1e6
+        self.driver_estimator.reset(self.estimator.residuals)
         self.is_ready = True
 
     def update(self, trajectory, disjoint=False):
@@ -145,7 +140,8 @@ class OUProcess:
         # Smooth and make it random variable:
         _ = self.filter.update(np.asarray(observation)[:, None])
 
-        self.driver_df = 1e6
+        # Residuals distr. shape update but do not fit:
+        self.driver_estimator.update(self.estimator.residuals)
 
     @staticmethod
     def sample_from_filtered(filter_state, size=1):
@@ -312,12 +308,9 @@ class OUProcess:
         parameters = self.sample_parameters(state, size=batch_size)
 
         if driver_df is None:
-            t_df = self.driver_df
-
-        else:
-            t_df = driver_df
-
-        return self.generate_trajectory_fn(batch_size, size, parameters, t_df)
+            driver_df, _, _ = self.driver_estimator.fit()
+        print('driver_df: ', driver_df)
+        return self.generate_trajectory_fn(batch_size, size, parameters, driver_df)
 
 
 TimeSeriesModelState = namedtuple('TimeSeriesModelState', ['process', 'analyzer'])
@@ -443,7 +436,7 @@ class TimeSeriesModel:
         """
         return self.analyzer.get_trajectory(size)
 
-    def generate(self, batch_size, size, state=None, driver_df=None, fit_driver=True):
+    def generate(self, batch_size, size, state=None, driver_df=None):
         """
         Generates batch of realisations given process parameters.
 
@@ -452,8 +445,6 @@ class TimeSeriesModel:
             size:           uint, length of each one
             state:          instance TimeSeriesModelState or None, model parameters to use
             driver_df:      t-student process driver degree of freedom parameter or None
-            fit_driver:     bool, if True and no `driver_df` arg. is given -
-                            fit stochastic process driver parameters w.r.t. stored data
 
         Returns:
             process realisations batch of size [batch_size, size]
@@ -465,14 +456,9 @@ class TimeSeriesModel:
             process_state = state.process
             if driver_df is None:
                 # Get driver param from given state:
-                driver_df = state.process.driver_df
+                driver_df = state.process.driver_estimator.df
         else:
             process_state = None
-
-        if driver_df is None and fit_driver:
-            # Fit student-t df on half-length of stored trajectory:
-            # TODO: get trajectory as half-effective window: ~1/(2*alpha), clipped to max_len
-            self.process.fit_driver(self.analyzer.get_trajectory(size=self.analyzer.max_length//2))
 
         return self.process.generate(batch_size, size, process_state, driver_df)
 
@@ -606,7 +592,7 @@ class PriceModel(TimeSeriesModel):
 
         return np.exp(self.denormalize(trajectory, state.stat.mean, state.stat.variance))
 
-    def generate(self, batch_size, size, state=None, driver_df=None, fit_driver=True):
+    def generate(self, batch_size, size, state=None, driver_df=None):
         """
         Generates batch of realisations given process parameters.
 
@@ -615,8 +601,6 @@ class PriceModel(TimeSeriesModel):
             size:           uint, length of each one
             state:          instance PriceModelState or None, model parameters to use
             driver_df:      t-student process driver degree of freedom parameter or None
-            fit_driver:     bool, if True and no `driver_df` arg. is given -
-                            fit stochastic process driver parameters w.r.t. stored data
 
         Returns:
             process realisations batch of size [batch_size, size]
@@ -633,8 +617,7 @@ class PriceModel(TimeSeriesModel):
             state = self.get_state()
             state_base = None
 
-
-        trajectory = super().generate(batch_size, size, state_base, driver_df, fit_driver)
+        trajectory = super().generate(batch_size, size, state_base, driver_df)
 
         return np.exp(self.denormalize(trajectory, state.stat.mean, state.stat.variance))
 

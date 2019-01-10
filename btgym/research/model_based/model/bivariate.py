@@ -13,6 +13,12 @@ BivariateTSModelState = namedtuple('BivariateTSModelState', ['p', 's', 'stat', '
 class BivariateTSModel:
     """
     Two-factor bivariate time-series model.
+
+    Motivating papers:
+        Eduardo Schwartz, James E. Smith, "Short-Term Variations and Long-Term Dynamics in Commodity Prices",
+        in "Management Science", Vol. 46, No. 7, July 2000 pp. 893–911
+
+        Harris, D., "Principal components analysis of cointegrated time series," in "Econometric Theory", Vol. 13, 1997
     """
 
     # Decomposition matrix:
@@ -459,7 +465,7 @@ class BivariateTSModel:
 
         return batch_2d, x
 
-    def generate(self, batch_size, size, state=None, fit_driver=True, reconstruct=True):
+    def generate(self, batch_size, size, state=None, reconstruct=True):
         """
         Generates batch of time-series realisations given model state.
 
@@ -468,8 +474,6 @@ class BivariateTSModel:
             size:           uint, trajectory length to generate
             state:          instance of BivariateTSModelState or None;
                             if no state provided - current state is used.
-            fit_driver:     bool, if True - fit t-student process driver degree of freedom parameter to data,
-                            use gaussian driver otherwise;
             reconstruct:    bool, if True - return time-series along with P, S trajectories, return None otherwise
 
         Returns:
@@ -477,10 +481,9 @@ class BivariateTSModel:
             generated time-series reconstructions of size [batch_size, 2, size] or None;
         """
         if state is None:
-            if fit_driver:
-                # Fit student-t df on half-length of stored trajectory:
-                self.p.process.fit_driver(self.p.analyzer.get_trajectory(size=self.s.analyzer.max_length // 2))
-                self.s.process.fit_driver(self.s.analyzer.get_trajectory(size=self.s.analyzer.max_length // 2))
+            # Fit student-t df:
+            _ = self.p.process.driver_estimator.fit()
+            _ = self.s.process.driver_estimator.fit()
 
             state = self.get_state()
 
