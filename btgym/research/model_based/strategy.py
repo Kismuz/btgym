@@ -10,7 +10,7 @@ import time
 
 from btgym.research.strategy_gen_5.base import BaseStrategy5
 from btgym.strategy.utils import tanh
-from btgym.research.model_based.model import PairFilteredModel
+from btgym.research.model_based.model.univariate import PriceModel
 
 
 class MonoSpreadOUStrategy_0(BaseStrategy5):
@@ -555,11 +555,6 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
             # Reset filter state:
             self.kf_state = [0, 0]
         else:
-        #     current_avg_period = min(self.avg_period, current_pos_duration)
-        #
-        #     fi_1 = self.last_pnl
-        #     fi_1_prime = np.average(unrealised_pnl[- current_avg_period:])
-
             fi_1 = self.last_pnl
             # fi_1_prime = np.average(unrealised_pnl[-1])
             self.kf_state = self.kf.filter_update(
@@ -661,21 +656,20 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
             self.broker_message = 'new {}_CLOSE created; '.format(self.action_key) + self.broker_message
 
 
-class PairStrategyPFD_0(PairSpreadStrategy_0):
+class UPDMStrategy(BaseStrategy5):
     """
-    Uses Filtered Decomposition Data model S-component as virtual spread signal.
+    Test TimeSeriesModel decomposition.
     """
     time_dim = 128
     avg_period = 90
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
 
-    features_parameters = (1, 4, 16, 64, 256, 1024)
-    num_features = len(features_parameters)
+    features_parameters = None
+    num_features = 3
     params = dict(
         state_shape={
-            'external': spaces.Box(low=-10, high=10, shape=(time_dim, 1, 6), dtype=np.float32),
+            'external': spaces.Box(low=-10, high=10, shape=(time_dim, 1, num_features), dtype=np.float32),
             'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 6), dtype=np.float32),
-            'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -714,38 +708,17 @@ class PairStrategyPFD_0(PairSpreadStrategy_0):
                         high=np.finfo(np.float64).max,
                         dtype=np.float64
                     ),
-                    # TODO: make generator parameters names standard
-                    'generator': DictSpace(
-                        {
-                            'mu': spaces.Box(
-                                shape=(),
-                                low=np.finfo(np.float64).min,
-                                high=np.finfo(np.float64).max,
-                                dtype=np.float64
-                            ),
-                            'l': spaces.Box(
-                                shape=(),
-                                low=0,
-                                high=np.finfo(np.float64).max,
-                                dtype=np.float64
-                            ),
-                            'sigma': spaces.Box(
-                                shape=(),
-                                low=0,
-                                high=np.finfo(np.float64).max,
-                                dtype=np.float64
-                            ),
-                            'x0': spaces.Box(
-                                shape=(),
-                                low=np.finfo(np.float64).min,
-                                high=np.finfo(np.float64).max,
-                                dtype=np.float64
-                            )
-                        }
-                    )
                 }
             )
         },
+        data_model_params=dict(
+            alpha=.001,
+            stat_alpha=.0001,
+            filter_alpha=.05,
+            max_length=time_dim * 2,
+            analyzer_window=10,
+            analyzer_grouping=[[0, 1], [1, 2], [2, 3], [3, None]],
+        ),
         cash_name='default_cash',
         asset_names=['default_asset'],
         start_cash=None,
@@ -774,100 +747,55 @@ class PairStrategyPFD_0(PairSpreadStrategy_0):
         state_int_scale=1,
         state_ext_scale=1,
     )
+
     def __init__(self, **kwargs):
-        super(PairStrategyPFD_0, self).__init__(**kwargs)
-        self.data_model = PairFilteredModel()
-        self.max_feature_period = max(self.p.features_parameters)
-        self.p.ssa_window = 10
-        self.p.ssa_grouping = [[None, 1], [1, 4], [4, None]]
-
-    @staticmethod
-    def ema(x, period=10, gamma=1.0):
-        k = np.cumprod(np.ones(period) * gamma)
-        return signal.convolve(x, k / k.sum(), mode='valid')
-
-    @staticmethod
-    def delay_embed(x, w):
-        """Time-embedding with window size `w` and stride 1"""
-        g = 0
-        return x[(np.arange(w) * (g + 1)) + np.arange(np.max(x.shape[0] - (w - 1) * (g + 1), 0)).reshape(-1, 1)]
-
-    def ssa_decomp(self, x, w):
-        X = self.delay_embed(x, w).T
-        C = np.cov(X)
-        U, S, V = np.linalg.svd(C)
-        return X, U, S, V
-
-    @staticmethod
-    def henkel_diag_average(x, n, window):
-        """
-        Computes  diagonal averaging operator D parameters.
-        Usage: D = J.T.dot(B)*s
-        Dimitrios D. Thomakos, `Optimal Linear Filtering, Smoothing and Trend Extraction
-        for Processes with Unit Roots and Cointegration`, 2008; pt. 2.2
-        """
-        J = np.ones([n - window + 1, 1])
-        pad = n - window
-        B = np.asarray(
-            [
-                np.pad(x[i, :], [i, pad - i], mode='constant', constant_values=[np.nan, np.nan])
-                for i in range(x.shape[0])
-            ]
-        )
-        B = np.ma.masked_array(B, mask=np.isnan(B))
-        s = 1 / np.logical_not(B.mask).sum(axis=0)
-        B[B.mask] = 0.0
-        return B.data, J, s
-
-    def ssa_reconstruct(self, X, U, n, window, grouping=None):
-        """
-        Returns SSA reconstruction w.r.t. given grouping.
-        """
-        if grouping is None:
-            grouping = [[i] for i in range(U.shape[-1])]
-        X1comp = []
-        for group in grouping:
-            dX = U[:, slice(*group)].T.dot(X)
-            B, J, s = self.henkel_diag_average(U[:, slice(*group)].dot(dX).T, n, window)
-            X1comp.append(np.squeeze(J.T.dot(B) * s))
-
-        return np.asarray(X1comp)
+        super().__init__(**kwargs)
+        self.data_model = PriceModel(**self.p.data_model_params)
 
     def set_datalines(self):
-
-        self.data.spread = btind.SimpleMovingAverage(self.datas[0] - self.datas[1], period=1)
-        self.data.spread.plotinfo.subplot = True
-        self.data.spread.plotinfo.plotabove = True
-        self.data.spread.plotinfo.plotname = list(self.p.asset_names)[0]
-
-        initial_time_period =  self.p.time_dim
+        initial_time_period = self.p.time_dim
         self.data.dim_sma = btind.SimpleMovingAverage(
             self.datas[0],
             period=initial_time_period
         )
         self.data.dim_sma.plotinfo.plot = False
 
+    def nextstart(self):
+        self.inner_embedding = self.data.close.buflen()
+        self.log.debug('Inner time embedding: {}'.format(self.inner_embedding))
+        self.data_model.reset(np.asarray(self.data.get(size=self.inner_embedding)))
+
     def get_external_state(self):
-        x1 = np.asarray(self.datas[0].get(size=self.p.time_dim))
-        x2 = np.asarray(self.datas[1].get(size=self.p.time_dim))
+        x_upd = np.asarray(self.data.get(size=self.p.skip_frame))
+        self.data_model.update(x_upd)
 
-        x1 /= np.clip(x1.std(), 1e-8, None)
-        x2 /= np.clip(x2.std(), 1e-8, None)
-        x = x2 - x1
-        # Get  decomposition:
-        X, U, _, _ = self.ssa_decomp(x, self.p.ssa_window)
-
-        x_ssa_bank = self.ssa_reconstruct(X, U, len(x), self.p.ssa_window, grouping=self.p.ssa_grouping).T
+        x_ssa = self.data_model.transform(size=self.p.time_dim).T
 
         # Gradient along features axis:
-        dx = np.gradient(x_ssa_bank, axis=-1)
-
-        # Add up: gradient  along time axis:
-        # dx2 = np.gradient(dx, axis=0)
-
-        # TODO: different conv. encoders for these two types of features:
-        x = np.concatenate([x_ssa_bank, dx], axis=-1)
+        # dx = np.gradient(x_ssa, axis=-1)
+        #
+        # # Add up: gradient  along time axis:
+        # # dx2 = np.gradient(dx, axis=0)
+        #
+        # # TODO: different conv. encoders for these two types of features:
+        # x = np.concatenate([x_ssa_bank, dx], axis=-1)
 
         # Crop outliers:
-        x = np.clip(x, -10, 10)
-        return x[:, None, :]
+        x_ssa = np.clip(x_ssa, -10, 10)
+        return x_ssa[:, None, :-1]
+
+    def get_internal_state(self):
+
+        x_broker = np.concatenate(
+            [
+                np.asarray(self.broker_stat['value'])[..., None],
+                np.asarray(self.broker_stat['unrealized_pnl'])[..., None],
+                np.asarray(self.broker_stat['total_unrealized_pnl'])[..., None],
+                np.asarray(self.broker_stat['realized_pnl'])[..., None],
+                np.asarray(self.broker_stat['cash'])[..., None],
+                np.asarray(self.broker_stat['exposure'])[..., None],
+            ],
+            axis=-1
+        )
+        x_broker = tanh(np.gradient(x_broker, axis=-1) * self.p.state_int_scale)
+        return x_broker[:, None, :]

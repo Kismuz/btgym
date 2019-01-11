@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 import pandas as pd
+import random
 
 from btgym.datafeed.derivative import BTgymDataset2
 from btgym.datafeed.multi import BTgymMultiData
@@ -46,7 +47,29 @@ def bivariate_random_state_fn(*args, **kwargs):
     )
 
 
-class SimpleBivariateGenerator(BasePairDataGenerator):
+def bivariate_state_set_iterator_fn(states_set):
+    """
+    Randomly sample state from given set of states.
+
+    Args:
+        states_set:     iterable containing instances of BivariateTSModelState
+
+    Returns:
+        dictionary holding instance of BivariateTSModelState and auxillary fields
+    """
+    state = random.choice(tuple(states_set))
+
+    return dict(
+        state=state,
+        # for tf.summaries via strategy:
+        ou_mu=state.s.process.observation.mu,
+        ou_lambda=np.exp(state.s.process.observation.log_theta),
+        ou_sigma=np.exp(state.s.process.observation.log_sigma),
+        x0=state.s.process.observation.mu,
+    )
+
+
+class BivariateGenerator(BasePairDataGenerator):
     """
     Generates O=H=L=C data driven by `BivariatePriceModel`
     """
@@ -60,7 +83,7 @@ class SimpleBivariateGenerator(BasePairDataGenerator):
             **kwargs
 
     ):
-        super(SimpleBivariateGenerator, self).__init__(
+        super(BivariateGenerator, self).__init__(
             data_names,
             process1_config=None,  # bias generator
             process2_config=None,  # spread generator
@@ -144,7 +167,7 @@ class SimpleBivariateGenerator(BasePairDataGenerator):
                 sample_type = self.metadata['type']
 
         # Prepare empty instance of multi_stream data:
-        sample = SimpleBivariateGenerator(
+        sample = BivariateGenerator(
             data_names=self.data_names,
             generator_parameters_config=self.generator_parameters_config,
             data_class_ref=self.data_class_ref,
@@ -197,6 +220,9 @@ class BivariateDataSet(BaseCombinedDataSet):
     - test data as two historic timeindex-matching OHLC data lines;
 
     """
+    train_class_ref = BivariateGenerator
+    test_class_ref = BTgymMultiData
+
     def __init__(
             self,
             assets_filenames,
@@ -240,8 +266,33 @@ class BivariateDataSet(BaseCombinedDataSet):
         super(BivariateDataSet, self).__init__(
             train_data_config=train_data_config,
             test_data_config=test_data_config,
-            train_class_ref=SimpleBivariateGenerator,
-            test_class_ref=BTgymMultiData,
+            train_class_ref=self.train_class_ref,
+            test_class_ref=self.test_class_ref,
             name=name,
             **kwargs
         )
+
+
+class BivariateStateSetGenerator(BivariateGenerator):
+
+    def __init__(
+            self,
+            data_names,
+            generator_parameters_config,
+            name='BivariateStateSetGenerator',
+            **kwargs
+
+    ):
+        super().__init__(
+            data_names,
+            generator_parameters_config,
+            generator_fn=bivariate_generator_fn,
+            generator_parameters_fn=bivariate_state_set_iterator_fn,
+            name=name,
+            **kwargs
+        )
+
+
+class BivariateStateSetDataSet(BivariateDataSet):
+    train_class_ref=BivariateStateSetGenerator
+
