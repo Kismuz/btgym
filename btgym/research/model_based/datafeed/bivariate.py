@@ -47,7 +47,7 @@ def bivariate_random_state_fn(*args, **kwargs):
     )
 
 
-def bivariate_state_set_iterator_fn(states_set):
+def bivariate_state_set_iterator_fn(states_set, **kwargs):
     """
     Randomly sample state from given set of states.
 
@@ -102,6 +102,7 @@ class BivariateGenerator(BasePairDataGenerator):
             'bid': 'minimum',
             'ask': 'maximum',
             'mid': 'mean',
+            'volume': 'nothing',
         }
 
     def generate_data(self, generator_params, sample_type=0):
@@ -124,12 +125,14 @@ class BivariateGenerator(BasePairDataGenerator):
             'maximum': data[0, 0, :],
             'minimum': data[0, 0, :],
             'last': data[0, 0, :],
+            'nothing': np.zeros(data[0, 1, :].shape)
         }
         p2_dict = {
             'mean': data[0, 1, :],
             'maximum': data[0, 1, :],
             'minimum': data[0, 1, :],
             'last': data[0, 1, :],
+            'nothing': np.zeros(data[0, 1, :].shape)
         }
         # Make dataframes:
         if sample_type:
@@ -167,7 +170,7 @@ class BivariateGenerator(BasePairDataGenerator):
                 sample_type = self.metadata['type']
 
         # Prepare empty instance of multi_stream data:
-        sample = BivariateGenerator(
+        sample = type(self)(
             data_names=self.data_names,
             generator_parameters_config=self.generator_parameters_config,
             data_class_ref=self.data_class_ref,
@@ -179,6 +182,7 @@ class BivariateGenerator(BasePairDataGenerator):
         sample.names = self.names
 
         if self.get_new_sample:
+            print('self.generator_parameters_fn:', self.generator_parameters_fn)
             # get parameters:
             params = self.generator_parameters_fn(**self.generator_parameters_config)
 
@@ -220,38 +224,53 @@ class BivariateDataSet(BaseCombinedDataSet):
     - test data as two historic timeindex-matching OHLC data lines;
 
     """
-    train_class_ref = BivariateGenerator
-    test_class_ref = BTgymMultiData
 
     def __init__(
             self,
-            assets_filenames,
             model_params,
+            assets_filenames=None,
+            assets_dataframes=None,
             train_episode_duration=None,
             test_episode_duration=None,
             name='BivariateDataSet',
+            _train_class_ref=BivariateGenerator,
+            _test_class_ref=BTgymMultiData,
             **kwargs
     ):
         """
 
         Args:
-        assets_filenames:           dict. of two keys in form of {'asset_name`: 'data_file_name'}, test data
-        model_params:               dict holding generative model parameters,
-                                    same as kwargs for: BivariatePriceModel.get_random_state() method
-        train_episode_duration:     dict of keys {'days', 'hours', 'minutes'} - train sample duration
-        test_episode_duration:      dict of keys {'days', 'hours', 'minutes'} - test sample duration
+            model_params:               dict holding generative model parameters,
+                                        same as kwargs for: BivariatePriceModel.get_random_state() method
+            assets_filenames:           dict. of two keys in form of: {'asset_name`: 'data_file_name'},
+                                        test data or None, ignored when `assets_dataframes` arg. is given
+            assets_dataframes:          dict. of two keys in form of {'asset_name`: pd.dataframe},
+                                        an alternative way to provide test data as pandas.dataframes instances,
+                                        overrides `assets_filenames`
+            train_episode_duration:     dict of keys {'days', 'hours', 'minutes'} - train sample duration
+            test_episode_duration:      dict of keys {'days', 'hours', 'minutes'} - test sample duration
         """
-        assert isinstance(assets_filenames, dict), \
-            'Expected `assets_filenames` type `dict`, got {} '.format(type(assets_filenames))
+        if assets_dataframes is None:
+            assert isinstance(assets_filenames, dict), \
+                'Expected `assets_filenames` type `dict`, got {} '.format(type(assets_filenames))
 
-        data_names = [name for name in assets_filenames.keys()]
+            data_config = {
+                asset_name: {'filename': f_name, 'dataframe': None} for asset_name, f_name in assets_filenames.items()}
+
+        else:
+            assert assets_dataframes is not None, 'Expected either `assets_filenames` or `assets_dataframes`'
+            assert isinstance(assets_dataframes, dict), \
+                'Expected `assets_filenames` type `dict`, got {} '.format(type(assets_filenames))
+
+            data_config = {
+                asset_name: {'dataframe': df, 'filename': None} for asset_name, df in assets_dataframes.items()
+            }
+
+        data_names = [name for name in data_config.keys()]
         assert len(data_names) == 2, 'Expected exactly two assets, got: {}'.format(data_names)
 
-        assert isinstance(assets_filenames, dict), \
-            'Expected `assets_filenames` type `dict`, got {} '.format(type(assets_filenames))
-
-        data_names = [name for name in assets_filenames.keys()]
-        assert len(data_names) == 2, 'Expected exactly two assets, got: {}'.format(data_names)
+        self.train_class_ref = _train_class_ref
+        self.test_class_ref = _test_class_ref
 
         train_data_config = dict(
             data_names=data_names,
@@ -260,7 +279,7 @@ class BivariateDataSet(BaseCombinedDataSet):
         )
         test_data_config = dict(
             data_class_ref=BTgymDataset2,
-            data_config={asset_name: {'filename': file_name} for asset_name, file_name in assets_filenames.items()},
+            data_config=data_config,
             episode_duration=test_episode_duration,
         )
         super(BivariateDataSet, self).__init__(
@@ -293,6 +312,21 @@ class BivariateStateSetGenerator(BivariateGenerator):
         )
 
 
-class BivariateStateSetDataSet(BivariateDataSet):
-    train_class_ref=BivariateStateSetGenerator
+class BivariateStateDataSet(BivariateDataSet):
+
+    def __init__(self, *args, **kwargs):
+        """
+
+        Args:
+            model_params:               dict holding generative model parameters,
+                                        same as args for: bivariate_state_set_iterator_fn
+            assets_filenames:           dict. of two keys in form of: {'asset_name`: 'data_file_name'},
+                                        test data or None, ignored when `assets_dataframes` arg. is given
+            assets_dataframes:          dict. of two keys in form of {'asset_name`: pd.dataframe},
+                                        an alternative way to provide test data as pandas.dataframes instances,
+                                        overrides `assets_filenames`
+            train_episode_duration:     dict of keys {'days', 'hours', 'minutes'} - train sample duration
+            test_episode_duration:      dict of keys {'days', 'hours', 'minutes'} - test sample duration
+        """
+        super().__init__(*args, _train_class_ref=BivariateStateSetGenerator, **kwargs)
 

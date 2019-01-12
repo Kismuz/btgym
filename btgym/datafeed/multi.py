@@ -100,8 +100,16 @@ class BTgymMultiData:
             except KeyError:
                 stream['config'] = kwargs
 
+            try:
+                if stream['dataframe'] is None:
+                    pass
+
+            except KeyError:
+                stream['dataframe'] = None
+
             self.data[key] = self.data_class_ref(
                 filename=stream['filename'],
+                dataframe=stream['dataframe'],
                 data_names=(key,),
                 task=task,
                 name='{}_{}'.format(name, key),

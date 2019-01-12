@@ -239,6 +239,7 @@ class BaseDataGenerator:
             'bid': 'minimum',
             'ask': 'maximum',
             'mid': 'mean',
+            'volume': 'nothing',
         }
         self.nested_params['parsing_params'] = self.parsing_params
 
@@ -347,6 +348,7 @@ class BaseDataGenerator:
             'mean': data_array,
             'maximum': data_array + .5 * spread_array,
             'minimum': data_array - .5 * spread_array,
+            'nothing': data_array * 0.0,
         }
 
         # negs = data_dict['minimum'] < 0

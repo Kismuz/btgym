@@ -12,10 +12,14 @@ class OUpAAC(GuidedAAC):
     def __init__(
             self,
             runner_config=None,
+            aac_lambda=1.0,
+            guided_lambda=0.0,
             name='OUpA3C',
             **kwargs
     ):
         super(OUpAAC, self).__init__(
+            aac_lambda=aac_lambda,
+            guided_lambda=guided_lambda,
             name=name,
             runner_config={
                     'class_ref': OUpRunner,

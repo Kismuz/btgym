@@ -124,9 +124,10 @@ class BTgymRandomDataDomain(BTgymBaseData):
 
     def __init__(
             self,
-            filename,
             trial_params,
             episode_params,
+            filename=None,
+            dataframe=None,
             parsing_params=None,
             target_period=None,
             use_target_backshift=False,
@@ -139,6 +140,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
         """
         Args:
             filename:               Str or list of str, file_names containing CSV historic data;
+            dataframe:          pd.dataframe or iterable of pd.dataframes containing historic data;
             parsing_params:         csv parsing options, see base class description for details;
             trial_params:           dict, describes trial parameters, should contain keys:
                                     {sample_duration, time_gap, start_00, start_weekdays, test_period, expanding};
@@ -237,6 +239,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
 
         super(BTgymRandomDataDomain, self).__init__(
             filename=filename,
+            dataframe=dataframe,
             parsing_params=parsing_params,
             sampling_params=trial_params,
             name=name,
@@ -377,6 +380,7 @@ class BTgymDataset2(BTgymRandomDataDomain):
     def __init__(
             self,
             filename=None,
+            dataframe=None,
             episode_duration=None,
             time_gap=None,
             start_00=False,
@@ -391,6 +395,7 @@ class BTgymDataset2(BTgymRandomDataDomain):
         """
         Args:
             filename:           Str or list of str, file_names containing CSV historic data;
+            dataframe:          pd.dataframe or iterable of pd.dataframes containing historic data;
             episode_duration:   dict, maximum episode duration in d:h:m, def={'days': 0, 'hours': 23, 'minutes': 55},
                                 alias for `sample_duration`;
             time_gap:           dict, data time gap allowed within sample in d:h:m, def={'days': 0, 'hours': 6};
@@ -441,6 +446,7 @@ class BTgymDataset2(BTgymRandomDataDomain):
         episode_params = trial_params.copy()
         super(BTgymDataset2, self).__init__(
             filename=filename,
+            dataframe=dataframe,
             parsing_params=parsing_params,
             trial_params=trial_params,
             episode_params=episode_params,

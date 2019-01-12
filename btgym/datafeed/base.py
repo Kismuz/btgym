@@ -70,6 +70,7 @@ class BTgymBaseData:
     def __init__(
             self,
             filename=None,
+            dataframe=None,
             parsing_params=None,
             sampling_params=None,
             name='base_data',
@@ -83,8 +84,9 @@ class BTgymBaseData:
         """
         Args:
 
-            filename:                       Str or list of str, should be given either here or when calling read_csv(),
-                                            see `Notes`.
+            filename:                       Str or iterable of of str, filenames holding csv data;
+                                            should be given either here or when calling read_csv(), see `Notes`
+            dataframe:                      pd.dataframe holding data, if this arg is given - overrides ``filename` arg.
 
             specific_params CSV to Pandas parsing
 
@@ -198,7 +200,12 @@ class BTgymBaseData:
         self.data_names = data_names
         self.data_name = self.data_names[0]
 
-        self.data = None  # Will hold actual data as pandas dataframe
+        if dataframe is not None:
+            self.data = dataframe
+
+        else:
+            self.data = None  # will hold actual data as pandas dataframe
+
         self.is_ready = False
 
         self.global_timestamp = 0
