@@ -182,7 +182,6 @@ class BivariateGenerator(BasePairDataGenerator):
         sample.names = self.names
 
         if self.get_new_sample:
-            print('self.generator_parameters_fn:', self.generator_parameters_fn)
             # get parameters:
             params = self.generator_parameters_fn(**self.generator_parameters_config)
 
