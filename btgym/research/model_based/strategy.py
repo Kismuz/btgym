@@ -9,11 +9,12 @@ from scipy import signal
 import time
 
 from btgym.research.strategy_gen_5.base import BaseStrategy5
+from btgym.research.strategy_gen_5.auto import AutoStrategy0
 from btgym.strategy.utils import tanh
-from btgym.research.model_based.model.univariate import PriceModel
+from btgym.research.model_based.model.bivariate import BivariatePriceModel
 
 
-class MonoSpreadOUStrategy_0(BaseStrategy5):
+class MonoSpreadOUStrategy_0(AutoStrategy0):
     """
     Expects spread as single generated data stream.
     """
@@ -22,7 +23,7 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
 
     # Number of timesteps reward estimation statistics are averaged over, should be:
     # skip_frame_period <= avg_period <= time_embedding_period:
-    avg_period = 90
+    avg_period = 64
 
     # Possible agent actions;  Note: place 'hold' first! :
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
@@ -33,8 +34,9 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
     params = dict(
         state_shape={
             'external': spaces.Box(low=-10, high=10, shape=(time_dim, 1, num_features*2), dtype=np.float32),
-            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 6), dtype=np.float32),
+            'internal': spaces.Box(low=-100, high=100, shape=(avg_period, 1, 5), dtype=np.float32),
             'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+            'stat': spaces.Box(low=-100, high=100, shape=(3, 1), dtype=np.float32),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -113,6 +115,7 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
         leverage=1.0,
         gamma=0.99,             # fi_gamma, should match MDP gamma decay
         reward_scale=1,         # reward multiplicator
+        stat_alpha=0.1,         # renormalisation tracking decay in []0, 1]
         drawdown_call=10,       # finish episode when hitting drawdown treshghold , in percent.
         target_call=10,         # finish episode when reaching profit target, in percent.
         dataset_stat=None,      # Summary descriptive statistics for entire dataset and
@@ -211,21 +214,21 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
         x = np.clip(x, -10, 10)
         return x[:, None, :]
 
-    def get_internal_state(self):
-
-        x_broker = np.concatenate(
-            [
-                np.asarray(self.broker_stat['value'])[..., None],
-                np.asarray(self.broker_stat['unrealized_pnl'])[..., None],
-                np.asarray(self.broker_stat['total_unrealized_pnl'])[..., None],
-                np.asarray(self.broker_stat['realized_pnl'])[..., None],
-                np.asarray(self.broker_stat['cash'])[..., None],
-                np.asarray(self.broker_stat['exposure'])[..., None],
-            ],
-            axis=-1
-        )
-        x_broker = tanh(np.gradient(x_broker, axis=-1) * self.p.state_int_scale)
-        return x_broker[:, None, :]
+    # def get_internal_state(self):
+    #
+    #     x_broker = np.concatenate(
+    #         [
+    #             np.asarray(self.broker_stat['value'])[..., None],
+    #             np.asarray(self.broker_stat['unrealized_pnl'])[..., None],
+    #             np.asarray(self.broker_stat['total_unrealized_pnl'])[..., None],
+    #             np.asarray(self.broker_stat['realized_pnl'])[..., None],
+    #             np.asarray(self.broker_stat['cash'])[..., None],
+    #             np.asarray(self.broker_stat['exposure'])[..., None],
+    #         ],
+    #         axis=-1
+    #     )
+    #     x_broker = tanh(np.gradient(x_broker, axis=-1) * self.p.state_int_scale)
+    #     return x_broker[:, None, :]
 
     def get_expert_state(self):
         """
@@ -285,8 +288,9 @@ class MonoSpreadOUStrategy_0(BaseStrategy5):
         realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
 
         # Weights are subject to tune:
-        self.reward = (10 * f1 + 0 * f2 + 10.0 * realized_pnl) * self.p.reward_scale
-        self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
+        self.reward = (1.0 * f1 + 0 * f2 + 1.0 * realized_pnl) * self.p.reward_scale
+        # self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
+        self.reward = np.clip(self.reward, -1e3, 1e3)
 
         return self.reward
 
@@ -318,6 +322,7 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
         # Reserve 5% of initial cash when checking if it is possible to add up virtual spread:
         self.margin_reserve = self.env.broker.get_cash() * .05
 
+        # Reward signal filtering:
         self.kf = KalmanFilter(
             initial_state_mean=0,
             transition_covariance=.01,
@@ -326,23 +331,18 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
         )
         self.kf_state = [0, 0]
 
-        self.reward_debug = dict(
-            n=0,
-            f1=0,
-            f1_mean=0,
-            f1_sum=0,
-            fp=0,
-            fp_mean=0,
-            r_mean=0,
-            r_sum=0,
-        )
-
     def set_datalines(self):
 
         self.data.spread = btind.SimpleMovingAverage(self.datas[0] - self.datas[1], period=1)
         self.data.spread.plotinfo.subplot = True
         self.data.spread.plotinfo.plotabove = True
         self.data.spread.plotinfo.plotname = list(self.p.asset_names)[0]
+
+        # Override stat line:
+        # self.stat_asset = btind.SimpleMovingAverage((self.datas[0] + self.datas[1]) / 2, period=1)
+        # self.stat_asset.plotinfo.plot = False
+
+        self.stat_asset = self.data.spread
 
         self.data.std = btind.StdDev(self.data.spread, period=self.p.time_dim, safepow=True)
         self.data.std.plotinfo.plot = False
@@ -357,6 +357,12 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
             period=initial_time_period
         )
         self.data.dim_sma.plotinfo.plot = False
+
+    def get_stat_state(self):
+        return np.concatenate(
+            [np.asarray(self.norm_estimator.get_state()), np.asarray(self.stat_asset.get())[None, :]],
+            axis=0
+        )
 
     def get_external_state(self):
         """
@@ -472,28 +478,6 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
 
         return self.current_pos_duration
 
-    def get_broker_unrealized_pnl(self, current_value, **kwargs):
-        """
-
-        Args:
-            current_value: current portfolio value
-
-        Returns:
-            normalized profit/loss for current opened trade
-        """
-        return (current_value - self.realized_broker_value) * self.broker_value_normalizer
-
-    def get_broker_total_unrealized_pnl(self, current_value, **kwargs):
-        """
-
-        Args:
-            current_value: current portfolio value
-
-        Returns:
-            normalized profit/loss wrt. initial portfolio value
-        """
-        return (current_value - self.env.broker.startingcash) * self.broker_value_normalizer
-
     def notify_order(self, order):
         """
         Shamelessly taken from backtrader tutorial.
@@ -581,43 +565,19 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
         self.last_delta_total_pnl = delta_total_pnl
 
         # Potential term 3:
-        f3 = 1 + .5 * np.log(1 + current_pos_duration)
+        # f3 = 1 + .5 * np.log(1 + current_pos_duration)
+        f3 = 1.0
 
         # Main reward function: normalized realized profit/loss:
         realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
 
         # Weights are subject to tune:
-        self.reward = (10 * f1 * f3 + 10.0 * realized_pnl) * self.p.reward_scale
-        self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
+        self.reward = (1.0 * f1 * f3 + 1.0 * realized_pnl) * self.p.reward_scale
+        # self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
 
-        self.reward_debug['n'] += 1
-        self.reward_debug['f1'] = f1
-        self.reward_debug['f1_mean'] = self.reward_debug['f1_mean'] + \
-            (f1 - self.reward_debug['f1_mean']) / self.reward_debug['n']
-        self.reward_debug['f1_sum'] += f1
-        self.reward_debug['fp'] += realized_pnl
-        self.reward_debug['fp_mean'] = self.reward_debug['fp_mean'] + \
-            (realized_pnl - self.reward_debug['fp_mean']) / self.reward_debug['n']
-        self.reward_debug['r_sum'] += self.reward
-        self.reward_debug['r_mean'] = self.reward_debug['r_mean'] + \
-            (self.reward - self.reward_debug['r_mean']) / self.reward_debug['n']
+        self.reward = np.clip(self.reward, -1e3, 1e3)
 
         return self.reward
-
-    # def stop(self):
-    #     self.log.warning(
-    #         'total: {:.4f}\nr_sum: {:.6f}, r_mean: {:.6f},\nf1: {:.6f}, f1_mean: {:.6f}, f1_sum: {:.6f},\nfp_sum: {:.6f}, fp_mean: {:.6f}'.
-    #             format(
-    #             self.env.broker.get_value(),
-    #             self.reward_debug['r_sum'],
-    #             self.reward_debug['r_mean'],
-    #             self.reward_debug['f1'],
-    #             self.reward_debug['f1_mean'],
-    #             self.reward_debug['f1_sum'],
-    #             self.reward_debug['fp'],
-    #             self.reward_debug['fp_mean'],
-    #         )
-    #     )
 
     def _next_discrete(self, action):
         """
@@ -627,19 +587,6 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
             action:     dict, string encoding of btgym.spaces.ActionDictSpace
 
         """
-        # if self.is_test:
-        #     if self.iteration % 10 == 0 or (self.iteration - 1) % 10 == 0:
-        #         self.log.notice(
-        #             'test step: {}, broker_value: {:.2f}'.format(self.iteration, self.env.broker.get_value())
-        #         )
-        #     if self.iteration < 10 * self.p.skip_frame:
-        #         # Burn-in period:
-        #         time.sleep(600)
-        #
-        #     else:
-        #         # Regular pause:
-        #         time.sleep(10)
-
         # Here we expect action dict to contain single key:
         single_action = action[self.action_key]
 
@@ -656,12 +603,12 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
             self.broker_message = 'new {}_CLOSE created; '.format(self.action_key) + self.broker_message
 
 
-class UPDMStrategy(BaseStrategy5):
+class SSAStrategy_0(PairSpreadStrategy_0):
     """
     Test TimeSeriesModel decomposition.
     """
     time_dim = 128
-    avg_period = 90
+    avg_period = 64
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
 
     features_parameters = None
@@ -669,7 +616,9 @@ class UPDMStrategy(BaseStrategy5):
     params = dict(
         state_shape={
             'external': spaces.Box(low=-10, high=10, shape=(time_dim, 1, num_features), dtype=np.float32),
-            'internal': spaces.Box(low=-2, high=2, shape=(avg_period, 1, 6), dtype=np.float32),
+            'internal': spaces.Box(low=-100, high=100, shape=(avg_period, 1, 5), dtype=np.float32),
+            'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+            'stat': spaces.Box(low=-1e8, high=1e8, shape=(3, 1), dtype=np.float32),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -708,6 +657,34 @@ class UPDMStrategy(BaseStrategy5):
                         high=np.finfo(np.float64).max,
                         dtype=np.float64
                     ),
+                    'generator': DictSpace(
+                        {
+                            'mu': spaces.Box(
+                                shape=(),
+                                low=np.finfo(np.float64).min,
+                                high=np.finfo(np.float64).max,
+                                dtype=np.float64
+                            ),
+                            'l': spaces.Box(
+                                shape=(),
+                                low=0,
+                                high=np.finfo(np.float64).max,
+                                dtype=np.float64
+                            ),
+                            'sigma': spaces.Box(
+                                shape=(),
+                                low=0,
+                                high=np.finfo(np.float64).max,
+                                dtype=np.float64
+                            ),
+                            'x0': spaces.Box(
+                                shape=(),
+                                low=np.finfo(np.float64).min,
+                                high=np.finfo(np.float64).max,
+                                dtype=np.float64
+                            )
+                        }
+                    )
                 }
             )
         },
@@ -725,13 +702,14 @@ class UPDMStrategy(BaseStrategy5):
         commission=None,
         slippage=None,
         leverage=1.0,
-        gamma=0.99,  # fi_gamma, should match MDP gamma decay
-        reward_scale=1,  # reward multiplicator
-        drawdown_call=10,  # finish episode when hitting drawdown treshghold , in percent.
-        target_call=10,  # finish episode when reaching profit target, in percent.
-        dataset_stat=None,  # Summary descriptive statistics for entire dataset and
-        episode_stat=None,  # current episode. Got updated by server.
-        time_dim=time_dim,  # time embedding period
+        gamma=0.99,             # fi_gamma, should match MDP gamma decay
+        reward_scale=1,         # reward multiplicator
+        stat_alpha=0.1,         # renormalisation tracking decay in []0, 1]
+        drawdown_call=10,       # finish episode when hitting drawdown treshghold , in percent.
+        target_call=10,         # finish episode when reaching profit target, in percent.
+        dataset_stat=None,      # Summary descriptive statistics for entire dataset and
+        episode_stat=None,      # current episode. Got updated by server.
+        time_dim=time_dim,      # time embedding period
         avg_period=avg_period,  # number of time steps reward estimation statistics are averaged over
         features_parameters=features_parameters,
         num_features=num_features,
@@ -750,9 +728,21 @@ class UPDMStrategy(BaseStrategy5):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.data_model = PriceModel(**self.p.data_model_params)
+        self.data_model = BivariatePriceModel(**self.p.data_model_params)
 
     def set_datalines(self):
+
+        # Here spread is for and stat:
+        self.data.spread = btind.SimpleMovingAverage(self.datas[0] - self.datas[1], period=1)
+        self.data.spread.plotinfo.subplot = True
+        self.data.spread.plotinfo.plotabove = True
+        self.data.spread.plotinfo.plotname = list(self.p.asset_names)[0]
+
+        # Override stat line:
+        # TODO: use model P.process stat instead of data stat, override .get_normalisation()
+        # self.stat_asset = btind.SimpleMovingAverage(self.datas[0] + self.datas[1], period=1) / 2
+        self.stat_asset = self.data.spread
+
         initial_time_period = self.p.time_dim
         self.data.dim_sma = btind.SimpleMovingAverage(
             self.datas[0],
@@ -763,13 +753,27 @@ class UPDMStrategy(BaseStrategy5):
     def nextstart(self):
         self.inner_embedding = self.data.close.buflen()
         self.log.debug('Inner time embedding: {}'.format(self.inner_embedding))
-        self.data_model.reset(np.asarray(self.data.get(size=self.inner_embedding)))
+        x_init = np.stack(
+            [
+                np.asarray(self.datas[0].get(size=self.inner_embedding)),
+                np.asarray(self.datas[1].get(size=self.inner_embedding))
+            ],
+            axis=0
+        )
+        self.data_model.reset(x_init)
 
     def get_external_state(self):
-        x_upd = np.asarray(self.data.get(size=self.p.skip_frame))
+        x_upd = np.stack(
+            [
+                np.asarray(self.datas[0].get(size=self.p.skip_frame)),
+                np.asarray(self.datas[1].get(size=self.p.skip_frame))
+            ],
+            axis=0
+        )
+        # self.log.warning('x_upd: {}'.format(x_upd.shape))
         self.data_model.update(x_upd)
 
-        x_ssa = self.data_model.transform(size=self.p.time_dim).T
+        x_ssa = self.data_model.s.transform(size=self.p.time_dim).T
 
         # Gradient along features axis:
         # dx = np.gradient(x_ssa, axis=-1)
@@ -784,18 +788,3 @@ class UPDMStrategy(BaseStrategy5):
         x_ssa = np.clip(x_ssa, -10, 10)
         return x_ssa[:, None, :-1]
 
-    def get_internal_state(self):
-
-        x_broker = np.concatenate(
-            [
-                np.asarray(self.broker_stat['value'])[..., None],
-                np.asarray(self.broker_stat['unrealized_pnl'])[..., None],
-                np.asarray(self.broker_stat['total_unrealized_pnl'])[..., None],
-                np.asarray(self.broker_stat['realized_pnl'])[..., None],
-                np.asarray(self.broker_stat['cash'])[..., None],
-                np.asarray(self.broker_stat['exposure'])[..., None],
-            ],
-            axis=-1
-        )
-        x_broker = tanh(np.gradient(x_broker, axis=-1) * self.p.state_int_scale)
-        return x_broker[:, None, :]

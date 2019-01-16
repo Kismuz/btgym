@@ -316,6 +316,9 @@ class Zscore:
     """
     Recursive exponentially decayed mean and variance estimation for time-series
     with arbitrary consecutive updates length.
+
+    Paper:
+    Tony Finch: "Incremental calculation of weighted mean and variance", notes, 2009
     """
 
     def __init__(self, dim, alpha):

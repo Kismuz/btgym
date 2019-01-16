@@ -20,7 +20,9 @@ class BivariateTSModel:
 
         Harris, D., "Principal components analysis of cointegrated time series," in "Econometric Theory", Vol. 13, 1997
     """
-
+    # TODO: trajectory generator uses simplified algorithm: entire trajectory is generated out of single model state
+    # TODO: proper state-space model approach
+    # TODO: should be: sample [randomized?] trajectory of states -> sample realisation trajectory of same length
     # Decomposition matrix:
     u_decomp = np.asarray([[.5, .5], [.5, -.5]])
 

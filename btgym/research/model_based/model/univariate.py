@@ -28,6 +28,9 @@ class OUProcess:
         # Driver is Student-t:
         self.driver_estimator = STEstimator(alpha)
 
+        # Empirical statistics tracker (mostly for accuracy checking, not included in OUProcessState):
+        self.stat = Zscore(1, alpha)
+
         self.is_ready = False
 
     def ready(self):
@@ -115,10 +118,12 @@ class OUProcess:
         Args:
             init_trajectory:    initial 1D process observations trajectory of size [num_points]
         """
-        init_observation = np.asarray(self.estimator.reset(init_trajectory))
+        _ = self.stat.reset(init_trajectory[None, :])
 
+        init_observation = np.asarray(self.estimator.reset(init_trajectory))
         # 2x observation to get initial covariance matrix estimate:
         init_observation = np.stack([init_observation, init_observation], axis=-1)
+
         _ = self.filter.reset(init_observation)
 
         self.driver_estimator.reset(self.estimator.residuals)
@@ -134,6 +139,8 @@ class OUProcess:
             disjoint:    bool, indicates whether update given is continuous or disjoint w.r.t. previous one
         """
         self.ready()
+        _ = self.stat.update(trajectory[None, :])  # todo: disjoint is ignored or reset stat?
+
         # Get new state-space observation:
         observation = self.estimator.update(trajectory, disjoint)
 

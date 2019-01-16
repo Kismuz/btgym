@@ -1,21 +1,3 @@
-###############################################################################
-#
-# Copyright (C) 2017-2018 Andrew Muzikin
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-###############################################################################
 
 import backtrader as bt
 import backtrader.indicators as btind
@@ -24,19 +6,24 @@ from gym import spaces
 from btgym import DictSpace
 
 import numpy as np
-from collections import deque
+from scipy import stats
+from collections import namedtuple
 
-from btgym.strategy.utils import norm_value, decayed_result, exp_scale
+from btgym.strategy.utils import norm_value, decayed_result
+from btgym.research.model_based.model.rec import Zscore
 
 
-############################## Base BTgymStrategy Class ###################
+NormalisationState = namedtuple('NormalisationState', ['mean', 'variance', 'low_interval', 'up_interval'])
 
 
-class BaseStrategy5(bt.Strategy):
+class AutoStrategy0(bt.Strategy):
     """
-    'New and improved' base startegy class.
-    Incorporates state declaration and preprocessing improvements.
-    Current candidate to replace current BTgymBaseStrategy.
+    Added:
+        tracking volatility-based rescaling for all broker statistics and, consequently, reward fn
+        self.p.stat_alpha - tracking smoothing parameter added
+        self.p.target_call  - upper limit arg. is removed
+        TODO: auto sizer inference, co-integration coeff. inference
+
 
     Controls Environment inner dynamics and backtesting logic. Provides gym'my (State, Action, Reward, Done, Info) data.
     Any State, Reward and Info computation logic can be implemented by subclassing BTgymStrategy and overriding
@@ -51,11 +38,11 @@ class BaseStrategy5(bt.Strategy):
         - Since it is bt.Strategy subclass, refer to https://www.backtrader.com/docu/strategy.html for more information.
     """
     # Time embedding period:
-    time_dim = 4  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
+    time_dim = 32  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
 
     # Number of timesteps reward estimation statistics are averaged over, should be:
     # skip_frame_period <= avg_period <= time_embedding_period:
-    avg_period = time_dim
+    avg_period = int(time_dim / 2)
 
     # Possible agent actions;  Note: place 'hold' first! :
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
@@ -77,6 +64,8 @@ class BaseStrategy5(bt.Strategy):
                 high=0,
                 dtype=np.float32,
             ),
+            'internal': spaces.Box(low=-100, high=100, shape=(avg_period, 1, 5), dtype=np.float32),
+            'stat': spaces.Box(low=-100, high=100, shape=(2, 1), dtype=np.float32),
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -125,13 +114,13 @@ class BaseStrategy5(bt.Strategy):
         slippage=None,
         leverage=1.0,
         gamma=0.99,             # fi_gamma, should match MDP gamma decay
-        reward_scale=1,         # reward multiplicator
-        drawdown_call=10,       # finish episode when hitting drawdown treshghold , in percent.
-        target_call=10,         # finish episode when reaching profit target, in percent.
+        reward_scale=1.0,       # reward multiplicator
+        stat_alpha=0.1,         # renormalisation tracking decay in []0, 1]
+        drawdown_call=10,       # finish episode when hitting drawdown treshghold, in percent to initial cash.
         dataset_stat=None,      # Summary descriptive statistics for entire dataset and
         episode_stat=None,      # current episode. Got updated by server.
         time_dim=time_dim,      # time embedding period
-        avg_period=avg_period,  # number of time steps reward estimation statistics are averaged over
+        avg_period=avg_period,  # number of time steps reward estimation statistics are tracked over
         features_parameters=features_parameters,
         num_features=num_features,
         metadata={},
@@ -167,7 +156,6 @@ class BaseStrategy5(bt.Strategy):
                     slippage:           float, broker execution slippage
                     order_size:         dict of fixed order stakes (floats); keys should match assets names.
                     drawdown_call:      finish episode when hitting this drawdown treshghold , in percent.
-                    target_call:        finish episode when reaching this profit target, in percent.
                     portfolio_actions:  possible agent actions.
                     skip_frame:         number of environment steps to skip before returning next response,
                                         e.g. if set to 10 -- agent will interact with environment every 10th step;
@@ -183,7 +171,6 @@ class BaseStrategy5(bt.Strategy):
                     slippage=None,
                     leverage=1.0
                     drawdown_call=10
-                    target_call=10
                     dataset_stat=None
                     episode_stat=None
                     portfolio_actions=('hold', 'buy', 'sell', 'close')
@@ -193,9 +180,12 @@ class BaseStrategy5(bt.Strategy):
         # Inherit logger from cerebro:
         self.log = self.env._log
 
+        assert self.p.avg_period + 2 < self.p.time_dim, 'Doh!'
+
         self.skip_frame = self.p.skip_frame
 
         self.iteration = 0
+        self.pre_iteration = 0
         self.env_iteration = 0
         self.inner_embedding = 1
         self.is_done = False
@@ -229,11 +219,7 @@ class BaseStrategy5(bt.Strategy):
             # ensuring we always buy at current 'high'~'ask' and sell at 'low'~'bid':
             self.env.broker.set_slippage_perc(self.p.slippage, slip_open=True, slip_match=True, slip_out=False)
 
-        # Normalisation constant for statistics derived from account value:
-        self.broker_value_normalizer = 1 / \
-            self.env.broker.startingcash / (self.p.drawdown_call + self.p.target_call) * 100
-
-        self.target_value = self.env.broker.startingcash * (1 + self.p.target_call / 100)
+        # self.target_value = self.env.broker.startingcash * (1 + self.p.target_call / 100)
 
         # Try to define stake, if no self.p.order_size dict has been set:
         if self.p.order_size is None:
@@ -329,13 +315,25 @@ class BaseStrategy5(bt.Strategy):
             except AttributeError:
                 raise NotImplementedError('Callable get_broker_{}.() not found'.format(line))
 
-        # Broker and account related sliding statistics accumulators, globally normalized last `avg_perod` values,
-        # so it's a bit more computationally efficient than use of bt.Observers:
-        self.broker_stat = {key: deque(maxlen=self.avg_period) for key in self.broker_datalines}
+        # Broker and account related sliding statistics accumulators:
+        self.broker_stat = {key: np.zeros(self.avg_period) for key in self.broker_datalines}
 
-        # Add custom data Lines if any (convenience wrapper):
+        # This data line will be used to by default to
+        # define normalisation bounds (can be overiden via .set_datalines()):
+        self.stat_asset = self.data.open
+
+        self.order_size_normalizer = np.fromiter(self.p.order_size.values(), dtype=np.float).mean()
+
+        # Add custom data Lines if any [and possibly redefine stat_asset and order_size_normalizer]:
         self.set_datalines()
-        self.log.debug('Kwargs:\n{}\n'.format(str(kwargs)))
+
+        # Normalisation statistics estimator (updated via update_broker_stat.()):
+        self.norm_estimator = Zscore(1, alpha=self.p.stat_alpha)
+        self.normalisation_state = NormalisationState(0, 0, .9, 1.1)
+
+        # Tracking exp. smoothing params:
+        self.internal_state_discount = np.cumprod(np.tile(1 - 1 / self.p.avg_period, self.p.avg_period))[::-1]
+        self.external_state_discount = None  # not used
 
         # Define flat collection dictionary looking for methods for estimating observation state,
         # one method for one mode, should be named .get_[mode_name]_state():
@@ -380,11 +378,21 @@ class BaseStrategy5(bt.Strategy):
             self.num_action_repeats = 0
 
     def prenext(self):
-        self.update_broker_stat()
+        if self.pre_iteration + 2 > self.p.time_dim - self.avg_period:
+            self.update_broker_stat()
+
+        elif self.pre_iteration + 2 == self.p.time_dim - self.avg_period:
+            _ = self.norm_estimator.reset(
+                np.asarray(self.stat_asset.get(size=self.data.close.buflen()))[None, :]
+            )
+
+        self.pre_iteration += 1
 
     def nextstart(self):
         self.inner_embedding = self.data.close.buflen()
-        self.log.debug('Inner time embedding: {}'.format(self.inner_embedding))
+        # self.log.warning('Inner time embedding: {}'.format(self.inner_embedding))
+        # for k, v in self.broker_stat.items():
+        #     self.log.warning('{}: {}'.format(k, len(v)))
 
     def next(self):
         """
@@ -425,7 +433,7 @@ class BaseStrategy5(bt.Strategy):
 
     def update_broker_stat(self):
         """
-        Updates all sliding broker statistics deques with latest-step values such as:
+        Updates all sliding broker statistics with latest-step values such as:
             - normalized broker value
             - normalized broker cash
             - normalized exposure (position size)
@@ -433,123 +441,141 @@ class BaseStrategy5(bt.Strategy):
             - normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)
             - normalized profit/loss for current opened trade (unrealized p/l);
         """
-        # Current account value:
+        # Update current account value:
         current_value = self.env.broker.get_value()
 
-        # Individual positions for each instrument traded:
+        # ...normalisation bounds:
+        norm_state = self.get_normalisation()
+
+        # ...individual positions for each instrument traded:
         positions = [self.env.broker.getposition(data) for data in self.datas]
+
+        # ... total cash exposure:
         exposure = sum([abs(pos.size) for pos in positions])
 
+        normalizer = 1 / (norm_state.up_interval - norm_state.low_interval) / self.order_size_normalizer
         for key, method in self.collection_get_broker_stat_methods.items():
-            self.broker_stat[key].append(
-                method(
-                    current_value=current_value,
-                    positions=positions,
-                    exposure=exposure,
-                )
+            update = method(
+                current_value=current_value,
+                positions=positions,
+                exposure=exposure,
+                lower_bound=norm_state.low_interval,
+                upper_bound=norm_state.up_interval,
+                normalizer=normalizer,
             )
+            # Update accumulator:
+            self.broker_stat[key] = np.concatenate([self.broker_stat[key][1:], np.asarray([float(update)])])
 
         # Reset one-time flags:
         self.trade_just_closed = False
         self.trade_result = 0
 
-    def get_broker_value(self, current_value, **kwargs):
+    def get_normalisation(self):
+        """
+        Estimates current normalisation constants, updates `normalisation_state` attr.
+
+        Returns:
+            instance of NormalisationState tuple
+        """
+        # Update normalizer stat:
+        stat_data = np.asarray(self.stat_asset.get(size=self.p.skip_frame))
+        mean, var = self.norm_estimator.update(stat_data[None, :])
+
+        # Use 99% N(stat_data_mean, stat_data_std) intervals as normalisation interval:
+        intervals = stats.norm.interval(.99, mean, var ** .5)
+        self.normalisation_state = NormalisationState(
+            mean=float(mean),
+            variance=float(var),
+            low_interval=intervals[0][0],
+            up_interval=intervals[1][0]
+        )
+        return self.normalisation_state
+
+    def get_broker_value(self, current_value, normalizer, **kwargs):
         """
 
         Args:
-            current_value:  current portfolio value
+            current_value:  float, current portfolio value
+            lower_bound:    float, lower normalisation constant
+            upper_bound:    float, upper normalisation constant
 
         Returns:
-            normalized broker value.
+            broker value normalized w.r.t. start value.
         """
-        return norm_value(
-            current_value,
-            self.env.broker.startingcash,
-            self.p.drawdown_call,
-            self.p.target_call,
-        )
+        # return norm_value(
+        #     current_value,
+        #     self.env.broker.startingcash,
+        #     lower_bound,
+        #     upper_bound,
+        # )
+        return (current_value - self.env.broker.startingcash) / self.env.broker.startingcash * normalizer
 
-    def get_broker_cash(self, **kwargs):
+    def get_broker_cash(self, current_value, **kwargs):
         """
+        Args:
+            current_value:    float, current portfolio value
 
         Returns:
-            normalized broker cash
+            broker cash normalized w.r.t. current value.
         """
-        return norm_value(
-            self.env.broker.get_cash(),
-            self.env.broker.startingcash,
-            99.0,
-            self.p.target_call,
-        )
+        return self.env.broker.get_cash() / current_value
 
     def get_broker_exposure(self, exposure, **kwargs):
         """
+        Args:
+            exposure:   float, current total position exposure
 
         Returns:
-            normalized exposure (position size)
+            exposure (position size) normalized w.r.t. single order size.
         """
-        return exposure / (self.env.broker.startingcash * self.env.broker.get_leverage() + 1e-2)
+        return exposure / self.order_size_normalizer
 
-    def get_broker_realized_pnl(self, current_value, **kwargs):
+    def get_broker_realized_pnl(self, normalizer, **kwargs):
         """
 
         Args:
-            current_value: current portfolio value
+            normalizer:     float, normalisation constant
 
         Returns:
             normalized realized profit/loss for last closed trade (is zero if no pos. closures within last env. step)
         """
 
         if self.trade_just_closed:
-            pnl = decayed_result(
-                self.trade_result,
-                current_value,
-                self.env.broker.startingcash,
-                self.p.drawdown_call,
-                self.p.target_call,
-                gamma=1
-            )
-            # self.log.warning('get_broker_realized_pnl: got result: {} --> pnl: {}'.format(self.trade_result, pnl))
-            # Reset flag:
-            # self.trade_just_closed = False
-            # print('broker_realized_pnl: step {}, just closed.'.format(self.iteration))
+            pnl = self.trade_result * normalizer
+            # pnl = self.trade_result / (upper_bound - lower_bound)
 
         else:
             pnl = 0.0
         return pnl
 
-    def get_broker_unrealized_pnl(self, current_value, **kwargs):
+    def get_broker_unrealized_pnl(self, current_value, normalizer, **kwargs):
         """
 
         Args:
-            current_value: current portfolio value
+            current_value:  float, current portfolio value
+            normalizer:     float, normalisation constant
 
         Returns:
             normalized profit/loss for current opened trade
         """
-        return (current_value - self.realized_broker_value) * self.broker_value_normalizer
+        pnl = (current_value - self.realized_broker_value) * normalizer
 
-    def get_broker_total_unrealized_pnl(self, current_value, **kwargs):
+        return pnl
+
+    def get_broker_total_unrealized_pnl(self, current_value, normalizer, **kwargs):
         """
 
         Args:
-            current_value: current portfolio value
+            current_value:  float, current portfolio value
+            normalizer:     float, normalisation constant
+
 
         Returns:
             normalized profit/loss wrt. initial portfolio value
         """
-        return (current_value - self.env.broker.startingcash) * self.broker_value_normalizer
+        pnl = (current_value - self.env.broker.startingcash) * normalizer
 
-    def get_broker_episode_step(self, **kwargs):
-        """
-
-        Returns:
-            exp. scaled episode duration in steps, normalized wrt. max possible episode steps
-        """
-        return exp_scale(
-            self.iteration / (self.data.numrecords - self.inner_embedding),
-            gamma=3
-        )
+        return pnl
 
     def get_broker_drawdown(self, **kwargs):
         """
@@ -558,13 +584,20 @@ class BaseStrategy5(bt.Strategy):
             current drawdown value
         """
         try:
-            dd = self.stats.drawdown.drawdown[-1]  # / self.p.drawdown_call
+            dd = self.stats.drawdown.drawdown[-1] / self.p.drawdown_call
         except IndexError:
             dd = 0.0
         return dd
 
     def get_broker_pos_duration(self, exposure, **kwargs):
+        """
 
+        Args:
+            exposure:   float, current total positions exposure
+
+        Returns:
+            int, number of ticks current position is being held
+        """
         if exposure == 0:
             self.current_pos_duration = 0
             # print('ZERO_POSITION\n')
@@ -574,23 +607,50 @@ class BaseStrategy5(bt.Strategy):
 
         return self.current_pos_duration
 
-    def get_broker_max_unrealized_pnl(self, current_value, exposure, **kwargs):
+    def get_broker_max_unrealized_pnl(self, current_value, exposure, normalizer, **kwargs):
+        """
+
+        Args:
+            exposure:       float, current total positions exposure
+            current_value:  float, current portfolio value
+            normalizer:     float, normalisation constant
+
+        Returns:
+            best unrealised PnL achieved within current opened position
+
+        """
         if exposure == 0:
             self.current_pos_max_value = current_value
 
         else:
             if self.current_pos_max_value < current_value:
                 self.current_pos_max_value = current_value
-        return (self.current_pos_max_value - self.realized_broker_value) * self.broker_value_normalizer
 
-    def get_broker_min_unrealized_pnl(self, current_value, exposure, **kwargs):
+        pnl = (self.current_pos_max_value - self.realized_broker_value) * normalizer
+
+        return pnl
+
+    def get_broker_min_unrealized_pnl(self, current_value, exposure, normalizer, **kwargs):
+        """
+
+        Args:
+            exposure:       float, current total positions exposure
+            current_value:  float, current portfolio value
+            normalizer:     float, normalisation constant
+
+        Returns:
+            worst unrealised PnL achieved within current opened position
+        """
         if exposure == 0:
             self.current_pos_min_value = current_value
 
         else:
             if self.current_pos_min_value > current_value:
                 self.current_pos_min_value = current_value
-        return (self.current_pos_min_value - self.realized_broker_value) * self.broker_value_normalizer
+
+        pnl = (self.current_pos_min_value - self.realized_broker_value) * normalizer
+
+        return pnl
 
     def set_datalines(self):
         """
@@ -605,7 +665,7 @@ class BaseStrategy5(bt.Strategy):
         Default state observation composer.
 
         Returns:
-             and updates time-embedded environment state observation as [n,4] numpy matrix, where:
+             and updates time-embedded environment state observation as [n, 4] numpy matrix, where:
                 4 - number of signal features  == state_shape[1],
                 n - time-embedding length  == state_shape[0] == <set by user>.
 
@@ -624,17 +684,30 @@ class BaseStrategy5(bt.Strategy):
 
         return self.raw_state
 
-    def get_internal_state(self):
-        """
-        Composes internal state tensor by calling all statistics from broker_stat dictionary.
-        Generally, this method should not be modified, implement corresponding get_broker_[mode]() methods.
+    def get_stat_state(self):
+        return np.asarray(self.norm_estimator.get_state())
 
-        """
-        x_broker = np.concatenate(
-            [np.asarray(stat)[..., None] for stat in self.broker_stat.values()],
+    # def get_internal_state(self):
+    #     """
+    #     Composes internal state tensor by calling all statistics from broker_stat dictionary.
+    #     Generally, this method should not be modified, implement corresponding get_broker_[mode]() methods.
+    #
+    #     """
+    #     x_broker = np.concatenate(
+    #         [np.asarray(stat)[..., None] for stat in self.broker_stat.values()],
+    #         axis=-1
+    #     )
+    #     return x_broker[:, None, :]
+
+    def get_internal_state(self):
+        stat_lines = ('value', 'unrealized_pnl', 'realized_pnl', 'cash', 'exposure')
+        # Use smoothed values:
+        x_broker = np.stack(
+            [np.asarray(self.broker_stat[name]) * self.internal_state_discount for name in stat_lines],
             axis=-1
         )
-        return x_broker[:, None, :]
+        # x_broker = np.gradient(x_broker, axis=-1)
+        return np.clip(x_broker[:, None, :], -100, 100)
 
     def get_metadata_state(self):
         self.metadata['timestamp'] = np.asarray(self._get_timestamp())
@@ -718,7 +791,9 @@ class BaseStrategy5(bt.Strategy):
         # Potential-based shaping function 1:
         # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
         unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl'])
-        current_pos_duration = self.broker_stat['pos_duration'][-1]
+        current_pos_duration = int(self.broker_stat['pos_duration'][-1])
+
+        #self.log.warning('current_pos_duration: {}'.format(current_pos_duration))
 
         # We want to estimate potential `fi = gamma*fi_prime - fi` of current opened position,
         # thus need to consider different cases given skip_fame parameter:
@@ -750,8 +825,9 @@ class BaseStrategy5(bt.Strategy):
         realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
 
         # Weights are subject to tune:
-        self.reward = (10.0 * f1 + 10.0 * realized_pnl) * self.p.reward_scale
-        self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
+        self.reward = (1.0 * f1 + 1.0 * realized_pnl) * self.p.reward_scale
+        # self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
+        self.reward = np.clip(self.reward, -1e3, 1e3)
 
         return self.reward
 
@@ -794,8 +870,7 @@ class BaseStrategy5(bt.Strategy):
             1. Reached maximum episode duration. Need to check it explicitly, because <self.is_done> flag
                is sent as part of environment response.
             2. Got '_done' signal from outside. E.g. via env.reset() method invoked by outer RL algorithm.
-            3. Hit drawdown threshold.
-            4. Hit target profit threshold.
+            3. Hit `drawdown` threshold.
 
         This method shouldn't be overridden or called explicitly.
 
@@ -815,8 +890,6 @@ class BaseStrategy5(bt.Strategy):
                  'END OF DATA'),
                 # Any money left?:
                 (self.stats.drawdown.maxdrawdown[0] >= self.p.drawdown_call, 'DRAWDOWN CALL'),
-                # Party time?
-                (self.env.broker.get_value() > self.target_value, 'TARGET REACHED'),
             ]
             # Append custom get_done() results, if any:
             is_done_rules += [self.get_done()]
@@ -918,7 +991,7 @@ class BaseStrategy5(bt.Strategy):
         For details refer to: https://www.backtrader.com/docu/order_target/order_target.html
         """
         # TODO 1: filter similar actions to prevent excessive orders issue e.g by DKL on two consecutive ones
-        # TODO 2: actions discretesation on level of execution
+        # TODO 2: actions discretisation on level of execution
         for asset in self.p.asset_names:
             # Reducing assets positions subj to 5% margin reserve:
             single_action = round(float(action[asset]) * 0.9, 2)

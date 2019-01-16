@@ -32,40 +32,47 @@ def norm_log_value(current_value, start_value, drawdown_call, target_call, epsil
     return x
 
 
-def norm_value(current_value, start_value, drawdown_call, target_call, epsilon=1e-8):
+def norm_value(current_value, init_value, lower_bound, upper_bound, epsilon=1e-8):
     """
     Current value normalized in [-1,1] wrt upper and lower bounds.
     """
     x = np.asarray(current_value)
-    x = (x / start_value - 1) * 100
-    x = (x - target_call) / (drawdown_call + target_call) + 1
+    x = (x / init_value - 1) * 100
+    x = (x - upper_bound) / (lower_bound + upper_bound) + 1
     x = 2 * np.clip(x, epsilon, 1 - epsilon) - 1
     return x
 
 
-def __norm_value(current_value, start_value, drawdown_call, target_call, epsilon=1e-8):
+def __norm_value(current_value, init_value, lower_bound, upper_bound, epsilon=1e-8):
     """
     Current value, piece-wise linear normalized in [-1,1] and zero-centered  at `start_value`
     """
-    drawdown_call /= 100
-    target_call /= 100
+    lower_bound /= 100
+    upper_bound /= 100
     x = np.asarray(current_value)
-    x1 = (1 / (start_value * drawdown_call)) * x[x < start_value] - 1 / drawdown_call
-    x2 = (1 / (start_value * target_call)) * x[x >= start_value] - 1 / target_call
+    x1 = (1 / (init_value * lower_bound)) * x[x < init_value] - 1 / lower_bound
+    x2 = (1 / (init_value * upper_bound)) * x[x >= init_value] - 1 / upper_bound
     x = np.concatenate([x1, x2], axis=-1)
     x = np.squeeze(np.clip(x, -1, 1))
     return x
 
 
-def decayed_result(trade_result, current_value, start_value, drawdown_call, target_call, gamma=1.0):
+# def decayed_result(trade_result, current_value, base_value, lower_bound, upper_bound, gamma=1.0):
+#     """
+#     Normalized in [-1,1] trade result, lineary decayed wrt current_value.
+#     """
+#     target_value = base_value * (1 + upper_bound / 100)
+#     value_range = base_value * (lower_bound + upper_bound) / 100
+#     decay = (gamma - 1) * (current_value - target_value) / value_range + gamma
+#     x = trade_result * decay / value_range
+#     return x
+
+
+def decayed_result(trade_result, current_value, base_value, lower_bound, upper_bound, gamma=1.0):
     """
     Normalized in [-1,1] trade result, lineary decayed wrt current_value.
     """
-    target_value = start_value * (1 + target_call / 100)
-    value_range = start_value * (drawdown_call + target_call) / 100
-    decay = (gamma - 1) * (current_value - target_value) / value_range + gamma
-    x = trade_result * decay / value_range
-    return x
+    return (trade_result - base_value) / (upper_bound - lower_bound)
 
 
 def exp_scale(x, gamma=4, epsilon=1e-10):
