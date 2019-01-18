@@ -9,21 +9,19 @@ import numpy as np
 from scipy import stats
 from collections import namedtuple
 
-from btgym.strategy.utils import norm_value, decayed_result
 from btgym.research.model_based.model.rec import Zscore
 
 
 NormalisationState = namedtuple('NormalisationState', ['mean', 'variance', 'low_interval', 'up_interval'])
 
 
-class AutoStrategy0(bt.Strategy):
+class BaseStrategy6(bt.Strategy):
     """
-    Added:
-        tracking volatility-based rescaling for all broker statistics and, consequently, reward fn
-        self.p.stat_alpha - tracking smoothing parameter added
+    Added for gen.6:
+        traded asset volatility-based rescaling for all broker statistics and, consequently, reward fn
+        self.p.norm_alpha - tracking smoothing decay parameter added
         self.p.target_call  - upper limit arg. is removed
         TODO: auto sizer inference, co-integration coeff. inference
-
 
     Controls Environment inner dynamics and backtesting logic. Provides gym'my (State, Action, Reward, Done, Info) data.
     Any State, Reward and Info computation logic can be implemented by subclassing BTgymStrategy and overriding
@@ -115,7 +113,7 @@ class AutoStrategy0(bt.Strategy):
         leverage=1.0,
         gamma=0.99,             # fi_gamma, should match MDP gamma decay
         reward_scale=1.0,       # reward multiplicator
-        stat_alpha=0.1,         # renormalisation tracking decay in []0, 1]
+        norm_alpha=0.001,       # renormalisation tracking decay in []0, 1]
         drawdown_call=10,       # finish episode when hitting drawdown treshghold, in percent to initial cash.
         dataset_stat=None,      # Summary descriptive statistics for entire dataset and
         episode_stat=None,      # current episode. Got updated by server.
@@ -202,10 +200,6 @@ class AutoStrategy0(bt.Strategy):
         self.final_message = '_'
         self.raw_state = None
         self.time_stamp = 0
-
-        # Configure state_shape:
-        if self.p.state_shape is None:
-            self.p.state_shape = self.set_state_shape()
 
         # Prepare broker:
         if self.p.start_cash is not None:
@@ -322,21 +316,22 @@ class AutoStrategy0(bt.Strategy):
         # define normalisation bounds (can be overiden via .set_datalines()):
         self.stat_asset = self.data.open
 
+        # TODO: rewrite if orders are not of the same size
         self.order_size_normalizer = np.fromiter(self.p.order_size.values(), dtype=np.float).mean()
 
         # Add custom data Lines if any [and possibly redefine stat_asset and order_size_normalizer]:
         self.set_datalines()
 
         # Normalisation statistics estimator (updated via update_broker_stat.()):
-        self.norm_estimator = Zscore(1, alpha=self.p.stat_alpha)
+        self.norm_estimator = Zscore(1, alpha=self.p.norm_alpha)
         self.normalisation_state = NormalisationState(0, 0, .9, 1.1)
 
-        # Tracking exp. smoothing params:
+        # State exp. smoothing params:
         self.internal_state_discount = np.cumprod(np.tile(1 - 1 / self.p.avg_period, self.p.avg_period))[::-1]
         self.external_state_discount = None  # not used
 
         # Define flat collection dictionary looking for methods for estimating observation state,
-        # one method for one mode, should be named .get_[mode_name]_state():
+        # one method per one mode, should be named .get_[mode_name]_state():
         self.collection_get_state_methods = {}
         for key in self.p.state_shape.keys():
             try:
@@ -453,7 +448,9 @@ class AutoStrategy0(bt.Strategy):
         # ... total cash exposure:
         exposure = sum([abs(pos.size) for pos in positions])
 
+        # ... tracking normalisation constant:
         normalizer = 1 / (norm_state.up_interval - norm_state.low_interval) / self.order_size_normalizer
+
         for key, method in self.collection_get_broker_stat_methods.items():
             update = method(
                 current_value=current_value,
@@ -686,18 +683,6 @@ class AutoStrategy0(bt.Strategy):
 
     def get_stat_state(self):
         return np.asarray(self.norm_estimator.get_state())
-
-    # def get_internal_state(self):
-    #     """
-    #     Composes internal state tensor by calling all statistics from broker_stat dictionary.
-    #     Generally, this method should not be modified, implement corresponding get_broker_[mode]() methods.
-    #
-    #     """
-    #     x_broker = np.concatenate(
-    #         [np.asarray(stat)[..., None] for stat in self.broker_stat.values()],
-    #         axis=-1
-    #     )
-    #     return x_broker[:, None, :]
 
     def get_internal_state(self):
         stat_lines = ('value', 'unrealized_pnl', 'realized_pnl', 'cash', 'exposure')

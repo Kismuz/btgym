@@ -160,7 +160,6 @@ class BivariateTSModel:
             data projection of size [2, num_pints], where first (P) component is average and second (S) is difference
             of original time-series.
         """
-        # TODO: remove norm?
         assert len(trajectory.shape) == 2 and trajectory.shape[0] == 2, \
             'Expected data as array of size [2, num_points], got: {}'.format(trajectory.shape)
 

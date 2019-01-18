@@ -4,17 +4,12 @@ from gym import spaces
 from btgym import DictSpace
 
 import numpy as np
-from scipy import signal
 
-import time
-
-from btgym.research.strategy_gen_5.base import BaseStrategy5
-from btgym.research.strategy_gen_5.auto import AutoStrategy0
-from btgym.strategy.utils import tanh
+from btgym.research.strategy_gen_6.base import BaseStrategy6
 from btgym.research.model_based.model.bivariate import BivariatePriceModel
 
 
-class MonoSpreadOUStrategy_0(AutoStrategy0):
+class MonoSpreadOUStrategy_0(BaseStrategy6):
     """
     Expects spread as single generated data stream.
     """
@@ -115,9 +110,8 @@ class MonoSpreadOUStrategy_0(AutoStrategy0):
         leverage=1.0,
         gamma=0.99,             # fi_gamma, should match MDP gamma decay
         reward_scale=1,         # reward multiplicator
-        stat_alpha=0.1,         # renormalisation tracking decay in []0, 1]
-        drawdown_call=10,       # finish episode when hitting drawdown treshghold , in percent.
-        target_call=10,         # finish episode when reaching profit target, in percent.
+        norm_alpha=0.001,       # renormalisation tracking decay in []0, 1]
+        drawdown_call=10,       # finish episode when hitting drawdown treshghold, in percent.
         dataset_stat=None,      # Summary descriptive statistics for entire dataset and
         episode_stat=None,      # current episode. Got updated by server.
         time_dim=time_dim,      # time embedding period
@@ -605,20 +599,26 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
 
 class SSAStrategy_0(PairSpreadStrategy_0):
     """
-    Test TimeSeriesModel decomposition.
+    TimeSeriesModel decomposition based.
     """
     time_dim = 128
-    avg_period = 64
+    avg_period = 32
+    model_time_dim = 16
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
-
     features_parameters = None
     num_features = 3
+
     params = dict(
         state_shape={
-            'external': spaces.Box(low=-10, high=10, shape=(time_dim, 1, num_features), dtype=np.float32),
+            'external': DictSpace(
+                {
+                    'ssa': spaces.Box(low=-100, high=100, shape=(time_dim, 1, num_features), dtype=np.float32),
+                    'model': spaces.Box(low=-100, high=100, shape=(model_time_dim, 1, 12), dtype=np.float32),
+                }
+            ),
             'internal': spaces.Box(low=-100, high=100, shape=(avg_period, 1, 5), dtype=np.float32),
-            'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
-            'stat': spaces.Box(low=-1e8, high=1e8, shape=(3, 1), dtype=np.float32),
+            'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),  # not used
+            'stat': spaces.Box(low=-1e6, high=1e6, shape=(3, 1), dtype=np.float32),  # debug
             'metadata': DictSpace(
                 {
                     'type': spaces.Box(
@@ -690,7 +690,7 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         },
         data_model_params=dict(
             alpha=.001,
-            stat_alpha=.0001,
+            norm_alpha=.0001,
             filter_alpha=.05,
             max_length=time_dim * 2,
             analyzer_window=10,
@@ -704,9 +704,8 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         leverage=1.0,
         gamma=0.99,             # fi_gamma, should match MDP gamma decay
         reward_scale=1,         # reward multiplicator
-        stat_alpha=0.1,         # renormalisation tracking decay in []0, 1]
-        drawdown_call=10,       # finish episode when hitting drawdown treshghold , in percent.
-        target_call=10,         # finish episode when reaching profit target, in percent.
+        norm_alpha=0.001,       # renormalisation tracking decay in []0, 1]
+        drawdown_call=10,       # finish episode when hitting drawdown treshghold, in percent.
         dataset_stat=None,      # Summary descriptive statistics for entire dataset and
         episode_stat=None,      # current episode. Got updated by server.
         time_dim=time_dim,      # time embedding period
@@ -728,19 +727,22 @@ class SSAStrategy_0(PairSpreadStrategy_0):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        # Bivariate model:
         self.data_model = BivariatePriceModel(**self.p.data_model_params)
+
+        # Accumulators for 'model' observation mode:
+        self.external_model_state = np.zeros([self.model_time_dim, 1, 12])
 
     def set_datalines(self):
 
-        # Here spread is for and stat:
+        # Here spread is for plotting and norm. tracking:
         self.data.spread = btind.SimpleMovingAverage(self.datas[0] - self.datas[1], period=1)
         self.data.spread.plotinfo.subplot = True
         self.data.spread.plotinfo.plotabove = True
         self.data.spread.plotinfo.plotname = list(self.p.asset_names)[0]
 
         # Override stat line:
-        # TODO: use model P.process stat instead of data stat, override .get_normalisation()
-        # self.stat_asset = btind.SimpleMovingAverage(self.datas[0] + self.datas[1], period=1) / 2
         self.stat_asset = self.data.spread
 
         initial_time_period = self.p.time_dim
@@ -763,6 +765,15 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         self.data_model.reset(x_init)
 
     def get_external_state(self):
+        return dict(
+            ssa=self.get_external_ssa_state(),
+            model=self.get_external_model_state(),
+        )
+
+    def get_external_ssa_state(self):
+        """
+        Spread SSA decomposition.
+        """
         x_upd = np.stack(
             [
                 np.asarray(self.datas[0].get(size=self.p.skip_frame)),
@@ -787,4 +798,26 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         # Crop outliers:
         x_ssa = np.clip(x_ssa, -10, 10)
         return x_ssa[:, None, :-1]
+
+    def get_external_model_state(self):
+        """
+         Spread stochastic model parameters.
+        """
+        # TODO: cov to corr
+        state = self.data_model.s.process.get_state()
+        update = np.concatenate(
+            [
+                state.filtered.mean.flatten(),
+                state.filtered.covariance.flatten()
+            ]
+        )
+        self.external_model_state = np.concatenate(
+            [
+                self.external_model_state[1:, :, :],
+                update[None, None, :]
+            ],
+            axis=0
+        )
+        return self.external_model_state
+
 
