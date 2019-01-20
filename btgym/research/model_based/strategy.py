@@ -7,6 +7,7 @@ import numpy as np
 
 from btgym.research.strategy_gen_6.base import BaseStrategy6
 from btgym.research.model_based.model.bivariate import BivariatePriceModel
+from btgym.research.model_based.model.utils import cov2corr
 
 
 class MonoSpreadOUStrategy_0(BaseStrategy6):
@@ -602,7 +603,7 @@ class SSAStrategy_0(PairSpreadStrategy_0):
     TimeSeriesModel decomposition based.
     """
     time_dim = 128
-    avg_period = 32
+    avg_period = 16
     model_time_dim = 16
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
     features_parameters = None
@@ -613,10 +614,15 @@ class SSAStrategy_0(PairSpreadStrategy_0):
             'external': DictSpace(
                 {
                     'ssa': spaces.Box(low=-100, high=100, shape=(time_dim, 1, num_features), dtype=np.float32),
-                    'model': spaces.Box(low=-100, high=100, shape=(model_time_dim, 1, 12), dtype=np.float32),
+
                 }
             ),
-            'internal': spaces.Box(low=-100, high=100, shape=(avg_period, 1, 5), dtype=np.float32),
+            'internal': DictSpace(
+                {
+                    'broker': spaces.Box(low=-100, high=100, shape=(avg_period, 1, 5), dtype=np.float32),
+                    'model': spaces.Box(low=-100, high=100, shape=(model_time_dim, 1, 9), dtype=np.float32),
+                }
+            ),
             'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),  # not used
             'stat': spaces.Box(low=-1e6, high=1e6, shape=(3, 1), dtype=np.float32),  # debug
             'metadata': DictSpace(
@@ -732,7 +738,7 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         self.data_model = BivariatePriceModel(**self.p.data_model_params)
 
         # Accumulators for 'model' observation mode:
-        self.external_model_state = np.zeros([self.model_time_dim, 1, 12])
+        self.external_model_state = np.zeros([self.model_time_dim, 1, 9])
 
     def set_datalines(self):
 
@@ -767,7 +773,12 @@ class SSAStrategy_0(PairSpreadStrategy_0):
     def get_external_state(self):
         return dict(
             ssa=self.get_external_ssa_state(),
-            model=self.get_external_model_state(),
+        )
+
+    def get_internal_state(self):
+        return dict(
+            broker=self.get_internal_broker_state(),
+            model=self.get_data_model_state(),
         )
 
     def get_external_ssa_state(self):
@@ -792,23 +803,23 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         # # Add up: gradient  along time axis:
         # # dx2 = np.gradient(dx, axis=0)
         #
-        # # TODO: different conv. encoders for these two types of features:
         # x = np.concatenate([x_ssa_bank, dx], axis=-1)
 
         # Crop outliers:
         x_ssa = np.clip(x_ssa, -10, 10)
         return x_ssa[:, None, :-1]
 
-    def get_external_model_state(self):
+    def get_data_model_state(self):
         """
          Spread stochastic model parameters.
         """
-        # TODO: cov to corr
         state = self.data_model.s.process.get_state()
+        cross_corr = cov2corr(state.filtered.covariance)[[0, 0, 1], [1, 2, 2]]
         update = np.concatenate(
             [
                 state.filtered.mean.flatten(),
-                state.filtered.covariance.flatten()
+                state.filtered.variance.flatten(),
+                cross_corr,
             ]
         )
         self.external_model_state = np.concatenate(
@@ -819,5 +830,14 @@ class SSAStrategy_0(PairSpreadStrategy_0):
             axis=0
         )
         return self.external_model_state
+
+    def get_internal_broker_state(self):
+        stat_lines = ('value', 'unrealized_pnl', 'realized_pnl', 'cash', 'exposure')
+        x_broker = np.stack(
+            [np.asarray(self.broker_stat[name]) for name in stat_lines],
+            axis=-1
+        )
+        # x_broker = np.gradient(x_broker, axis=-1)
+        return np.clip(x_broker[:, None, :], -100, 100)
 
 

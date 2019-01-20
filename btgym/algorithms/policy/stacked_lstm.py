@@ -35,7 +35,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                  action_dp_alpha=200.0,
                  aux_estimate=False,
                  encode_internal_state=False,
-                 static_rnn=False,
+                 static_rnn=True,
                  shared_p_v=False,
                  **kwargs):
         """
@@ -74,7 +74,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.action_dp_alpha = action_dp_alpha
         self.aux_estimate = aux_estimate
         self.callback = {}
-        self.encode_internal_state = encode_internal_state
+        # self.encode_internal_state = encode_internal_state
         self.share_encoder_params = share_encoder_params
         if self.share_encoder_params:
             self.reuse_encoder_params = tf.AUTO_REUSE
@@ -146,50 +146,54 @@ class StackedLstmPolicy(BaseAacPolicy):
                 kwargs[key] = default_value
 
         # Base on-policy AAC network:
-
-        # Separately encode than concatenate all `external` states modes, jointly encode every stream within mode:
+        self.modes_to_encode = ['external', 'internal']
+        for mode in self.modes_to_encode:
+            assert mode in self.on_state_in.keys(), \
+                'Required top-level mode `{}` not found in state shape specification'.format(mode)
+        # Separately encode than concatenate all `external` and 'internal' states modes,
+        # [jointly] encode every stream within mode:
         self.on_aac_x_encoded = {}
-        for key in self.on_state_in.keys():
-            if 'external' in key:
-                if isinstance(self.on_state_in[key], dict):  # got dictionary of data streams
-                    if self.share_encoder_params:
-                        layer_name_template = 'encoded_{}_shared'
-                    else:
-                        layer_name_template = 'encoded_{}_{}'
-                    encoded_streams = {
-                        name: tf.layers.flatten(
-                            self.state_encoder_class_ref(
-                                x=stream,
-                                ob_space=self.ob_space.shape[key][name],
-                                ac_space=self.ac_space,
-                                name=layer_name_template.format(key, name),
-                                reuse=self.reuse_encoder_params,  # shared params for all streams in mode
-                                **kwargs
-                            )
-                        )
-                        for name, stream in self.on_state_in[key].items()
-                    }
-                    encoded_mode = tf.concat(
-                        list(encoded_streams.values()),
-                        axis=-1,
-                        name='multi_encoded_{}'.format(key)
-                    )
+        for key in self.modes_to_encode:
+            if isinstance(self.on_state_in[key], dict):  # got dictionary of data streams
+                if self.share_encoder_params:
+                    layer_name_template = 'encoded_{}_shared'
                 else:
-                    # Got single data stream:
-                    encoded_mode = tf.layers.flatten(
+                    layer_name_template = 'encoded_{}_{}'
+                encoded_streams = {
+                    name: tf.layers.flatten(
                         self.state_encoder_class_ref(
-                            x=self.on_state_in[key],
-                            ob_space=self.ob_space.shape[key],
+                            x=stream,
+                            ob_space=self.ob_space.shape[key][name],
                             ac_space=self.ac_space,
-                            name='encoded_{}'.format(key),
+                            name=layer_name_template.format(key, name),
+                            reuse=self.reuse_encoder_params,  # shared params for all streams in mode
                             **kwargs
                         )
                     )
-                self.on_aac_x_encoded[key] = encoded_mode
+                    for name, stream in self.on_state_in[key].items()
+                }
+                encoded_mode = tf.concat(
+                    list(encoded_streams.values()),
+                    axis=-1,
+                    name='multi_encoded_{}'.format(key)
+                )
+            else:
+                # Got single data stream:
+                encoded_mode = tf.layers.flatten(
+                    self.state_encoder_class_ref(
+                        x=self.on_state_in[key],
+                        ob_space=self.ob_space.shape[key],
+                        ac_space=self.ac_space,
+                        name='encoded_{}'.format(key),
+                        **kwargs
+                    )
+                )
+            self.on_aac_x_encoded[key] = encoded_mode
 
         self.debug['on_state_external_encoded_dict'] = self.on_aac_x_encoded
 
-        on_aac_x = tf.concat(list(self.on_aac_x_encoded.values()), axis=-1, name='on_state_external_encoded')
+        # on_aac_x = tf.concat(list(self.on_aac_x_encoded.values()), axis=-1, name='on_state_external_encoded')
+        on_aac_x = self.on_aac_x_encoded['external']
 
         self.debug['on_state_external_encoded'] = on_aac_x
 
@@ -214,34 +218,46 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         on_aac_x = tf.reshape(on_aac_x, [self.on_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
 
-        # Prepare `internal` state, if any:
-        if 'internal' in list(self.on_state_in.keys()):
-            if self.encode_internal_state:
-                # Use convolution encoder:
-                on_x_internal = self.state_encoder_class_ref(
-                    x=self.on_state_in['internal'],
-                    ob_space=self.ob_space.shape['internal'],
-                    ac_space=self.ac_space,
-                    name='encoded_internal',
-                    **kwargs
-                )
-                x_int_shape_static = on_x_internal.get_shape().as_list()
-                on_x_internal = [
-                    tf.reshape(on_x_internal, [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])])]
-                self.debug['on_state_internal_encoded'] = on_x_internal
+        # # Prepare `internal` state, if any:
+        # if 'internal' in list(self.on_state_in.keys()):
+        #     if self.encode_internal_state:
+        #         # Use convolution encoder:
+        #         on_x_internal = self.state_encoder_class_ref(
+        #             x=self.on_state_in['internal'],
+        #             ob_space=self.ob_space.shape['internal'],
+        #             ac_space=self.ac_space,
+        #             name='encoded_internal',
+        #             **kwargs
+        #         )
+        #         x_int_shape_static = on_x_internal.get_shape().as_list()
+        #         on_x_internal = [
+        #             tf.reshape(on_x_internal, [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])])]
+        #         self.debug['on_state_internal_encoded'] = on_x_internal
+        #
+        #     else:
+        #         # Feed as is:
+        #         x_int_shape_static = self.on_state_in['internal'].get_shape().as_list()
+        #         on_x_internal = tf.reshape(
+        #             self.on_state_in['internal'],
+        #             [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
+        #         )
+        #         self.debug['on_state_internal_encoded'] = on_x_internal
+        #         on_x_internal = [on_x_internal]
+        #
+        # else:
+        #     on_x_internal = []
 
-            else:
-                # Feed as is:
-                x_int_shape_static = self.on_state_in['internal'].get_shape().as_list()
-                on_x_internal = tf.reshape(
-                    self.on_state_in['internal'],
-                    [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
-                )
-                self.debug['on_state_internal_encoded'] = on_x_internal
-                on_x_internal = [on_x_internal]
+        on_x_internal = self.on_aac_x_encoded['internal']
 
-        else:
-            on_x_internal = []
+        # Reshape to feed LSTM2:
+        x_int_shape_static = on_x_internal.get_shape().as_list()
+        on_x_internal = tf.reshape(
+            on_x_internal,
+            [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
+        )
+        self.debug['on_state_internal_encoded'] = on_x_internal
+
+        on_x_internal = [on_x_internal]
 
         # Prepare datetime index if any:
         if 'datetime' in list(self.on_state_in.keys()):
@@ -366,46 +382,47 @@ class StackedLstmPolicy(BaseAacPolicy):
         self.on_lstm_state_pl_flatten = self.on_lstm_1_state_pl_flatten + self.on_lstm_2_state_pl_flatten
 
         self.off_aac_x_encoded = {}
-        for key in self.off_state_in.keys():
-            if 'external' in key:
-                if isinstance(self.off_state_in[key], dict):  # got dictionary of data streams
-                    if self.share_encoder_params:
-                        layer_name_template = 'encoded_{}_shared'
-                    else:
-                        layer_name_template = 'encoded_{}_{}'
-                    encoded_streams = {
-                        name: tf.layers.flatten(
-                            self.state_encoder_class_ref(
-                                x=stream,
-                                ob_space=self.ob_space.shape[key][name],
-                                ac_space=self.ac_space,
-                                name=layer_name_template.format(key, name),
-                                reuse=True,  # shared params for all streams in mode
-                                **kwargs
-                            )
-                        )
-                        for name, stream in self.off_state_in[key].items()
-                    }
-                    encoded_mode = tf.concat(
-                        list(encoded_streams.values()),
-                        axis=-1,
-                        name='multi_encoded_{}'.format(key)
-                    )
+        for key in self.modes_to_encode:
+            if isinstance(self.off_state_in[key], dict):  # got dictionary of data streams
+                if self.share_encoder_params:
+                    layer_name_template = 'encoded_{}_shared'
                 else:
-                    # Got single data stream:
-                    encoded_mode = tf.layers.flatten(
+                    layer_name_template = 'encoded_{}_{}'
+                encoded_streams = {
+                    name: tf.layers.flatten(
                         self.state_encoder_class_ref(
-                            x=self.off_state_in[key],
-                            ob_space=self.ob_space.shape[key],
+                            x=stream,
+                            ob_space=self.ob_space.shape[key][name],
                             ac_space=self.ac_space,
-                            name='encoded_{}'.format(key),
-                            reuse=True,
+                            name=layer_name_template.format(key, name),
+                            reuse=True,  # shared params for all streams in mode
                             **kwargs
                         )
                     )
-                self.off_aac_x_encoded[key] = encoded_mode
+                    for name, stream in self.off_state_in[key].items()
+                }
+                encoded_mode = tf.concat(
+                    list(encoded_streams.values()),
+                    axis=-1,
+                    name='multi_encoded_{}'.format(key)
+                )
+            else:
+                # Got single data stream:
+                encoded_mode = tf.layers.flatten(
+                    self.state_encoder_class_ref(
+                        x=self.off_state_in[key],
+                        ob_space=self.ob_space.shape[key],
+                        ac_space=self.ac_space,
+                        name='encoded_{}'.format(key),
+                        reuse=True,
+                        **kwargs
+                    )
+                )
+            self.off_aac_x_encoded[key] = encoded_mode
 
-        off_aac_x = tf.concat(list(self.off_aac_x_encoded.values()), axis=-1, name='off_state_external_encoded')
+        # off_aac_x = tf.concat(list(self.off_aac_x_encoded.values()), axis=-1, name='off_state_external_encoded')
+
+        off_aac_x = self.off_aac_x_encoded['external']
 
         # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
         x_shape_dynamic = tf.shape(off_aac_x)
@@ -420,32 +437,43 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         off_aac_x = tf.reshape( off_aac_x, [self.off_batch_size, max_seq_len, np.prod(x_shape_static[1:])])
 
-        # Prepare `internal` state, if any:
-        if 'internal' in list(self.off_state_in.keys()):
-            if self.encode_internal_state:
-                # Use convolution encoder:
-                off_x_internal = self.state_encoder_class_ref(
-                    x=self.off_state_in['internal'],
-                    ob_space=self.ob_space.shape['internal'],
-                    ac_space=self.ac_space,
-                    name='encoded_internal',
-                    reuse=True,
-                    **kwargs
-                )
-                x_int_shape_static = off_x_internal.get_shape().as_list()
-                off_x_internal = [
-                    tf.reshape(off_x_internal, [self.off_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])])
-                ]
-            else:
-                x_int_shape_static = self.off_state_in['internal'].get_shape().as_list()
-                off_x_internal = tf.reshape(
-                    self.off_state_in['internal'],
-                    [self.off_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
-                )
-                off_x_internal = [off_x_internal]
+        # # Prepare `internal` state, if any:
+        # if 'internal' in list(self.off_state_in.keys()):
+        #     if self.encode_internal_state:
+        #         # Use convolution encoder:
+        #         off_x_internal = self.state_encoder_class_ref(
+        #             x=self.off_state_in['internal'],
+        #             ob_space=self.ob_space.shape['internal'],
+        #             ac_space=self.ac_space,
+        #             name='encoded_internal',
+        #             reuse=True,
+        #             **kwargs
+        #         )
+        #         x_int_shape_static = off_x_internal.get_shape().as_list()
+        #         off_x_internal = [
+        #             tf.reshape(off_x_internal, [self.off_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])])
+        #         ]
+        #     else:
+        #         x_int_shape_static = self.off_state_in['internal'].get_shape().as_list()
+        #         off_x_internal = tf.reshape(
+        #             self.off_state_in['internal'],
+        #             [self.off_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
+        #         )
+        #         off_x_internal = [off_x_internal]
+        #
+        # else:
+        #     off_x_internal = []
 
-        else:
-            off_x_internal = []
+        off_x_internal = self.off_aac_x_encoded['internal']
+
+        x_int_shape_static = off_x_internal.get_shape().as_list()
+
+        # Properly feed LSTM2:
+        off_x_internal = tf.reshape(
+            off_x_internal,
+            [self.off_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
+        )
+        off_x_internal = [off_x_internal]
 
         if 'datetime' in list(self.off_state_in.keys()):
             x_dt_shape_static = self.off_state_in['datetime'].get_shape().as_list()
