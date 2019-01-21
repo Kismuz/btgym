@@ -607,7 +607,7 @@ class SSAStrategy_0(PairSpreadStrategy_0):
     model_time_dim = 16
     portfolio_actions = ('hold', 'buy', 'sell', 'close')
     features_parameters = None
-    num_features = 3
+    num_features = 4
 
     params = dict(
         state_shape={
@@ -700,7 +700,8 @@ class SSAStrategy_0(PairSpreadStrategy_0):
             filter_alpha=.05,
             max_length=time_dim * 2,
             analyzer_window=10,
-            analyzer_grouping=[[0, 1], [1, 2], [2, 3], [3, None]],
+            p_analyzer_grouping=[[0, 1], [1, 2], [2, 3], [3, None]],
+            s_analyzer_grouping=[[0, 1], [1, 2], [2, 3], [3, None]]
         ),
         cash_name='default_cash',
         asset_names=['default_asset'],
@@ -807,7 +808,7 @@ class SSAStrategy_0(PairSpreadStrategy_0):
 
         # Crop outliers:
         x_ssa = np.clip(x_ssa, -10, 10)
-        return x_ssa[:, None, :-1]
+        return x_ssa[:, None, :]
 
     def get_data_model_state(self):
         """

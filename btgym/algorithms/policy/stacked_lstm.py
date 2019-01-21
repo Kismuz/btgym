@@ -150,6 +150,7 @@ class StackedLstmPolicy(BaseAacPolicy):
         for mode in self.modes_to_encode:
             assert mode in self.on_state_in.keys(), \
                 'Required top-level mode `{}` not found in state shape specification'.format(mode)
+
         # Separately encode than concatenate all `external` and 'internal' states modes,
         # [jointly] encode every stream within mode:
         self.on_aac_x_encoded = {}
@@ -249,7 +250,7 @@ class StackedLstmPolicy(BaseAacPolicy):
 
         on_x_internal = self.on_aac_x_encoded['internal']
 
-        # Reshape to feed LSTM2:
+        # Reshape to batch-feed rnn:
         x_int_shape_static = on_x_internal.get_shape().as_list()
         on_x_internal = tf.reshape(
             on_x_internal,
