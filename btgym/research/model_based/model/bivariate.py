@@ -169,6 +169,7 @@ class BivariateTSModel:
         assert u.shape == (2, 2), 'Expected U as 2x2 matrix, got: {}'.format(u.shape)
 
         # Z-score data:
+        # Mind swapped STD!
         norm_data = (trajectory - mean[:, None]) / np.clip(variance[:, None], 1e-8, None) ** .5
         ps_decomposition = np.matmul(u, norm_data)
 

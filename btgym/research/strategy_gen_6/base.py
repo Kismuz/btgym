@@ -323,7 +323,7 @@ class BaseStrategy6(bt.Strategy):
         self.set_datalines()
 
         # Normalisation statistics estimator (updated via update_broker_stat.()):
-        self.norm_estimator = Zscore(1, alpha=self.p.norm_alpha)
+        self.norm_stat_tracker = Zscore(1, alpha=self.p.norm_alpha)
         self.normalisation_state = NormalisationState(0, 0, .9, 1.1)
 
         # State exp. smoothing params:
@@ -377,7 +377,7 @@ class BaseStrategy6(bt.Strategy):
             self.update_broker_stat()
 
         elif self.pre_iteration + 2 == self.p.time_dim - self.avg_period:
-            _ = self.norm_estimator.reset(
+            _ = self.norm_stat_tracker.reset(
                 np.asarray(self.stat_asset.get(size=self.data.close.buflen()))[None, :]
             )
 
@@ -475,8 +475,9 @@ class BaseStrategy6(bt.Strategy):
             instance of NormalisationState tuple
         """
         # Update normalizer stat:
-        stat_data = np.asarray(self.stat_asset.get(size=self.p.skip_frame))
-        mean, var = self.norm_estimator.update(stat_data[None, :])
+        stat_data = np.asarray(self.stat_asset.get(size=1))
+        mean, var = self.norm_stat_tracker.update(stat_data[None, :])
+        var = np.clip(var, 1e-8, None)
 
         # Use 99% N(stat_data_mean, stat_data_std) intervals as normalisation interval:
         intervals = stats.norm.interval(.99, mean, var ** .5)
@@ -682,7 +683,7 @@ class BaseStrategy6(bt.Strategy):
         return self.raw_state
 
     def get_stat_state(self):
-        return np.asarray(self.norm_estimator.get_state())
+        return np.asarray(self.norm_stat_tracker.get_state())
 
     def get_internal_state(self):
         stat_lines = ('value', 'unrealized_pnl', 'realized_pnl', 'cash', 'exposure')
@@ -810,7 +811,7 @@ class BaseStrategy6(bt.Strategy):
         realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
 
         # Weights are subject to tune:
-        self.reward = (1.0 * f1 + 1.0 * realized_pnl) * self.p.reward_scale
+        self.reward = (0.1 * f1 + 1.0 * realized_pnl) * self.p.reward_scale
         # self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
         self.reward = np.clip(self.reward, -1e3, 1e3)
 

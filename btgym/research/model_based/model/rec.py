@@ -468,8 +468,8 @@ class Covariance:
         """
         self.stat = Zscore(dim, alpha)
         self.covariance = None
-        self.mean = None
-        self.variance = None
+        self.mean = self.stat.mean
+        self.variance = self.stat.variance
 
     def get_state(self):
         """

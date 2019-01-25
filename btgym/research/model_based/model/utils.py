@@ -245,7 +245,9 @@ def log_stat2stat(log_mean, log_variance):
     mean = np.exp(log_mean + 0.5 * log_variance)
     variance = mean**2 * (np.exp(log_variance) - 1)
 
-    return  mean, variance
+    return mean, variance
+
+
 
 
 
