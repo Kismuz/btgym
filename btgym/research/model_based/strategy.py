@@ -902,6 +902,20 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         )
         return self.normalisation_state
 
+    def get_order_sizes(self):
+        """
+        Estimates current order sizes for assets in trade, updates attribute.
+
+        Returns:
+            array-like of floats
+        """
+        s = self.norm_stat_tracker_2.get_state()
+        self.current_order_sizes = np.asarray(
+            self.spread_sizer.get_sizing(self.env.broker.get_value(), s.mean, s.variance),
+            dtype=np.float
+        )
+        return self.current_order_sizes
+
     def get_external_state(self):
         return dict(
             ssa=self.get_external_ssa_state(),
@@ -978,9 +992,8 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         """
         Opens or adds up long spread `virtual position`.
         """
-        # mean, variance = log_stat2stat(self.data_model.stat.mean, self.data_model.stat.variance)
-        s = self.norm_stat_tracker_2.get_state()
-        size_0, size_1 = self.spread_sizer.get_sizing(self.env.broker.get_value(), s.mean, s.variance)
+        # Get current sizes (updated via self.update_broker_stat):
+        size_0, size_1 = self.current_order_sizes[0], self.current_order_sizes[1]
 
         if self.spread_position_size >= 0:
             if not self.can_add_up(size_0, size_1):
@@ -1003,9 +1016,7 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         # self.log.warning('long spread submitted, new pos. size: {}'.format(self.spread_position_size))
 
     def short_spread(self):
-        # mean, variance = log_stat2stat(self.data_model.stat.mean, self.data_model.stat.variance)
-        s = self.norm_stat_tracker_2.get_state()
-        size_0, size_1 = self.spread_sizer.get_sizing(self.env.broker.get_value(), s.mean, s.variance)
+        size_0, size_1 = self.current_order_sizes[0], self.current_order_sizes[1]
 
         if self.spread_position_size <= 0:
             if not self.can_add_up(size_0, size_1):
@@ -1045,8 +1056,8 @@ class SSAStrategy_0(PairSpreadStrategy_0):
             True if possible, False otherwise
         """
         if order_1_size is None or order_0_size is None:
-            order_0_size = self.p.order_size[self.datas[0]._name]
-            order_1_size = self.p.order_size[self.datas[1]._name]
+            order_0_size = self.current_order_sizes[0]
+            order_1_size = self.current_order_sizes[1]
 
         # Get full operation cost:
         # TODO: it can be two commissions schemes
