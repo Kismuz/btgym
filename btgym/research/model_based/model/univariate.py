@@ -28,7 +28,7 @@ class OUProcess:
         # Driver is Student-t:
         self.driver_estimator = STEstimator(alpha)
 
-        # Empirical statistics tracker (mostly for accuracy checking, not included in OUProcessState):
+        # Empirical statistics tracker (debug, mostly for accuracy checking, not included in OUProcessState):
         self.stat = Zscore(1, alpha)
 
         self.is_ready = False
@@ -61,14 +61,18 @@ class OUProcess:
             sigma:      iterable of positive floats as [lower_bound, upper_bound], OU Sigma sampling interval
             driver_df:  iterable of positive floats as [lower_bound > 2, upper_bound],
                         student-t driver degrees of freedom sampling interval
-            variance:   filtered observation variance (same fixed for all params., covariance assumed diagonal)
+            variance:   filtered observation variance (same and fixed for all params., covariance assumed diagonal)
 
         Returns:
             instance of OUProcessState
         """
+        # TODO: random log-uniform sampling for mu, theta, sigma i.f.f. log_prices are used as in BivariatePriceModel
         sample = dict()
         for name, param, low_threshold in zip(
-                ['mu', 'theta', 'sigma', 'driver_df'], [mu, theta, sigma, driver_df], [-np.inf, 1e-8, 1e-8, 2.999]):
+                ['mu', 'theta', 'sigma', 'driver_df'],
+                [mu, theta, sigma, driver_df],
+                [-np.inf, 1e-8, 1e-8, 2.999],
+        ):
             interval = np.asarray(param)
             assert interval.ndim == 1 and interval[0] <= interval[-1], \
                 ' Expected param `{}` as iterable of ordered values as: [lower_bound, upper_bound], got: {}'.format(

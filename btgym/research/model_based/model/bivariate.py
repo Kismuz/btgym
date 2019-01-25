@@ -129,7 +129,7 @@ class BivariateTSModel:
         # Correlation matrix instead of covariance - it is ok as it gets normalized when sampling anyway:
         rho = np.eye(2)
         rho[0, 1] = rho[1, 0] = sample['ps_corrcoef'][0]
-
+        # TODO: log-uniform sampling for s, p params
         return BivariateTSModelState(
             p=TimeSeriesModel.get_random_state(**p_params),
             s=TimeSeriesModel.get_random_state(**s_params),

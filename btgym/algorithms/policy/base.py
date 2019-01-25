@@ -276,15 +276,18 @@ class BaseAacPolicy(object):
         sess = tf.get_default_session()
         return sess.run(self.on_lstm_init_state)
 
-    def act(self, observation, lstm_state, last_action, last_reward):
+    def act(self, observation, lstm_state, last_action, last_reward, deterministic=False):
         """
-        Predicts action.
+        Emits action.
 
         Args:
             observation:    dictionary containing single observation
             lstm_state:     lstm context value
             last_action:    action value from previous step
             last_reward:    reward value previous step
+            deterministic:  bool, it True - act deterministically,
+                            use random sampling otherwise (default);
+                            effective for discrete action sapce only (TODO: continious)
 
         Returns:
             Action as dictionary of several action encodings, actions logits, V-fn value, output RNN state
@@ -302,17 +305,21 @@ class BaseAacPolicy(object):
                     self.train_phase: False
                 }
             )
-            # action_one_hot, logits, value, context = sess.run(
-            #     [self.on_sample, self.on_logits, self.on_vf, self.on_lstm_state_out],
-            #     feeder
-            # )
-            # return action_one_hot, logits, value, context
             logits, value, context = sess.run([self.on_logits, self.on_vf, self.on_lstm_state_out], feeder)
             logits = logits[0, ...]
             if self.ac_space.is_discrete:
-                # Use multinomial to get sample (discrete):
-                sample = np.random.multinomial(1, softmax(logits))
+                if deterministic:
+                    sample = softmax(logits)
+
+                else:
+                    # Use multinomial to get sample (discrete):
+                    sample = np.random.multinomial(1, softmax(logits))
+
+                # print('ploicy_determ: {}, logits: {}, sample: {}'.format(deterministic, logits, sample))
+
                 sample = self.ac_space._cat_to_vec(np.argmax(sample))
+
+                # print('policy_sample_vector: ', sample)
 
             else:
                 # Use DP to get sample (continuous):
@@ -378,7 +385,8 @@ class BaseAacPolicy(object):
 
         return sess.run(self.pc_target, feeder)[0,...,0]
 
-    def get_sample_config(self):
+    @staticmethod
+    def get_sample_config(*args, **kwargs):
         """
         Dummy implementation.
 
