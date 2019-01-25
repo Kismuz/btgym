@@ -363,7 +363,7 @@
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;class_ref&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
         <span class="c1"># Make cluster specification dict:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_cluster_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_cluster_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_config</span><span class="p">)</span>
 
         <span class="c1"># Configure workers:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">workers_config_list</span> <span class="o">=</span> <span class="p">[]</span>
@@ -417,7 +417,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">clear_port</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">][</span><span class="s1">&#39;data_port&#39;</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Launcher ready.&#39;</span><span class="p">)</span>
 
-<div class="viewcode-block" id="Launcher._make_cluster_spec"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.launcher.Launcher._make_cluster_spec">[docs]</a>    <span class="k">def</span> <span class="nf">_make_cluster_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+<div class="viewcode-block" id="Launcher.make_cluster_spec"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.launcher.Launcher.make_cluster_spec">[docs]</a>    <span class="k">def</span> <span class="nf">make_cluster_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Composes cluster specification dictionary.</span>
 <span class="sd">        &quot;&quot;&quot;</span>

@@ -189,36 +189,41 @@
 
 <span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">StreamHandler</span>
 <span class="kn">import</span> <span class="nn">sys</span>
-<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="s1">&#39;..&#39;</span><span class="p">)</span>
-
 <span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">import</span> <span class="nn">multiprocessing</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
 
-<span class="kn">import</span> <span class="nn">cv2</span>
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
-<span class="n">tf</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_verbosity</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span> <span class="c1"># suppress tf.train.MonitoredTrainingSession deprecation warning</span>
-<span class="c1"># TODO: switch to tf.train.MonitoredTrainingSession</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;..&#39;</span><span class="p">)</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_verbosity</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
 
 
-<span class="k">class</span> <span class="nc">_FastSaver</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Saver</span><span class="p">):</span>
+<div class="viewcode-block" id="FastSaver"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.worker.FastSaver">[docs]</a><span class="k">class</span> <span class="nc">FastSaver</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Saver</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Disables write_meta_graph argument,</span>
 <span class="sd">    which freezes entire process and is mostly useless.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-             <span class="n">sess</span><span class="p">,</span>
-             <span class="n">save_path</span><span class="p">,</span>
-             <span class="n">global_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-             <span class="n">latest_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-             <span class="n">meta_graph_suffix</span><span class="o">=</span><span class="s2">&quot;meta&quot;</span><span class="p">,</span>
-             <span class="n">write_meta_graph</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">_FastSaver</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span>
-                                     <span class="n">save_path</span><span class="p">,</span>
-                                     <span class="n">global_step</span><span class="p">,</span>
-                                     <span class="n">latest_filename</span><span class="p">,</span>
-                                     <span class="n">meta_graph_suffix</span><span class="p">,</span>
-                                     <span class="kc">False</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">sess</span><span class="p">,</span>
+        <span class="n">save_path</span><span class="p">,</span>
+        <span class="n">global_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">latest_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">meta_graph_suffix</span><span class="o">=</span><span class="s2">&quot;meta&quot;</span><span class="p">,</span>
+        <span class="n">write_meta_graph</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">write_state</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">strip_default_attrs</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">FastSaver</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span>
+            <span class="n">sess</span><span class="p">,</span>
+            <span class="n">save_path</span><span class="p">,</span>
+            <span class="n">global_step</span><span class="p">,</span>
+            <span class="n">latest_filename</span><span class="p">,</span>
+            <span class="n">meta_graph_suffix</span><span class="p">,</span>
+            <span class="n">write_meta_graph</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Worker"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.worker.Worker">[docs]</a><span class="k">class</span> <span class="nc">Worker</span><span class="p">(</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">Process</span><span class="p">):</span>
@@ -237,6 +242,9 @@
                  <span class="n">job_name</span><span class="p">,</span>
                  <span class="n">task</span><span class="p">,</span>
                  <span class="n">log_dir</span><span class="p">,</span>
+                 <span class="n">log_ckpt_subdir</span><span class="p">,</span>
+                 <span class="n">initial_ckpt_dir</span><span class="p">,</span>
+                 <span class="n">save_secs</span><span class="p">,</span>
                  <span class="n">log_level</span><span class="p">,</span>
                  <span class="n">max_env_steps</span><span class="p">,</span>
                  <span class="n">random_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -245,18 +253,21 @@
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            env_config:         environment class_config_dict.</span>
-<span class="sd">            policy_config:      model policy estimator class_config_dict.</span>
-<span class="sd">            trainer_config:     algorithm class_config_dict.</span>
-<span class="sd">            cluster_spec:       tf.cluster specification.</span>
-<span class="sd">            job_name:           worker or parameter server.</span>
-<span class="sd">            task:               integer number, 0 is chief worker.</span>
-<span class="sd">            log_dir:            for tb summaries and checkpoints.</span>
-<span class="sd">            log_level:          int, logbook.level</span>
-<span class="sd">            max_env_steps:      number of environment steps to run training on</span>
-<span class="sd">            random_seed:        int or None</span>
-<span class="sd">            render_last_env:    bool, if True - render enabled for last environment in a list; first otherwise</span>
-<span class="sd">            test_mode:          if True - use Atari mode, BTGym otherwise.</span>
+<span class="sd">            env_config:             environment class_config_dict.</span>
+<span class="sd">            policy_config:          model policy estimator class_config_dict.</span>
+<span class="sd">            trainer_config:         algorithm class_config_dict.</span>
+<span class="sd">            cluster_spec:           tf.cluster specification.</span>
+<span class="sd">            job_name:               worker or parameter server.</span>
+<span class="sd">            task:                   integer number, 0 is chief worker.</span>
+<span class="sd">            log_dir:                path for tb summaries and current checkpoints.</span>
+<span class="sd">            log_ckpt_subdir:        log_dir subdirectory to store current checkpoints</span>
+<span class="sd">            initial_ckpt_dir:       path for checkpoint to load as pre-trained model.</span>
+<span class="sd">            save_secs:              int, save model checkpoint every N secs.</span>
+<span class="sd">            log_level:              int, logbook.level</span>
+<span class="sd">            max_env_steps:          number of environment steps to run training on</span>
+<span class="sd">            random_seed:            int or None</span>
+<span class="sd">            render_last_env:        bool, if True - render enabled for last environment in a list; first otherwise</span>
+<span class="sd">            test_mode:              if True - use Atari mode, BTGym otherwise.</span>
 
 <span class="sd">            Note:</span>
 <span class="sd">                - Conventional `self.global_step` refers to number of environment steps,</span>
@@ -278,7 +289,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span> <span class="o">=</span> <span class="n">cluster_spec</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">job_name</span> <span class="o">=</span> <span class="n">job_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_chief</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">=</span> <span class="n">log_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_secs</span> <span class="o">=</span> <span class="n">save_secs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_env_steps</span> <span class="o">=</span> <span class="n">max_env_steps</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="kc">None</span>
@@ -286,188 +299,286 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="o">=</span> <span class="n">random_seed</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">render_last_env</span> <span class="o">=</span> <span class="n">render_last_env</span>
 
+        <span class="c1"># Saver and summaries path:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_ckpt_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">+</span> <span class="n">log_ckpt_subdir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_ckpt_dir</span> <span class="o">=</span> <span class="n">initial_ckpt_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">summary_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">+</span> <span class="s1">&#39;/worker_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+
+        <span class="c1"># print(log_ckpt_subdir)</span>
+        <span class="c1"># print(self.log_dir)</span>
+        <span class="c1"># print(self.current_ckpt_dir)</span>
+        <span class="c1"># print(self.initial_ckpt_dir)</span>
+        <span class="c1"># print(self.summary_dir)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saver</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_restore_model_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">save_path</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Restores model parameters from specified location.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sess:       tf.Session obj.</span>
+<span class="sd">            save_path:  path where parameters were previously saved.</span>
+
+<span class="sd">        Returns: True if model has been successfully loaded, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">save_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">saver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;FastSaver has not been configured.&#39;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Look for valid checkpoint:</span>
+            <span class="n">ckpt_state</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">get_checkpoint_state</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ckpt_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ckpt_state</span><span class="o">.</span><span class="n">model_checkpoint_path</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">saver</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">ckpt_state</span><span class="o">.</span><span class="n">model_checkpoint_path</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;no saved model parameters found in:</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">save_path</span><span class="p">))</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">NotFoundError</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">InvalidArgumentError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;failed to restore model parameters from:</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">save_path</span><span class="p">))</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">_save_model_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">global_step</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Saves model checkpoint to predefined location.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sess:           tf.Session obj.</span>
+<span class="sd">            global_step:    global step number is appended to save_path to create the checkpoint filenames</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">saver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;FastSaver has not been configured.&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saver</span><span class="o">.</span><span class="n">save</span><span class="p">(</span>
+            <span class="n">sess</span><span class="p">,</span>
+            <span class="n">save_path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_ckpt_dir</span> <span class="o">+</span> <span class="s1">&#39;/model_parameters&#39;</span><span class="p">,</span>
+            <span class="n">global_step</span><span class="o">=</span><span class="n">global_step</span>
+        <span class="p">)</span>
+
 <div class="viewcode-block" id="Worker.run"><a class="viewcode-back" href="../../../btgym.algorithms.html#btgym.algorithms.worker.Worker.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Worker runtime body.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Logging:</span>
         <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;Worker_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">reset_default_graph</span><span class="p">()</span>
 
-        <span class="n">tf</span><span class="o">.</span><span class="n">reset_default_graph</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
+                <span class="kn">import</span> <span class="nn">gym</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
-            <span class="kn">import</span> <span class="nn">gym</span>
+            <span class="c1"># Define cluster:</span>
+            <span class="n">cluster</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">ClusterSpec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span><span class="p">)</span><span class="o">.</span><span class="n">as_cluster_def</span><span class="p">()</span>
 
-        <span class="c1"># Define cluster:</span>
-        <span class="n">cluster</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">ClusterSpec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span><span class="p">)</span><span class="o">.</span><span class="n">as_cluster_def</span><span class="p">()</span>
-
-        <span class="c1"># Start tf.server:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">job_name</span> <span class="ow">in</span> <span class="s1">&#39;ps&#39;</span><span class="p">:</span>
-            <span class="n">server</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Server</span><span class="p">(</span>
-                <span class="n">cluster</span><span class="p">,</span>
-                <span class="n">job_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">job_name</span><span class="p">,</span>
-                <span class="n">task_index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
-                <span class="n">config</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span><span class="n">device_filters</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;/job:ps&quot;</span><span class="p">])</span>
-            <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;parameters_server started.&#39;</span><span class="p">)</span>
-            <span class="c1"># Just block here:</span>
-            <span class="n">server</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
-
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">server</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Server</span><span class="p">(</span>
-                <span class="n">cluster</span><span class="p">,</span>
-                <span class="n">job_name</span><span class="o">=</span><span class="s1">&#39;worker&#39;</span><span class="p">,</span>
-                <span class="n">task_index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
-                <span class="n">config</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span>
-                    <span class="n">intra_op_parallelism_threads</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># original was: 1</span>
-                    <span class="n">inter_op_parallelism_threads</span><span class="o">=</span><span class="mi">2</span>  <span class="c1"># original was: 2</span>
+            <span class="c1"># Start tf.server:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">job_name</span> <span class="ow">in</span> <span class="s1">&#39;ps&#39;</span><span class="p">:</span>
+                <span class="n">server</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Server</span><span class="p">(</span>
+                    <span class="n">cluster</span><span class="p">,</span>
+                    <span class="n">job_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">job_name</span><span class="p">,</span>
+                    <span class="n">task_index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
+                    <span class="n">config</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span><span class="n">device_filters</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;/job:ps&quot;</span><span class="p">])</span>
                 <span class="p">)</span>
-            <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;tf.server started.&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;parameters_server started.&#39;</span><span class="p">)</span>
+                <span class="c1"># Just block here:</span>
+                <span class="n">server</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;making environments:&#39;</span><span class="p">)</span>
-            <span class="c1"># Making as many environments as many entries in env_config `port` list:</span>
-            <span class="c1"># TODO: Hacky-II: only one example over all parallel environments can be data-master [and renderer]</span>
-            <span class="c1"># TODO: measure data_server lags, maybe launch several instances</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="n">env_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;log_level&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span>
-            <span class="n">port_list</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;port&#39;</span><span class="p">)</span>
-            <span class="n">data_port_list</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;data_port&#39;</span><span class="p">)</span>
-            <span class="n">data_master</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;data_master&#39;</span><span class="p">)</span>
-            <span class="n">render_enabled</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;render_enabled&#39;</span><span class="p">)</span>
-
-            <span class="n">render_list</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">port_list</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">render_enabled</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_last_env</span><span class="p">:</span>
-                    <span class="n">render_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">render_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
-
-            <span class="n">data_master_list</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">port_list</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">data_master</span><span class="p">:</span>
-                <span class="n">data_master_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
-
-            <span class="c1"># Parallel envs. numbering:</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">port_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="n">task_id</span> <span class="o">=</span> <span class="mf">0.0</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">task_id</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">server</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Server</span><span class="p">(</span>
+                    <span class="n">cluster</span><span class="p">,</span>
+                    <span class="n">job_name</span><span class="o">=</span><span class="s1">&#39;worker&#39;</span><span class="p">,</span>
+                    <span class="n">task_index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
+                    <span class="n">config</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span>
+                        <span class="n">intra_op_parallelism_threads</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># original was: 1</span>
+                        <span class="n">inter_op_parallelism_threads</span><span class="o">=</span><span class="mi">2</span>  <span class="c1"># original was: 2</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;tf.server started.&#39;</span><span class="p">)</span>
 
-            <span class="k">for</span> <span class="n">port</span><span class="p">,</span> <span class="n">data_port</span><span class="p">,</span> <span class="n">is_render</span><span class="p">,</span> <span class="n">is_master</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">port_list</span><span class="p">,</span> <span class="n">data_port_list</span><span class="p">,</span> <span class="n">render_list</span><span class="p">,</span> <span class="n">data_master_list</span><span class="p">):</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
-                    <span class="c1"># Assume BTgym env. class:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;setting env at port_</span><span class="si">{}</span><span class="s1"> is data_master: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">data_master</span><span class="p">))</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;env_kwargs:&#39;</span><span class="p">)</span>
-                    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">))</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span>
-                                <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span>
-                                <span class="n">data_port</span><span class="o">=</span><span class="n">data_port</span><span class="p">,</span>
-                                <span class="n">data_master</span><span class="o">=</span><span class="n">is_master</span><span class="p">,</span>
-                                <span class="n">render_enabled</span><span class="o">=</span><span class="n">is_render</span><span class="p">,</span>
-                                <span class="n">task</span><span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">+</span> <span class="n">task_id</span><span class="p">,</span>
-                                <span class="o">**</span><span class="n">env_kwargs</span>
-                            <span class="p">)</span>
-                        <span class="p">)</span>
-                        <span class="n">data_master</span> <span class="o">=</span> <span class="kc">False</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;set BTGym environment </span><span class="si">{}</span><span class="s1"> @ port:</span><span class="si">{}</span><span class="s1">, data_port:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
-                                      <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">+</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">data_port</span><span class="p">))</span>
-                        <span class="n">task_id</span> <span class="o">+=</span> <span class="mf">0.01</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;making environments:&#39;</span><span class="p">)</span>
+                <span class="c1"># Making as many environments as many entries in env_config `port` list:</span>
+                <span class="c1"># TODO: Hacky-II: only one example over all parallel environments can be data-master [and renderer]</span>
+                <span class="c1"># TODO: measure data_server lags, maybe launch several instances</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">env_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;log_level&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span>
+                <span class="n">port_list</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;port&#39;</span><span class="p">)</span>
+                <span class="n">data_port_list</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;data_port&#39;</span><span class="p">)</span>
+                <span class="n">data_master</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;data_master&#39;</span><span class="p">)</span>
+                <span class="n">render_enabled</span> <span class="o">=</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;render_enabled&#39;</span><span class="p">)</span>
 
-                    <span class="k">except</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
-                            <span class="s1">&#39;failed to make BTGym environment at port_</span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
-                        <span class="p">)</span>
-                        <span class="k">raise</span> <span class="ne">RuntimeError</span>
+                <span class="n">render_list</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">port_list</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">render_enabled</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_last_env</span><span class="p">:</span>
+                        <span class="n">render_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">render_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
 
+                <span class="n">data_master_list</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">port_list</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">data_master</span><span class="p">:</span>
+                    <span class="n">data_master_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+                <span class="c1"># Parallel envs. numbering:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">port_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">task_id</span> <span class="o">=</span> <span class="mf">0.0</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># Assume atari testing:</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span><span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;gym_id&#39;</span><span class="p">]))</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;set Gyn/Atari environment.&#39;</span><span class="p">)</span>
+                    <span class="n">task_id</span> <span class="o">=</span> <span class="mi">0</span>
 
-                    <span class="k">except</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s1">&#39;failed to make Gym/Atari environment&#39;</span><span class="p">)</span>
-                        <span class="k">raise</span> <span class="ne">RuntimeError</span>
+                <span class="k">for</span> <span class="n">port</span><span class="p">,</span> <span class="n">data_port</span><span class="p">,</span> <span class="n">is_render</span><span class="p">,</span> <span class="n">is_master</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">port_list</span><span class="p">,</span> <span class="n">data_port_list</span><span class="p">,</span> <span class="n">render_list</span><span class="p">,</span> <span class="n">data_master_list</span><span class="p">):</span>
+                    <span class="c1"># Get random seed for environments:</span>
+                    <span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;random_seed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">**</span> <span class="mi">30</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Defining trainer...&#39;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_mode</span><span class="p">:</span>
+                        <span class="c1"># Assume BTgym env. class:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;setting env at port_</span><span class="si">{}</span><span class="s1"> is data_master: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">data_master</span><span class="p">))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;env_kwargs:&#39;</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">env_kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">))</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span>
+                                    <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span>
+                                    <span class="n">data_port</span><span class="o">=</span><span class="n">data_port</span><span class="p">,</span>
+                                    <span class="n">data_master</span><span class="o">=</span><span class="n">is_master</span><span class="p">,</span>
+                                    <span class="n">render_enabled</span><span class="o">=</span><span class="n">is_render</span><span class="p">,</span>
+                                    <span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">+</span> <span class="n">task_id</span><span class="p">,</span>
+                                    <span class="o">**</span><span class="n">env_kwargs</span>
+                                <span class="p">)</span>
+                            <span class="p">)</span>
+                            <span class="n">data_master</span> <span class="o">=</span> <span class="kc">False</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;set BTGym environment </span><span class="si">{}</span><span class="s1"> @ port:</span><span class="si">{}</span><span class="s1">, data_port:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>
+                                          <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">+</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">data_port</span><span class="p">))</span>
+                            <span class="n">task_id</span> <span class="o">+=</span> <span class="mf">0.01</span>
 
-            <span class="c1"># Define trainer:</span>
-            <span class="n">trainer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span><span class="p">(</span>
-                <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">,</span>
-                <span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
-                <span class="n">policy_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span><span class="p">,</span>
-                <span class="n">log_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span>
-                <span class="n">cluster_spec</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span><span class="p">,</span>
-                <span class="n">random_seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">,</span>
-                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer_kwargs</span><span class="p">,</span>
-            <span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                                <span class="s1">&#39;failed to make BTGym environment at port_</span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+                            <span class="p">)</span>
+                            <span class="k">raise</span> <span class="n">e</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;trainer ok.&#39;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># Assume atari testing:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_class</span><span class="p">(</span><span class="n">env_kwargs</span><span class="p">[</span><span class="s1">&#39;gym_id&#39;</span><span class="p">]))</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;set Gyn/Atari environment.&#39;</span><span class="p">)</span>
 
-            <span class="c1"># Saver-related:</span>
-            <span class="n">variables_to_save</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;local&#39;</span> <span class="ow">in</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
-            <span class="n">local_variables</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables</span><span class="p">()</span> <span class="k">if</span> <span class="s1">&#39;local&#39;</span> <span class="ow">in</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">local_variables</span><span class="p">()</span>
-            <span class="n">init_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">variables_initializer</span><span class="p">(</span><span class="n">variables_to_save</span><span class="p">)</span>
-            <span class="n">local_init_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">variables_initializer</span><span class="p">(</span><span class="n">local_variables</span><span class="p">)</span>
-            <span class="n">init_all_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables_initializer</span><span class="p">()</span>
+                        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s1">&#39;failed to make Gym/Atari environment&#39;</span><span class="p">)</span>
+                            <span class="k">raise</span> <span class="n">e</span>
 
-            <span class="n">saver</span> <span class="o">=</span> <span class="n">_FastSaver</span><span class="p">(</span><span class="n">variables_to_save</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Defining trainer...&#39;</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;VARIABLES TO SAVE:&#39;</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">variables_to_save</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()))</span>
+                <span class="c1"># Define trainer:</span>
+                <span class="n">trainer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer_class</span><span class="p">(</span>
+                    <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">,</span>
+                    <span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span>
+                    <span class="n">policy_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">policy_config</span><span class="p">,</span>
+                    <span class="n">log_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">,</span>
+                    <span class="n">cluster_spec</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster_spec</span><span class="p">,</span>
+                    <span class="n">random_seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">,</span>
+                    <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer_kwargs</span><span class="p">,</span>
+                <span class="p">)</span>
 
-            <span class="k">def</span> <span class="nf">init_fn</span><span class="p">(</span><span class="n">ses</span><span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;initializing all parameters.&quot;</span><span class="p">)</span>
-                <span class="n">ses</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">init_all_op</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;trainer ok.&#39;</span><span class="p">)</span>
 
-            <span class="n">config</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span><span class="n">device_filters</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;/job:ps&quot;</span><span class="p">,</span> <span class="s2">&quot;/job:worker/task:</span><span class="si">{}</span><span class="s2">/cpu:0&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)])</span>
-            <span class="n">logdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span><span class="p">,</span> <span class="s1">&#39;train&#39;</span><span class="p">)</span>
-            <span class="n">summary_dir</span> <span class="o">=</span> <span class="n">logdir</span> <span class="o">+</span> <span class="s2">&quot;_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+                <span class="c1"># Saver-related:</span>
+                <span class="n">variables_to_save</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;local&#39;</span> <span class="ow">in</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+                <span class="n">local_variables</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables</span><span class="p">()</span> <span class="k">if</span> <span class="s1">&#39;local&#39;</span> <span class="ow">in</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">local_variables</span><span class="p">()</span>
+                <span class="n">init_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">initializers</span><span class="o">.</span><span class="n">variables</span><span class="p">(</span><span class="n">variables_to_save</span><span class="p">)</span>
+                <span class="n">local_init_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">initializers</span><span class="o">.</span><span class="n">variables</span><span class="p">(</span><span class="n">local_variables</span><span class="p">)</span>
+                <span class="n">init_all_op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables_initializer</span><span class="p">()</span>
 
-            <span class="n">summary_writer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">FileWriter</span><span class="p">(</span><span class="n">summary_dir</span><span class="p">)</span>
+                <span class="k">def</span> <span class="nf">init_fn</span><span class="p">(</span><span class="n">_sess</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s2">&quot;initializing all parameters...&quot;</span><span class="p">)</span>
+                    <span class="n">_sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">init_all_op</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;before tf.train.Supervisor... &#39;</span><span class="p">)</span>
+                <span class="c1"># def init_fn_scaff(scaffold, _sess):</span>
+                <span class="c1">#     self.log.notice(&quot;initializing all parameters...&quot;)</span>
+                <span class="c1">#     _sess.run(init_all_op)</span>
 
-            <span class="c1"># TODO: switch to tf.train.MonitoredTrainingSession</span>
-            <span class="n">sv</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Supervisor</span><span class="p">(</span>
-                <span class="n">is_chief</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span>
-                <span class="n">logdir</span><span class="o">=</span><span class="n">logdir</span><span class="p">,</span>
-                <span class="n">saver</span><span class="o">=</span><span class="n">saver</span><span class="p">,</span>
-                <span class="n">summary_op</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">init_op</span><span class="o">=</span><span class="n">init_op</span><span class="p">,</span>
-                <span class="n">local_init_op</span><span class="o">=</span><span class="n">local_init_op</span><span class="p">,</span>
-                <span class="n">init_fn</span><span class="o">=</span><span class="n">init_fn</span><span class="p">,</span>
-                <span class="c1">#ready_op=tf.report_uninitialized_variables(variables_to_save),</span>
-                <span class="n">ready_op</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">report_uninitialized_variables</span><span class="p">(),</span>
-                <span class="n">global_step</span><span class="o">=</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">,</span>
-                <span class="n">save_model_secs</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;connecting to the parameter server... &quot;</span><span class="p">)</span>
+                <span class="c1"># self.log.warning(&#39;VARIABLES TO SAVE:&#39;)</span>
+                <span class="c1"># for v in variables_to_save:</span>
+                <span class="c1">#     self.log.warning(v)</span>
+                <span class="c1">#</span>
+                <span class="c1"># self.log.warning(&#39;LOCAL VARS:&#39;)</span>
+                <span class="c1"># for v in local_variables:</span>
+                <span class="c1">#     self.log.warning(v)</span>
 
-            <span class="k">with</span> <span class="n">sv</span><span class="o">.</span><span class="n">managed_session</span><span class="p">(</span><span class="n">server</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span> <span class="k">as</span> <span class="n">sess</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
-                <span class="c1">#sess.run(trainer.sync)</span>
-                <span class="n">trainer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">saver</span> <span class="o">=</span> <span class="n">FastSaver</span><span class="p">(</span><span class="n">var_list</span><span class="o">=</span><span class="n">variables_to_save</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">save_relative_paths</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-                <span class="c1"># Note: `self.global_step` refers to number of environment steps</span>
-                <span class="c1"># summarized over all environment instances, not to number of policy optimizer train steps.</span>
-                <span class="n">global_step</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s2">&quot;started training at step: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_step</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span><span class="n">device_filters</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;/job:ps&quot;</span><span class="p">,</span> <span class="s2">&quot;/job:worker/task:</span><span class="si">{}</span><span class="s2">/cpu:0&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)])</span>
 
-                <span class="k">while</span> <span class="ow">not</span> <span class="n">sv</span><span class="o">.</span><span class="n">should_stop</span><span class="p">()</span> <span class="ow">and</span> <span class="n">global_step</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_env_steps</span><span class="p">:</span>
-                    <span class="n">trainer</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">sess</span><span class="p">)</span>
+                <span class="n">sess_manager</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">SessionManager</span><span class="p">(</span>
+                    <span class="n">local_init_op</span><span class="o">=</span><span class="n">local_init_op</span><span class="p">,</span>
+                    <span class="n">ready_op</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">ready_for_local_init_op</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">report_uninitialized_variables</span><span class="p">(</span><span class="n">variables_to_save</span><span class="p">),</span>
+                    <span class="n">graph</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">recovery_wait_secs</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">with</span> <span class="n">sess_manager</span><span class="o">.</span><span class="n">prepare_session</span><span class="p">(</span>
+                    <span class="n">master</span><span class="o">=</span><span class="n">server</span><span class="o">.</span><span class="n">target</span><span class="p">,</span>
+                    <span class="n">init_op</span><span class="o">=</span><span class="n">init_op</span><span class="p">,</span>
+                    <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+                    <span class="n">init_fn</span><span class="o">=</span><span class="n">init_fn</span><span class="p">,</span>
+                <span class="p">)</span> <span class="k">as</span> <span class="n">sess</span><span class="p">:</span>
+
+                    <span class="c1"># Try to restore pre-trained model</span>
+                    <span class="n">pre_trained_restored</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_restore_model_params</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_ckpt_dir</span><span class="p">)</span>
+                    <span class="n">_</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">reset_global_step</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">pre_trained_restored</span><span class="p">:</span>
+                        <span class="c1"># If not - try to recover current checkpoint:</span>
+                        <span class="n">current_restored</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_restore_model_params</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_ckpt_dir</span><span class="p">)</span>
+
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">current_restored</span> <span class="o">=</span> <span class="kc">False</span>
+
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">pre_trained_restored</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">current_restored</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;training from scratch...&#39;</span><span class="p">)</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;connecting to the parameter server... &quot;</span><span class="p">)</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">FileWriter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">summary_dir</span><span class="p">,</span> <span class="n">sess</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+                    <span class="n">trainer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span><span class="p">)</span>
+
+                    <span class="c1"># Note: `self.global_step` refers to number of environment steps</span>
+                    <span class="c1"># summarized over all environment instances, not to number of policy optimizer train steps.</span>
                     <span class="n">global_step</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s2">&quot;started training at step: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_step</span><span class="p">))</span>
+
+                    <span class="n">last_saved_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                    <span class="n">last_saved_step</span> <span class="o">=</span> <span class="n">global_step</span>
+
+                    <span class="k">while</span> <span class="n">global_step</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_env_steps</span><span class="p">:</span>
+                        <span class="n">trainer</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">sess</span><span class="p">)</span>
+                        <span class="n">global_step</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span>
+
+                        <span class="n">time_delta</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">last_saved_time</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_chief</span> <span class="ow">and</span> <span class="n">time_delta</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_secs</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_save_model_params</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">global_step</span><span class="p">)</span>
+                            <span class="n">train_speed</span> <span class="o">=</span> <span class="p">(</span><span class="n">global_step</span> <span class="o">-</span> <span class="n">last_saved_step</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">time_delta</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span>
+                                <span class="s1">&#39;train step: </span><span class="si">{}</span><span class="s1">; cluster speed: </span><span class="si">{:.0f}</span><span class="s1"> step/sec; checkpoint saved.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                    <span class="n">global_step</span><span class="p">,</span>
+                                    <span class="n">train_speed</span>
+                                <span class="p">)</span>
+                            <span class="p">)</span>
+                            <span class="n">last_saved_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                            <span class="n">last_saved_step</span> <span class="o">=</span> <span class="n">global_step</span>
 
                 <span class="c1"># Ask for all the services to stop:</span>
                 <span class="k">for</span> <span class="n">env</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_list</span><span class="p">:</span>
                     <span class="n">env</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-                <span class="n">sv</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;reached </span><span class="si">{}</span><span class="s1"> steps, exiting.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_step</span><span class="p">))</span></div></div>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;reached </span><span class="si">{}</span><span class="s1"> steps, exiting.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_step</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">e</span></div></div>
 
 
 

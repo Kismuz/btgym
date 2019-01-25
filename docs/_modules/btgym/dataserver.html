@@ -210,7 +210,7 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Data provider server class.</span>
 <span class="sd">    Enables efficient data sampling for asynchronous multiply BTgym environments execution.</span>
-<span class="sd">    Manages global back-testing time.</span>
+<span class="sd">    Manages global back-testing time and broadcast messages.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">process</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">dataset_stat</span> <span class="o">=</span> <span class="kc">None</span>
@@ -234,6 +234,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">network_address</span> <span class="o">=</span> <span class="n">network_address</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">default_sample_config</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">DataSampleConfig</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">broadcast_message</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">debug_pre_sample_fails</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">debug_pre_sample_attempts</span> <span class="o">=</span> <span class="mi">0</span>
@@ -385,12 +386,12 @@
                     <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">info_dict</span><span class="p">)</span>
 
                 <span class="c1"># Set global time:</span>
-                <span class="k">elif</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_set_global_time&#39;</span><span class="p">:</span>
+                <span class="k">elif</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_set_broadcast_message&#39;</span><span class="p">:</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">global_timestamp</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">global_timestamp</span> <span class="o">&gt;</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]:</span>
                         <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Moving back in time not supported! &#39;</span> <span class="o">+</span>\
                                   <span class="s1">&#39;Current global_time: </span><span class="si">{}</span><span class="s1">, &#39;</span><span class="o">.</span>\
                                       <span class="nb">format</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">global_timestamp</span><span class="p">))</span> <span class="o">+</span>\
-                                  <span class="s1">&#39;attempt to set: </span><span class="si">{}</span><span class="s1">; nothing done. &#39;</span><span class="o">.</span>\
+                                  <span class="s1">&#39;attempt to set: </span><span class="si">{}</span><span class="s1">; global_time and broadcast message not set.&#39;</span><span class="o">.</span>\
                                       <span class="nb">format</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]))</span> <span class="o">+</span>\
                                   <span class="s1">&#39;Hint: check sampling logic consistency.&#39;</span>
 
@@ -398,6 +399,7 @@
 
                     <span class="k">else</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">global_timestamp</span> <span class="o">=</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">broadcast_message</span> <span class="o">=</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;broadcast_message&#39;</span><span class="p">]</span>
                         <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;global_time set to: </span><span class="si">{}</span><span class="s1"> / stamp: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span>\
                             <span class="nb">format</span><span class="p">(</span>
                                 <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">global_timestamp</span><span class="p">),</span>
@@ -411,9 +413,21 @@
                     <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">global_timestamp</span><span class="p">}</span>
                     <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
 
+                <span class="k">elif</span> <span class="n">service_input</span><span class="p">[</span><span class="s1">&#39;ctrl&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_get_broadcast_message&#39;</span><span class="p">:</span>
+                    <span class="c1"># Tell:</span>
+                    <span class="n">message</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">global_timestamp</span><span class="p">,</span>
+                        <span class="s1">&#39;broadcast_message&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">broadcast_message</span><span class="p">,</span>
+                    <span class="p">}</span>
+                    <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
                 <span class="k">else</span><span class="p">:</span>  <span class="c1"># ignore any other input</span>
                     <span class="c1"># NOTE: response dictionary must include &#39;ctrl&#39; key</span>
-                    <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;waiting for control keys:  &lt;_reset_data&gt;, &lt;_get_data&gt;, &lt;_get_info&gt;, &lt;_stop&gt;.&#39;</span><span class="p">}</span>
+                    <span class="n">message</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s1">&#39;ctrl&#39;</span><span class="p">:</span>
+                            <span class="s1">&#39;waiting for control keys:  &lt;_reset_data&gt;, &lt;_get_data&gt;, &#39;</span> <span class="o">+</span>
+                            <span class="s1">&#39;&lt;_get_info&gt;, &lt;_stop&gt;, &lt;_get_global_time&gt;, &lt;_get_broadcast_message&gt;&#39;</span>
+                    <span class="p">}</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sent: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
                     <span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>  <span class="c1"># pairs any other input</span>
 

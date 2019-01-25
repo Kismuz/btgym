@@ -605,6 +605,9 @@
         <span class="c1"># Maximum data time gap allowed within sample as pydatetimedelta obj:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_time_gap</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">time_gap</span><span class="p">)</span>
 
+        <span class="c1"># Max. gap number of records:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_gap_num_records</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_time_gap</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="mi">60</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeframe</span><span class="p">))</span>
+
         <span class="c1"># ... maximum episode time duration:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_sample_len_delta</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_duration</span><span class="p">)</span>
 

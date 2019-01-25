@@ -44,22 +44,22 @@ class OUpRunner(BaseSynchroRunner):
             for key, accum in self.dgp_params.items():
                 accum.append(self.dgp_dict[key])
 
-        if self.local_episode % self.episode_summary_freq == 0:
-            ep_stat = dict(
-                total_r=np.average(self.total_r),
-                cpu_time=np.average(self.cpu_time),
-                final_value=np.average(self.final_value),
-                steps=np.average(self.total_steps),
-                ou_lambda=np.average(self.dgp_params['l']),
-                ou_sigma=np.average(self.dgp_params['sigma']),
-                ou_mu=np.average(self.dgp_params['mu']),
-            )
-            self.total_r = []
-            self.cpu_time = []
-            self.final_value = []
-            self.total_steps = []
-            self.total_steps_atari = []
-            self.dgp_params = {key: [] for key in self.env.observation_space.shape['metadata']['generator'].keys()}
-            # print('ep_stat: ', ep_stat)
+            if self.local_episode % self.episode_summary_freq == 0:
+                ep_stat = dict(
+                    total_r=np.average(self.total_r),
+                    cpu_time=np.average(self.cpu_time),
+                    final_value=np.average(self.final_value),
+                    steps=np.average(self.total_steps),
+                    ou_lambda=np.average(self.dgp_params['l']),
+                    ou_sigma=np.average(self.dgp_params['sigma']),
+                    ou_mu=np.average(self.dgp_params['mu']),
+                )
+                self.total_r = []
+                self.cpu_time = []
+                self.final_value = []
+                self.total_steps = []
+                self.total_steps_atari = []
+                self.dgp_params = {key: [] for key in self.env.observation_space.shape['metadata']['generator'].keys()}
+                # print('ep_stat: ', ep_stat)
         return ep_stat
 

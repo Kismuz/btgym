@@ -194,7 +194,7 @@
 
 <div class="viewcode-block" id="BaseSynchroRunner"><a class="viewcode-back" href="../../../../btgym.algorithms.runner.html#btgym.algorithms.runner.synchro.BaseSynchroRunner">[docs]</a><span class="k">class</span> <span class="nc">BaseSynchroRunner</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Data provider class. Interacts with environment and outputs data in form of rollouts augmented with</span>
+<span class="sd">    Experience provider class. Interacts with environment and outputs data in form of rollouts augmented with</span>
 <span class="sd">    relevant summaries and metadata. This runner is `synchronous` in sense that data collection is `in-process&#39;</span>
 <span class="sd">    and every rollout is collected by explicit call to respective `get_data()` method [this is unlike &#39;async-`</span>
 <span class="sd">    thread-runner version found earlier in this this package which, once being started,</span>
@@ -216,32 +216,36 @@
             <span class="n">data_sample_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">memory_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">test_conditions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">test_deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">slowdown_steps</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
             <span class="n">global_step_op</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="c1"># aux_summaries=(&#39;action_prob&#39;, &#39;value_fn&#39;, &#39;lstm_1_h&#39;, &#39;lstm_2_h&#39;),</span>
-            <span class="n">aux_summaries</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">aux_render_modes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">_implemented_aux_render_modes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;synchro&#39;</span><span class="p">,</span>
             <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            env:                    BTgym environment instance</span>
-<span class="sd">            task:                   int, runner task id</span>
-<span class="sd">            rollout_length:         int</span>
-<span class="sd">            episode_summary_freq:   int</span>
-<span class="sd">            env_render_freq:        int</span>
-<span class="sd">            test:                   legacy, not used</span>
-<span class="sd">            ep_summary:             legacy, not used</span>
-<span class="sd">            policy:                 policy instance to execute</span>
-<span class="sd">            data_sample_config:     dict, data sampling configuration dictionary</span>
-<span class="sd">            memory_config:          dict, replay memory configuration</span>
-<span class="sd">            test_conditions:        dict or None,</span>
-<span class="sd">                                    dictionary of single experience conditions to check to mark it as test one.</span>
-<span class="sd">            slowdown_time:          time to sleep between steps</span>
-<span class="sd">            aux_summaries:          iterable of str, additional summaries to compute</span>
-<span class="sd">            name:                   str, name scope</span>
-<span class="sd">            log_level:              int, logbook.level</span>
+<span class="sd">            env:                            BTgym environment instance</span>
+<span class="sd">            task:                           int, runner task id</span>
+<span class="sd">            rollout_length:                 int</span>
+<span class="sd">            episode_summary_freq:           int</span>
+<span class="sd">            env_render_freq:                int</span>
+<span class="sd">            test:                           legacy, not used</span>
+<span class="sd">            ep_summary:                     legacy, not used</span>
+<span class="sd">            policy:                         policy instance to execute</span>
+<span class="sd">            data_sample_config:             dict, data sampling configuration dictionary</span>
+<span class="sd">            memory_config:                  dict, replay memory configuration</span>
+<span class="sd">            test_conditions:                dict or None,</span>
+<span class="sd">                                            dictionary of single experience conditions to check to mark it as test one.</span>
+<span class="sd">            test_deterministic:             bool, if True - act deterministically for test episodes</span>
+<span class="sd">            slowdown_time:                  time to sleep between steps</span>
+<span class="sd">            aux_render_modes:               iterable of str, additional summaries to compute</span>
+<span class="sd">            _implemented_aux_render_modes   iterable of str, implemented additional summaries</span>
+<span class="sd">            name:                           str, name scope</span>
+<span class="sd">            log_level:                      int, logbook.level</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
@@ -253,10 +257,31 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">memory_config</span> <span class="o">=</span> <span class="n">memory_config</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">policy</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data_sample_config</span> <span class="o">=</span> <span class="n">data_sample_config</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">aux_summaries</span> <span class="o">=</span> <span class="n">aux_summaries</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level</span>
         <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_Runner_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+
+        <span class="c1"># Aux rendering setup:</span>
+        <span class="k">if</span> <span class="n">_implemented_aux_render_modes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">implemented_aux_render_modes</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">implemented_aux_render_modes</span> <span class="o">=</span> <span class="n">_implemented_aux_render_modes</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">aux_render_modes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">aux_render_modes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="n">aux_render_modes</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">implemented_aux_render_modes</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">aux_render_modes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Render mode `</span><span class="si">{}</span><span class="s1">` is not implemented.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;self.render modes: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">aux_render_modes</span><span class="p">))</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">sess</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -281,6 +306,9 @@
             <span class="p">}</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">test_conditions</span> <span class="o">=</span> <span class="n">test_conditions</span>
+
+        <span class="c1"># Actions for tests:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_deterministic</span> <span class="o">=</span> <span class="n">test_deterministic</span>
 
         <span class="c1"># Make replay memory:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -312,8 +340,6 @@
         <span class="c1"># Episode accumulators:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ep_accum</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">norm_image</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">ptp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;__init__() done.&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">sleep</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -336,8 +362,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">sess</span> <span class="o">=</span> <span class="n">sess</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="n">summary_writer</span>
 
-        <span class="c1"># Hacky but we need env.renderer methods ready:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">initialize_pyplot</span><span class="p">()</span>
+        <span class="c1"># # Hacky but we need env.renderer methods ready: NOT HERE, went to VerboseRunner</span>
+        <span class="c1"># self.env.renderer.initialize_pyplot()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_action</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_init_experience</span><span class="p">(</span>
             <span class="n">policy</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="p">,</span>
@@ -382,6 +408,11 @@
         <span class="c1"># Pass sample config to environment (.get_sample_config() is actually aac framework method):</span>
         <span class="n">init_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="o">**</span><span class="n">data_sample_config</span><span class="p">)</span>
 
+        <span class="c1"># Infer train/test episode type from initial state:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_test</span> <span class="o">=</span> <span class="n">is_subdict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_conditions</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;state&#39;</span><span class="p">:</span> <span class="n">init_state</span><span class="p">})</span>
+
+        <span class="c1"># self.log.warning(&#39;init_experience.is_test: {}&#39;.format(self.is_test))</span>
+
         <span class="c1"># Master worker always resets context at the episode beginning:</span>
         <span class="c1"># TODO: !</span>
         <span class="c1"># if not self.data_sample_config[&#39;mode&#39;]:</span>
@@ -403,6 +434,7 @@
             <span class="n">init_context</span><span class="p">,</span>
             <span class="n">init_action</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
             <span class="n">init_reward</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_test</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_deterministic</span><span class="p">,</span>  <span class="c1"># deterministic actions for test episode</span>
         <span class="p">)</span>
         <span class="n">next_state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">terminal</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="s1">&#39;environment&#39;</span><span class="p">])</span>
 
@@ -433,7 +465,7 @@
         <span class="c1">#self.log.warning(&#39;init_experience_context: {}&#39;.format(context))</span>
 
         <span class="c1"># Take a nap:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sleep</span><span class="p">()</span>
+        <span class="c1"># self.sleep()</span>
 
         <span class="k">return</span> <span class="n">experience</span><span class="p">,</span> <span class="n">next_state</span><span class="p">,</span> <span class="n">next_context</span><span class="p">,</span> <span class="n">action</span><span class="p">[</span><span class="s1">&#39;encoded&#39;</span><span class="p">],</span> <span class="n">reward</span></div>
 
@@ -447,24 +479,10 @@
 <span class="sd">            next, policy RNN context</span>
 <span class="sd">            action_reward</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Update policy:</span>
+        <span class="c1"># Update policy if operation has been provided:</span>
         <span class="k">if</span> <span class="n">policy_sync_op</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">policy_sync_op</span><span class="p">)</span>
-            <span class="c1"># TODO: meta-learning related; TEMPORAL, refract:</span>
-            <span class="c1"># if hasattr(policy, &#39;meta&#39;) and self.task == 0:</span>
-            <span class="c1">#     wait = 1</span>
-            <span class="c1">#     i = 0</span>
-            <span class="c1">#     while wait:</span>
-            <span class="c1">#         wait = policy.meta.act()</span>
-            <span class="c1">#         # self.log.warning(&#39;policy_meta_action: {}&#39;.format(wait))</span>
-            <span class="c1">#         time.sleep(4)</span>
-            <span class="c1">#         # i += 1</span>
-            <span class="c1">#         self.sess.run([policy_sync_op, policy.meta.sync_slot_op])</span>
-            <span class="c1">#</span>
-            <span class="c1">#     policy.meta.reset()</span>
-            <span class="c1">#     policy.meta.global_reset()</span>
-            <span class="c1">#</span>
-            <span class="c1">#     # self.log.notice(&#39;waited: {}&#39;.format(i))</span>
+            <span class="c1"># self.log.debug(&#39;Policy sync. ok!&#39;)</span>
 
         <span class="c1"># Continue adding experiences to rollout:</span>
         <span class="n">next_action</span><span class="p">,</span> <span class="n">logits</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">next_context</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">act</span><span class="p">(</span>
@@ -472,6 +490,7 @@
             <span class="n">context</span><span class="p">,</span>
             <span class="n">action</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
             <span class="n">reward</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_test</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_deterministic</span><span class="p">,</span>  <span class="c1"># deterministic actions for test episode</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ep_accum</span><span class="p">[</span><span class="s1">&#39;logits&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">logits</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ep_accum</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
@@ -562,9 +581,8 @@
 
 <div class="viewcode-block" id="BaseSynchroRunner.get_ep_render"><a class="viewcode-back" href="../../../../btgym.algorithms.runner.html#btgym.algorithms.runner.synchro.BaseSynchroRunner.get_ep_render">[docs]</a>    <span class="k">def</span> <span class="nf">get_ep_render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_test</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Visualises episode environment and policy statistics.</span>
-<span class="sd">        Relies on environmnet renderer class methods,</span>
-<span class="sd">        so it is only valid when envoronment rendering is enabled (typically master one).</span>
+<span class="sd">        Collects environment renderings. Relies on environment renderer class methods,</span>
+<span class="sd">        so it is only valid when environment rendering is enabled (typically it is true for master runner).</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            dictionary of images as rgb arrays</span>
@@ -582,43 +600,6 @@
             <span class="n">render_stat</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="n">mode</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">mode</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">render_modes</span>
             <span class="p">}</span>
-            <span class="c1"># Update renderings with aux:</span>
-
-            <span class="c1"># log.notice(&#39;ep_logits shape: {}&#39;.format(np.asarray(ep_a_logits).shape))</span>
-            <span class="c1"># log.notice(&#39;ep_value shape: {}&#39;.format(np.asarray(ep_value).shape))</span>
-
-            <span class="c1"># Unpack LSTM states:</span>
-            <span class="n">rnn_1</span><span class="p">,</span> <span class="n">rnn_2</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_accum</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">])</span>
-            <span class="n">rnn_1</span> <span class="o">=</span> <span class="p">[</span><span class="n">state</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="n">rnn_1</span><span class="p">]</span>
-            <span class="n">rnn_2</span> <span class="o">=</span> <span class="p">[</span><span class="n">state</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="n">rnn_2</span><span class="p">]</span>
-            <span class="n">c1</span><span class="p">,</span> <span class="n">h1</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">rnn_1</span><span class="p">)</span>
-            <span class="n">c2</span><span class="p">,</span> <span class="n">h2</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">rnn_2</span><span class="p">)</span>
-
-            <span class="c1"># aux_images = {</span>
-            <span class="c1">#     # &#39;action_prob&#39;: self.env.renderer.draw_plot(</span>
-            <span class="c1">#     #     # data=softmax(np.asarray(ep_a_logits)[:, 0, :] - np.asarray(ep_a_logits).max()),</span>
-            <span class="c1">#     #     data=softmax(np.asarray(self.ep_accum[&#39;logits&#39;])[:, 0, :]),</span>
-            <span class="c1">#     #     title=&#39;Episode actions probabilities&#39;,</span>
-            <span class="c1">#     #     figsize=(12, 4),</span>
-            <span class="c1">#     #     box_text=&#39;&#39;,</span>
-            <span class="c1">#     #     xlabel=&#39;Backward env. steps&#39;,</span>
-            <span class="c1">#     #     ylabel=&#39;R+&#39;,</span>
-            <span class="c1">#     #     #line_labels=[&#39;Hold&#39;, &#39;Buy&#39;, &#39;Sell&#39;, &#39;Close&#39;]</span>
-            <span class="c1">#     # )[None, ...],</span>
-            <span class="c1">#     &#39;value_fn&#39;: self.env.renderer.draw_plot(</span>
-            <span class="c1">#         data=np.asarray(self.ep_accum[&#39;value&#39;]),</span>
-            <span class="c1">#         title=&#39;Episode Value function&#39;,</span>
-            <span class="c1">#         figsize=(12, 4),</span>
-            <span class="c1">#         xlabel=&#39;Backward env. steps&#39;,</span>
-            <span class="c1">#         ylabel=&#39;R&#39;,</span>
-            <span class="c1">#         line_labels=[&#39;Value&#39;]</span>
-            <span class="c1">#     )[None, ...],</span>
-            <span class="c1">#     # &#39;lstm_1_c&#39;: norm_image(np.asarray(c1).T[None, :, 0, :, None]),</span>
-            <span class="c1">#     &#39;lstm_1_h&#39;: self.norm_image(np.asarray(h1).T[None, :, 0, :, None]),</span>
-            <span class="c1">#     # &#39;lstm_2_c&#39;: norm_image(np.asarray(c2).T[None, :, 0, :, None]),</span>
-            <span class="c1">#     &#39;lstm_2_h&#39;: self.norm_image(np.asarray(h2).T[None, :, 0, :, None])</span>
-            <span class="c1"># }</span>
-            <span class="c1"># render_stat.update(aux_images)</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="n">render_stat</span> <span class="o">=</span> <span class="kc">None</span>
@@ -662,7 +643,6 @@
             <span class="n">rollout_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rollout_length</span>
 
         <span class="n">rollout</span> <span class="o">=</span> <span class="n">Rollout</span><span class="p">()</span>
-        <span class="n">is_test</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="n">train_ep_summary</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">test_ep_summary</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">render_ep_summary</span> <span class="o">=</span> <span class="kc">None</span>
@@ -697,9 +677,9 @@
 
                 <span class="bp">self</span><span class="o">.</span><span class="n">terminal_end</span> <span class="o">=</span> <span class="kc">True</span>
 
-                <span class="n">train_ep_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_train_stat</span><span class="p">(</span><span class="n">is_test</span><span class="p">)</span>
-                <span class="n">test_ep_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_test_stat</span><span class="p">(</span><span class="n">is_test</span><span class="p">)</span>
-                <span class="n">render_ep_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ep_render</span><span class="p">(</span><span class="n">is_test</span><span class="p">)</span>
+                <span class="n">train_ep_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_train_stat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_test</span><span class="p">)</span>
+                <span class="n">test_ep_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_test_stat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_test</span><span class="p">)</span>
+                <span class="n">render_ep_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ep_render</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_test</span><span class="p">)</span>
 
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">experience</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_action</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_experience</span><span class="p">(</span>
@@ -717,19 +697,10 @@
             <span class="n">rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">)</span>
 
             <span class="c1"># Where are you coming from?</span>
-            <span class="n">is_test</span> <span class="o">=</span> <span class="n">is_subdict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_conditions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">)</span>
-
-            <span class="c1"># try:</span>
-            <span class="c1">#     # Was it test (i.e. test episode from traget domain)?</span>
-            <span class="c1">#     if self.pre_experience[&#39;state&#39;][&#39;metadata&#39;][&#39;type&#39;]\</span>
-            <span class="c1">#             and self.pre_experience[&#39;state&#39;][&#39;metadata&#39;][&#39;trial_type&#39;]:</span>
-            <span class="c1">#         is_test = True</span>
-            <span class="c1">#</span>
-            <span class="c1"># except KeyError:</span>
-            <span class="c1">#     pass</span>
+            <span class="c1"># self.is_test is updated by self.get_init_experience()</span>
 
             <span class="c1"># Only training rollouts are added to replay memory:</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_test</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_test</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">reward_sum</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span>
@@ -751,11 +722,12 @@
                 <span class="p">]</span>
             <span class="p">)</span>
             <span class="n">rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_test</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_test</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">)</span>
 
         <span class="c1"># self.log.warning(&#39;rollout.terminal: {}&#39;.format(self.terminal_end))</span>
         <span class="c1"># self.log.warning(&#39;rollout.size: {}&#39;.format(rollout.size))</span>
+        <span class="c1"># self.log.warning(&#39;rollout.is_test: {}&#39;.format(self.is_test))</span>
 
         <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
             <span class="n">on_policy</span><span class="o">=</span><span class="n">rollout</span><span class="p">,</span>
@@ -765,118 +737,7 @@
             <span class="n">ep_summary</span><span class="o">=</span><span class="n">train_ep_summary</span><span class="p">,</span>
             <span class="n">test_ep_summary</span><span class="o">=</span><span class="n">test_ep_summary</span><span class="p">,</span>
             <span class="n">render_summary</span><span class="o">=</span><span class="n">render_ep_summary</span><span class="p">,</span>
-            <span class="n">is_test</span><span class="o">=</span><span class="n">is_test</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">data</span></div>
-
-<div class="viewcode-block" id="BaseSynchroRunner.get_episode"><a class="viewcode-back" href="../../../../btgym.algorithms.runner.html#btgym.algorithms.runner.synchro.BaseSynchroRunner.get_episode">[docs]</a>    <span class="k">def</span> <span class="nf">get_episode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">policy</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">policy_sync_op</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init_context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data_sample_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        WRONG do not use</span>
-<span class="sd">        Collects entire episode trajectory as single rollout and bunch of summaries using specified policy.</span>
-<span class="sd">        Updates episode statistics and replay memory.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            policy:                 policy to execute</span>
-<span class="sd">            policy_sync_op:         operation copying local behavioural policy params from global one</span>
-<span class="sd">            init_context:           if specified, overrides initial episode context provided bu self.context</span>
-<span class="sd">            data_sample_config:     environment configuration parameters for next episode to sample:</span>
-<span class="sd">                                    configuration dictionary of type `btgym.datafeed.base.EnvResetConfig</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">                data dictionary</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">policy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">policy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span>
-
-        <span class="k">if</span> <span class="n">init_context</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">init_context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span>
-
-        <span class="k">elif</span> <span class="n">init_context</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># mmm... TODO: fix this shame</span>
-            <span class="n">init_context</span> <span class="o">=</span> <span class="kc">None</span>
-
-        <span class="n">rollout</span> <span class="o">=</span> <span class="n">Rollout</span><span class="p">()</span>
-        <span class="n">train_ep_summary</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="n">test_ep_summary</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="n">render_ep_summary</span> <span class="o">=</span> <span class="kc">None</span>
-
-        <span class="c1"># Start new episode:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_action</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_init_experience</span><span class="p">(</span>
-            <span class="n">policy</span><span class="o">=</span><span class="n">policy</span><span class="p">,</span>
-            <span class="n">policy_sync_op</span><span class="o">=</span><span class="n">policy_sync_op</span><span class="p">,</span>
-            <span class="n">init_context</span><span class="o">=</span><span class="n">init_context</span><span class="p">,</span>  <span class="c1"># None (initially) or final context of previous episode</span>
-            <span class="n">data_sample_config</span><span class="o">=</span><span class="n">data_sample_config</span>
-        <span class="p">)</span>
-
-        <span class="n">is_test</span> <span class="o">=</span> <span class="n">is_subdict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_conditions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">)</span>
-        <span class="c1"># try:</span>
-        <span class="c1">#     # Was it test (`type` in metadata is not zero)?</span>
-        <span class="c1">#     # TODO: change to source/target?</span>
-        <span class="c1">#     if self.pre_experience[&#39;state&#39;][&#39;metadata&#39;][&#39;type&#39;]:</span>
-        <span class="c1">#         is_test = True</span>
-        <span class="c1">#</span>
-        <span class="c1"># except KeyError:</span>
-        <span class="c1">#     pass</span>
-
-        <span class="c1"># Collect data until episode is over:</span>
-
-        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">terminal_end</span><span class="p">:</span>
-            <span class="n">experience</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_action</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_experience</span><span class="p">(</span>
-                <span class="n">policy</span><span class="o">=</span><span class="n">policy</span><span class="p">,</span>
-                <span class="n">policy_sync_op</span><span class="o">=</span><span class="n">policy_sync_op</span><span class="p">,</span>
-                <span class="n">state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span>
-                <span class="n">context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">,</span>
-                <span class="n">action</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">last_action</span><span class="p">,</span>
-                <span class="n">reward</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">last_reward</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="c1"># Complete previous experience by bootstrapping V from next one:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">experience</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
-            <span class="c1"># Push:</span>
-            <span class="n">rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_test</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">)</span>
-
-            <span class="c1"># Move one step froward:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span> <span class="o">=</span> <span class="n">experience</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">reward_sum</span> <span class="o">+=</span> <span class="n">experience</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span>
-
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">[</span><span class="s1">&#39;terminal&#39;</span><span class="p">]:</span>
-                <span class="c1"># Episode has been just finished,</span>
-                <span class="c1"># need to complete and push last experience and update all episode summaries:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">terminal_end</span> <span class="o">=</span> <span class="kc">True</span>
-
-        <span class="c1"># Bootstrap:</span>
-        <span class="c1"># TODO: should be zero here</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
-            <span class="p">[</span>
-                <span class="n">policy</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">],</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">],</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">[</span><span class="s1">&#39;last_reward&#39;</span><span class="p">][</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">[</span><span class="s1">&#39;last_reward&#39;</span><span class="p">][</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
-                <span class="p">)</span>
-            <span class="p">]</span>
-        <span class="p">)</span>
-        <span class="n">rollout</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_test</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">)</span>
-
-        <span class="n">train_ep_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_train_stat</span><span class="p">(</span><span class="n">is_test</span><span class="p">)</span>
-        <span class="n">test_ep_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_test_stat</span><span class="p">(</span><span class="n">is_test</span><span class="p">)</span>
-        <span class="n">render_ep_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ep_render</span><span class="p">(</span><span class="n">is_test</span><span class="p">)</span>
-
-        <span class="c1"># self.log.warning(&#39;episodic_rollout.size: {}&#39;.format(rollout.size))</span>
-
-        <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-            <span class="n">on_policy</span><span class="o">=</span><span class="n">rollout</span><span class="p">,</span>
-            <span class="n">terminal</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal_end</span><span class="p">,</span>
-            <span class="n">off_policy</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">sample_uniform</span><span class="p">(</span><span class="n">sequence_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rollout_length</span><span class="p">),</span>
-            <span class="n">off_policy_rp</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">sample_priority</span><span class="p">(</span><span class="n">exact_size</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
-            <span class="n">ep_summary</span><span class="o">=</span><span class="n">train_ep_summary</span><span class="p">,</span>
-            <span class="n">test_ep_summary</span><span class="o">=</span><span class="n">test_ep_summary</span><span class="p">,</span>
-            <span class="n">render_summary</span><span class="o">=</span><span class="n">render_ep_summary</span><span class="p">,</span>
-            <span class="n">is_test</span><span class="o">=</span><span class="n">is_test</span><span class="p">,</span>
+            <span class="n">is_test</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">is_test</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">data</span></div>
 
@@ -967,10 +828,119 @@
         <span class="k">return</span> <span class="n">data</span></div></div>
 
 
+<div class="viewcode-block" id="VerboseSynchroRunner"><a class="viewcode-back" href="../../../../btgym.algorithms.runner.html#btgym.algorithms.runner.synchro.VerboseSynchroRunner">[docs]</a><span class="k">class</span> <span class="nc">VerboseSynchroRunner</span><span class="p">(</span><span class="n">BaseSynchroRunner</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extends `BaseSynchroRunner` class with additional visualisation summaries in some expense of running speed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;verbose_synchro&#39;</span><span class="p">,</span>
+            <span class="n">aux_render_modes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;action_prob&#39;</span><span class="p">,</span> <span class="s1">&#39;value_fn&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_1_h&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_2_h&#39;</span><span class="p">),</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
 
+        <span class="nb">super</span><span class="p">(</span><span class="n">VerboseSynchroRunner</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">aux_render_modes</span><span class="o">=</span><span class="n">aux_render_modes</span><span class="p">,</span>
+            <span class="n">_implemented_aux_render_modes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;action_prob&#39;</span><span class="p">,</span> <span class="s1">&#39;value_fn&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_1_h&#39;</span><span class="p">,</span> <span class="s1">&#39;lstm_2_h&#39;</span><span class="p">),</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm_image</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">ptp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span>
 
+<div class="viewcode-block" id="VerboseSynchroRunner.get_ep_render"><a class="viewcode-back" href="../../../../btgym.algorithms.runner.html#btgym.algorithms.runner.synchro.VerboseSynchroRunner.get_ep_render">[docs]</a>    <span class="k">def</span> <span class="nf">get_ep_render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_test</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Collects episode, environment and policy visualisations. Relies on environment renderer class methods,</span>
+<span class="sd">        so it is only valid when environment rendering is enabled (typically it is true for master runner).</span>
 
+<span class="sd">        Returns:</span>
+<span class="sd">            dictionary of images as rgb arrays</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Only render chief worker and test (slave) environment:</span>
+        <span class="c1"># if self.task &lt; 1 and (</span>
+        <span class="c1">#     is_test or(</span>
+        <span class="c1">#         self.local_episode % self.env_render_freq == 0 and not self.data_sample_config[&#39;mode&#39;]</span>
+        <span class="c1">#     )</span>
+        <span class="c1"># ):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_episode</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_render_freq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+
+            <span class="c1"># Render environment (chief worker only):</span>
+            <span class="n">render_stat</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">mode</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">mode</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">render_modes</span>
+            <span class="p">}</span>
+            <span class="c1"># Update renderings with aux:</span>
+
+            <span class="c1"># ep_a_logits = self.ep_accum[&#39;logits&#39;]</span>
+            <span class="c1"># ep_value = self.ep_accum[&#39;value&#39;]</span>
+            <span class="c1"># self.log.notice(&#39;ep_logits shape: {}&#39;.format(np.asarray(ep_a_logits).shape))</span>
+            <span class="c1"># self.log.notice(&#39;ep_value shape: {}&#39;.format(np.asarray(ep_value).shape))</span>
+
+            <span class="c1"># Unpack LSTM states:</span>
+            <span class="n">rnn_1</span><span class="p">,</span> <span class="n">rnn_2</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_accum</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">])</span>
+            <span class="n">rnn_1</span> <span class="o">=</span> <span class="p">[</span><span class="n">state</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="n">rnn_1</span><span class="p">]</span>
+            <span class="n">rnn_2</span> <span class="o">=</span> <span class="p">[</span><span class="n">state</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="n">rnn_2</span><span class="p">]</span>
+            <span class="n">c1</span><span class="p">,</span> <span class="n">h1</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">rnn_1</span><span class="p">)</span>
+            <span class="n">c2</span><span class="p">,</span> <span class="n">h2</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">rnn_2</span><span class="p">)</span>
+
+            <span class="c1"># Render everything implemented (doh!):</span>
+            <span class="n">implemented_aux_images</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;action_prob&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">draw_plot</span><span class="p">(</span>
+                    <span class="c1"># data=softmax(np.asarray(ep_a_logits)[:, 0, :] - np.asarray(ep_a_logits).max()),</span>
+                    <span class="n">data</span><span class="o">=</span><span class="n">softmax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_accum</span><span class="p">[</span><span class="s1">&#39;logits&#39;</span><span class="p">])),</span> <span class="c1">#[:, 0, :]),</span>
+                    <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Episode actions probabilities&#39;</span><span class="p">,</span>
+                    <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+                    <span class="n">box_text</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+                    <span class="n">xlabel</span><span class="o">=</span><span class="s1">&#39;Backward env. steps&#39;</span><span class="p">,</span>
+                    <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;R+&#39;</span><span class="p">,</span>
+                    <span class="n">line_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Hold&#39;</span><span class="p">,</span> <span class="s1">&#39;Buy&#39;</span><span class="p">,</span> <span class="s1">&#39;Sell&#39;</span><span class="p">,</span> <span class="s1">&#39;Close&#39;</span><span class="p">]</span>
+                <span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+                <span class="s1">&#39;value_fn&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">draw_plot</span><span class="p">(</span>
+                    <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ep_accum</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]),</span>
+                    <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Episode Value function&#39;</span><span class="p">,</span>
+                    <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+                    <span class="n">xlabel</span><span class="o">=</span><span class="s1">&#39;Backward env. steps&#39;</span><span class="p">,</span>
+                    <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;R&#39;</span><span class="p">,</span>
+                    <span class="n">line_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Value&#39;</span><span class="p">]</span>
+                <span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+                <span class="c1"># &#39;lstm_1_c&#39;: norm_image(np.asarray(c1).T[None, :, 0, :, None]),</span>
+                <span class="s1">&#39;lstm_1_h&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm_image</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">h1</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">]),</span>
+                <span class="c1"># &#39;lstm_2_c&#39;: norm_image(np.asarray(c2).T[None, :, 0, :, None]),</span>
+                <span class="s1">&#39;lstm_2_h&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm_image</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">h2</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">])</span>
+            <span class="p">}</span>
+
+            <span class="c1"># Pick what has been set:</span>
+            <span class="n">aux_images</span> <span class="o">=</span> <span class="p">{</span><span class="n">summary</span><span class="p">:</span> <span class="n">implemented_aux_images</span><span class="p">[</span><span class="n">summary</span><span class="p">]</span> <span class="k">for</span> <span class="n">summary</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_render_modes</span><span class="p">}</span>
+            <span class="n">render_stat</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">aux_images</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">render_stat</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="n">render_stat</span></div>
+
+<div class="viewcode-block" id="VerboseSynchroRunner.start"><a class="viewcode-back" href="../../../../btgym.algorithms.runner.html#btgym.algorithms.runner.synchro.VerboseSynchroRunner.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">summary_writer</span><span class="p">,</span> <span class="n">init_context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data_sample_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes initial sequence; fills initial replay memory if any.</span>
+<span class="sd">        Extra: initialises environment renderer to get aux. images.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;Initial policy not specified&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sess</span> <span class="o">=</span> <span class="n">sess</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">summary_writer</span> <span class="o">=</span> <span class="n">summary_writer</span>
+
+        <span class="c1"># Hacky but we need env.renderer methods ready:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">initialize_pyplot</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pre_experience</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_action</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_init_experience</span><span class="p">(</span>
+            <span class="n">policy</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="p">,</span>
+            <span class="n">init_context</span><span class="o">=</span><span class="n">init_context</span><span class="p">,</span>
+            <span class="n">data_sample_config</span><span class="o">=</span><span class="n">data_sample_config</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">is_full</span><span class="p">():</span>
+                <span class="c1"># collect some rollouts to fill memory:</span>
+                <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;Memory filled&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">notice</span><span class="p">(</span><span class="s1">&#39;started collecting data.&#39;</span><span class="p">)</span></div></div>
 
 
 

@@ -278,6 +278,8 @@
     <span class="n">data_lines_names</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;default_asset&#39;</span><span class="p">,)</span>
     <span class="n">cash_name</span> <span class="o">=</span> <span class="s1">&#39;default_cash&#39;</span>
 
+    <span class="n">random_seed</span> <span class="o">=</span> <span class="kc">None</span>
+
     <span class="n">closed</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -309,6 +311,7 @@
 <span class="sd">            log=None (logbook.Logger):                      external logbook logger,</span>
 <span class="sd">                                                            overrides `log_level` and `verbose` args.</span>
 <span class="sd">            task=0 (int):                                   environment id</span>
+<span class="sd">            random_seed(int):                               numpy random seed, def: None</span>
 
 <span class="sd">        Environment kwargs applying logic::</span>
 
@@ -406,6 +409,9 @@
                     <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">value</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s1">&#39;BTgymAPIshell_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+
+        <span class="c1"># Random seeding:</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">)</span>
 
         <span class="c1"># Network parameters:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">network_address</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
@@ -621,7 +627,8 @@
 <span class="sd">        Args:</span>
 <span class="sd">            seed:   int or None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="o">=</span> <span class="n">seed</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="BTgymEnv._comm_with_timeout"><a class="viewcode-back" href="../../../btgym.envs.html#btgym.envs.base.BTgymEnv._comm_with_timeout">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_comm_with_timeout</span><span class="p">(</span> <span class="n">socket</span><span class="p">,</span> <span class="n">message</span><span class="p">,):</span>

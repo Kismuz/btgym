@@ -242,6 +242,8 @@
 <span class="sd">                            if no actions provided - continuous 1D base action space is set in [0,1] interval.</span>
 <span class="sd">            assets:         iterable of assets names</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">assets</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span>\
+            <span class="s1">&#39;ActionDictSpace: expected `assets` be iterable, got &lt;</span><span class="si">{}</span><span class="s1">&gt; type &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">assets</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">assets</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">assets</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">assets</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">base_actions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Discrete base actions provided, will use binary encoding for encode/decode methods</span>

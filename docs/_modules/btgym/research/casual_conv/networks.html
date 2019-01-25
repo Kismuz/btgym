@@ -241,6 +241,9 @@
 
             <span class="n">num_time_batches</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">length</span> <span class="o">/</span> <span class="n">conv_1d_filter_size</span><span class="p">)</span>
 
+            <span class="n">stride</span> <span class="o">=</span> <span class="n">conv_1d_filter_size</span> <span class="o">-</span> <span class="n">conv_1d_overlap</span>
+            <span class="k">assert</span> <span class="n">stride</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;conv_1d_filter_size should be greater then conv_1d_overlap&#39;</span>
+        
             <span class="c1"># print(&#39;num_time_batches: &#39;, num_time_batches)</span>
 
             <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">conv_1d_filter_size</span><span class="p">,</span> <span class="n">channels</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;layer_</span><span class="si">{}</span><span class="s1">_t2b&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
@@ -249,7 +252,7 @@
                 <span class="n">x</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
                 <span class="n">num_filters</span><span class="o">=</span><span class="n">conv_1d_num_filters</span><span class="p">,</span>
                 <span class="n">filter_size</span><span class="o">=</span><span class="n">conv_1d_filter_size</span><span class="p">,</span>
-                <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
                 <span class="n">pad</span><span class="o">=</span><span class="s1">&#39;VALID&#39;</span><span class="p">,</span>
                 <span class="n">name</span><span class="o">=</span><span class="s1">&#39;conv1d_layer_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
             <span class="p">)</span>
@@ -310,7 +313,7 @@
         <span class="c1">#     axis=1,</span>
         <span class="c1">#     name=&#39;encoded_state&#39;</span>
         <span class="c1"># )</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;encoder :&#39;</span><span class="p">,</span> <span class="n">encoded</span><span class="p">)</span>
+        <span class="c1"># print(&#39;encoder :&#39;, encoded)</span>
 
     <span class="k">return</span> <span class="n">encoded</span></div>
 

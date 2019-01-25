@@ -186,7 +186,7 @@
 <span class="kn">import</span> <span class="nn">cv2</span>
 <span class="kn">import</span> <span class="nn">gym</span>
 <span class="kn">from</span> <span class="nn">gym</span> <span class="k">import</span> <span class="n">spaces</span>
-<span class="kn">from</span> <span class="nn">btgym</span> <span class="k">import</span> <span class="n">DictSpace</span>
+<span class="kn">from</span> <span class="nn">btgym</span> <span class="k">import</span> <span class="n">DictSpace</span><span class="p">,</span> <span class="n">ActionDictSpace</span>
 
 
 <span class="k">def</span> <span class="nf">_process_frame42</span><span class="p">(</span><span class="n">frame</span><span class="p">):</span>
@@ -209,7 +209,7 @@
 <span class="sd">    Makes Atari environment return state as dictionary with single key &#39;external&#39; holding</span>
 <span class="sd">    normalized in [0,1] grayscale 42x42 visual output.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
+    <span class="c1"># TODO: INPRoGRESS: dict observation space, include metadata etc.</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 
@@ -222,9 +222,25 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">observation_space</span> <span class="o">=</span> <span class="n">DictSpace</span><span class="p">(</span>
             <span class="p">{</span><span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)}</span>
         <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;atari_player&#39;</span><span class="p">]</span>
+        <span class="n">num_actions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span> <span class="o">=</span> <span class="n">ActionDictSpace</span><span class="p">(</span>
+            <span class="n">base_actions</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_actions</span><span class="p">)),</span>
+            <span class="n">assets</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span>
+        <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">observation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observation</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="n">_process_frame42</span><span class="p">(</span><span class="n">observation</span><span class="p">)}</span></div>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="n">_process_frame42</span><span class="p">(</span><span class="n">observation</span><span class="p">)}</span>
+
+    <span class="k">def</span> <span class="nf">get_initial_action</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">asset</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">asset</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="c1"># TODO: fix it</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="n">action</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">asset_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="n">observation</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+        <span class="n">reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">reward</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">observation</span><span class="p">(</span><span class="n">observation</span><span class="p">),</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span></div>
 </pre></div>
 
            </div>

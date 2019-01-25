@@ -235,9 +235,10 @@
 
         <span class="c1"># Pass data serving methods:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">get_current_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">_get_data</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">can_increment_global_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">can_increment_global_time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">can_broadcast</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">can_broadcast</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">get_timestamp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">_get_timestamp</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">get_dataset_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">_get_info</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_broadcast_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">_get_broadcast_info</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">step_to_render</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Due to reset(), this will get populated before first render() call.</span>
@@ -353,18 +354,20 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">((</span><span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">is_done</span><span class="p">,</span> <span class="n">info</span><span class="p">))</span>
 
             <span class="c1"># Increment global time by sending timestamp to data_server, if authorized;</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_increment_global_time</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_broadcast</span><span class="p">:</span>
                 <span class="n">global_timestamp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_timestamp</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;got strategy timestamp: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_timestamp</span><span class="p">))</span>
+                <span class="n">broadcast_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_broadcast_info</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;broadcasting timestamp: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_timestamp</span><span class="p">))</span>
 
                 <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span>
                     <span class="p">{</span>
-                        <span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_set_global_time&#39;</span><span class="p">,</span>
-                        <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">global_timestamp</span>
+                        <span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_set_broadcast_message&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">global_timestamp</span><span class="p">,</span>
+                        <span class="s1">&#39;broadcast_message&#39;</span><span class="p">:</span> <span class="n">broadcast_info</span><span class="p">,</span>
                     <span class="p">}</span>
                 <span class="p">)</span>
-                <span class="n">global_time_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;DATA_COMM/glob.time received: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">global_time_response</span><span class="p">))</span>
+                <span class="n">broadcast_set_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;DATA_COMM/broadcast received: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">broadcast_set_response</span><span class="p">))</span>
 
             <span class="c1"># Back up step information for rendering.</span>
             <span class="c1"># It pays when using skip-frames: will&#39;ll get future state otherwise.</span>
@@ -620,6 +623,28 @@
 
         <span class="k">return</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span></div>
 
+<div class="viewcode-block" id="BTgymServer.get_broadcast_message"><a class="viewcode-back" href="../../btgym.html#btgym.server.BTgymServer.get_broadcast_message">[docs]</a>    <span class="k">def</span> <span class="nf">get_broadcast_message</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Asks dataserver for current dataset global_time and broadcast message.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            POSIX timestamp</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data_server_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm_with_timeout</span><span class="p">(</span>
+            <span class="n">socket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data_socket</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ctrl&#39;</span><span class="p">:</span> <span class="s1">&#39;_get_broadcast_message&#39;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;ok&#39;</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;BtgymServer_sampling_attempt: data_server @</span><span class="si">{}</span><span class="s1"> unreachable with status: &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span> \
+                <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_network_address</span><span class="p">,</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;timestamp&#39;</span><span class="p">],</span> <span class="n">data_server_response</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">][</span><span class="s1">&#39;broadcast_message&#39;</span><span class="p">]</span></div>
+
 <div class="viewcode-block" id="BTgymServer.run"><a class="viewcode-back" href="../../btgym.html#btgym.server.BTgymServer.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Server process runtime body. This method is invoked by env._start_server().</span>
@@ -775,6 +800,10 @@
             <span class="n">cerebro</span><span class="o">.</span><span class="n">addanalyzer</span><span class="p">(</span><span class="n">_BTgymAnalyzer</span><span class="p">,</span> <span class="n">_name</span><span class="o">=</span><span class="s1">&#39;_env_analyzer&#39;</span><span class="p">,)</span>
 
             <span class="c1"># Data preparation:</span>
+
+            <span class="c1"># Renew system state:</span>
+            <span class="n">current_timestamp</span><span class="p">,</span> <span class="n">current_broadcast_message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_broadcast_message</span><span class="p">()</span>
+
             <span class="c1"># Parse args we got with _reset call:</span>
             <span class="n">sample_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
                 <span class="n">episode_config</span><span class="o">=</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">DataSampleConfig</span><span class="p">),</span>
@@ -788,6 +817,8 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
                         <span class="s1">&#39;_reset &lt;</span><span class="si">{}</span><span class="s1">&gt; kwarg not found, using default values: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
                     <span class="p">)</span>
+            <span class="n">sample_config</span><span class="p">[</span><span class="s1">&#39;trial_config&#39;</span><span class="p">][</span><span class="s1">&#39;broadcast_message&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_broadcast_message</span>
+            <span class="n">sample_config</span><span class="p">[</span><span class="s1">&#39;episode_config&#39;</span><span class="p">][</span><span class="s1">&#39;broadcast_message&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_broadcast_message</span>
 
             <span class="c1"># Get new Trial from data_server if requested,</span>
             <span class="c1"># despite bult-in new/reuse data object sampling option, perform checks here to avoid</span>
@@ -806,7 +837,7 @@
 
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Reusing Trial &lt;</span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trial_sample</span><span class="o">.</span><span class="n">filename</span><span class="p">))</span>
-                <span class="n">current_timestamp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_global_time</span><span class="p">()</span>
+                <span class="c1"># current_timestamp = self.get_global_time()</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
                 <span class="s1">&#39;current global_time: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">current_timestamp</span><span class="p">))</span>
@@ -830,6 +861,8 @@
             <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;dataset_stat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_stat</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;episode_stat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">episode_sample</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">episode_sample</span><span class="o">.</span><span class="n">metadata</span>
+
+            <span class="n">cerebro</span><span class="o">.</span><span class="n">strats</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;broadcast_message&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_broadcast_message</span>
 
             <span class="c1"># Set nice broker cash plotting:</span>
             <span class="n">cerebro</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">set_shortcash</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>

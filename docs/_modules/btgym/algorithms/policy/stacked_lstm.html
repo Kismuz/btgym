@@ -218,7 +218,7 @@
                  <span class="n">action_dp_alpha</span><span class="o">=</span><span class="mf">200.0</span><span class="p">,</span>
                  <span class="n">aux_estimate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="n">encode_internal_state</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                 <span class="n">static_rnn</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">static_rnn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                  <span class="n">shared_p_v</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -257,7 +257,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">action_dp_alpha</span> <span class="o">=</span> <span class="n">action_dp_alpha</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">aux_estimate</span> <span class="o">=</span> <span class="n">aux_estimate</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">encode_internal_state</span> <span class="o">=</span> <span class="n">encode_internal_state</span>
+        <span class="c1"># self.encode_internal_state = encode_internal_state</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">share_encoder_params</span> <span class="o">=</span> <span class="n">share_encoder_params</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_encoder_params</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">reuse_encoder_params</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">AUTO_REUSE</span>
@@ -329,50 +329,55 @@
                 <span class="n">kwargs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">default_value</span>
 
         <span class="c1"># Base on-policy AAC network:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">modes_to_encode</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">,</span> <span class="s1">&#39;internal&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modes_to_encode</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> \
+                <span class="s1">&#39;Required top-level mode `</span><span class="si">{}</span><span class="s1">` not found in state shape specification&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span>
 
-        <span class="c1"># Separately encode than concatenate all `external` states modes, jointly encode every stream within mode:</span>
+        <span class="c1"># Separately encode than concatenate all `external` and &#39;internal&#39; states modes,</span>
+        <span class="c1"># [jointly] encode every stream within mode:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">on_aac_x_encoded</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="k">if</span> <span class="s1">&#39;external&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>  <span class="c1"># got dictionary of data streams</span>
-                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_encoder_params</span><span class="p">:</span>
-                        <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_shared&#39;</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span>
-                    <span class="n">encoded_streams</span> <span class="o">=</span> <span class="p">{</span>
-                        <span class="n">name</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">state_encoder_class_ref</span><span class="p">(</span>
-                                <span class="n">x</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
-                                <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">name</span><span class="p">],</span>
-                                <span class="n">ac_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span>
-                                <span class="n">name</span><span class="o">=</span><span class="n">layer_name_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
-                                <span class="n">reuse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reuse_encoder_params</span><span class="p">,</span>  <span class="c1"># shared params for all streams in mode</span>
-                                <span class="o">**</span><span class="n">kwargs</span>
-                            <span class="p">)</span>
-                        <span class="p">)</span>
-                        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">stream</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-                    <span class="p">}</span>
-                    <span class="n">encoded_mode</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
-                        <span class="nb">list</span><span class="p">(</span><span class="n">encoded_streams</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
-                        <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
-                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;multi_encoded_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
-                    <span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modes_to_encode</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>  <span class="c1"># got dictionary of data streams</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_encoder_params</span><span class="p">:</span>
+                    <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_shared&#39;</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># Got single data stream:</span>
-                    <span class="n">encoded_mode</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
+                    <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span>
+                <span class="n">encoded_streams</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="n">name</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">state_encoder_class_ref</span><span class="p">(</span>
-                            <span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
-                            <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
+                            <span class="n">x</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
+                            <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">name</span><span class="p">],</span>
                             <span class="n">ac_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span>
-                            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+                            <span class="n">name</span><span class="o">=</span><span class="n">layer_name_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
+                            <span class="n">reuse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reuse_encoder_params</span><span class="p">,</span>  <span class="c1"># shared params for all streams in mode</span>
                             <span class="o">**</span><span class="n">kwargs</span>
                         <span class="p">)</span>
                     <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">on_aac_x_encoded</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoded_mode</span>
+                    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">stream</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="p">}</span>
+                <span class="n">encoded_mode</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                    <span class="nb">list</span><span class="p">(</span><span class="n">encoded_streams</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+                    <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;multi_encoded_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Got single data stream:</span>
+                <span class="n">encoded_mode</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">state_encoder_class_ref</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
+                        <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
+                        <span class="n">ac_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+                        <span class="o">**</span><span class="n">kwargs</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">on_aac_x_encoded</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoded_mode</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">[</span><span class="s1">&#39;on_state_external_encoded_dict&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_aac_x_encoded</span>
 
-        <span class="n">on_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_aac_x_encoded</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;on_state_external_encoded&#39;</span><span class="p">)</span>
+        <span class="c1"># on_aac_x = tf.concat(list(self.on_aac_x_encoded.values()), axis=-1, name=&#39;on_state_external_encoded&#39;)</span>
+        <span class="n">on_aac_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_aac_x_encoded</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">]</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">[</span><span class="s1">&#39;on_state_external_encoded&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">on_aac_x</span>
 
@@ -397,34 +402,46 @@
 
         <span class="n">on_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">on_aac_x</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])])</span>
 
-        <span class="c1"># Prepare `internal` state, if any:</span>
-        <span class="k">if</span> <span class="s1">&#39;internal&#39;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_internal_state</span><span class="p">:</span>
-                <span class="c1"># Use convolution encoder:</span>
-                <span class="n">on_x_internal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_encoder_class_ref</span><span class="p">(</span>
-                    <span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">],</span>
-                    <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">],</span>
-                    <span class="n">ac_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span>
-                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoded_internal&#39;</span><span class="p">,</span>
-                    <span class="o">**</span><span class="n">kwargs</span>
-                <span class="p">)</span>
-                <span class="n">x_int_shape_static</span> <span class="o">=</span> <span class="n">on_x_internal</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
-                <span class="n">on_x_internal</span> <span class="o">=</span> <span class="p">[</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">on_x_internal</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_int_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])])]</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">[</span><span class="s1">&#39;on_state_internal_encoded&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">on_x_internal</span>
+        <span class="c1"># # Prepare `internal` state, if any:</span>
+        <span class="c1"># if &#39;internal&#39; in list(self.on_state_in.keys()):</span>
+        <span class="c1">#     if self.encode_internal_state:</span>
+        <span class="c1">#         # Use convolution encoder:</span>
+        <span class="c1">#         on_x_internal = self.state_encoder_class_ref(</span>
+        <span class="c1">#             x=self.on_state_in[&#39;internal&#39;],</span>
+        <span class="c1">#             ob_space=self.ob_space.shape[&#39;internal&#39;],</span>
+        <span class="c1">#             ac_space=self.ac_space,</span>
+        <span class="c1">#             name=&#39;encoded_internal&#39;,</span>
+        <span class="c1">#             **kwargs</span>
+        <span class="c1">#         )</span>
+        <span class="c1">#         x_int_shape_static = on_x_internal.get_shape().as_list()</span>
+        <span class="c1">#         on_x_internal = [</span>
+        <span class="c1">#             tf.reshape(on_x_internal, [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])])]</span>
+        <span class="c1">#         self.debug[&#39;on_state_internal_encoded&#39;] = on_x_internal</span>
+        <span class="c1">#</span>
+        <span class="c1">#     else:</span>
+        <span class="c1">#         # Feed as is:</span>
+        <span class="c1">#         x_int_shape_static = self.on_state_in[&#39;internal&#39;].get_shape().as_list()</span>
+        <span class="c1">#         on_x_internal = tf.reshape(</span>
+        <span class="c1">#             self.on_state_in[&#39;internal&#39;],</span>
+        <span class="c1">#             [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]</span>
+        <span class="c1">#         )</span>
+        <span class="c1">#         self.debug[&#39;on_state_internal_encoded&#39;] = on_x_internal</span>
+        <span class="c1">#         on_x_internal = [on_x_internal]</span>
+        <span class="c1">#</span>
+        <span class="c1"># else:</span>
+        <span class="c1">#     on_x_internal = []</span>
 
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># Feed as is:</span>
-                <span class="n">x_int_shape_static</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
-                <span class="n">on_x_internal</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">],</span>
-                    <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_int_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])]</span>
-                <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">[</span><span class="s1">&#39;on_state_internal_encoded&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">on_x_internal</span>
-                <span class="n">on_x_internal</span> <span class="o">=</span> <span class="p">[</span><span class="n">on_x_internal</span><span class="p">]</span>
+        <span class="n">on_x_internal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_aac_x_encoded</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">]</span>
 
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">on_x_internal</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># Reshape to batch-feed rnn:</span>
+        <span class="n">x_int_shape_static</span> <span class="o">=</span> <span class="n">on_x_internal</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+        <span class="n">on_x_internal</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="n">on_x_internal</span><span class="p">,</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_int_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">[</span><span class="s1">&#39;on_state_internal_encoded&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">on_x_internal</span>
+
+        <span class="n">on_x_internal</span> <span class="o">=</span> <span class="p">[</span><span class="n">on_x_internal</span><span class="p">]</span>
 
         <span class="c1"># Prepare datetime index if any:</span>
         <span class="k">if</span> <span class="s1">&#39;datetime&#39;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
@@ -462,7 +479,8 @@
                 <span class="n">lstm_class</span><span class="o">=</span><span class="n">lstm_class_ref</span><span class="p">,</span>
                 <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="n">lstm_layers</span><span class="p">[</span><span class="mi">0</span><span class="p">],),</span>
                 <span class="n">static</span><span class="o">=</span><span class="n">static_rnn</span><span class="p">,</span>
-                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;lstm_1&#39;</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;lstm_1&#39;</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="c1"># var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)</span>
@@ -511,7 +529,8 @@
                 <span class="n">lstm_class</span><span class="o">=</span><span class="n">lstm_class_ref</span><span class="p">,</span>
                 <span class="n">lstm_layers</span><span class="o">=</span><span class="p">(</span><span class="n">lstm_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],),</span>
                 <span class="n">static</span><span class="o">=</span><span class="n">static_rnn</span><span class="p">,</span>
-                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;lstm_2&#39;</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;lstm_2&#39;</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">[</span><span class="s1">&#39;on_x_lstm_2_out&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">on_x_lstm_2_out</span>
@@ -547,46 +566,47 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_state_pl_flatten</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_1_state_pl_flatten</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_2_state_pl_flatten</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_x_encoded</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="k">if</span> <span class="s1">&#39;external&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>  <span class="c1"># got dictionary of data streams</span>
-                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_encoder_params</span><span class="p">:</span>
-                        <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_shared&#39;</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span>
-                    <span class="n">encoded_streams</span> <span class="o">=</span> <span class="p">{</span>
-                        <span class="n">name</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">state_encoder_class_ref</span><span class="p">(</span>
-                                <span class="n">x</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
-                                <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">name</span><span class="p">],</span>
-                                <span class="n">ac_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span>
-                                <span class="n">name</span><span class="o">=</span><span class="n">layer_name_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
-                                <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># shared params for all streams in mode</span>
-                                <span class="o">**</span><span class="n">kwargs</span>
-                            <span class="p">)</span>
-                        <span class="p">)</span>
-                        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">stream</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-                    <span class="p">}</span>
-                    <span class="n">encoded_mode</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
-                        <span class="nb">list</span><span class="p">(</span><span class="n">encoded_streams</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
-                        <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
-                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;multi_encoded_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
-                    <span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modes_to_encode</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>  <span class="c1"># got dictionary of data streams</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_encoder_params</span><span class="p">:</span>
+                    <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_shared&#39;</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># Got single data stream:</span>
-                    <span class="n">encoded_mode</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
+                    <span class="n">layer_name_template</span> <span class="o">=</span> <span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span>
+                <span class="n">encoded_streams</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="n">name</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">state_encoder_class_ref</span><span class="p">(</span>
-                            <span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
-                            <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
+                            <span class="n">x</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
+                            <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">name</span><span class="p">],</span>
                             <span class="n">ac_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span>
-                            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
-                            <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                            <span class="n">name</span><span class="o">=</span><span class="n">layer_name_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
+                            <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># shared params for all streams in mode</span>
                             <span class="o">**</span><span class="n">kwargs</span>
                         <span class="p">)</span>
                     <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_x_encoded</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoded_mode</span>
+                    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">stream</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="p">}</span>
+                <span class="n">encoded_mode</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                    <span class="nb">list</span><span class="p">(</span><span class="n">encoded_streams</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+                    <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;multi_encoded_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Got single data stream:</span>
+                <span class="n">encoded_mode</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">state_encoder_class_ref</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
+                        <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
+                        <span class="n">ac_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoded_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+                        <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="o">**</span><span class="n">kwargs</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_x_encoded</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoded_mode</span>
 
-        <span class="n">off_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_aac_x_encoded</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;off_state_external_encoded&#39;</span><span class="p">)</span>
+        <span class="c1"># off_aac_x = tf.concat(list(self.off_aac_x_encoded.values()), axis=-1, name=&#39;off_state_external_encoded&#39;)</span>
+
+        <span class="n">off_aac_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_x_encoded</span><span class="p">[</span><span class="s1">&#39;external&#39;</span><span class="p">]</span>
 
         <span class="c1"># Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:</span>
         <span class="n">x_shape_dynamic</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">off_aac_x</span><span class="p">)</span>
@@ -601,32 +621,43 @@
 
         <span class="n">off_aac_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span> <span class="n">off_aac_x</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])])</span>
 
-        <span class="c1"># Prepare `internal` state, if any:</span>
-        <span class="k">if</span> <span class="s1">&#39;internal&#39;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_internal_state</span><span class="p">:</span>
-                <span class="c1"># Use convolution encoder:</span>
-                <span class="n">off_x_internal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_encoder_class_ref</span><span class="p">(</span>
-                    <span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">],</span>
-                    <span class="n">ob_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ob_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">],</span>
-                    <span class="n">ac_space</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="p">,</span>
-                    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoded_internal&#39;</span><span class="p">,</span>
-                    <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                    <span class="o">**</span><span class="n">kwargs</span>
-                <span class="p">)</span>
-                <span class="n">x_int_shape_static</span> <span class="o">=</span> <span class="n">off_x_internal</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
-                <span class="n">off_x_internal</span> <span class="o">=</span> <span class="p">[</span>
-                    <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">off_x_internal</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_int_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])])</span>
-                <span class="p">]</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">x_int_shape_static</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
-                <span class="n">off_x_internal</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">],</span>
-                    <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_int_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])]</span>
-                <span class="p">)</span>
-                <span class="n">off_x_internal</span> <span class="o">=</span> <span class="p">[</span><span class="n">off_x_internal</span><span class="p">]</span>
+        <span class="c1"># # Prepare `internal` state, if any:</span>
+        <span class="c1"># if &#39;internal&#39; in list(self.off_state_in.keys()):</span>
+        <span class="c1">#     if self.encode_internal_state:</span>
+        <span class="c1">#         # Use convolution encoder:</span>
+        <span class="c1">#         off_x_internal = self.state_encoder_class_ref(</span>
+        <span class="c1">#             x=self.off_state_in[&#39;internal&#39;],</span>
+        <span class="c1">#             ob_space=self.ob_space.shape[&#39;internal&#39;],</span>
+        <span class="c1">#             ac_space=self.ac_space,</span>
+        <span class="c1">#             name=&#39;encoded_internal&#39;,</span>
+        <span class="c1">#             reuse=True,</span>
+        <span class="c1">#             **kwargs</span>
+        <span class="c1">#         )</span>
+        <span class="c1">#         x_int_shape_static = off_x_internal.get_shape().as_list()</span>
+        <span class="c1">#         off_x_internal = [</span>
+        <span class="c1">#             tf.reshape(off_x_internal, [self.off_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])])</span>
+        <span class="c1">#         ]</span>
+        <span class="c1">#     else:</span>
+        <span class="c1">#         x_int_shape_static = self.off_state_in[&#39;internal&#39;].get_shape().as_list()</span>
+        <span class="c1">#         off_x_internal = tf.reshape(</span>
+        <span class="c1">#             self.off_state_in[&#39;internal&#39;],</span>
+        <span class="c1">#             [self.off_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]</span>
+        <span class="c1">#         )</span>
+        <span class="c1">#         off_x_internal = [off_x_internal]</span>
+        <span class="c1">#</span>
+        <span class="c1"># else:</span>
+        <span class="c1">#     off_x_internal = []</span>
 
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">off_x_internal</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">off_x_internal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_aac_x_encoded</span><span class="p">[</span><span class="s1">&#39;internal&#39;</span><span class="p">]</span>
+
+        <span class="n">x_int_shape_static</span> <span class="o">=</span> <span class="n">off_x_internal</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+
+        <span class="c1"># Properly feed LSTM2:</span>
+        <span class="n">off_x_internal</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="n">off_x_internal</span><span class="p">,</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">off_batch_size</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">x_int_shape_static</span><span class="p">[</span><span class="mi">1</span><span class="p">:])]</span>
+        <span class="p">)</span>
+        <span class="n">off_x_internal</span> <span class="o">=</span> <span class="p">[</span><span class="n">off_x_internal</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="s1">&#39;datetime&#39;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
             <span class="n">x_dt_shape_static</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">off_state_in</span><span class="p">[</span><span class="s1">&#39;datetime&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
@@ -655,7 +686,8 @@
                 <span class="p">(</span><span class="n">lstm_layers</span><span class="p">[</span><span class="mi">0</span><span class="p">],),</span>
                 <span class="n">name</span><span class="o">=</span><span class="s1">&#39;lstm_1&#39;</span><span class="p">,</span>
                 <span class="n">static</span><span class="o">=</span><span class="n">static_rnn</span><span class="p">,</span>
-                <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span>
+                <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="c1"># Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:</span>
@@ -685,7 +717,8 @@
                 <span class="p">(</span><span class="n">lstm_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],),</span>
                 <span class="n">name</span><span class="o">=</span><span class="s1">&#39;lstm_2&#39;</span><span class="p">,</span>
                 <span class="n">static</span><span class="o">=</span><span class="n">static_rnn</span><span class="p">,</span>
-                <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span>
+                <span class="n">reuse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="c1"># Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:</span>
@@ -816,7 +849,11 @@
 
         <span class="c1"># Callbacks:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_estimate</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">[</span><span class="s1">&#39;pixel_change&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pc_target</span></div>
+            <span class="k">pass</span>
+            <span class="c1"># TEMP DISABLE: due to computation costs</span>
+            <span class="c1"># do not use pixel change aux. task; otherwise enable lines 533 - 553 &amp; 640:</span>
+            <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">[</span><span class="s1">&#39;pixel_change&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pc_target</span></div>
 
         <span class="c1"># print(&#39;policy_debug_dict:\n&#39;, self.debug)</span>
 

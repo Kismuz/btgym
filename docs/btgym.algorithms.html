@@ -243,8 +243,105 @@
 <div class="section" id="module-btgym.algorithms.worker">
 <span id="btgym-algorithms-worker-module"></span><h2>btgym.algorithms.worker module<a class="headerlink" href="#module-btgym.algorithms.worker" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
+<dt id="btgym.algorithms.worker.FastSaver">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.worker.</code><code class="descname">FastSaver</code><span class="sig-paren">(</span><em>var_list=None</em>, <em>reshape=False</em>, <em>sharded=False</em>, <em>max_to_keep=5</em>, <em>keep_checkpoint_every_n_hours=10000.0</em>, <em>name=None</em>, <em>restore_sequentially=False</em>, <em>saver_def=None</em>, <em>builder=None</em>, <em>defer_build=False</em>, <em>allow_empty=False</em>, <em>write_version=2</em>, <em>pad_step_number=False</em>, <em>save_relative_paths=False</em>, <em>filename=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/worker.html#FastSaver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.worker.FastSaver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disables write_meta_graph argument,
+which freezes entire process and is mostly useless.</p>
+<p>Creates a <cite>Saver</cite>.</p>
+<p>The constructor adds ops to save and restore variables.</p>
+<p><cite>var_list</cite> specifies the variables that will be saved and restored. It can
+be passed as a <cite>dict</cite> or a list:</p>
+<ul class="simple">
+<li>A <cite>dict</cite> of names to variables: The keys are the names that will be
+used to save or restore the variables in the checkpoint files.</li>
+<li>A list of variables: The variables will be keyed with their op name in
+the checkpoint files.</li>
+</ul>
+<p>For example:</p>
+<p><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+v1 = tf.Variable(…, name=’v1’)
+v2 = tf.Variable(…, name=’v2’)</p>
+<p># Pass the variables as a dict:
+saver = tf.train.Saver({‘v1’: v1, ‘v2’: v2})</p>
+<p># Or pass them as a list.
+saver = tf.train.Saver([v1, v2])
+# Passing a list is equivalent to passing a dict with the variable op names
+# as keys:
+saver = tf.train.Saver({v.op.name: v for v in [v1, v2]})
+<a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
+<p>The optional <cite>reshape</cite> argument, if <cite>True</cite>, allows restoring a variable from
+a save file where the variable had a different shape, but the same number
+of elements and type.  This is useful if you have reshaped a variable and
+want to reload it from an older checkpoint.</p>
+<p>The optional <cite>sharded</cite> argument, if <cite>True</cite>, instructs the saver to shard
+checkpoints per device.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>var_list</strong> – A list of <cite>Variable</cite>/<cite>SaveableObject</cite>, or a dictionary mapping
+names to <cite>SaveableObject`s. If `None</cite>, defaults to the list of all
+saveable objects.</li>
+<li><strong>reshape</strong> – If <cite>True</cite>, allows restoring parameters from a checkpoint
+where the variables have a different shape.</li>
+<li><strong>sharded</strong> – If <cite>True</cite>, shard the checkpoints, one per device.</li>
+<li><strong>max_to_keep</strong> – Maximum number of recent checkpoints to keep.
+Defaults to 5.</li>
+<li><strong>keep_checkpoint_every_n_hours</strong> – How often to keep checkpoints.
+Defaults to 10,000 hours.</li>
+<li><strong>name</strong> – String.  Optional name to use as a prefix when adding operations.</li>
+<li><strong>restore_sequentially</strong> – A <cite>Bool</cite>, which if true, causes restore of different
+variables to happen sequentially within each device.  This can lower
+memory usage when restoring very large models.</li>
+<li><strong>saver_def</strong> – Optional <cite>SaverDef</cite> proto to use instead of running the
+builder. This is only useful for specialty code that wants to recreate
+a <cite>Saver</cite> object for a previously built <cite>Graph</cite> that had a <cite>Saver</cite>.
+The <cite>saver_def</cite> proto should be the one returned by the
+<cite>as_saver_def()</cite> call of the <cite>Saver</cite> that was created for that <cite>Graph</cite>.</li>
+<li><strong>builder</strong> – Optional <cite>SaverBuilder</cite> to use if a <cite>saver_def</cite> was not provided.
+Defaults to <cite>BulkSaverBuilder()</cite>.</li>
+<li><strong>defer_build</strong> – If <cite>True</cite>, defer adding the save and restore ops to the
+<cite>build()</cite> call. In that case <cite>build()</cite> should be called before
+finalizing the graph or using the saver.</li>
+<li><strong>allow_empty</strong> – If <cite>False</cite> (default) raise an error if there are no
+variables in the graph. Otherwise, construct the saver anyway and make
+it a no-op.</li>
+<li><strong>write_version</strong> – controls what format to use when saving checkpoints.  It
+also affects certain filepath matching logic.  The V2 format is the
+recommended choice: it is much more optimized than V1 in terms of
+memory required and latency incurred during restore.  Regardless of
+this flag, the Saver is able to restore from both V2 and V1 checkpoints.</li>
+<li><strong>pad_step_number</strong> – if True, pads the global step number in the checkpoint
+filepaths to some fixed width (8 by default).  This is turned off by
+default.</li>
+<li><strong>save_relative_paths</strong> – If <cite>True</cite>, will write relative paths to the
+checkpoint state file. This is needed if the user wants to copy the
+checkpoint directory and reload from the copied directory.</li>
+<li><strong>filename</strong> – If known at graph construction time, filename used for variable
+loading/saving.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal"><span class="pre">TypeError</span></code></a> – If <cite>var_list</cite> is invalid.</li>
+<li><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal"><span class="pre">ValueError</span></code></a> – If any of the keys or values in <cite>var_list</cite> are not unique.</li>
+<li><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal"><span class="pre">RuntimeError</span></code></a> – If eager execution is enabled and`var_list` does not specify
+a list of varialbes to save.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>&#64;compatibility(eager)
+When eager execution is enabled, <cite>var_list</cite> must specify a <cite>list</cite> or <cite>dict</cite>
+of variables to save. Otherwise, a <cite>RuntimeError</cite> will be raised.
+&#64;end_compatibility</p>
+</dd></dl>
+
+<dl class="class">
 <dt id="btgym.algorithms.worker.Worker">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.worker.</code><code class="descname">Worker</code><span class="sig-paren">(</span><em>env_config</em>, <em>policy_config</em>, <em>trainer_config</em>, <em>cluster_spec</em>, <em>job_name</em>, <em>task</em>, <em>log_dir</em>, <em>log_level</em>, <em>max_env_steps</em>, <em>random_seed=None</em>, <em>render_last_env=False</em>, <em>test_mode=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/worker.html#Worker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.worker.Worker" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.worker.</code><code class="descname">Worker</code><span class="sig-paren">(</span><em>env_config</em>, <em>policy_config</em>, <em>trainer_config</em>, <em>cluster_spec</em>, <em>job_name</em>, <em>task</em>, <em>log_dir</em>, <em>log_ckpt_subdir</em>, <em>initial_ckpt_dir</em>, <em>save_secs</em>, <em>log_level</em>, <em>max_env_steps</em>, <em>random_seed=None</em>, <em>render_last_env=False</em>, <em>test_mode=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/worker.html#Worker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.worker.Worker" title="Permalink to this definition">¶</a></dt>
 <dd><p>Distributed tf worker class.</p>
 <p>Sets up environment, trainer and starts training process in supervised session.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -258,7 +355,10 @@
 <li><strong>cluster_spec</strong> – tf.cluster specification.</li>
 <li><strong>job_name</strong> – worker or parameter server.</li>
 <li><strong>task</strong> – integer number, 0 is chief worker.</li>
-<li><strong>log_dir</strong> – for tb summaries and checkpoints.</li>
+<li><strong>log_dir</strong> – path for tb summaries and current checkpoints.</li>
+<li><strong>log_ckpt_subdir</strong> – log_dir subdirectory to store current checkpoints</li>
+<li><strong>initial_ckpt_dir</strong> – path for checkpoint to load as pre-trained model.</li>
+<li><strong>save_secs</strong> – int, save model checkpoint every N secs.</li>
 <li><strong>log_level</strong> – int, logbook.level</li>
 <li><strong>max_env_steps</strong> – number of environment steps to run training on</li>
 <li><strong>random_seed</strong> – int or None</li>
@@ -271,7 +371,7 @@
 </dl>
 </li>
 <li><dl class="first docutils">
-<dt>Every worker can run several environments in parralell, as specified by <a href="#id1"><span class="problematic" id="id2">`</span></a>cluster_config’[‘num_envs’].</dt>
+<dt>Every worker can run several environments in parralell, as specified by <a href="#id9"><span class="problematic" id="id10">`</span></a>cluster_config’[‘num_envs’].</dt>
 <dd>If use 4 forkers and num_envs=4 =&gt; total number of environments is 16. Every env instance has
 it’s own ThreadRunner process.</dd>
 </dl>
@@ -301,7 +401,7 @@ it’s own ThreadRunner process.</dd>
 <span id="btgym-algorithms-aac-module"></span><h2>btgym.algorithms.aac module<a class="headerlink" href="#module-btgym.algorithms.aac" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="btgym.algorithms.aac.BaseAAC">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log_level</em>, <em>name='AAC'</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>runner_config=None</em>, <em>runner_fn_ref=&lt;function BaseEnvRunnerFn&gt;</em>, <em>cluster_spec=None</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_train_test_cycle=(1</em>, <em>0)</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1.0</em>, <em>pc_lambda=1.0</em>, <em>vr_lambda=1.0</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>global_step_op=None</em>, <em>global_episode_op=None</em>, <em>inc_episode_op=None</em>, <em>_use_global_network=True</em>, <em>_use_target_policy=False</em>, <em>_use_local_memory=False</em>, <em>_aux_render_modes=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.algorithms.aac.</code><code class="descname">BaseAAC</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>policy_config</em>, <em>log_level</em>, <em>name='AAC'</em>, <em>on_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>off_policy_loss=&lt;function aac_loss_def&gt;</em>, <em>vr_loss=&lt;function value_fn_loss_def&gt;</em>, <em>rp_loss=&lt;function rp_loss_def&gt;</em>, <em>pc_loss=&lt;function pc_loss_def&gt;</em>, <em>runner_config=None</em>, <em>runner_fn_ref=&lt;function BaseEnvRunnerFn&gt;</em>, <em>cluster_spec=None</em>, <em>random_seed=None</em>, <em>model_gamma=0.99</em>, <em>model_gae_lambda=1.0</em>, <em>model_beta=0.01</em>, <em>opt_max_env_steps=10000000</em>, <em>opt_decay_steps=None</em>, <em>opt_end_learn_rate=None</em>, <em>opt_learn_rate=0.0001</em>, <em>opt_decay=0.99</em>, <em>opt_momentum=0.0</em>, <em>opt_epsilon=1e-08</em>, <em>rollout_length=20</em>, <em>time_flat=False</em>, <em>episode_train_test_cycle=(1</em>, <em>0)</em>, <em>episode_summary_freq=2</em>, <em>env_render_freq=10</em>, <em>model_summary_freq=100</em>, <em>test_mode=False</em>, <em>replay_memory_size=2000</em>, <em>replay_batch_size=None</em>, <em>replay_rollout_length=None</em>, <em>use_off_policy_aac=False</em>, <em>use_reward_prediction=False</em>, <em>use_pixel_control=False</em>, <em>use_value_replay=False</em>, <em>rp_lambda=1.0</em>, <em>pc_lambda=1.0</em>, <em>vr_lambda=1.0</em>, <em>off_aac_lambda=1</em>, <em>gamma_pc=0.9</em>, <em>rp_reward_threshold=0.1</em>, <em>rp_sequence_size=3</em>, <em>clip_epsilon=0.1</em>, <em>num_epochs=1</em>, <em>pi_prime_update_period=1</em>, <em>global_step_op=None</em>, <em>global_episode_op=None</em>, <em>inc_episode_op=None</em>, <em>_use_global_network=True</em>, <em>_use_target_policy=False</em>, <em>_use_local_memory=False</em>, <em>aux_render_modes=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base Asynchronous Advantage Actor Critic algorithm framework class with auxiliary control tasks and
 option to run several instances of environment for every worker in vectorized fashion, PAAC-like.
 Can be configured to run with different losses and policies.</p>
@@ -376,7 +476,7 @@ with provided dataset parameters (test data should exist if <cite>test_number &g
 <li><strong>_use_global_network</strong> – bool, either to use parameter server policy instance</li>
 <li><strong>_use_target_policy</strong> – bool, PPO: use target policy (aka pi_old), delayed by <cite>pi_prime_update_period</cite> delay</li>
 <li><strong>_use_local_memory</strong> – bool: use in-process replay memory instead of runner-based one</li>
-<li><strong>_aux_render_modes</strong> – additional visualisationas to include in per-episode rendering summary, internal</li>
+<li><strong>aux_render_modes</strong> – additional visualisations to include in per-episode rendering summary</li>
 </ul>
 </td>
 </tr>
@@ -445,8 +545,9 @@ it uses tf.while_loop internally;
 
 <dl class="method">
 <dt id="btgym.algorithms.aac.BaseAAC.get_sample_config">
-<code class="descname">get_sample_config</code><span class="sig-paren">(</span><em>_new_trial=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.get_sample_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.get_sample_config" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns environment configuration parameters for next episode to sample.
+<code class="descname">get_sample_config</code><span class="sig-paren">(</span><em>_new_trial=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/aac.html#BaseAAC.get_sample_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.aac.BaseAAC.get_sample_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>WARNING: _new_trial=True is quick fix, TODO: fix it properly!
+Returns environment configuration parameters for next episode to sample.
 By default is simple stateful iterator,
 works correctly with <cite>DTGymDataset</cite> data class, repeating cycle:</p>
 <blockquote>
@@ -815,7 +916,7 @@ Pads with zeroes to desired length, if size arg is given.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>gamma</strong> – discount factor</li>
 <li><strong>gae_lambda</strong> – GAE lambda</li>
-<li><strong>size</strong> – if given and time_flat=False, pads outputs with zeroes along <a href="#id3"><span class="problematic" id="id4">`</span></a>time’ dim. to exact ‘size’.</li>
+<li><strong>size</strong> – if given and time_flat=False, pads outputs with zeroes along <a href="#id11"><span class="problematic" id="id12">`</span></a>time’ dim. to exact ‘size’.</li>
 <li><strong>time_flat</strong> – reduce time dimension to 1 step by stacking all experiences along batch dimension.</li>
 </ul>
 </td>
@@ -842,7 +943,7 @@ every experience frame, i.e. of size [batch_size, context_depth].</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>reward_threshold</strong> – reward values such as <a href="#id5"><span class="problematic" id="id6">|r|</span></a>&gt; reward_threshold are classified as neg. or pos.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>reward_threshold</strong> – reward values such as <a href="#id13"><span class="problematic" id="id14">|r|</span></a>&gt; reward_threshold are classified as neg. or pos.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Processed batch with size reduced by one and with extra <cite>rp_target</cite> key
 holding one hot encodings for classes {zero, positive, negative}.</td>
@@ -907,7 +1008,7 @@ holding one hot encodings for classes {zero, positive, negative}.</td>
 <li><strong>log_level</strong> – int, logbook.level;</li>
 <li><strong>rollout_provider</strong> – callable returning list of Rollouts NOT USED</li>
 <li><strong>task</strong> – parent worker id;</li>
-<li><strong>reward_threshold</strong> – if <a href="#id7"><span class="problematic" id="id8">|experience.reward|</span></a> &gt; reward_threshold: experience is saved as ‘prioritized’;</li>
+<li><strong>reward_threshold</strong> – if <a href="#id15"><span class="problematic" id="id16">|experience.reward|</span></a> &gt; reward_threshold: experience is saved as ‘prioritized’;</li>
 </ul>
 </td>
 </tr>

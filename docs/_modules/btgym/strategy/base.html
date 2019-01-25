@@ -466,13 +466,13 @@
             <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="kc">None</span>
         <span class="p">}</span>
 
-        <span class="c1"># This flag shows to the outer world if this episode can move global</span>
+        <span class="c1"># This flag shows to the outer world if this episode can broadcast world-state information, e.g. move global</span>
         <span class="c1"># time forward (see: btgym.server._BTgymAnalyzer.next() method);</span>
         <span class="c1"># default logic: true iff. it is test episode from target domain:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">can_increment_global_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;trial_type&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">can_broadcast</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;trial_type&#39;</span><span class="p">]</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;strategy.metadata: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;can_increment_global_time: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">can_increment_global_time</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;can_broadcast: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">can_broadcast</span><span class="p">))</span>
 
         <span class="c1"># Broker data lines of interest (used for estimation inner state of agent:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">broker_datalines</span> <span class="o">=</span> <span class="p">[</span>
@@ -481,6 +481,7 @@
             <span class="s1">&#39;exposure&#39;</span><span class="p">,</span>
             <span class="s1">&#39;drawdown&#39;</span><span class="p">,</span>
             <span class="s1">&#39;pos_direction&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;pos_duration&#39;</span><span class="p">,</span>
             <span class="s1">&#39;realized_pnl&#39;</span><span class="p">,</span>
             <span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">,</span>
             <span class="s1">&#39;min_unrealized_pnl&#39;</span><span class="p">,</span>
@@ -496,7 +497,7 @@
             <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;Callable get_broker_</span><span class="si">{}</span><span class="s1">.() not found&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
 
-        <span class="c1"># Broker and account related sliding staistics accumulators, globally normalized last `avg_perod` values,</span>
+        <span class="c1"># Broker and account related sliding statistics accumulators, globally normalized last `avg_perod` values,</span>
         <span class="c1"># so it&#39;s a bit more comp. efficient than use of bt.Observers:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">avg_period</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_datalines</span><span class="p">}</span>
 
@@ -535,14 +536,16 @@
             <span class="c1"># see: https://community.backtrader.com/topic/152/multi-asset-ranking-and-rebalancing/2?page=1</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">set_checksubmit</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">next_process_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_target_percent</span>
-            <span class="c1"># Do not repeat action for discrete:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">num_action_repeats</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="c1"># Repeat action 2 times:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_action_repeats</span> <span class="o">=</span> <span class="mi">2</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Use discrete handling method otherwise:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">set_checksubmit</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">next_process_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_discrete</span>
-            <span class="c1"># Repeat action 2 times:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">num_action_repeats</span> <span class="o">=</span> <span class="mi">2</span>
+
+            <span class="c1"># Do not repeat action for discrete:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_action_repeats</span> <span class="o">=</span> <span class="mi">0</span> 
 
     <span class="k">def</span> <span class="nf">prenext</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update_broker_stat</span><span class="p">()</span>
@@ -598,7 +601,10 @@
         <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">broker</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
 
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_get_broker_stat_methods</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">method</span><span class="p">(</span><span class="n">current_value</span><span class="o">=</span><span class="n">current_value</span><span class="p">))</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">method</span><span class="p">(</span><span class="n">current_value</span><span class="o">=</span><span class="n">current_value</span><span class="p">))</span>
+
+        <span class="c1"># Reset one-time flags:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trade_just_closed</span> <span class="o">=</span> <span class="kc">False</span></div>
 
 <div class="viewcode-block" id="BTgymBaseStrategy.get_broker_value"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_broker_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_broker_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -671,8 +677,8 @@
                 <span class="n">gamma</span><span class="o">=</span><span class="mi">1</span>
             <span class="p">)</span>
             <span class="c1"># Reset flag:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">trade_just_closed</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="c1"># print(&#39;POS_OBS: step {}, just closed.&#39;.format(self.iteration))</span>
+            <span class="c1"># self.trade_just_closed = False</span>
+            <span class="c1">#print(&#39;broker_realized_pnl: step {}, just closed.&#39;.format(self.iteration))</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="n">pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
@@ -712,23 +718,22 @@
             <span class="n">dd</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="k">return</span> <span class="n">dd</span></div>
 
-    <span class="c1"># def get_broker_pos_duration(self, current_value):</span>
-    <span class="c1">#     if self.position.size == 0:</span>
-    <span class="c1">#         self.current_pos_duration = 0</span>
-    <span class="c1">#         self.current_pos_min_value = current_value</span>
-    <span class="c1">#         self.current_pos_max_value = current_value</span>
-    <span class="c1">#         # print(&#39;ZERO_POSITION\n&#39;)</span>
-    <span class="c1">#</span>
-    <span class="c1">#     else:</span>
-    <span class="c1">#         self.current_pos_duration += 1</span>
-    <span class="c1">#         if self.current_pos_max_value &lt; current_value:</span>
-    <span class="c1">#             self.current_pos_max_value = current_value</span>
-    <span class="c1">#</span>
-    <span class="c1">#         elif self.current_pos_min_value &gt; current_value:</span>
-    <span class="c1">#             self.current_pos_min_value = current_value</span>
-    <span class="c1">#</span>
-    <span class="c1">#     return self.current_pos_duration / (self.data.numrecords - self.inner_embedding)</span>
-    <span class="c1">#</span>
+    <span class="k">def</span> <span class="nf">get_broker_pos_duration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_duration</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="c1"># self.current_pos_min_value = current_value</span>
+            <span class="c1"># self.current_pos_max_value = current_value</span>
+            <span class="c1"># print(&#39;ZERO_POSITION\n&#39;)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_duration</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># if self.current_pos_max_value &lt; current_value:</span>
+            <span class="c1">#     self.current_pos_max_value = current_value</span>
+            <span class="c1">#</span>
+            <span class="c1"># elif self.current_pos_min_value &gt; current_value:</span>
+            <span class="c1">#     self.current_pos_min_value = current_value</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_pos_duration</span> <span class="c1">#/ (self.data.numrecords - self.inner_embedding)</span>
 
     <span class="k">def</span> <span class="nf">get_broker_max_unrealized_pnl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -817,6 +822,15 @@
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_stamp</span>
 
+    <span class="k">def</span> <span class="nf">_get_broadcast_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transmits broadcasting message.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dictionary of global settings</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">()</span>
+
 <div class="viewcode-block" id="BTgymBaseStrategy.get_state"><a class="viewcode-back" href="../../../btgym.strategy.html#btgym.strategy.base.BTgymBaseStrategy.get_state">[docs]</a>    <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Collects estimated values for every mode of observation space by calling methods from</span>
@@ -849,8 +863,8 @@
 <span class="sd">        F(s, a, s`) = gamma * FI(s`) - FI(s);</span>
 
 <span class="sd">        - potential FI_1 is current normalized unrealized profit/loss;</span>
-<span class="sd">        - potential FI_2 is current normalized broker value.</span>
-<span class="sd">        - FI_3: penalizing exposure toward the end of episode</span>
+<span class="sd">        EXCLUDED/ - potential FI_2 is current normalized broker value.</span>
+<span class="sd">        EXCLUDED/ - FI_3: penalizing exposure toward the end of episode</span>
 
 <span class="sd">        Paper:</span>
 <span class="sd">            &quot;Policy invariance under reward transformations:</span>
@@ -859,45 +873,43 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># All sliding statistics for this step are already updated by get_state().</span>
-        <span class="n">debug</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="c1"># Potential-based shaping function 1:</span>
         <span class="c1"># based on potential of averaged profit/loss for current opened trade (unrealized p/l):</span>
         <span class="n">unrealised_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">])</span>
-        <span class="c1"># f1 = self.p.gamma * np.average(unrealised_pnl[1:]) - np.average(unrealised_pnl[:-1])</span>
-        <span class="n">f1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:])</span> \
-            <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[</span><span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">])</span>
+        <span class="n">current_pos_duration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;pos_duration&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f1</span>
+        <span class="c1"># We want to estimate potential `fi = gamma*fi_prime - fi` of current opened position,</span>
+        <span class="c1"># thus need to consider different cases given skip_fame parameter:</span>
+        <span class="k">if</span> <span class="n">current_pos_duration</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Set potential term to zero if there is no opened positions:</span>
+            <span class="n">f1</span> <span class="o">=</span> <span class="mi">0</span>
 
-        <span class="c1"># Potential-based shaping function 2:</span>
-        <span class="c1"># based on potential of averaged broker value, normalized wrt to max drawdown and target bounds.</span>
-        <span class="n">norm_broker_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">])</span>
-        <span class="c1"># f2 = self.p.gamma * np.average(norm_broker_value[1:]) - np.average(norm_broker_value[:-1])</span>
-        <span class="n">f2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:])</span> \
-            <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">norm_broker_value</span><span class="p">[</span><span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">current_pos_duration</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:</span>
+                <span class="n">fi_1</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">fi_1_prime</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[</span><span class="o">-</span><span class="n">current_pos_duration</span><span class="p">:])</span>
 
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f2</span>
+            <span class="k">elif</span> <span class="n">current_pos_duration</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:</span>
+                <span class="n">fi_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span>
+                    <span class="n">unrealised_pnl</span><span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span> <span class="o">+</span> <span class="n">current_pos_duration</span><span class="p">):</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="n">fi_1_prime</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:])</span>
 
-        <span class="c1"># Potential-based shaping function 3:</span>
-        <span class="c1"># based on negative potential of relative draw-down value.</span>
-        <span class="c1"># drawdown = np.asarray(self.broker_stat[&#39;drawdown&#39;])</span>
-        <span class="c1"># f3 = - self.p.gamma * np.max(drawdown[-self.skip_frame:]) \</span>
-        <span class="c1">#     + np.max(drawdown[- 2 * self.skip_frame:-self.skip_frame])</span>
-        <span class="n">f3</span> <span class="o">=</span> <span class="mf">0.0</span>
-        <span class="c1"># debug[&#39;f3&#39;] = f3</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fi_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span>
+                    <span class="n">unrealised_pnl</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="n">fi_1_prime</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">unrealised_pnl</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:])</span>
+
+            <span class="c1"># Potential term:</span>
+            <span class="n">f1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">fi_1_prime</span> <span class="o">-</span> <span class="n">fi_1</span>
 
         <span class="c1"># Main reward function: normalized realized profit/loss:</span>
-        <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;f_real_pnl&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">realized_pnl</span>
+        <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;realized_pnl&#39;</span><span class="p">])[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">skip_frame</span><span class="p">:]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
 
         <span class="c1"># Weights are subject to tune:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">*</span> <span class="n">f1</span> <span class="o">+</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">f2</span> <span class="o">+</span> <span class="mf">0.0</span> <span class="o">*</span> <span class="n">f3</span> <span class="o">+</span> <span class="mf">10.0</span> <span class="o">*</span> <span class="n">realized_pnl</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span>
-
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;b_v&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;unreal_pnl&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">broker_stat</span><span class="p">[</span><span class="s1">&#39;unrealized_pnl&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">debug</span><span class="p">[</span><span class="s1">&#39;iteration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="p">(</span><span class="mf">10.0</span> <span class="o">*</span> <span class="n">f1</span> <span class="o">+</span> <span class="mf">10.0</span> <span class="o">*</span> <span class="n">realized_pnl</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">reward_scale</span><span class="p">)</span>
 

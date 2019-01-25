@@ -253,6 +253,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="c1"># Logging:</span>
         <span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span><span class="o">.</span><span class="n">push_application</span><span class="p">()</span>
@@ -280,8 +281,16 @@
             <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
                 <span class="n">stream</span><span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span>
 
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">stream</span><span class="p">[</span><span class="s1">&#39;dataframe&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">stream</span><span class="p">[</span><span class="s1">&#39;dataframe&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
             <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_class_ref</span><span class="p">(</span>
                 <span class="n">filename</span><span class="o">=</span><span class="n">stream</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">],</span>
+                <span class="n">dataframe</span><span class="o">=</span><span class="n">stream</span><span class="p">[</span><span class="s1">&#39;dataframe&#39;</span><span class="p">],</span>
                 <span class="n">data_names</span><span class="o">=</span><span class="p">(</span><span class="n">key</span><span class="p">,),</span>
                 <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
                 <span class="n">name</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">key</span><span class="p">),</span>
@@ -370,7 +379,7 @@
 
             <span class="bp">self</span><span class="o">.</span><span class="n">global_timestamp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master_data</span><span class="o">.</span><span class="n">global_timestamp</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master_data</span><span class="o">.</span><span class="n">names</span>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_ready</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="k">def</span> <span class="nf">set_global_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">):</span>
@@ -385,7 +394,9 @@
     <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
         <span class="c1"># Get sample to infer exact interval:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Making master sample...&#39;</span><span class="p">)</span>
         <span class="n">master_sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master_data</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Making master ok.&#39;</span><span class="p">)</span>
 
         <span class="c1"># Prepare empty instance of multistream data:</span>
         <span class="n">sample</span> <span class="o">=</span> <span class="n">BTgymMultiData</span><span class="p">(</span>
@@ -396,14 +407,15 @@
         <span class="p">)</span>
         <span class="n">sample</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">master_sample</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span>
 
-        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;interval&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">sample</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;first_row&#39;</span><span class="p">],</span> <span class="n">sample</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;last_row&#39;</span><span class="p">]]</span>
+        <span class="n">interval</span> <span class="o">=</span> <span class="p">[</span><span class="n">master_sample</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;first_row&#39;</span><span class="p">],</span> <span class="n">master_sample</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;last_row&#39;</span><span class="p">]]</span>
 
         <span class="c1"># Populate sample with data:</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">stream</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">sample</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">force_interval</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Sampling &lt;</span><span class="si">{}</span><span class="s1">&gt; with interval: </span><span class="si">{}</span><span class="s1">, kwargs: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
+            <span class="n">sample</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="n">interval</span><span class="p">,</span> <span class="n">force_interval</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">stream</span><span class="o">.</span><span class="n">filename</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">stream</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-
+        <span class="n">sample</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">stream</span><span class="o">.</span><span class="n">filename</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">stream</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_num</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="k">return</span> <span class="n">sample</span>
 
     <span class="k">def</span> <span class="nf">to_btfeed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>

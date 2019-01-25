@@ -546,6 +546,7 @@
         <span class="n">z_sampled</span> <span class="o">=</span> <span class="n">mu</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_sigma</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">eps</span>
 
         <span class="c1"># D_KL(Q(z|X) || P(z|X)):</span>
+        <span class="c1"># TODO: where is sum?!</span>
         <span class="n">d_kl</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_sigma</span><span class="p">)</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.</span> <span class="o">-</span> <span class="n">log_sigma</span><span class="p">)</span>
 
         <span class="c1"># Reshape back and feed to decoder:</span>
@@ -635,7 +636,6 @@
             <span class="n">signal</span> <span class="o">+=</span> <span class="n">grads_value</span> <span class="o">*</span> <span class="n">step</span>
 
         <span class="k">return</span> <span class="n">signal</span></div></div>
-
 </pre></div>
 
            </div>

@@ -283,8 +283,8 @@ So, replay memory is also here, as well as some service functions (collecting su
 <span id="btgym-algorithms-runner-synchro-module"></span><h1>btgym.algorithms.runner.synchro module<a class="headerlink" href="#module-btgym.algorithms.runner.synchro" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="btgym.algorithms.runner.synchro.BaseSynchroRunner">
-<em class="property">class </em><code class="descclassname">btgym.algorithms.runner.synchro.</code><code class="descname">BaseSynchroRunner</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>rollout_length</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>ep_summary</em>, <em>test=False</em>, <em>policy=None</em>, <em>data_sample_config=None</em>, <em>memory_config=None</em>, <em>test_conditions=None</em>, <em>slowdown_steps=0</em>, <em>global_step_op=None</em>, <em>aux_summaries=None</em>, <em>name='synchro'</em>, <em>log_level=13</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner/synchro.html#BaseSynchroRunner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.synchro.BaseSynchroRunner" title="Permalink to this definition">¶</a></dt>
-<dd><p>Data provider class. Interacts with environment and outputs data in form of rollouts augmented with
+<em class="property">class </em><code class="descclassname">btgym.algorithms.runner.synchro.</code><code class="descname">BaseSynchroRunner</code><span class="sig-paren">(</span><em>env</em>, <em>task</em>, <em>rollout_length</em>, <em>episode_summary_freq</em>, <em>env_render_freq</em>, <em>ep_summary</em>, <em>test=False</em>, <em>policy=None</em>, <em>data_sample_config=None</em>, <em>memory_config=None</em>, <em>test_conditions=None</em>, <em>test_deterministic=True</em>, <em>slowdown_steps=0</em>, <em>global_step_op=None</em>, <em>aux_render_modes=None</em>, <em>_implemented_aux_render_modes=None</em>, <em>name='synchro'</em>, <em>log_level=13</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner/synchro.html#BaseSynchroRunner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.synchro.BaseSynchroRunner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Experience provider class. Interacts with environment and outputs data in form of rollouts augmented with
 relevant summaries and metadata. This runner is <cite>synchronous</cite> in sense that data collection is <cite>in-process’
 and every rollout is collected by explicit call to respective `get_data()</cite> method [this is unlike ‘async-`
 thread-runner version found earlier in this this package which, once being started,
@@ -308,8 +308,10 @@ Does not support ‘atari’ mode.</p>
 <li><strong>memory_config</strong> – dict, replay memory configuration</li>
 <li><strong>test_conditions</strong> – dict or None,
 dictionary of single experience conditions to check to mark it as test one.</li>
+<li><strong>test_deterministic</strong> – bool, if True - act deterministically for test episodes</li>
 <li><strong>slowdown_time</strong> – time to sleep between steps</li>
-<li><strong>aux_summaries</strong> – iterable of str, additional summaries to compute</li>
+<li><strong>aux_render_modes</strong> – iterable of str, additional summaries to compute</li>
+<li><strong>iterable of str</strong><strong>, </strong><strong>implemented additional summaries</strong> (<em>_implemented_aux_render_modes</em>) – </li>
 <li><strong>name</strong> – str, name scope</li>
 <li><strong>log_level</strong> – int, logbook.level</li>
 </ul>
@@ -406,9 +408,8 @@ action_reward</td>
 <dl class="method">
 <dt id="btgym.algorithms.runner.synchro.BaseSynchroRunner.get_ep_render">
 <code class="descname">get_ep_render</code><span class="sig-paren">(</span><em>is_test=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner/synchro.html#BaseSynchroRunner.get_ep_render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.synchro.BaseSynchroRunner.get_ep_render" title="Permalink to this definition">¶</a></dt>
-<dd><p>Visualises episode environment and policy statistics.
-Relies on environmnet renderer class methods,
-so it is only valid when envoronment rendering is enabled (typically master one).</p>
+<dd><p>Collects environment renderings. Relies on environment renderer class methods,
+so it is only valid when environment rendering is enabled (typically it is true for master runner).</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -448,32 +449,6 @@ configuration dictionary of type <a href="#id1"><span class="problematic" id="id
 </dd></dl>
 
 <dl class="method">
-<dt id="btgym.algorithms.runner.synchro.BaseSynchroRunner.get_episode">
-<code class="descname">get_episode</code><span class="sig-paren">(</span><em>policy=None</em>, <em>policy_sync_op=None</em>, <em>init_context=None</em>, <em>data_sample_config=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner/synchro.html#BaseSynchroRunner.get_episode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.synchro.BaseSynchroRunner.get_episode" title="Permalink to this definition">¶</a></dt>
-<dd><p>WRONG do not use
-Collects entire episode trajectory as single rollout and bunch of summaries using specified policy.
-Updates episode statistics and replay memory.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>policy</strong> – policy to execute</li>
-<li><strong>policy_sync_op</strong> – operation copying local behavioural policy params from global one</li>
-<li><strong>init_context</strong> – if specified, overrides initial episode context provided bu self.context</li>
-<li><strong>data_sample_config</strong> – environment configuration parameters for next episode to sample:
-configuration dictionary of type <a href="#id3"><span class="problematic" id="id4">`</span></a>btgym.datafeed.base.EnvResetConfig</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">data dictionary</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
 <dt id="btgym.algorithms.runner.synchro.BaseSynchroRunner.get_batch">
 <code class="descname">get_batch</code><span class="sig-paren">(</span><em>size</em>, <em>policy=None</em>, <em>policy_sync_op=None</em>, <em>require_terminal=True</em>, <em>same_trial=True</em>, <em>init_context=None</em>, <em>data_sample_config=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner/synchro.html#BaseSynchroRunner.get_batch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.synchro.BaseSynchroRunner.get_batch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns batch as list of ‘size’ or more rollouts collected under specified policy.
@@ -491,7 +466,7 @@ it is necessary to collect at least one terminal rollout.</p>
 <li><strong>same_trial</strong> – bool, if True - all episodes are sampled from same trial</li>
 <li><strong>init_context</strong> – if specified, overrides initial episode context provided bu self.context</li>
 <li><strong>data_sample_config</strong> – environment configuration parameters for all episodes in batch:
-configuration dictionary of type <a href="#id5"><span class="problematic" id="id6">`</span></a>btgym.datafeed.base.EnvResetConfig</li>
+configuration dictionary of type <a href="#id3"><span class="problematic" id="id4">`</span></a>btgym.datafeed.base.EnvResetConfig</li>
 </ul>
 </td>
 </tr>
@@ -505,6 +480,34 @@ If ‘require_terminal = True, this list is guarantied to hold at least one elem
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.algorithms.runner.synchro.VerboseSynchroRunner">
+<em class="property">class </em><code class="descclassname">btgym.algorithms.runner.synchro.</code><code class="descname">VerboseSynchroRunner</code><span class="sig-paren">(</span><em>name='verbose_synchro'</em>, <em>aux_render_modes=('action_prob'</em>, <em>'value_fn'</em>, <em>'lstm_1_h'</em>, <em>'lstm_2_h')</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner/synchro.html#VerboseSynchroRunner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.synchro.VerboseSynchroRunner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extends <cite>BaseSynchroRunner</cite> class with additional visualisation summaries in some expense of running speed.</p>
+<dl class="method">
+<dt id="btgym.algorithms.runner.synchro.VerboseSynchroRunner.get_ep_render">
+<code class="descname">get_ep_render</code><span class="sig-paren">(</span><em>is_test=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner/synchro.html#VerboseSynchroRunner.get_ep_render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.synchro.VerboseSynchroRunner.get_ep_render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Collects episode, environment and policy visualisations. Relies on environment renderer class methods,
+so it is only valid when environment rendering is enabled (typically it is true for master runner).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">dictionary of images as rgb arrays</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.algorithms.runner.synchro.VerboseSynchroRunner.start">
+<code class="descname">start</code><span class="sig-paren">(</span><em>sess</em>, <em>summary_writer</em>, <em>init_context=None</em>, <em>data_sample_config=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/algorithms/runner/synchro.html#VerboseSynchroRunner.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.algorithms.runner.synchro.VerboseSynchroRunner.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Executes initial sequence; fills initial replay memory if any.
+Extra: initialises environment renderer to get aux. images.</p>
 </dd></dl>
 
 </dd></dl>

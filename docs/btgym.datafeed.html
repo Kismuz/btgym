@@ -203,8 +203,8 @@
 
 <dl class="class">
 <dt id="btgym.datafeed.base.BTgymBaseData">
-<em class="property">class </em><code class="descclassname">btgym.datafeed.base.</code><code class="descname">BTgymBaseData</code><span class="sig-paren">(</span><em>filename=None</em>, <em>parsing_params=None</em>, <em>sampling_params=None</em>, <em>name='base_data'</em>, <em>data_names=('default_asset'</em>, <em>)</em>, <em>task=0</em>, <em>frozen_time_split=None</em>, <em>log_level=13</em>, <em>_config_stack=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/base.html#BTgymBaseData"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.base.BTgymBaseData" title="Permalink to this definition">¶</a></dt>
-<dd><p>Base BTgym data class.
+<em class="property">class </em><code class="descclassname">btgym.datafeed.base.</code><code class="descname">BTgymBaseData</code><span class="sig-paren">(</span><em>filename=None</em>, <em>dataframe=None</em>, <em>parsing_params=None</em>, <em>sampling_params=None</em>, <em>name='base_data'</em>, <em>data_names=('default_asset'</em>, <em>)</em>, <em>task=0</em>, <em>frozen_time_split=None</em>, <em>log_level=13</em>, <em>_config_stack=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/base.html#BTgymBaseData"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.base.BTgymBaseData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base BTgym data provider class.
 Provides core data loading, sampling, splitting  and converting functionality.
 Do not use directly.</p>
 <p>Enables Pipe:</p>
@@ -216,8 +216,9 @@ Do not use directly.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>filename</strong> – Str or list of str, should be given either here or when calling read_csv(),
-see <cite>Notes</cite>.</li>
+<li><strong>filename</strong> – Str or iterable of of str, filenames holding csv data;
+should be given either here or when calling read_csv(), see <cite>Notes</cite></li>
+<li><strong>dataframe</strong> – pd.dataframe holding data, if this arg is given - overrides <a href="#id1"><span class="problematic" id="id2">``</span></a>filename` arg.</li>
 <li><strong>CSV to Pandas parsing</strong> (<em>specific_params</em>) – </li>
 <li><strong>sep</strong> – ‘;’</li>
 <li><strong>header</strong> – 0</li>
@@ -373,7 +374,7 @@ data files from www.HistData.com. Tune according to your data source.</li>
 
 <dl class="method">
 <dt id="btgym.datafeed.base.BTgymBaseData._sample">
-<code class="descname">_sample</code><span class="sig-paren">(</span><em>get_new=True</em>, <em>sample_type=0</em>, <em>b_alpha=1.0</em>, <em>b_beta=1.0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/base.html#BTgymBaseData._sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.base.BTgymBaseData._sample" title="Permalink to this definition">¶</a></dt>
+<code class="descname">_sample</code><span class="sig-paren">(</span><em>get_new=True</em>, <em>sample_type=0</em>, <em>b_alpha=1.0</em>, <em>b_beta=1.0</em>, <em>force_interval=False</em>, <em>interval=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/base.html#BTgymBaseData._sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.base.BTgymBaseData._sample" title="Permalink to this definition">¶</a></dt>
 <dd><p>Samples continuous subset of data.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -385,6 +386,8 @@ data files from www.HistData.com. Tune according to your data source.</li>
 respectively.</li>
 <li><strong>b_alpha</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – beta-distribution sampling alpha &gt; 0, valid for train episodes.</li>
 <li><strong>b_beta</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – beta-distribution sampling beta &gt; 0, valid for train episodes.</li>
+<li><strong>force_interval</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – use exact sampling interval (should be given)</li>
+<li><strong>interval</strong> (<em>iterable of int</em><em>, </em><em>len2</em>) – exact interval to sample from when force_interval=True</li>
 </ul>
 </td>
 </tr>
@@ -610,7 +613,7 @@ Do not use directly.</p>
 
 <dl class="class">
 <dt id="btgym.datafeed.derivative.BTgymRandomDataDomain">
-<em class="property">class </em><code class="descclassname">btgym.datafeed.derivative.</code><code class="descname">BTgymRandomDataDomain</code><span class="sig-paren">(</span><em>filename</em>, <em>trial_params</em>, <em>episode_params</em>, <em>parsing_params=None</em>, <em>target_period=None</em>, <em>use_target_backshift=False</em>, <em>frozen_time_split=None</em>, <em>name='RndDataDomain'</em>, <em>task=0</em>, <em>data_names=('default_asset'</em>, <em>)</em>, <em>log_level=13</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/derivative.html#BTgymRandomDataDomain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.derivative.BTgymRandomDataDomain" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">btgym.datafeed.derivative.</code><code class="descname">BTgymRandomDataDomain</code><span class="sig-paren">(</span><em>trial_params</em>, <em>episode_params</em>, <em>filename=None</em>, <em>dataframe=None</em>, <em>parsing_params=None</em>, <em>target_period=None</em>, <em>use_target_backshift=False</em>, <em>frozen_time_split=None</em>, <em>name='RndDataDomain'</em>, <em>task=0</em>, <em>data_names=('default_asset'</em>, <em>)</em>, <em>log_level=13</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/derivative.html#BTgymRandomDataDomain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.derivative.BTgymRandomDataDomain" title="Permalink to this definition">¶</a></dt>
 <dd><p>Top-level data class. Implements one way data domains can be defined,
 namely when source domain precedes and target one. Implements pipe:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Domain</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span> <span class="o">--&gt;</span> <span class="n">Trial</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span> <span class="o">--&gt;</span> <span class="n">Episode</span><span class="o">.</span><span class="n">to_btfeed</span><span class="p">()</span> <span class="o">--&gt;</span> <span class="n">bt</span><span class="o">.</span><span class="n">Startegy</span>
@@ -623,15 +626,18 @@ namely when source domain precedes and target one. Implements pipe:</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>filename</strong> – Str or list of str, file_names containing CSV historic data;</li>
+<li><strong>dataframe</strong> – pd.dataframe or iterable of pd.dataframes containing historic data;</li>
 <li><strong>parsing_params</strong> – csv parsing options, see base class description for details;</li>
 <li><strong>trial_params</strong> – dict, describes trial parameters, should contain keys:
 {sample_duration, time_gap, start_00, start_weekdays, test_period, expanding};</li>
 <li><strong>episode_params</strong> – dict, describes episode parameters, should contain keys:
 {sample_duration, time_gap, start_00, start_weekdays};</li>
-<li><strong>target_period</strong> – dict, domain target period, def={‘days’: 0, ‘hours’: 0, ‘minutes’: 0};
+<li><strong>target_period</strong> – dict, None or Int, domain target period, def={‘days’: 0, ‘hours’: 0, ‘minutes’: 0};
 setting this param to non-zero duration forces separation to source/target
 domains (which can be thought of as creating  top-level train/test subsets) with
-target data duration equal to <cite>target_period</cite>.
+target data duration equal to <cite>target_period</cite>;
+if set to None - no target period assumed;
+if set to -1 - no source period assumed;
 Source data always precedes target one.</li>
 <li><strong>use_target_backshift</strong> – bool, if true - target domain is shifted back by the duration of trial train period,
 thus allowing training on part of target domain data,
@@ -723,6 +729,39 @@ sampled episode inherits tarin/test metadata of parent trail.</p>
 <dd><p>alias of <a class="reference internal" href="#btgym.datafeed.derivative.BTgymDataset.BTgymSimpleTrial" title="btgym.datafeed.derivative.BTgymDataset.BTgymSimpleTrial"><code class="xref py py-class docutils literal"><span class="pre">BTgymSimpleTrial</span></code></a></p>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="class">
+<dt id="btgym.datafeed.derivative.BTgymDataset2">
+<em class="property">class </em><code class="descclassname">btgym.datafeed.derivative.</code><code class="descname">BTgymDataset2</code><span class="sig-paren">(</span><em>filename=None</em>, <em>dataframe=None</em>, <em>episode_duration=None</em>, <em>time_gap=None</em>, <em>start_00=False</em>, <em>start_weekdays=None</em>, <em>parsing_params=None</em>, <em>target_period=None</em>, <em>name='SimpleDataSet2'</em>, <em>data_names=('default_asset'</em>, <em>)</em>, <em>log_level=13</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/datafeed/derivative.html#BTgymDataset2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.datafeed.derivative.BTgymDataset2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simple top-level data class, implements direct random episode sampling from data set induced by csv file,
+i.e it is a special case for <cite>Trial=def=Episode</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>filename</strong> – Str or list of str, file_names containing CSV historic data;</li>
+<li><strong>dataframe</strong> – pd.dataframe or iterable of pd.dataframes containing historic data;</li>
+<li><strong>episode_duration</strong> – dict, maximum episode duration in d:h:m, def={‘days’: 0, ‘hours’: 23, ‘minutes’: 55},
+alias for <cite>sample_duration</cite>;</li>
+<li><strong>time_gap</strong> – dict, data time gap allowed within sample in d:h:m, def={‘days’: 0, ‘hours’: 6};</li>
+<li><strong>start_00</strong> – bool, episode start point will be shifted back to first record;
+of the day (usually 00:00), def=False;</li>
+<li><strong>start_weekdays</strong> – list, only weekdays from the list will be used for sample start,
+def=[0, 1, 2, 3, 4, 5, 6];</li>
+<li><strong>target_period</strong> – domain test(aka target) period. def={‘days’: 0, ‘hours’: 0, ‘minutes’: 0};
+setting this param to non-zero duration forces data separation to train/test
+subsets. Train data always precedes test one.</li>
+<li><strong>parsing_params</strong> – csv parsing options, see base class description for details;</li>
+<li><strong>name</strong> – str, instance name;</li>
+<li><strong>log_level</strong> – int, logbook.level;</li>
+<li><strong>**kwargs</strong> – </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </div>

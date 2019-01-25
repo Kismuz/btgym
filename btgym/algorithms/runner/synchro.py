@@ -350,6 +350,7 @@ class BaseSynchroRunner():
         Returns:
             dict of stats
         """
+
         ep_stat = {}
         if not is_test:
             self.total_r += [self.reward_sum]
@@ -359,19 +360,18 @@ class BaseSynchroRunner():
             self.final_value += [last_i['broker_value']]
             self.total_steps += [episode_stat['length']]
 
-        if self.local_episode % self.episode_summary_freq == 0:
-            ep_stat = dict(
-                total_r=np.average(self.total_r),
-                cpu_time=np.average(self.cpu_time),
-                final_value=np.average(self.final_value),
-                steps=np.average(self.total_steps)
-            )
-            self.total_r = []
-            self.cpu_time = []
-            self.final_value = []
-            self.total_steps = []
-            self.total_steps_atari = []
-
+            if self.local_episode % self.episode_summary_freq == 0:
+                ep_stat = dict(
+                    total_r=np.average(self.total_r),
+                    cpu_time=np.average(self.cpu_time),
+                    final_value=np.average(self.final_value),
+                    steps=np.average(self.total_steps)
+                )
+                self.total_r = []
+                self.cpu_time = []
+                self.final_value = []
+                self.total_steps = []
+                self.total_steps_atari = []
         return ep_stat
 
     def get_test_stat(self, is_test=False):
@@ -493,10 +493,13 @@ class BaseSynchroRunner():
                 self.last_reward = None
 
                 self.terminal_end = True
-
                 train_ep_summary = self.get_train_stat(self.is_test)
                 test_ep_summary = self.get_test_stat(self.is_test)
                 render_ep_summary = self.get_ep_render(self.is_test)
+
+                # self.log.debug(
+                #     'terminal, train_summary: {}, test_summary: {}'.format(train_ep_summary, test_ep_summary)
+                # )
 
             else:
                 experience, self.state, self.context, self.last_action, self.last_reward = self.get_experience(

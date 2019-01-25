@@ -459,56 +459,67 @@
         <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_session</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_init_state</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="BaseAacPolicy.act"><a class="viewcode-back" href="../../../../btgym.algorithms.policy.html#btgym.algorithms.policy.base.BaseAacPolicy.act">[docs]</a>    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">lstm_state</span><span class="p">,</span> <span class="n">last_action</span><span class="p">,</span> <span class="n">last_reward</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseAacPolicy.act"><a class="viewcode-back" href="../../../../btgym.algorithms.policy.html#btgym.algorithms.policy.base.BaseAacPolicy.act">[docs]</a>    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">lstm_state</span><span class="p">,</span> <span class="n">last_action</span><span class="p">,</span> <span class="n">last_reward</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Predicts action.</span>
+<span class="sd">        Emits action.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            observation:    dictionary containing single observation</span>
 <span class="sd">            lstm_state:     lstm context value</span>
 <span class="sd">            last_action:    action value from previous step</span>
 <span class="sd">            last_reward:    reward value previous step</span>
+<span class="sd">            deterministic:  bool, it True - act deterministically,</span>
+<span class="sd">                            use random sampling otherwise (default);</span>
+<span class="sd">                            effective for discrete action sapce only (TODO: continious)</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Action as dictionary of several action encodings, actions logits, V-fn value, output RNN state</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_session</span><span class="p">()</span>
-        <span class="n">feeder</span> <span class="o">=</span> <span class="p">{</span><span class="n">pl</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">pl</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_state_pl_flatten</span><span class="p">,</span> <span class="n">flatten_nested</span><span class="p">(</span><span class="n">lstm_state</span><span class="p">))}</span>
-        <span class="n">feeder</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">feed_dict_from_nested</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">expand_batch</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
-        <span class="n">feeder</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
-            <span class="p">{</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">on_last_a_in</span><span class="p">:</span> <span class="n">last_action</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">on_last_reward_in</span><span class="p">:</span> <span class="n">last_reward</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">on_time_length</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">train_phase</span><span class="p">:</span> <span class="kc">False</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_session</span><span class="p">()</span>
+            <span class="n">feeder</span> <span class="o">=</span> <span class="p">{</span><span class="n">pl</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">pl</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_state_pl_flatten</span><span class="p">,</span> <span class="n">flatten_nested</span><span class="p">(</span><span class="n">lstm_state</span><span class="p">))}</span>
+            <span class="n">feeder</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">feed_dict_from_nested</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_state_in</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">expand_batch</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+            <span class="n">feeder</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">on_last_a_in</span><span class="p">:</span> <span class="n">last_action</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">on_last_reward_in</span><span class="p">:</span> <span class="n">last_reward</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">on_batch_size</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">on_time_length</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">train_phase</span><span class="p">:</span> <span class="kc">False</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+            <span class="n">logits</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">on_logits</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_vf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_state_out</span><span class="p">],</span> <span class="n">feeder</span><span class="p">)</span>
+            <span class="n">logits</span> <span class="o">=</span> <span class="n">logits</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">deterministic</span><span class="p">:</span>
+                    <span class="n">sample</span> <span class="o">=</span> <span class="n">softmax</span><span class="p">(</span><span class="n">logits</span><span class="p">)</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Use multinomial to get sample (discrete):</span>
+                    <span class="n">sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">multinomial</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">softmax</span><span class="p">(</span><span class="n">logits</span><span class="p">))</span>
+
+                <span class="c1"># print(&#39;ploicy_determ: {}, logits: {}, sample: {}&#39;.format(deterministic, logits, sample))</span>
+
+                <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="o">.</span><span class="n">_cat_to_vec</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">sample</span><span class="p">))</span>
+
+                <span class="c1"># print(&#39;policy_sample_vector: &#39;, sample)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Use DP to get sample (continuous):</span>
+                <span class="n">sample</span> <span class="o">=</span> <span class="n">sample_dp</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">action_dp_alpha</span><span class="p">)</span>
+
+            <span class="c1"># Get all needed action encodings:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="o">.</span><span class="n">_vec_to_action</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+            <span class="n">one_hot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="o">.</span><span class="n">_vec_to_one_hot</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+            <span class="n">action_pack</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;environment&#39;</span><span class="p">:</span> <span class="n">action</span><span class="p">,</span>
+                <span class="s1">&#39;encoded&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">action</span><span class="p">),</span>
+                <span class="s1">&#39;one_hot&#39;</span><span class="p">:</span> <span class="n">one_hot</span><span class="p">,</span>
             <span class="p">}</span>
-        <span class="p">)</span>
-        <span class="c1"># action_one_hot, logits, value, context = sess.run(</span>
-        <span class="c1">#     [self.on_sample, self.on_logits, self.on_vf, self.on_lstm_state_out],</span>
-        <span class="c1">#     feeder</span>
-        <span class="c1"># )</span>
-        <span class="c1"># return action_one_hot, logits, value, context</span>
-        <span class="n">logits</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">on_logits</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_vf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_lstm_state_out</span><span class="p">],</span> <span class="n">feeder</span><span class="p">)</span>
-        <span class="n">logits</span> <span class="o">=</span> <span class="n">logits</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">:</span>
-            <span class="c1"># Use multinomial to get sample (discrete):</span>
-            <span class="n">sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">multinomial</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">softmax</span><span class="p">(</span><span class="n">logits</span><span class="p">))</span>
-            <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="o">.</span><span class="n">_cat_to_vec</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">sample</span><span class="p">))</span>
-
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Use DP to get sample (continuous):</span>
-            <span class="n">sample</span> <span class="o">=</span> <span class="n">sample_dp</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">action_dp_alpha</span><span class="p">)</span>
-
-        <span class="c1"># Get all needed action encodings:</span>
-        <span class="n">action</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="o">.</span><span class="n">_vec_to_action</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
-        <span class="n">one_hot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="o">.</span><span class="n">_vec_to_one_hot</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
-        <span class="n">action_pack</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;environment&#39;</span><span class="p">:</span> <span class="n">action</span><span class="p">,</span>
-            <span class="s1">&#39;encoded&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ac_space</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">action</span><span class="p">),</span>
-            <span class="s1">&#39;one_hot&#39;</span><span class="p">:</span> <span class="n">one_hot</span><span class="p">,</span>
-        <span class="p">}</span>
-        <span class="c1"># print(&#39;action_pack: &#39;, action_pack)</span>
+            <span class="c1"># print(&#39;action_pack: &#39;, action_pack)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">e</span>
 
         <span class="k">return</span> <span class="n">action_pack</span><span class="p">,</span> <span class="n">logits</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">context</span></div>
 
@@ -557,7 +568,8 @@
 
         <span class="k">return</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pc_target</span><span class="p">,</span> <span class="n">feeder</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span><span class="o">...</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="BaseAacPolicy.get_sample_config"><a class="viewcode-back" href="../../../../btgym.algorithms.policy.html#btgym.algorithms.policy.base.BaseAacPolicy.get_sample_config">[docs]</a>    <span class="k">def</span> <span class="nf">get_sample_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseAacPolicy.get_sample_config"><a class="viewcode-back" href="../../../../btgym.algorithms.policy.html#btgym.algorithms.policy.base.BaseAacPolicy.get_sample_config">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_sample_config</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Dummy implementation.</span>
 

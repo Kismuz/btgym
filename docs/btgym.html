@@ -186,7 +186,7 @@
 <em class="property">class </em><code class="descclassname">btgym.dataserver.</code><code class="descname">BTgymDataFeedServer</code><span class="sig-paren">(</span><em>dataset=None</em>, <em>network_address=None</em>, <em>log_level=None</em>, <em>task=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/dataserver.html#BTgymDataFeedServer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.dataserver.BTgymDataFeedServer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Data provider server class.
 Enables efficient data sampling for asynchronous multiply BTgym environments execution.
-Manages global back-testing time.</p>
+Manages global back-testing time and broadcast messages.</p>
 <p>Configures data server instance.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -317,6 +317,20 @@ d_set is not ready;</td>
 <dt id="btgym.server.BTgymServer.get_global_time">
 <code class="descname">get_global_time</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/server.html#BTgymServer.get_global_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.server.BTgymServer.get_global_time" title="Permalink to this definition">¶</a></dt>
 <dd><p>Asks dataserver for current dataset global_time.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">POSIX timestamp</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="btgym.server.BTgymServer.get_broadcast_message">
+<code class="descname">get_broadcast_message</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/btgym/server.html#BTgymServer.get_broadcast_message"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#btgym.server.BTgymServer.get_broadcast_message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Asks dataserver for current dataset global_time and broadcast message.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />

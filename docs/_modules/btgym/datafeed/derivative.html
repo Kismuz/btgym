@@ -305,9 +305,10 @@
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
-            <span class="n">filename</span><span class="p">,</span>
             <span class="n">trial_params</span><span class="p">,</span>
             <span class="n">episode_params</span><span class="p">,</span>
+            <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">dataframe</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">target_period</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">use_target_backshift</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -320,16 +321,19 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Args:</span>
 <span class="sd">            filename:               Str or list of str, file_names containing CSV historic data;</span>
+<span class="sd">            dataframe:          pd.dataframe or iterable of pd.dataframes containing historic data;</span>
 <span class="sd">            parsing_params:         csv parsing options, see base class description for details;</span>
 <span class="sd">            trial_params:           dict, describes trial parameters, should contain keys:</span>
 <span class="sd">                                    {sample_duration, time_gap, start_00, start_weekdays, test_period, expanding};</span>
 <span class="sd">            episode_params:         dict, describes episode parameters, should contain keys:</span>
 <span class="sd">                                    {sample_duration, time_gap, start_00, start_weekdays};</span>
 
-<span class="sd">            target_period:          dict, domain target period, def={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0};</span>
+<span class="sd">            target_period:          dict, None or Int, domain target period, def={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0};</span>
 <span class="sd">                                    setting this param to non-zero duration forces separation to source/target</span>
 <span class="sd">                                    domains (which can be thought of as creating  top-level train/test subsets) with</span>
-<span class="sd">                                    target data duration equal to `target_period`.</span>
+<span class="sd">                                    target data duration equal to `target_period`;</span>
+<span class="sd">                                    if set to None - no target period assumed;</span>
+<span class="sd">                                    if set to -1 - no source period assumed;</span>
 <span class="sd">                                    Source data always precedes target one.</span>
 <span class="sd">            use_target_backshift:   bool, if true - target domain is shifted back by the duration of trial train period,</span>
 <span class="sd">                                    thus allowing training on part of target domain data,</span>
@@ -380,11 +384,10 @@
 
         <span class="n">episode_params</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;test_period&#39;</span><span class="p">:</span> <span class="n">trial_test_period</span><span class="p">})</span>
 
-        <span class="k">if</span> <span class="n">target_period</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">target_period</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;days&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="c1"># if target_period is None:</span>
+        <span class="c1">#     target_period = {&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0}</span>
 
         <span class="n">trial_params</span><span class="p">[</span><span class="s1">&#39;test_period&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_period</span>
-
 
         <span class="c1"># Setting target backshift:</span>
         <span class="k">if</span> <span class="n">use_target_backshift</span><span class="p">:</span>
@@ -417,6 +420,7 @@
 
         <span class="nb">super</span><span class="p">(</span><span class="n">BTgymRandomDataDomain</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
+            <span class="n">dataframe</span><span class="o">=</span><span class="n">dataframe</span><span class="p">,</span>
             <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
             <span class="n">sampling_params</span><span class="o">=</span><span class="n">trial_params</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
@@ -439,11 +443,13 @@
 <span class="sd">        To be improved.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
+
 <div class="viewcode-block" id="BTgymDataset.BTgymSimpleTrial"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.derivative.BTgymDataset.BTgymSimpleTrial">[docs]</a>    <span class="k">class</span> <span class="nc">BTgymSimpleTrial</span><span class="p">(</span><span class="n">BTgymDataTrial</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Truncated Trial without test period: always samples from train,</span>
 <span class="sd">        sampled episode inherits tarin/test metadata of parent trail.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
             <span class="n">episode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample</span><span class="p">(</span><span class="n">sample_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="n">episode</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sample_type</span>
@@ -530,7 +536,8 @@
             <span class="n">start_weekdays</span><span class="o">=</span><span class="n">start_weekdays</span><span class="p">,</span>
             <span class="n">start_00</span><span class="o">=</span><span class="n">start_00</span><span class="p">,</span>
             <span class="n">time_gap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_time_gap</span><span class="p">,</span>
-            <span class="n">test_period</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;days&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">},</span>
+            <span class="c1"># test_period={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0},</span>
+            <span class="n">test_period</span><span class="o">=</span><span class="n">target_period</span><span class="p">,</span>
             <span class="n">expanding</span><span class="o">=</span><span class="kc">False</span>
         <span class="p">)</span>
         <span class="n">episode_params</span> <span class="o">=</span> <span class="n">trial_params</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -546,6 +553,89 @@
         <span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="BTgymDataset2"><a class="viewcode-back" href="../../../btgym.datafeed.html#btgym.datafeed.derivative.BTgymDataset2">[docs]</a><span class="k">class</span> <span class="nc">BTgymDataset2</span><span class="p">(</span><span class="n">BTgymRandomDataDomain</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simple top-level data class, implements direct random episode sampling from data set induced by csv file,</span>
+<span class="sd">    i.e it is a special case for `Trial=def=Episode`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">dataframe</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">episode_duration</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">time_gap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">start_00</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">start_weekdays</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">parsing_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">target_period</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;SimpleDataSet2&#39;</span><span class="p">,</span>
+            <span class="n">data_names</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;default_asset&#39;</span><span class="p">,),</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="n">WARNING</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            filename:           Str or list of str, file_names containing CSV historic data;</span>
+<span class="sd">            dataframe:          pd.dataframe or iterable of pd.dataframes containing historic data;</span>
+<span class="sd">            episode_duration:   dict, maximum episode duration in d:h:m, def={&#39;days&#39;: 0, &#39;hours&#39;: 23, &#39;minutes&#39;: 55},</span>
+<span class="sd">                                alias for `sample_duration`;</span>
+<span class="sd">            time_gap:           dict, data time gap allowed within sample in d:h:m, def={&#39;days&#39;: 0, &#39;hours&#39;: 6};</span>
+<span class="sd">            start_00:           bool, episode start point will be shifted back to first record;</span>
+<span class="sd">                                of the day (usually 00:00), def=False;</span>
+<span class="sd">            start_weekdays:     list, only weekdays from the list will be used for sample start,</span>
+<span class="sd">                                def=[0, 1, 2, 3, 4, 5, 6];</span>
+<span class="sd">            target_period:      domain test(aka target) period. def={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0};</span>
+<span class="sd">                                setting this param to non-zero duration forces data separation to train/test</span>
+<span class="sd">                                subsets. Train data always precedes test one.</span>
+<span class="sd">            parsing_params:     csv parsing options, see base class description for details;</span>
+<span class="sd">            name:               str, instance name;</span>
+<span class="sd">            log_level:          int, logbook.level;</span>
+<span class="sd">            **kwargs:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Default sample time duration:</span>
+        <span class="k">if</span> <span class="n">episode_duration</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_episode_duration</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">days</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">hours</span><span class="o">=</span><span class="mi">23</span><span class="p">,</span>
+                    <span class="n">minutes</span><span class="o">=</span><span class="mi">55</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_episode_duration</span> <span class="o">=</span> <span class="n">episode_duration</span>
+
+        <span class="c1"># Default data time gap allowed within sample:</span>
+        <span class="k">if</span> <span class="n">time_gap</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_time_gap</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">days</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">hours</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_time_gap</span> <span class="o">=</span> <span class="n">time_gap</span>
+
+        <span class="c1"># Default weekdays:</span>
+        <span class="k">if</span> <span class="n">start_weekdays</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">start_weekdays</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]</span>
+
+        <span class="n">trial_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">sample_duration</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_episode_duration</span><span class="p">,</span>
+            <span class="n">start_weekdays</span><span class="o">=</span><span class="n">start_weekdays</span><span class="p">,</span>
+            <span class="n">start_00</span><span class="o">=</span><span class="n">start_00</span><span class="p">,</span>
+            <span class="n">time_gap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_time_gap</span><span class="p">,</span>
+            <span class="c1"># test_period={&#39;days&#39;: 0, &#39;hours&#39;: 0, &#39;minutes&#39;: 0},</span>
+            <span class="n">test_period</span><span class="o">=</span><span class="n">target_period</span><span class="p">,</span>
+            <span class="n">expanding</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="n">episode_params</span> <span class="o">=</span> <span class="n">trial_params</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">BTgymDataset2</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
+            <span class="n">dataframe</span><span class="o">=</span><span class="n">dataframe</span><span class="p">,</span>
+            <span class="n">parsing_params</span><span class="o">=</span><span class="n">parsing_params</span><span class="p">,</span>
+            <span class="n">trial_params</span><span class="o">=</span><span class="n">trial_params</span><span class="p">,</span>
+            <span class="n">episode_params</span><span class="o">=</span><span class="n">episode_params</span><span class="p">,</span>
+            <span class="n">target_period</span><span class="o">=</span><span class="n">target_period</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">data_names</span><span class="o">=</span><span class="n">data_names</span><span class="p">,</span>
+            <span class="n">log_level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 </pre></div>
 

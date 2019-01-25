@@ -221,6 +221,7 @@
         <span class="n">render_size_human</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">),</span>
         <span class="n">render_size_state</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">),</span>
         <span class="n">render_size_episode</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">8</span><span class="p">),</span>
+        <span class="n">render_rowsmajor_episode</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
         <span class="n">render_dpi</span><span class="o">=</span><span class="mi">75</span><span class="p">,</span>
         <span class="n">render_plotstyle</span><span class="o">=</span><span class="s1">&#39;seaborn&#39;</span><span class="p">,</span>
         <span class="n">render_cmap</span><span class="o">=</span><span class="s1">&#39;PRGn&#39;</span><span class="p">,</span>
@@ -509,13 +510,13 @@
         <span class="k">if</span> <span class="n">line_labels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># If got no labels - make it numbers:</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="n">line_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;line_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+                <span class="n">line_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;line_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])]</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">line_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;line_0&#39;</span><span class="p">]</span>
                 <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">line_labels</span><span class="p">)</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> \
-                <span class="s1">&#39;Expected `line_labels` kwarg consist of </span><span class="si">{}</span><span class="s1"> names, fot: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span> <span class="nb">format</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">line_labels</span><span class="p">)</span>
+                <span class="s1">&#39;Expected `line_labels` kwarg consist of </span><span class="si">{}</span><span class="s1"> names, got: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span> <span class="nb">format</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">line_labels</span><span class="p">)</span>
 
         <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_dpi</span><span class="p">,</span> <span class="p">)</span>
         <span class="c1">#ax = fig.add_subplot(111)</span>
@@ -625,6 +626,7 @@
                                    <span class="n">height</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_size_episode</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
                                    <span class="n">dpi</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_dpi</span><span class="p">,</span>
                                    <span class="n">result_pipe</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">in_pipe</span><span class="p">,</span>
+                                   <span class="n">rowsmajor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_rowsmajor_episode</span><span class="p">,</span>
                                    <span class="p">)</span>
 
         <span class="n">draw_process</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
