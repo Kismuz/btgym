@@ -211,6 +211,7 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
         sub-spaces itself (was only true for `external`); all declared sub-spaces got encoded by separate convolution encoders;
     - **policy deterministic action** option is implemented for discrete action spaces and can be utilised by `syncro_runner`;
         by default it is enabled for test episodes;
+    - **data_feed** classes now accept `pd.dataframes` as historic data dource via `dataframe` kwarg (was: `.csv` files only);
 
 - 18.01.2019: updates:
     - **data model** classes are under active development to power model-based framework:

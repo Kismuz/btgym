@@ -235,6 +235,12 @@ class BaseStrategy6(bt.Strategy):
             unimodal_stake = {name: self.p.order_size for name in self.getdatanames()}
             self.p.order_size = unimodal_stake
 
+        # Current effective order sizes:
+        self.current_order_sizes = None
+
+        # Current stat normalisation:
+        self.normalizer = 1.0
+
         # self.log.warning('asset names: {}'.format(self.p.asset_names))
         # self.log.warning('data names: {}'.format(self.getdatanames()))
 
@@ -315,9 +321,6 @@ class BaseStrategy6(bt.Strategy):
         # This data line will be used to by default to
         # define normalisation bounds (can be overiden via .set_datalines()):
         self.stat_asset = self.data.open
-
-        # TODO: rewrite if orders are not of the same size
-        self.order_size_normalizer = np.fromiter(self.p.order_size.values(), dtype=np.float).mean()
 
         # Add custom data Lines if any [and possibly redefine stat_asset and order_size_normalizer]:
         self.set_datalines()
@@ -442,6 +445,9 @@ class BaseStrategy6(bt.Strategy):
         # ...normalisation bounds:
         norm_state = self.get_normalisation()
 
+        # ..current order sizes:
+        # order_sizes = self.get_order_sizes()
+
         # ...individual positions for each instrument traded:
         positions = [self.env.broker.getposition(data) for data in self.datas]
 
@@ -449,7 +455,15 @@ class BaseStrategy6(bt.Strategy):
         exposure = sum([abs(pos.size) for pos in positions])
 
         # ... tracking normalisation constant:
-        normalizer = 1 / (norm_state.up_interval - norm_state.low_interval) / self.order_size_normalizer
+        self.normalizer = 1 / np.clip(
+            (norm_state.up_interval - norm_state.low_interval),
+            1e-8,
+            None
+        )
+
+        # print('norm_state: ', norm_state)
+        # print('normalizer: ', normalizer)
+        # print('self.current_order_sizes: ', self.current_order_sizes)
 
         for key, method in self.collection_get_broker_stat_methods.items():
             update = method(
@@ -458,7 +472,7 @@ class BaseStrategy6(bt.Strategy):
                 exposure=exposure,
                 lower_bound=norm_state.low_interval,
                 upper_bound=norm_state.up_interval,
-                normalizer=normalizer,
+                normalizer=self.normalizer,
             )
             # Update accumulator:
             self.broker_stat[key] = np.concatenate([self.broker_stat[key][1:], np.asarray([float(update)])])
@@ -489,6 +503,17 @@ class BaseStrategy6(bt.Strategy):
         )
         return self.normalisation_state
 
+    def get_order_sizes(self):
+        """
+        Estimates current order sizes for assets in trade, sets attribute.
+
+        Returns:
+            array-like of floats
+        """
+        # Default implementation for fixed-size orders:
+        self.current_order_sizes = np.fromiter(self.p.order_size.values(), dtype=np.float)
+        return self.current_order_sizes
+
     def get_broker_value(self, current_value, normalizer, **kwargs):
         """
 
@@ -500,13 +525,7 @@ class BaseStrategy6(bt.Strategy):
         Returns:
             broker value normalized w.r.t. start value.
         """
-        # return norm_value(
-        #     current_value,
-        #     self.env.broker.startingcash,
-        #     lower_bound,
-        #     upper_bound,
-        # )
-        return (current_value - self.env.broker.startingcash) / self.env.broker.startingcash * normalizer
+        return (current_value - self.env.broker.startingcash) / self.env.broker.startingcash / self.p.leverage #* normalizer
 
     def get_broker_cash(self, current_value, **kwargs):
         """
@@ -518,7 +537,7 @@ class BaseStrategy6(bt.Strategy):
         """
         return self.env.broker.get_cash() / current_value
 
-    def get_broker_exposure(self, exposure, **kwargs):
+    def get_broker_exposure(self, exposure, normalizer, **kwargs):
         """
         Args:
             exposure:   float, current total position exposure
@@ -526,7 +545,7 @@ class BaseStrategy6(bt.Strategy):
         Returns:
             exposure (position size) normalized w.r.t. single order size.
         """
-        return exposure / self.order_size_normalizer
+        return exposure * normalizer #/ self.current_order_sizes.mean()
 
     def get_broker_realized_pnl(self, normalizer, **kwargs):
         """
@@ -540,7 +559,6 @@ class BaseStrategy6(bt.Strategy):
 
         if self.trade_just_closed:
             pnl = self.trade_result * normalizer
-            # pnl = self.trade_result / (upper_bound - lower_bound)
 
         else:
             pnl = 0.0
@@ -562,7 +580,7 @@ class BaseStrategy6(bt.Strategy):
 
     def get_broker_total_unrealized_pnl(self, current_value, normalizer, **kwargs):
         """
-
+        REDUNDANT
         Args:
             current_value:  float, current portfolio value
             normalizer:     float, normalisation constant
@@ -571,7 +589,7 @@ class BaseStrategy6(bt.Strategy):
         Returns:
             normalized profit/loss wrt. initial portfolio value
         """
-        pnl = (current_value - self.env.broker.startingcash) * normalizer
+        pnl = (current_value - self.env.broker.startingcash) * self.env.broker.startingcash
 
         return pnl
 
@@ -811,7 +829,7 @@ class BaseStrategy6(bt.Strategy):
         realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
 
         # Weights are subject to tune:
-        self.reward = (0.1 * f1 + 1.0 * realized_pnl) * self.p.reward_scale
+        self.reward = (0.1 * f1 + 1.0 * realized_pnl) * self.p.reward_scale #/ self.normalizer
         # self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
         self.reward = np.clip(self.reward, -1e3, 1e3)
 

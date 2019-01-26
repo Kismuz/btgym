@@ -579,7 +579,7 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
         realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
 
         # Weights are subject to tune:
-        self.reward = (0.1 * f1 * f3 + 1.0 * realized_pnl) * self.p.reward_scale
+        self.reward = (0.1 * f1 * f3 + 1.0 * realized_pnl) * self.p.reward_scale #/ self.normalizer
         # self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
 
         self.reward = np.clip(self.reward, -1e3, 1e3)
