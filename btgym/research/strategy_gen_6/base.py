@@ -238,6 +238,9 @@ class BaseStrategy6(bt.Strategy):
         # Current effective order sizes:
         self.current_order_sizes = None
 
+        # Current stat normalisation:
+        self.normalizer = 1.0
+
         # self.log.warning('asset names: {}'.format(self.p.asset_names))
         # self.log.warning('data names: {}'.format(self.getdatanames()))
 
@@ -443,7 +446,9 @@ class BaseStrategy6(bt.Strategy):
         norm_state = self.get_normalisation()
 
         # ..current order sizes:
-        order_sizes = self.get_order_sizes()
+
+        # order_sizes = self.get_order_sizes()
+
 
         # ...individual positions for each instrument traded:
         positions = [self.env.broker.getposition(data) for data in self.datas]
@@ -452,8 +457,9 @@ class BaseStrategy6(bt.Strategy):
         exposure = sum([abs(pos.size) for pos in positions])
 
         # ... tracking normalisation constant:
-        normalizer = 1 / np.clip(
-            (norm_state.up_interval - norm_state.low_interval) * order_sizes.mean(),
+
+        self.normalizer = 1 / np.clip(
+            (norm_state.up_interval - norm_state.low_interval),
             1e-8,
             None
         )
@@ -469,7 +475,7 @@ class BaseStrategy6(bt.Strategy):
                 exposure=exposure,
                 lower_bound=norm_state.low_interval,
                 upper_bound=norm_state.up_interval,
-                normalizer=normalizer,
+                normalizer=self.normalizer,
             )
             # Update accumulator:
             self.broker_stat[key] = np.concatenate([self.broker_stat[key][1:], np.asarray([float(update)])])
@@ -826,7 +832,7 @@ class BaseStrategy6(bt.Strategy):
         realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
 
         # Weights are subject to tune:
-        self.reward = (0.1 * f1 + 1.0 * realized_pnl) * self.p.reward_scale
+        self.reward = (0.1 * f1 + 1.0 * realized_pnl) * self.p.reward_scale #/ self.normalizer
         # self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
         self.reward = np.clip(self.reward, -1e3, 1e3)
 
