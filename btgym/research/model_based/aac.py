@@ -20,15 +20,17 @@ class OUpAAC(GuidedAAC):
             name='OUpA3C',
             **kwargs
     ):
+        if runner_config is None:
+            runner_config = {
+                'class_ref': OUpRunner,
+                'kwargs': {}
+            }
         super(OUpAAC, self).__init__(
             aac_lambda=aac_lambda,
             guided_lambda=guided_lambda,
             name=name,
-            runner_config={
-                    'class_ref': OUpRunner,
-                    'kwargs': {}
-                },
-            **kwargs
+            runner_config=runner_config,
+            **kwargs,
         )
 
     def _combine_summaries(self, policy=None, model_summaries=None):
@@ -283,10 +285,11 @@ class TrainAMLDG:
 
             # Instantiate two sub-trainers: one for training on modeled data (actor, or generator) and one
             # for training on real data (critic, or discriminator):
-
-            self.runner_config['kwargs']['data_sample_config'] = {'mode': 0}  # synthetic train data
-            self.runner_config['kwargs']['name'] = 'actor'
-
+            self.runner_config['kwargs'] = {
+                'data_sample_config': {'mode': 0},  # synthetic train data
+                'name': 'actor',
+                'test_deterministic': False,
+            }
             self.actor_aac = aac_class_ref(
                 env=self.env_list[-1],  # test data -> slave env.
                 task=self.task,
@@ -304,10 +307,12 @@ class TrainAMLDG:
                 name=self.name + '/actor',
                 **kwargs
             )
-
-            self.runner_config['kwargs']['data_sample_config'] = {'mode': 1}  # real train data
-            self.runner_config['kwargs']['name'] = 'critic'
-
+            # Change for critic:
+            self.runner_config['kwargs'] = {
+                'data_sample_config': {'mode': 1},  # real train data
+                'name': 'critic',
+                'test_deterministic': False,  # enable exploration on [formally] test data
+            }
             self.critic_aac = aac_class_ref(
                 env=self.env_list[0],  # real train data will be master environment
                 task=self.task,

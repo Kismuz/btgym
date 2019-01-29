@@ -124,8 +124,9 @@ class BaseSynchroRunner():
         else:
             self.test_conditions = test_conditions
 
-        # Actions for tests:
+        # Actions handling for test runs:
         self.test_deterministic = test_deterministic
+        # self.log.warning('test_deterministic: {}'.format(self.test_deterministic))
 
         # Make replay memory:
         if self.memory_config is not None:
