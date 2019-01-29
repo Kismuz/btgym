@@ -67,7 +67,7 @@ class Worker(multiprocessing.Process):
                  log_level,
                  max_env_steps,
                  random_seed=None,
-                 render_last_env=False,
+                 render_last_env=True,
                  test_mode=False):
         """
 
@@ -85,7 +85,9 @@ class Worker(multiprocessing.Process):
             log_level:              int, logbook.level
             max_env_steps:          number of environment steps to run training on
             random_seed:            int or None
-            render_last_env:        bool, if True - render enabled for last environment in a list; first otherwise
+            render_last_env:        bool, if True and there is more than one environment specified for each worker,
+                                    only allows rendering for last environment in a list;
+                                    allows rendering for all environments of a chief worker otherwise;
             test_mode:              if True - use Atari mode, BTGym otherwise.
 
             Note:
@@ -235,7 +237,8 @@ class Worker(multiprocessing.Process):
                     if self.render_last_env:
                         render_list[-1] = True
                     else:
-                        render_list[0] = True
+                        render_list = [True for entry in port_list]
+                        # render_list[0] = True
 
                 data_master_list = [False for entry in port_list]
                 if data_master:
@@ -381,7 +384,7 @@ class Worker(multiprocessing.Process):
                             self._save_model_params(sess, global_step)
                             train_speed = (global_step - last_saved_step) / (time_delta.total_seconds() + 1)
                             self.log.notice(
-                                'train step: {}; cluster speed: {:.0f} step/sec; checkpoint saved.'.format(
+                                'env. step: {}; cluster speed: {:.0f} step/sec; checkpoint saved.'.format(
                                     global_step,
                                     train_speed
                                 )

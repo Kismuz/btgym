@@ -768,7 +768,7 @@ class BaseStrategy6(bt.Strategy):
         Collects estimated values for every mode of observation space by calling methods from
         `collection_get_state_methods` dictionary.
         As a rule, this method should not be modified, override or implement corresponding get_[mode]_state() methods,
-        defining necessary calculations and return arbitrary shaped tensors for every space mode.
+        defining necessary calculations and return properly shaped tensors for every space mode.
 
         Note:
             - 'data' referes to bt.startegy datafeeds and should be treated as such.

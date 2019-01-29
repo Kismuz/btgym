@@ -290,11 +290,11 @@ class AMLDG():
         pi.grads = self.train_aac.grads
         pi_prime.grads = self.test_aac.grads
 
-        # Meta_optimisation gradients as sum of meta-train and meta-test gradients:
+        # Meta_optimisation gradients as an average of meta-train and meta-test gradients:
         self.grads = []
         for g1, g2 in zip(pi.grads, pi_prime.grads):
             if g1 is not None and g2 is not None:
-                meta_g = g1 + g2
+                meta_g = (g1 + g2) / 2.0
 
             else:
                 meta_g = None  # need to map correctly to vars

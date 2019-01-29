@@ -446,7 +446,7 @@ class BaseAAC(object):
                     else:
                         self.local_network_prime = pi_prime = self._make_dummy_policy()
 
-                    self.worker_device_callback_0() # if need more networks etc.
+                    self.worker_device_callback_0()  # if need more networks etc.
 
                     # Meant for Batch-norm layers:
                     pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
@@ -697,7 +697,7 @@ class BaseAAC(object):
                         # tf.summary.scalar('roll_advantage', tf.reduce_mean(self.local_network.on_pi_adv_target)),
                     ]
                     if policy is not None:
-                        model_summaries += [ tf.summary.scalar("var_global_norm", tf.global_norm(policy.var_list))]
+                        model_summaries += [tf.summary.scalar("var_global_norm", tf.global_norm(policy.var_list))]
         else:
             model_summaries = []
         # Model stat. summary:

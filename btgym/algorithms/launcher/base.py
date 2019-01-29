@@ -57,7 +57,9 @@ class Launcher():
                  root_random_seed=None,
                  test_mode=False,
                  purge_previous=1,
+                 render_last_env=True,
                  log_level=None,
+
                  verbose=0):
         """
 
@@ -73,6 +75,9 @@ class Launcher():
             test_mode (bool):           if True - use Atari gym env., BTGym otherwise.
             purge_previous (int):       keep or remove previous log files and saved checkpoints from log_dir:
                                         {0 - keep, 1 - ask, 2 - remove}.
+            render_last_env:            bool, if True and there is more than one environment specified for each worker,
+                                        only allows rendering for last environment in a list;
+                                        allows rendering for all environments of a chief worker otherwise;
             verbose (int):              verbosity mode, {0 - WARNING, 1 - INFO, 2 - DEBUG}.
             log_level (int):            logbook level {DEBUG=10, INFO=11, NOTICE=12, WARNING=13},
                                         overrides `verbose` arg.
@@ -127,6 +132,7 @@ class Launcher():
         self.log_level = log_level
         self.verbose = verbose
         self.save_secs = save_secs
+        self.render_last_env = render_last_env
 
         if max_env_steps is not None:
             self.max_env_steps = max_env_steps
@@ -252,7 +258,8 @@ class Launcher():
                         'max_env_steps': self.max_env_steps,
                         'save_secs': self.save_secs,
                         'log_level': self.log_level,
-                        'random_seed': self.workers_rnd_seeds.pop()
+                        'random_seed': self.workers_rnd_seeds.pop(),
+                        'render_last_env': self.render_last_env
                     }
                 )
                 self.clear_port(env_config['kwargs']['port'])
