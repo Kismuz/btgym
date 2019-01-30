@@ -261,7 +261,7 @@ class MonoSpreadOUStrategy_0(BaseStrategy6):
             fi_1 = 0
             fi_1_prime = 0
         else:
-            current_avg_period = min(self.avg_period, current_pos_duration)
+            current_avg_period = int(min(self.avg_period, current_pos_duration))
 
             fi_1 = self.last_pnl
             fi_1_prime = np.average(unrealised_pnl[- current_avg_period:])
