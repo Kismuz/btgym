@@ -408,8 +408,8 @@ class TrainAMLDG:
         ]
         global_grads_and_vars = list(zip(self.grads, pi_global.var_list))
 
-        debug_global_grads_and_vars = list(zip(self.actor_aac.grads_placeholders, pi_global.var_list))
-        debug_global_grads_and_vars = [(g, v) for (g, v) in debug_global_grads_and_vars if g is not None]
+        # debug_global_grads_and_vars = list(zip(self.actor_aac.grads_placeholders, pi_global.var_list))
+        # debug_global_grads_and_vars = [(g, v) for (g, v) in debug_global_grads_and_vars if g is not None]
 
         # Remove None entries:
         global_grads_and_vars = [(g, v) for (g, v) in global_grads_and_vars if g is not None ]
@@ -419,11 +419,10 @@ class TrainAMLDG:
         self.actor_aac.grads_placeholders = [pl for pl in self.actor_aac.grads_placeholders if pl is not None]
         self.critic_aac.grads_placeholders = [pl for pl in self.critic_aac.grads_placeholders if pl is not None]
 
-
         # Set global_step increment equal to observation space batch size:
-        obs_space_keys = list(self.actor_aac.local_network.on_state_in.keys())
-        assert 'external' in obs_space_keys, \
-            'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
+        # obs_space_keys = list(self.actor_aac.local_network.on_state_in.keys())
+        # assert 'external' in obs_space_keys, \
+        #     'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
 
         # inc_size = tf.shape(self.actor_aac.local_network.on_state_in['external']['ssa']).as_list()[0]
         #
@@ -438,16 +437,6 @@ class TrainAMLDG:
 
         # Use actor optimizer to update global policy instance:
         self.train_op = self.actor_aac.optimizer.apply_gradients(global_grads_and_vars)
-
-        # #  Learning rate annealing:
-        # self.learn_rate_decayed = tf.train.polynomial_decay(
-        #     self.opt_learn_rate,
-        #     self.global_step + 1,
-        #     self.opt_decay_steps,
-        #     self.opt_end_learn_rate,
-        #     power=1,
-        #     cycle=False,
-        # )
 
         self.log.debug('all_train_ops defined')
 
