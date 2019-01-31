@@ -944,7 +944,7 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         x_ssa = self.data_model.s.transform(size=self.p.time_dim).T  #* self.normalizer
 
         # Gradient along features axis:
-        dx = np.gradient(x_ssa, axis=-1)
+        # dx = np.gradient(x_ssa, axis=-1)
         #
         # # Add up: gradient  along time axis:
         # # dx2 = np.gradient(dx, axis=0)

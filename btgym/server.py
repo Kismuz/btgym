@@ -93,7 +93,8 @@ class _BTgymAnalyzer(bt.Analyzer):
 
     def send_env_response(self, is_done):
         """
-        Sends environment response as <o, r, d, i> tuple
+        Sends environment response as <o, r, d, i> tuple.
+        See issue #84.
         """
         # Gather response:
         raw_state = self.strategy.get_raw_state()
@@ -129,7 +130,6 @@ class _BTgymAnalyzer(bt.Analyzer):
         self.info_list = []
         self.strategy.env_iteration += 1
         self.respond_pending = False
-
 
     def next(self):
         """
@@ -197,7 +197,7 @@ class _BTgymAnalyzer(bt.Analyzer):
                 self.log.debug(msg)
 
             # Store agent action an rise respond_pending flag:
-            if 'action' in self.message: # now it should!
+            if 'action' in self.message:  # now it should!
                 self.strategy.action = self.message['action']
                 self.strategy.last_action = self.message['action']
                 self.respond_pending = True
