@@ -952,9 +952,9 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         # x = np.concatenate([x_ssa_bank, dx], axis=-1)
 
         # Crop outliers:
-        # x_ssa = np.clip(x_ssa, -10, 10)
-        x_ssa = np.clip(dx, -10, 10)
-        return x_ssa[:, None, :-1]
+        x_ssa = np.clip(x_ssa, -10, 10)
+        # x_ssa = np.clip(dx, -10, 10)
+        return x_ssa[:, None, :]
 
     def get_data_model_state(self):
         """
@@ -976,7 +976,7 @@ class SSAStrategy_0(PairSpreadStrategy_0):
             ],
             axis=0
         )
-        self.external_model_state = np.gradient(self.external_model_state, axis=-1)
+        # self.external_model_state = np.gradient(self.external_model_state, axis=-1)
         return self.external_model_state
 
     def get_internal_broker_state(self):
@@ -987,7 +987,7 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         )
         # self.log.warning('broker: {}'.format(x_broker))
         # self.log.warning('Ns: {}'.format(self.normalisation_state))
-        x_broker = np.gradient(x_broker, axis=-1)
+        # x_broker = np.gradient(x_broker, axis=-1)
         return np.clip(x_broker[:, None, :], -100, 100)
 
     def long_spread(self):

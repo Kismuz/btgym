@@ -60,7 +60,8 @@ class _BTgymAnalyzer(bt.Analyzer):
         self.get_broadcast_info = self.strategy._get_broadcast_info
 
         self.message = None
-        self.step_to_render = None # Due to reset(), this will get populated before first render() call.
+        self.step_to_render = None  # Due to reset(), this will get populated before first render() call.
+        self.respond_pending = False
 
         # At the end of the episode - render everything but episode:
         self.render_at_stop = self.render.render_modes.copy()
@@ -90,6 +91,46 @@ class _BTgymAnalyzer(bt.Analyzer):
         self.strategy.close()
         self.strategy.env.runstop()
 
+    def send_env_response(self, is_done):
+        """
+        Sends environment response as <o, r, d, i> tuple
+        """
+        # Gather response:
+        raw_state = self.strategy.get_raw_state()
+        state = self.strategy.get_state()
+        reward = self.strategy.get_reward()
+        # Send response as <o, r, d, i> tuple (Gym convention),
+        # opt to send entire info_list or just latest part:
+        info = [self.info_list[-1]]
+        self.socket.send_pyobj((state, reward, is_done, info))
+
+        # Increment global time by sending timestamp to data_server, if authorized;
+        if self.can_broadcast:
+            global_timestamp = self.get_timestamp()
+            broadcast_info = self.get_broadcast_info()
+            self.log.debug('broadcasting timestamp: {}'.format(global_timestamp))
+
+            self.data_socket.send_pyobj(
+                {
+                    'ctrl': '_set_broadcast_message',
+                    'timestamp': global_timestamp,
+                    'broadcast_message': broadcast_info,
+                }
+            )
+            broadcast_set_response = self.data_socket.recv_pyobj()
+            self.log.debug('DATA_COMM/broadcast received: {}'.format(broadcast_set_response))
+
+        # Back up step information for rendering.
+        # It pays when using skip-frames: will'll get future state otherwise.
+
+        self.step_to_render = ({'human': raw_state}, state, reward, is_done, self.info_list)
+
+        # Reset info:
+        self.info_list = []
+        self.strategy.env_iteration += 1
+        self.respond_pending = False
+
+
     def next(self):
         """
         Actual env.step() communication and episode termination is here.
@@ -100,21 +141,18 @@ class _BTgymAnalyzer(bt.Analyzer):
         # Collect step info:
         self.info_list.append(self.strategy.get_info())
         # Put agent on hold:
-
         self.strategy.action = self.strategy.p.initial_portfolio_action
         # Trick to avoid excessive orders emitting during skip_frame loop:
         self.strategy.action['_skip_this'] = True
 
         # Only if it's time to communicate or episode has come to end:
         if self.strategy.iteration % self.strategy.p.skip_frame == 0 or is_done:
+            if self.respond_pending:
+                # Other side is waiting for response:
+                self.send_env_response(is_done)
 
             #print('Analyzer_strat_iteration:', self.strategy.iteration)
             #print('Analyzer_env_iteration:', self.strategy.env_iteration)
-
-            # Gather response:
-            raw_state = self.strategy.get_raw_state()
-            state = self.strategy.get_state()
-            reward = self.strategy.get_reward()
 
             # Halt and wait to receive message from outer world:
             self.message = self.socket.recv_pyobj()
@@ -158,44 +196,15 @@ class _BTgymAnalyzer(bt.Analyzer):
                 msg = 'COMM recieved: {}'.format(self.message)
                 self.log.debug(msg)
 
-            # Store agent action:
+            # Store agent action an rise respond_pending flag:
             if 'action' in self.message: # now it should!
                 self.strategy.action = self.message['action']
                 self.strategy.last_action = self.message['action']
+                self.respond_pending = True
 
             else:
                 msg = 'No <action> key recieved:\n' + msg
                 raise AssertionError(msg)
-
-            # Send response as <o, r, d, i> tuple (Gym convention),
-            # opt to send entire info_list or just latest part:
-            info = [self.info_list[-1]]
-            self.socket.send_pyobj((state, reward, is_done, info))
-
-            # Increment global time by sending timestamp to data_server, if authorized;
-            if self.can_broadcast:
-                global_timestamp = self.get_timestamp()
-                broadcast_info = self.get_broadcast_info()
-                self.log.debug('broadcasting timestamp: {}'.format(global_timestamp))
-
-                self.data_socket.send_pyobj(
-                    {
-                        'ctrl': '_set_broadcast_message',
-                        'timestamp': global_timestamp,
-                        'broadcast_message': broadcast_info,
-                    }
-                )
-                broadcast_set_response = self.data_socket.recv_pyobj()
-                self.log.debug('DATA_COMM/broadcast received: {}'.format(broadcast_set_response))
-
-            # Back up step information for rendering.
-            # It pays when using skip-frames: will'll get future state otherwise.
-
-            self.step_to_render = ({'human':raw_state}, state, reward, is_done, self.info_list)
-
-            # Reset info:
-            self.info_list = []
-            self.strategy.env_iteration += 1
 
         # If done, initiate fallback to Control Mode:
         if is_done:

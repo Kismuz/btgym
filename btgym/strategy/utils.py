@@ -57,22 +57,22 @@ def __norm_value(current_value, init_value, lower_bound, upper_bound, epsilon=1e
     return x
 
 
-# def decayed_result(trade_result, current_value, base_value, lower_bound, upper_bound, gamma=1.0):
-#     """
-#     Normalized in [-1,1] trade result, lineary decayed wrt current_value.
-#     """
-#     target_value = base_value * (1 + upper_bound / 100)
-#     value_range = base_value * (lower_bound + upper_bound) / 100
-#     decay = (gamma - 1) * (current_value - target_value) / value_range + gamma
-#     x = trade_result * decay / value_range
-#     return x
-
-
 def decayed_result(trade_result, current_value, base_value, lower_bound, upper_bound, gamma=1.0):
     """
     Normalized in [-1,1] trade result, lineary decayed wrt current_value.
     """
-    return (trade_result - base_value) / (upper_bound - lower_bound)
+    target_value = base_value * (1 + upper_bound / 100)
+    value_range = base_value * (lower_bound + upper_bound) / 100
+    decay = (gamma - 1) * (current_value - target_value) / value_range + gamma
+    x = trade_result * decay / value_range
+    return x
+
+
+# def decayed_result(trade_result, current_value, base_value, lower_bound, upper_bound, gamma=1.0):
+#     """
+#     Normalized in [-1,1] trade result, lineary decayed wrt current_value.
+#     """
+#     return (trade_result - base_value) / (upper_bound - lower_bound)
 
 
 def exp_scale(x, gamma=4, epsilon=1e-10):
