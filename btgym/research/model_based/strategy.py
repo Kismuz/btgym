@@ -193,9 +193,6 @@ class PairSpreadStrategy_0(BaseStrategy6):
         # long_ spread: >0, short_spread: <0, no positions: 0
         self.spread_position_size = 0
 
-        # Reserve 5% of initial cash when checking if it is possible to add up virtual spread:
-        self.margin_reserve = self.env.broker.get_cash() * .05
-
         # Reward signal filtering:
         self.kf = KalmanFilter(
             initial_state_mean=0,
@@ -324,9 +321,6 @@ class PairSpreadStrategy_0(BaseStrategy6):
 
         # Gradient along features axis:
         dx = np.gradient(x_sma, axis=-1)
-
-        # # Add up: gradient  along time axis:
-        # dx2 = np.gradient(dx, axis=0)
 
         # TODO: different conv. encoders for these two types of features:
         x = np.concatenate([x_sma, dx], axis=-1)
