@@ -1,3 +1,50 @@
+import numpy as np
+from backtrader import Indicator
+
+
+class SpreadConstructor(Indicator):
+    """
+    Normalised Synthetic spread estimation and plotting.
+    Uses norm_stat_tracker_2.
+    """
+    lines = ('spread',)
+    plotinfo = dict(
+        subplot=True,
+        plotabove=True,
+        plotname='Norm. Synthetic Spread',
+    )
+    plotlines = dict(
+        spread=dict(_name='SPREAD', color='darkmagenta'),
+    )
+
+    def next(self):
+        s = self._owner.norm_stat_tracker_2.get_state()
+        if s.mean is None or s.variance is None:
+            self.lines.spread[0] = np.random.normal(0, 0.39)
+
+        else:
+            self.lines.spread[0] = (self._owner.datas[1] - s.mean[1]) / s.variance[1] ** .5 \
+                                   - (self._owner.datas[0] - s.mean[0]) / s.variance[0] ** .5
+
+
+class CumSumReward(Indicator):
+    """
+    Cumulative reward tracking.
+    """
+    lines = ('cum_reward',)
+    plotinfo = dict(
+        subplot=True,
+        plotabove=True,
+        plotname='Cumulative Reward',
+    )
+    plotlines = dict(
+        cum_reward=dict(_name='REWARD', color='darkblue'),
+    )
+    total_reward = 0.0
+
+    def next(self):
+        self.total_reward += self._owner.reward / self._owner.p.skip_frame
+        self.lines.cum_reward[0] = self.total_reward
 
 
 class SpreadSizer:

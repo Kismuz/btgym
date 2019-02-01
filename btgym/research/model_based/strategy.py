@@ -1,22 +1,23 @@
 import backtrader.indicators as btind
-from backtrader import Indicator
 
 from gym import spaces
 from btgym import DictSpace
 
 import numpy as np
 from scipy import stats
+from pykalman import KalmanFilter
 
 from btgym.research.strategy_gen_6.base import BaseStrategy6, Zscore, NormalisationState
-from btgym.research.strategy_gen_6.utils import SpreadSizer
+from btgym.research.strategy_gen_6.utils import SpreadSizer, SpreadConstructor, CumSumReward
 from btgym.research.model_based.model.bivariate import BivariatePriceModel
 from btgym.research.model_based.model.utils import cov2corr, log_stat2stat
 
 
-class MonoSpreadOUStrategy_0(BaseStrategy6):
+class PairSpreadStrategy_0(BaseStrategy6):
     """
-    Expects spread as single generated data stream.
+    Expects pair of data streams. Forms spread as only virtual trading asset.
     """
+
     # Time embedding period:
     time_dim = 128  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
 
@@ -112,9 +113,10 @@ class MonoSpreadOUStrategy_0(BaseStrategy6):
         commission=None,
         slippage=None,
         leverage=1.0,
-        gamma=0.99,             # fi_gamma, should match MDP gamma decay
+        gamma=1.0,              # fi_gamma, ~ should match MDP gamma decay
         reward_scale=1,         # reward multiplicator
         norm_alpha=0.001,       # renormalisation tracking decay in []0, 1]
+        norm_alpha_2=0.01,      # float in []0, 1], tracking decay for original prices
         drawdown_call=10,       # finish episode when hitting drawdown treshghold, in percent.
         dataset_stat=None,      # Summary descriptive statistics for entire dataset and
         episode_stat=None,      # current episode. Got updated by server.
@@ -128,7 +130,8 @@ class MonoSpreadOUStrategy_0(BaseStrategy6):
         trial_metadata=None,
         portfolio_actions=portfolio_actions,
         skip_frame=1,       # number of environment steps to skip before returning next environment response
-        order_size=None,
+        position_max_depth=1,
+        order_size=1,  # legacy plug, to be removed <-- rework gen_6.__init__
         initial_action=None,
         initial_portfolio_action=None,
         state_int_scale=1,
@@ -136,12 +139,20 @@ class MonoSpreadOUStrategy_0(BaseStrategy6):
     )
 
     def __init__(self, **kwargs):
-        super(MonoSpreadOUStrategy_0, self).__init__(**kwargs)
-        self.data.high = self.data.low = self.data.close = self.data.open
+        super(PairSpreadStrategy_0, self).__init__(**kwargs)
+
+        assert len(self.p.asset_names) == 1, 'Only one derivative spread asset is supported'
+        assert len(self.getdatanames()) == 2, \
+            'Expected exactly two input datalines but {} where given'.format(self.getdatanames())
+
+        if isinstance(self.p.asset_names, str):
+            self.p.asset_names = [self.p.asset_names]
+        self.action_key = list(self.p.asset_names)[0]
+
         self.current_expert_action = np.zeros(len(self.p.portfolio_actions))
         self.state['metadata'] = self.metadata
 
-        # Combined dataset related, infer OU generator params:
+        # Infer OU generator params:
         generator_keys = self.p.state_shape['metadata'].spaces['generator'].spaces.keys()
         if 'generator' not in self.p.metadata.keys() or self.p.metadata['generator'] == {}:
             self.metadata['generator'] = {key: np.asarray(0) for key in generator_keys}
@@ -167,151 +178,16 @@ class MonoSpreadOUStrategy_0(BaseStrategy6):
 
         self.log.debug('startegy got broadcast_msg: <<{}>>'.format(self.p.broadcast_message))
 
-    def get_broadcast_message(self):
-        return {
-            'data_model_psi': np.zeros([2, 3]),
-            'iteration': self.iteration
-        }
+        # Track original prices statistics, let base self.norm_stat_tracker track spread (=stat_asset) itself:
+        self.norm_stat_tracker_2 = Zscore(2, self.p.norm_alpha_2)
 
-    def set_datalines(self):
-        self.data.high = self.data.low = self.data.close = self.data.open
-
-        self.data.std = btind.StdDev(self.data.open, period=self.p.time_dim, safepow=True)
-        self.data.std.plotinfo.plot = False
-
-        self.data.features = [
-            btind.SimpleMovingAverage(self.data.open, period=period) for period in self.p.features_parameters
-        ]
-        initial_time_period = np.asarray(self.p.features_parameters).max() + self.p.time_dim
-        self.data.dim_sma = btind.SimpleMovingAverage(
-            self.datas[0],
-            period=initial_time_period
+        # Synthetic spread order size estimator:
+        self.spread_sizer = SpreadSizer(
+            init_cash=self.p.start_cash,
+            position_max_depth=self.p.position_max_depth,
+            leverage=self.p.leverage,
         )
-        self.data.dim_sma.plotinfo.plot = False
-
-    def get_external_state(self):
-        x_sma = np.stack(
-            [
-                feature.get(size=self.p.time_dim) for feature in self.data.features
-            ],
-            axis=-1
-        )
-        scale = 1 / np.clip(self.data.std[0], 1e-10, None)
-        x_sma *= scale  # <-- more or less ok
-
-        # Gradient along features axis:
-        dx = np.gradient(x_sma, axis=-1)
-
-        # Add up: gradient  along time axis:
-        dx2 = np.gradient(dx, axis=0)
-
-        # TODO: different conv. encoders for these two types of features:
-        x = np.concatenate([dx, dx2], axis=-1)
-
-        # Crop outliers:
-        x = np.clip(x, -10, 10)
-        return x[:, None, :]
-
-    # def get_internal_state(self):
-    #
-    #     x_broker = np.concatenate(
-    #         [
-    #             np.asarray(self.broker_stat['value'])[..., None],
-    #             np.asarray(self.broker_stat['unrealized_pnl'])[..., None],
-    #             np.asarray(self.broker_stat['total_unrealized_pnl'])[..., None],
-    #             np.asarray(self.broker_stat['realized_pnl'])[..., None],
-    #             np.asarray(self.broker_stat['cash'])[..., None],
-    #             np.asarray(self.broker_stat['exposure'])[..., None],
-    #         ],
-    #         axis=-1
-    #     )
-    #     x_broker = tanh(np.gradient(x_broker, axis=-1) * self.p.state_int_scale)
-    #     return x_broker[:, None, :]
-
-    def get_expert_state(self):
-        """
-        Not used.
-        """
-        return np.zeros(len(self.p.portfolio_actions))
-
-    def get_reward(self):
-        """
-        Shapes reward function as normalized single trade realized profit/loss,
-        augmented with potential-based reward shaping functions in form of:
-        F(s, a, s`) = gamma * FI(s`) - FI(s);
-        Potential FI_1 is current normalized unrealized profit/loss.
-
-        Paper:
-            "Policy invariance under reward transformations:
-             Theory and application to reward shaping" by A. Ng et al., 1999;
-             http://www.robotics.stanford.edu/~ang/papers/shaping-icml99.pdf
-        """
-
-        # All sliding statistics for this step are already updated by get_state().
-
-        # Potential-based shaping function 1:
-        # based on potential of averaged profit/loss for current opened trade (unrealized p/l):
-        unrealised_pnl = np.asarray(self.broker_stat['unrealized_pnl'])
-        current_pos_duration = self.broker_stat['pos_duration'][-1]
-
-        # We want to estimate potential `fi = gamma*fi_prime - fi` of current opened position,
-        # thus need to consider different cases given skip_fame parameter:
-        if current_pos_duration == 0:
-            # Set potential term to zero if there is no opened positions:
-            fi_1 = 0
-            fi_1_prime = 0
-        else:
-            current_avg_period = min(self.avg_period, current_pos_duration)
-
-            fi_1 = self.last_pnl
-            fi_1_prime = np.average(unrealised_pnl[- current_avg_period:])
-
-        # Potential term 1:
-        f1 = self.p.gamma * fi_1_prime - fi_1
-        self.last_pnl = fi_1_prime
-
-        # Potential-based shaping function 2:
-        # based on potential of averaged profit/loss for global unrealized pnl:
-        total_pnl = np.asarray(self.broker_stat['total_unrealized_pnl'])
-        delta_total_pnl = np.average(total_pnl[-self.p.skip_frame:]) - np.average(total_pnl[:-self.p.skip_frame])
-
-        fi_2 = delta_total_pnl
-        fi_2_prime = self.last_delta_total_pnl
-
-        # Potential term 2:
-        f2 = self.p.gamma * fi_2_prime - fi_2
-        self.last_delta_total_pnl = delta_total_pnl
-
-        # Main reward function: normalized realized profit/loss:
-        realized_pnl = np.asarray(self.broker_stat['realized_pnl'])[-self.p.skip_frame:].sum()
-
-        # Weights are subject to tune:
-        self.reward = (1.0 * f1 + 0 * f2 + 1.0 * realized_pnl) * self.p.reward_scale
-        # self.reward = np.clip(self.reward, -self.p.reward_scale, self.p.reward_scale)
-        self.reward = np.clip(self.reward, -1e3, 1e3)
-
-        return self.reward
-
-
-from pykalman import KalmanFilter
-
-
-class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
-    """
-    Expects pair of data streams. Forms spread as only virtual trading asset.
-    """
-    def __init__(self, **kwargs):
-        super(PairSpreadStrategy_0, self).__init__(**kwargs)
-
-        assert len(self.p.asset_names) == 1, 'Only one derivative spread asset is supported'
-        if isinstance(self.p.asset_names, str):
-            self.p.asset_names = [self.p.asset_names]
-        self.action_key = list(self.p.asset_names)[0]
-
         self.last_action = None
-
-        assert len(self.getdatanames()) == 2, \
-            'Expected exactly two input datalines but {} where given'.format(self.getdatanames())
 
         # Keeps track of virtual spread position
         # long_ spread: >0, short_spread: <0, no positions: 0
@@ -330,31 +206,102 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
         self.kf_state = [0, 0]
 
     def set_datalines(self):
-
-        self.data.spread = btind.SimpleMovingAverage(self.datas[0] - self.datas[1], period=1)
-        self.data.spread.plotinfo.subplot = True
-        self.data.spread.plotinfo.plotabove = True
-        self.data.spread.plotinfo.plotname = list(self.p.asset_names)[0]
-
         # Override stat line:
-        # self.stat_asset = btind.SimpleMovingAverage((self.datas[0] + self.datas[1]) / 2, period=1)
-        # self.stat_asset.plotinfo.plot = False
+        self.stat_asset = self.data.spread = SpreadConstructor()
 
-        self.stat_asset = self.data.spread
+        # Spy on reward behaviour:
+        self.reward_tracker = CumSumReward()
 
         self.data.std = btind.StdDev(self.data.spread, period=self.p.time_dim, safepow=True)
         self.data.std.plotinfo.plot = False
 
-        self.data.features = [
-            # btind.SimpleMovingAverage(self.data.spread, period=period) for period in self.p.features_parameters
-            btind.EMA(self.data.spread, period=period) for period in self.p.features_parameters
-        ]
+        self.data.features = [btind.EMA(self.data.spread, period=period) for period in self.p.features_parameters]
         initial_time_period = np.asarray(self.p.features_parameters).max() + self.p.time_dim
         self.data.dim_sma = btind.SimpleMovingAverage(
             self.datas[0],
             period=initial_time_period
         )
         self.data.dim_sma.plotinfo.plot = False
+
+    def get_broadcast_message(self):
+        """
+        Not used.
+        """
+        return {
+            'data_model_psi': np.zeros([2, 3]),
+            'iteration': self.iteration
+        }
+
+    def get_expert_state(self):
+        """
+        Not used.
+        """
+        return np.zeros(len(self.p.portfolio_actions))
+
+    def prenext(self):
+        if self.pre_iteration + 2 > self.p.time_dim - self.avg_period:
+            self.update_broker_stat()
+            x_upd = np.stack(
+                [
+                    np.asarray(self.datas[0].get(size=1)),
+                    np.asarray(self.datas[1].get(size=1))
+                ],
+                axis=0
+            )
+            _ = self.norm_stat_tracker_2.update(x_upd)  # doubles update_broker_stat() but helps faster stabilization
+
+        elif self.pre_iteration + 2 == self.p.time_dim - self.avg_period:
+            # Initialize all trackers:
+            x_init = np.stack(
+                [
+                    np.asarray(self.datas[0].get(size=self.data.close.buflen())),
+                    np.asarray(self.datas[1].get(size=self.data.close.buflen()))
+                ],
+                axis=0
+            )
+            _ = self.norm_stat_tracker_2.reset(x_init)
+            _ = self.norm_stat_tracker.reset(np.asarray(self.stat_asset.get(size=self.data.close.buflen()))[None, :])
+            # _ = self.norm_stat_tracker.reset(np.asarray(self.stat_asset.get(size=1))[None, :])
+
+        self.pre_iteration += 1
+
+    def nextstart(self):
+        self.inner_embedding = self.data.close.buflen()
+        self.log.debug('Inner time embedding: {}'.format(self.inner_embedding))
+
+    def get_normalisation(self):
+        """
+        Estimates current normalisation constants, updates `normalisation_state` attr.
+
+        Returns:
+            instance of NormalisationState tuple
+        """
+        # Update synth. spread rolling normalizers:
+        x_upd = np.stack(
+            [
+                np.asarray(self.datas[0].get(size=1)),
+                np.asarray(self.datas[1].get(size=1))
+            ],
+            axis=0
+        )
+        _ = self.norm_stat_tracker_2.update(x_upd)
+
+        # ...and use [normalised] spread rolling mean and variance to estimate NormalisationState
+        # used to normalize all broker statistics and reward:
+        spread_data = np.asarray(self.stat_asset.get(size=1))
+
+        mean, var = self.norm_stat_tracker.update(spread_data[None, :])
+        var = np.clip(var, 1e-8, None)
+
+        # Use 99% N(stat_data_mean, stat_data_std) intervals as normalisation interval:
+        intervals = stats.norm.interval(.99, mean, var ** .5)
+        self.normalisation_state = NormalisationState(
+            mean=float(mean),
+            variance=float(var),
+            low_interval=intervals[0][0],
+            up_interval=intervals[1][0]
+        )
+        return self.normalisation_state
 
     def get_stat_state(self):
         return np.concatenate(
@@ -388,41 +335,67 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
         x = np.clip(x, -10, 10)
         return x[:, None, :]
 
+    def get_order_sizes(self):
+        """
+        Estimates current order sizes for assets in trade, updates attribute.
+
+        Returns:
+            array-like of floats
+        """
+        s = self.norm_stat_tracker_2.get_state()
+        self.current_order_sizes = np.asarray(
+            self.spread_sizer.get_sizing(self.env.broker.get_value(), s.mean, s.variance),
+            dtype=np.float
+        )
+        return self.current_order_sizes
+
     def long_spread(self):
         """
-        Opens long spread `virtual position`,
-        sized 2x minimum single stake_size
+        Opens or adds up long spread `virtual position`.
         """
+        # Get current sizes:
+        order_sizes = self.get_order_sizes()
+
         if self.spread_position_size >= 0:
-            if not self.can_add_up():
+            if not self.can_add_up(order_sizes[0], order_sizes[1]):
                 self.order_failed += 1
                 # self.log.warning(
                 #     'Adding Long spread to existing {} hit margin, ignored'.format(self.spread_position_size)
                 # )
                 return
 
+        elif self.spread_position_size == -1:
+            # Currently in single short -> just close to prevent disballance:
+            return self.close_spread()
+
         name1 = self.datas[0]._name
         name2 = self.datas[1]._name
 
-        self.order = self.buy(data=name1, size=self.p.order_size[name1])
-        self.order = self.sell(data=name2, size=self.p.order_size[name2])
+        self.order = self.buy(data=name1, size=order_sizes[0])
+        self.order = self.sell(data=name2, size=order_sizes[1])
         self.spread_position_size += 1
         # self.log.warning('long spread submitted, new pos. size: {}'.format(self.spread_position_size))
 
     def short_spread(self):
+        order_sizes = self.get_order_sizes()
+
         if self.spread_position_size <= 0:
-            if not self.can_add_up():
+            if not self.can_add_up(order_sizes[0], order_sizes[1]):
                 self.order_failed += 1
                 # self.log.warning(
                 #     'Adding Short spread to existing {} hit margin, ignored'.format(self.spread_position_size)
                 # )
                 return
 
+        elif self.spread_position_size == 1:
+            # Currently in single long:
+            return self.close_spread()
+
         name1 = self.datas[0]._name
         name2 = self.datas[1]._name
 
-        self.order = self.sell(data=name1, size=self.p.order_size[name1])
-        self.order = self.buy(data=name2, size=self.p.order_size[name2])
+        self.order = self.sell(data=name1, size=order_sizes[0])
+        self.order = self.buy(data=name2, size=order_sizes[1])
         self.spread_position_size -= 1
         # self.log.warning('short spread submitted, new pos. size: {}'.format(self.spread_position_size))
 
@@ -432,34 +405,48 @@ class PairSpreadStrategy_0(MonoSpreadOUStrategy_0):
         self.spread_position_size = 0
         # self.log.warning('close spread submitted, new pos. size: {}'.format(self.spread_position_size))
 
-    def can_add_up(self):
+    def can_add_up(self, order_0_size=None, order_1_size=None):
         """
         Checks if there enough cash left to open synthetic spread position
+
+        Args:
+            order_0_size:   float, order size for data0 asset or None
+            order_1_size:   float, order size for data1 asset or None
 
         Returns:
             True if possible, False otherwise
         """
+        if order_1_size is None or order_0_size is None:
+            order_sizes = self.get_order_sizes()
+            order_0_size = order_sizes[0]
+            order_1_size = order_sizes[1]
+
         # Get full operation cost:
         # TODO: it can be two commissions schemes
         op_cost = [
             self.env.broker.comminfo[None].getoperationcost(
-                size=self.p.order_size[name],
+                size=size,
                 price=self.getdatabyname(name).high[0]
             ) / self.env.broker.comminfo[None].get_leverage() +
             self.env.broker.comminfo[None].getcommission(
-                size=self.p.order_size[name],
+                size=size,
                 price=self.getdatabyname(name).high[0]
             )
-            for name in [self.datas[0]._name, self.datas[1]._name]
+            for size, name in zip([order_0_size, order_1_size], [self.datas[0]._name, self.datas[1]._name])
         ]
-        # self.log.warning('op_cost+comm+reserve: {}'.format(np.asarray(op_cost).sum() + self.margin_reserve))
+        # self.log.warning('op_cost+comm+reserve: {:.4f}'.format(np.asarray(op_cost).sum() + self.margin_reserve))
+        # self.log.warning('order sizes: {:.4f}; {:.4f}'.format(order_0_size, order_1_size))
         # self.log.warning('leverage: {}'.format(self.env.broker.comminfo[None].get_leverage()))
         # self.log.warning(
-        #     'commision: {}'.format(
+        #     'commision: {:.4f} + {:.4f}'.format(
         #         self.env.broker.comminfo[None].getcommission(
-        #             size=self.p.order_size[self.datas[0]._name],
+        #             size=order_0_size,
         #             price=self.getdatabyname(self.datas[0]._name).high[0]
-        #         ) * 2  # approx.
+        #         ),
+        #         self.env.broker.comminfo[None].getcommission(
+        #             size=order_1_size,
+        #             price=self.getdatabyname(self.datas[1]._name).high[0]
+        #         ),
         #     )
         # )
         # self.log.warning('current_cash: {}'.format(self.env.broker.get_cash()))
@@ -614,50 +601,6 @@ class SSAStrategy_0(PairSpreadStrategy_0):
     """
     BivariateTimeSeriesModel decomposition based.
     """
-
-    class SpreadConstructor(Indicator):
-        """
-        Normalised Synthetic spread estimation and plotting.
-        Uses norm_stat_tracker_2.
-        """
-        lines = ('spread',)
-        plotinfo = dict(
-            subplot=True,
-            plotabove=True,
-            plotname='Norm. Synthetic Spread',
-        )
-        plotlines = dict(
-            spread=dict(_name='SPREAD', color='darkmagenta'),
-        )
-
-        def next(self):
-            s = self._owner.norm_stat_tracker_2.get_state()
-            if s.mean is None or s.variance is None:
-                self.lines.spread[0] = np.random.normal(0, 0.39)
-
-            else:
-                self.lines.spread[0] = (self._owner.datas[1] - s.mean[1]) / s.variance[1] ** .5 \
-                    - (self._owner.datas[0] - s.mean[0]) / s.variance[0] ** .5
-
-    class CumSumReward(Indicator):
-        """
-        Cumulative reward tracking.
-        """
-        lines = ('cum_reward',)
-        plotinfo = dict(
-            subplot=True,
-            plotabove=True,
-            plotname='Cumulative Reward',
-        )
-        plotlines = dict(
-            cum_reward=dict(_name='REWARD', color='darkblue'),
-        )
-        total_reward = 0.0
-
-        def next(self):
-            self.total_reward += self._owner.reward / self._owner.p.skip_frame
-            self.lines.cum_reward[0] = self.total_reward
-
     time_dim = 128
     avg_period = 16
     model_time_dim = 16
@@ -796,18 +739,9 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         # Bivariate model:
         self.data_model = BivariatePriceModel(**self.p.data_model_params)
 
-        # Track original prices statistics, let base self.norm_stat_tracker track spread (=stat_asset) itself:
-        self.norm_stat_tracker_2 = Zscore(2, self.p.norm_alpha_2)
-
         # Accumulators for 'model' observation mode:
         self.external_model_state = np.zeros([self.model_time_dim, 1, 9])
 
-        # Synthetic spread order size estimator:
-        self.spread_sizer = SpreadSizer(
-            init_cash=self.p.start_cash,
-            position_max_depth=self.p.position_max_depth,
-            leverage=self.p.leverage,
-        )
 
     def set_datalines(self):
         # Discard superclass dataline, use SpreadConstructor instead:
@@ -902,20 +836,6 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         )
         return self.normalisation_state
 
-    def get_order_sizes(self):
-        """
-        Estimates current order sizes for assets in trade, updates attribute.
-
-        Returns:
-            array-like of floats
-        """
-        s = self.norm_stat_tracker_2.get_state()
-        self.current_order_sizes = np.asarray(
-            self.spread_sizer.get_sizing(self.env.broker.get_value(), s.mean, s.variance),
-            dtype=np.float
-        )
-        return self.current_order_sizes
-
     def get_external_state(self):
         return dict(
             ssa=self.get_external_ssa_state(),
@@ -990,114 +910,7 @@ class SSAStrategy_0(PairSpreadStrategy_0):
         # x_broker = np.gradient(x_broker, axis=-1)
         return np.clip(x_broker[:, None, :], -100, 100)
 
-    def long_spread(self):
-        """
-        Opens or adds up long spread `virtual position`.
-        """
-        # Get current sizes:
-        order_sizes = self.get_order_sizes()
 
-        if self.spread_position_size >= 0:
-            if not self.can_add_up(order_sizes[0], order_sizes[1]):
-                self.order_failed += 1
-                # self.log.warning(
-                #     'Adding Long spread to existing {} hit margin, ignored'.format(self.spread_position_size)
-                # )
-                return
-
-        elif self.spread_position_size == -1:
-            # Currently in single short -> just close to prevent disballance:
-            return self.close_spread()
-
-        name1 = self.datas[0]._name
-        name2 = self.datas[1]._name
-
-        self.order = self.buy(data=name1, size=order_sizes[0])
-        self.order = self.sell(data=name2, size=order_sizes[1])
-        self.spread_position_size += 1
-        # self.log.warning('long spread submitted, new pos. size: {}'.format(self.spread_position_size))
-
-    def short_spread(self):
-        order_sizes = self.get_order_sizes()
-
-        if self.spread_position_size <= 0:
-            if not self.can_add_up(order_sizes[0], order_sizes[1]):
-                self.order_failed += 1
-                # self.log.warning(
-                #     'Adding Short spread to existing {} hit margin, ignored'.format(self.spread_position_size)
-                # )
-                return
-
-        elif self.spread_position_size == 1:
-            # Currently in single long:
-            return self.close_spread()
-
-        name1 = self.datas[0]._name
-        name2 = self.datas[1]._name
-
-        self.order = self.sell(data=name1, size=order_sizes[0])
-        self.order = self.buy(data=name2, size=order_sizes[1])
-        self.spread_position_size -= 1
-        # self.log.warning('short spread submitted, new pos. size: {}'.format(self.spread_position_size))
-
-    def close_spread(self):
-        self.order = self.close(data=self.datas[0]._name)
-        self.order = self.close(data=self.datas[1]._name)
-        self.spread_position_size = 0
-        # self.log.warning('close spread submitted, new pos. size: {}'.format(self.spread_position_size))
-
-    def can_add_up(self, order_0_size=None, order_1_size=None):
-        """
-        Checks if there enough cash left to open synthetic spread position
-
-        Args:
-            order_0_size:   float, order size for data0 asset or None
-            order_1_size:   float, order size for data1 asset or None
-
-        Returns:
-            True if possible, False otherwise
-        """
-        if order_1_size is None or order_0_size is None:
-            order_sizes = self.get_order_sizes()
-            order_0_size = order_sizes[0]
-            order_1_size = order_sizes[1]
-
-        # Get full operation cost:
-        # TODO: it can be two commissions schemes
-        op_cost = [
-            self.env.broker.comminfo[None].getoperationcost(
-                size=size,
-                price=self.getdatabyname(name).high[0]
-            ) / self.env.broker.comminfo[None].get_leverage() +
-            self.env.broker.comminfo[None].getcommission(
-                size=size,
-                price=self.getdatabyname(name).high[0]
-            )
-            for size, name in zip([order_0_size, order_1_size], [self.datas[0]._name, self.datas[1]._name])
-        ]
-        # self.log.warning('op_cost+comm+reserve: {:.4f}'.format(np.asarray(op_cost).sum() + self.margin_reserve))
-        # self.log.warning('order sizes: {:.4f}; {:.4f}'.format(order_0_size, order_1_size))
-        # self.log.warning('leverage: {}'.format(self.env.broker.comminfo[None].get_leverage()))
-        # self.log.warning(
-        #     'commision: {:.4f} + {:.4f}'.format(
-        #         self.env.broker.comminfo[None].getcommission(
-        #             size=order_0_size,
-        #             price=self.getdatabyname(self.datas[0]._name).high[0]
-        #         ),
-        #         self.env.broker.comminfo[None].getcommission(
-        #             size=order_1_size,
-        #             price=self.getdatabyname(self.datas[1]._name).high[0]
-        #         ),
-        #     )
-        # )
-        # self.log.warning('current_cash: {}'.format(self.env.broker.get_cash()))
-        if np.asarray(op_cost).sum() + self.margin_reserve >= self.env.broker.get_cash():
-            # self.log.warning('add_up check failed')
-            return False
-
-        else:
-            # self.log.warning('add_up check ok')
-            return True
 
 
 
