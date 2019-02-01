@@ -1,12 +1,9 @@
-## <a name="title"></a>Backtrader gym Environment
-
-
-**OpenAI Gym environment API for Backtrader backtesting library.**
-
-
 ```
 ...Minimizing the mean square error on future experience.  - Richard S. Sutton
 ```
+
+## <a name="title"></a>BTGym
+Scalable event-driven deep-learning-friendly backtesting library. Build on top of Backtrader with OpenAI Gym environment API.
 
 
 _Backtrader_ is open-source algorithmic trading library:  
@@ -203,6 +200,7 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
  - [x] sequential and sliding time-window sampling;
  - [x] multiply instruments trading;
  - [ ] docker image;
+ - [ ] TF serving model serialisation functionality;
  
  
 ### <a name="news"></a>[News and updates:](#title)
