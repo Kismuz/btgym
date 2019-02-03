@@ -800,6 +800,13 @@ class BTgymBaseStrategy(bt.Strategy):
             # Append custom get_done() results, if any:
             is_done_rules += [self.get_done()]
 
+            self.log.warning(
+                'iteration: {}, condition: {}'.format(
+                    self.iteration,
+                    self.data.numrecords - self.inner_embedding - self.p.skip_frame - self.steps_till_is_done
+                )
+            )
+
             # Sweep through rules:
             for (condition, message) in is_done_rules:
                 if condition:
@@ -810,17 +817,17 @@ class BTgymBaseStrategy(bt.Strategy):
                     self.broker_message += message
                     self.final_message = message
                     self.order = self.close()
-                    self.log.debug(
+                    self.log.warning(
                         'Episode countdown started at: {}, {}, r:{}'.format(self.iteration, message, self.reward)
                     )
 
         else:
             # Now in episode termination phase,
             # just keep hitting `Close` button:
-            self.steps_till_is_done -=1
+            self.steps_till_is_done -= 1
             self.broker_message = 'CLOSE, {}'.format(self.final_message)
             self.order = self.close()
-            self.log.debug(
+            self.log.warning(
                 'Episode countdown contd. at: {}, {}, r:{}'.format(self.iteration, self.broker_message, self.reward)
             )
 

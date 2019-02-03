@@ -237,6 +237,7 @@ class BaseStrategy6(bt.Strategy):
 
         # Current effective order sizes:
         self.current_order_sizes = None
+        self.margin_reserve = 0.01
 
         # Current stat normalisation:
         self.normalizer = 1.0
@@ -330,8 +331,8 @@ class BaseStrategy6(bt.Strategy):
         self.normalisation_state = NormalisationState(0, 0, .9, 1.1)
 
         # State exp. smoothing params:
-        self.internal_state_discount = np.cumprod(np.tile(1 - 1 / self.p.avg_period, self.p.avg_period))[::-1]
-        self.external_state_discount = None  # not used
+        # self.internal_state_discount = np.cumprod(np.tile(1 - 1 / self.p.avg_period, self.p.avg_period))[::-1]
+        # self.external_state_discount = None  # not used
 
         # Define flat collection dictionary looking for methods for estimating observation state,
         # one method per one mode, should be named .get_[mode_name]_state():
@@ -710,7 +711,7 @@ class BaseStrategy6(bt.Strategy):
         stat_lines = ('value', 'unrealized_pnl', 'realized_pnl', 'cash', 'exposure')
         # Use smoothed values:
         x_broker = np.stack(
-            [np.asarray(self.broker_stat[name]) * self.internal_state_discount for name in stat_lines],
+            [np.asarray(self.broker_stat[name]) for name in stat_lines],
             axis=-1
         )
         # x_broker = np.gradient(x_broker, axis=-1)
@@ -900,6 +901,13 @@ class BaseStrategy6(bt.Strategy):
             ]
             # Append custom get_done() results, if any:
             is_done_rules += [self.get_done()]
+
+            # self.log.debug(
+            #     'iteration: {}, condition: {}'.format(
+            #         self.iteration,
+            #         self.data.numrecords - self.inner_embedding - self.p.skip_frame - self.steps_till_is_done
+            #     )
+            # )
 
             # Sweep through rules:
             for (condition, message) in is_done_rules:

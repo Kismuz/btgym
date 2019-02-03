@@ -778,13 +778,31 @@ class BTgymEnv(gym.Env):
 
         """
         # If we got int as action - try to treat it as an action for single-valued action space dict:
-        if isinstance(action, int) and len(list(self.action_space.spaces.keys())) == 1:
-            a = copy.deepcopy(action)
-            action = {key: a for key in self.action_space.spaces.keys()}
+        self.log.debug('got action: {} as {}'.format(action, type(action)))
 
         # Are you in the list, ready to go and all that?
-        if self.action_space.contains(action)\
-            and not self._closed\
+        if not self.action_space.contains(action):
+            # If action received as scalar - try to convert it to action space:
+            try:
+                a = copy.deepcopy(int(action))
+
+            except Exception as e:
+                self.log.error('Received value {} can not be converted to member of action space.'.format(action))
+                raise e
+
+            action = {key: a for key in self.action_space.spaces.keys()}
+
+            try:
+                # Check again:
+                assert self.action_space.contains(action)
+
+            except AssertionError as e:
+                self.log.error('Action from scalar {} --> {} is out of action space.'.format(a, action))
+                raise e
+
+            self.log.debug('got action as scalar: {}, converted to: {}'.format(a, action))
+
+        if not self._closed\
             and (self.socket is not None)\
             and not self.socket.closed:
             pass
@@ -792,17 +810,15 @@ class BTgymEnv(gym.Env):
         else:
             msg = (
                 '\nAt least one of these is true:\n' +
-                'Action error: (space is {}, action sent is {}): {}\n' +
                 'Environment closed: {}\n' +
                 'Network error [socket doesnt exists or closed]: {}\n' +
-                'Hint: forgot to call reset()?'
+                'Hint: forgot to call reset() or out of action space?'
             ).format(
-                self.action_space, action, not self.action_space.contains(action),
                 self._closed,
                 not self.socket or self.socket.closed,
             )
-            self.log.exception(msg)
-            raise AssertionError(msg)
+            self.log.error(msg)
+            raise ConnectionError(msg)
 
         # Send action (as dict of strings) to backtrader engine, receive environment response:
         action_as_dict = {key: self.server_actions[key][value] for key, value in action.items()}

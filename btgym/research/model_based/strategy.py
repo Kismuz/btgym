@@ -186,6 +186,7 @@ class PairSpreadStrategy_0(BaseStrategy6):
             init_cash=self.p.start_cash,
             position_max_depth=self.p.position_max_depth,
             leverage=self.p.leverage,
+            margin_reserve=self.margin_reserve,
         )
         self.last_action = None
 
@@ -444,7 +445,7 @@ class PairSpreadStrategy_0(BaseStrategy6):
         #     )
         # )
         # self.log.warning('current_cash: {}'.format(self.env.broker.get_cash()))
-        if np.asarray(op_cost).sum() + self.margin_reserve >= self.env.broker.get_cash():
+        if np.asarray(op_cost).sum() + self.margin_reserve >= self.env.broker.get_cash() * (1 - self.margin_reserve):
             # self.log.warning('add_up check failed')
             return False
 
