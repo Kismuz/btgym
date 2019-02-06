@@ -78,7 +78,7 @@ class BaseAAC(object):
                  opt_momentum=0.0,
                  opt_epsilon=1e-8,
                  rollout_length=20,
-                 time_flat=False,
+                 time_flat=True,
                  episode_train_test_cycle=(1,0),
                  episode_summary_freq=2,  # every i`th environment episode
                  env_render_freq=10,  # every i`th environment episode

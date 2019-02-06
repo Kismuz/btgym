@@ -34,7 +34,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                  dropout_keep_prob=1.0,
                  action_dp_alpha=200.0,
                  aux_estimate=False,
-                 encode_internal_state=False,
+                 encode_internal_state=None,
                  static_rnn=True,
                  shared_p_v=False,
                  **kwargs):
@@ -54,7 +54,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             dropout_keep_prob:      in (0, 1] dropout regularisation parameter
             action_dp_alpha:
             aux_estimate:           (bool), if True - add auxiliary tasks estimations to self.callbacks dictionary
-            encode_internal_state:  use encoder over 'internal' part of observation space
+            encode_internal_state:  legacy, not used
             static_rnn:             (bool), it True - use static rnn graph, dynamic otherwise
             **kwargs                not used
         """

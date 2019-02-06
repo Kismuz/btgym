@@ -592,6 +592,193 @@ class PairSpreadStrategy_0(BaseStrategy6):
             self.broker_message = 'new {}_CLOSE created; '.format(self.action_key) + self.broker_message
 
 
+class PairSpreadStrategy_1(PairSpreadStrategy_0):
+    """
+    Expects pair of data streams. Encodes each asset independently.
+    """
+
+    # Time embedding period:
+    time_dim = 128  # NOTE: changed this --> change Policy  UNREAL for aux. pix control task upsampling params
+
+    # Number of timesteps reward estimation statistics are averaged over, should be:
+    # skip_frame_period <= avg_period <= time_embedding_period:
+    avg_period = 64
+
+    # Possible agent actions;  Note: place 'hold' first! :
+    portfolio_actions = ('hold', 'buy', 'sell', 'close')
+
+    features_parameters = (1, 4, 16, 64, 256, 1024)
+    num_features = len(features_parameters)
+
+    params = dict(
+        state_shape={
+            'external': DictSpace(
+                {
+                    'asset1': spaces.Box(low=-10, high=10, shape=(time_dim, 1, num_features), dtype=np.float32),
+                    'asset2': spaces.Box(low=-10, high=10, shape=(time_dim, 1, num_features), dtype=np.float32),
+                }
+            ),
+
+            'internal': spaces.Box(low=-100, high=100, shape=(avg_period, 1, 5), dtype=np.float32),
+            'expert': spaces.Box(low=0, high=10, shape=(len(portfolio_actions),), dtype=np.float32),
+            'stat': spaces.Box(low=-100, high=100, shape=(3, 1), dtype=np.float32),
+            'metadata': DictSpace(
+                {
+                    'type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1,
+                        dtype=np.uint32
+                    ),
+                    'trial_num': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10,
+                        dtype=np.uint32
+                    ),
+                    'trial_type': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=1,
+                        dtype=np.uint32
+                    ),
+                    'sample_num': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10,
+                        dtype=np.uint32
+                    ),
+                    'first_row': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=10 ** 10,
+                        dtype=np.uint32
+                    ),
+                    'timestamp': spaces.Box(
+                        shape=(),
+                        low=0,
+                        high=np.finfo(np.float64).max,
+                        dtype=np.float64
+                    ),
+                    # TODO: make generator parameters names standard
+                    'generator': DictSpace(
+                        {
+                            'mu': spaces.Box(
+                                shape=(),
+                                low=np.finfo(np.float64).min,
+                                high=np.finfo(np.float64).max,
+                                dtype=np.float64
+                            ),
+                            'l': spaces.Box(
+                                shape=(),
+                                low=0,
+                                high=np.finfo(np.float64).max,
+                                dtype=np.float64
+                            ),
+                            'sigma': spaces.Box(
+                                shape=(),
+                                low=0,
+                                high=np.finfo(np.float64).max,
+                                dtype=np.float64
+                            ),
+                            'x0': spaces.Box(
+                                shape=(),
+                                low=np.finfo(np.float64).min,
+                                high=np.finfo(np.float64).max,
+                                dtype=np.float64
+                            )
+                        }
+                    )
+                }
+            )
+        },
+        cash_name='default_cash',
+        asset_names=['default_asset'],
+        start_cash=None,
+        commission=None,
+        slippage=None,
+        leverage=1.0,
+        gamma=1.0,  # fi_gamma, ~ should match MDP gamma decay
+        reward_scale=1,  # reward multiplicator
+        norm_alpha=0.001,  # renormalisation tracking decay in []0, 1]
+        norm_alpha_2=0.01,  # float in []0, 1], tracking decay for original prices
+        drawdown_call=10,  # finish episode when hitting drawdown treshghold, in percent.
+        dataset_stat=None,  # Summary descriptive statistics for entire dataset and
+        episode_stat=None,  # current episode. Got updated by server.
+        time_dim=time_dim,  # time embedding period
+        avg_period=avg_period,  # number of time steps reward estimation statistics are averaged over
+        features_parameters=features_parameters,
+        num_features=num_features,
+        metadata={},
+        broadcast_message={},
+        trial_stat=None,
+        trial_metadata=None,
+        portfolio_actions=portfolio_actions,
+        skip_frame=1,  # number of environment steps to skip before returning next environment response
+        position_max_depth=1,
+        order_size=1,  # legacy plug, to be removed <-- rework gen_6.__init__
+        initial_action=None,
+        initial_portfolio_action=None,
+        state_int_scale=1,
+        state_ext_scale=1,
+    )
+
+    def set_datalines(self):
+        # Override stat line:
+        self.stat_asset = self.data.spread = SpreadConstructor()
+
+        # Spy on reward behaviour:
+        self.reward_tracker = CumSumReward()
+
+        self.data.std1 = btind.StdDev(self.datas[0], period=self.p.time_dim, safepow=True)
+        self.data.std1.plotinfo.plot = False
+
+        self.data.std2 = btind.StdDev(self.datas[1], period=self.p.time_dim, safepow=True)
+        self.data.std2.plotinfo.plot = False
+
+        self.data.features1 = [btind.EMA(self.datas[0], period=period) for period in self.p.features_parameters]
+        self.data.features2 = [btind.EMA(self.datas[1], period=period) for period in self.p.features_parameters]
+
+        initial_time_period = np.asarray(self.p.features_parameters).max() + self.p.time_dim
+        self.data.dim_sma = btind.SimpleMovingAverage(
+            self.datas[0],
+            period=initial_time_period
+        )
+        self.data.dim_sma.plotinfo.plot = False
+
+    def get_external_state(self):
+        """
+        Attempt to include avg decomp. of original normalised spread
+        """
+        x_sma1 = np.stack(
+            [
+                feature.get(size=self.p.time_dim) for feature in self.data.features1
+            ],
+            axis=-1
+        )
+        scale = 1 / np.clip(self.data.std1[0], 1e-10, None)
+        x_sma1 *= scale  # <-- more or less ok
+
+        # Gradient along features axis:
+        dx1 = np.gradient(x_sma1, axis=-1)
+        dx1 = np.clip(dx1, -10, 10)
+
+        x_sma2 = np.stack(
+            [
+                feature.get(size=self.p.time_dim) for feature in self.data.features2
+            ],
+            axis=-1
+        )
+        scale = 1 / np.clip(self.data.std2[0], 1e-10, None)
+        x_sma2 *= scale  # <-- more or less ok
+
+        # Gradient along features axis:
+        dx2 = np.gradient(x_sma2, axis=-1)
+        dx2 = np.clip(dx2, -10, 10)
+
+        return {'asset1': dx1[:, None, :], 'asset2': dx2[:, None, :],}
+
+
 class SSAStrategy_0(PairSpreadStrategy_0):
     """
     BivariateTimeSeriesModel decomposition based.
