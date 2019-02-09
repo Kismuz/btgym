@@ -497,7 +497,6 @@ class BivariatePriceModel(BivariateTSModel):
     """
     Wrapper class for positive-valued time-series.
     Internally works with log-transformed data.
-    Mind this when evaluating model state values.
     """
 
     def reset(self, init_trajectory):
@@ -678,6 +677,28 @@ class BivariatePriceModel(BivariateTSModel):
 
         return batch_2d, x
 
+
+class BPM(BivariatePriceModel):
+    """
+    Wrapper class with de-facto disabled analyzer
+    in favor to state lightness an computation speed.
+    """
+
+    def __init__(
+            self,
+            *args,
+            analyzer_window=None,
+            p_analyzer_grouping=None,
+            s_analyzer_grouping=None,
+            **kwargs
+    ):
+        super().__init__(
+            *args,
+            analyzer_window=[2, 2],
+            p_analyzer_grouping=None,
+            s_analyzer_grouping=None,
+            **kwargs
+        )
 
 
 
