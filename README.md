@@ -3,7 +3,7 @@
 ```
 
 ## <a name="title"></a>BTGym
-Scalable event-driven deep-learning-friendly backtesting library. Build on top of Backtrader with OpenAI Gym environment API.
+Scalable event-driven RL-friendly backtesting library. Build on top of Backtrader with OpenAI Gym environment API.
 
 
 _Backtrader_ is open-source algorithmic trading library:  
@@ -204,8 +204,11 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
  
  
 ### <a name="news"></a>[News and updates:](#title)
+- 9.02.2019:
+    - **Introduction to analytic data model** notebook added to [model_based_stat_arb](./examples/model_based_stat_arb/) examples folder.
+
 - 25.01.2019: updates:
-    - **lstsm_policy** class now requires both `internal` and `external` observation sub-spaces to be present and allows both be one-level nested
+    - **lstm_policy** class now requires both `internal` and `external` observation sub-spaces to be present and allows both be one-level nested
         sub-spaces itself (was only true for `external`); all declared sub-spaces got encoded by separate convolution encoders;
     - **policy deterministic action** option is implemented for discrete action spaces and can be utilised by `syncro_runner`;
         by default it is enabled for test episodes;
