@@ -1,9 +1,13 @@
-### BTgym examples and how-to's.
+### BTGym examples and how-to's.
+
+****
+- **[Model based statistical arbitrage project](./model_based_stat_arb)** examples
+
 ****
 - **[Guided A3C](./guided_a3c.ipynb)**: Speeding up training with expert actions.
 
 ****
-- **[Observation state preprocessing: scaling](./state_signal_scaling.ipynb)**: Using data-unconditioned methods to feed agent.
+- **[Observation state preprocessing: scaling](./state_signal_scaling.ipynb)**
 
 ****
  - **[New Datafeed API](./data_domain_api_intro.ipynb)**: Brief intro to BTGym data flow design.
@@ -15,8 +19,6 @@ Research_code_4_11, 07.01.18:
 [<img src="https://kismuz.github.io/btgym/_images/a3c_stacked_lstm_agent.png" width="300">](https://kismuz.github.io/btgym/_images/a3c_stacked_lstm_agent.png)  
 [<img src="./img/2017-11-23_12.52.26.png" width="400">](./img/2017-11-23_12.52.26.png)
 [<img src="./img/2017-11-24_18.37.50.png" width="400">](./img/2017-11-24_18.37.50.png)
-****
-- **[Atari tests](./atari_tests)**: Gym-Atari tests for A3C, BaseAAC, PPO.
 ****
 - **[BTgym setup for asynchronous training](./async_btgym_workers.ipynb)**: getting ready for A3C.
 ****
