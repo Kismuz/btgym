@@ -48,8 +48,8 @@ of reinforcement learning theory.
 - [Description](#description)
     - [Problem setting](#problem)
     - [Data sampling approaches](#data)
-- [Reference](#reference) 
-- [Current issues and limitations](#issues)
+- [Documentation and community](#reference)
+- [Known bugs and limitations](#issues)
 - [Roadmap](#roadmap)
 - [Update news](#news)
    
@@ -156,13 +156,18 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
   furthest to most recent training data. Should be less prone to overfitting than random sampling.
 
 ****
+### <a name="reference"></a>[Documentation and Community](#title)
 
-    
-### <a name="reference"></a> [Documentation and API Reference >>](https://kismuz.github.io/btgym/)
-### [Development Wiki >>](https://github.com/Kismuz/btgym/wiki)
+- Read **[Docs and API Reference](https://kismuz.github.io/btgym/)**.
+- Browse **[Development Wiki](https://github.com/Kismuz/btgym/wiki)**.
+- Review opened and closed **[Issues](https://github.com/Kismuz/btgym/issues?utf8=%E2%9C%93&q=)**.
+- Go to **[BTGym Slack channel](https://btgym.slack.com)**. If you are new -
+[use this invite link](https://join.slack.com/t/btgym/shared_invite/enQtNTU5NDU5ODA2NjU4LTBjNGExOTc1YzkxYjYxMWFmYTYyMmIyZDFiZmZmMmU5OGI1YTdlNDk5NDk2ZjEzNmU3MDM2NDYzYzg5MTk5NTk)
+ to join.
+
 
 ****
-### <a name="issues"></a> [Current issues and limitations:](#title)
+### <a name="issues"></a> [Known bugs and limitations:](#title)
 - requres Matplotlib version 2.0.2;
 - matplotlib backend warning: appears when importing pyplot and using `%matplotlib inline` magic
   before btgym import. It's recommended to import btacktrader and btgym first to ensure proper backend
