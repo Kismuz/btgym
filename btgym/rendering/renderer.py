@@ -230,6 +230,7 @@ class BTgymRendering():
 
         if cerebro is not None:
             self.rgb_dict['episode'] = self.draw_episode(cerebro)
+            self.log.debug('Episode rendering done.')
             # Try to render given episode:
             #try:
                 # Get picture of entire episode:

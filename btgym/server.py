@@ -151,6 +151,11 @@ class _BTgymAnalyzer(bt.Analyzer):
                 # Other side is waiting for response:
                 self.send_env_response(is_done)
 
+                # If done, initiate fallback to Control Mode:
+                if is_done:
+                    self.early_stop()
+                    return
+
             #print('Analyzer_strat_iteration:', self.strategy.iteration)
             #print('Analyzer_env_iteration:', self.strategy.env_iteration)
 
@@ -706,6 +711,8 @@ class BTgymServer(multiprocessing.Process):
 
             # Finally:
             episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True)[0]
+
+            self.log.debug('Episode run finished.')
 
             # Update episode rendering:
             _ = self.render.render('just_render', cerebro=cerebro)
