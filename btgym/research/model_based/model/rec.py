@@ -678,10 +678,9 @@ class OUEstimator:
         Returns:
             mu, log_theta, log_sigma
         """
-        theta = - np.log(a) / dt
+        theta = float(- np.log(a) / dt)
         mu = 0.0  # b / (1 - a)  # unstable for a --> 0
-        sigma = (err_var * -2 * np.log(a) / (dt * (1 - a ** 2))) ** .5
-
+        sigma = float((err_var * -2 * np.log(a) / (dt * (1 - a ** 2))) ** .5)
         return mu, np.log(np.clip(theta, 1e-8, None)), np.log(np.clip(sigma, 1e-10, None))
 
 

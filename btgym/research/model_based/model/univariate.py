@@ -127,7 +127,6 @@ class OUProcess:
         init_observation = np.asarray(self.estimator.reset(init_trajectory))
         # 2x observation to get initial covariance matrix estimate:
         init_observation = np.stack([init_observation, init_observation], axis=-1)
-
         _ = self.filter.reset(init_observation)
 
         self.driver_estimator.reset(self.estimator.residuals)
