@@ -253,6 +253,8 @@ class BTgymRandomDataDomain(BTgymBaseData):
 
 class BTgymDataset(BTgymRandomDataDomain):
     """
+    DEPRECATED CLASS, use BTgymDataset2 instead.
+    Does not support dataframe input.
     Simple top-level data class, implements direct random episode sampling from data set induced by csv file,
     i.e it is a special case for `Trial=def=Episode`.
     Supports source and target data domains separation with some caveat - see Note.
@@ -317,6 +319,7 @@ class BTgymDataset(BTgymRandomDataDomain):
             log_level:          int, logbook.level;
             **kwargs:           deprecated kwargs;
         """
+        print('BTgymDataset class is DEPRECATED, use btgym.datafeed.derivative.BTgymDataset2 instead.')
         # Default sample time duration:
         if episode_duration is None:
             self._episode_duration = dict(
