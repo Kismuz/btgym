@@ -17,8 +17,10 @@
 #
 ###############################################################################
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
+packages = find_packages()
+packages = list(filter(lambda p: not p.startswith('btgym.research'), packages)) # removing due to syntax errors
 
 setup(
     name='btgym',
@@ -66,4 +68,5 @@ setup(
     ],
     python_requires='>=3',
     include_package_data=True,
+    packages=packages
 )
