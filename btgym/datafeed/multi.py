@@ -10,6 +10,8 @@ import sys
 import backtrader.feeds as btfeeds
 import pandas as pd
 
+from collections import OrderedDict
+
 
 class BTgymMultiData:
     """
@@ -92,7 +94,7 @@ class BTgymMultiData:
             raise ValueError
 
         # Make dictionary of single-stream datasets:
-        self.data = {}
+        self.data = OrderedDict()
         for key, stream in self.data_config.items():
             try:
                 stream['config'].update(kwargs)
@@ -238,7 +240,7 @@ class BTgymMultiData:
         return sample
 
     def to_btfeed(self):
-        feed = {}
+        feed = OrderedDict()
         for key, stream in self.data.items():
             # Get single-dataline btfeed dict:
             feed_dict = stream.to_btfeed()
