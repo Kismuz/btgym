@@ -70,10 +70,13 @@ class NormPnL(bt.observer.Observer):
 
         try:
             self.lines.unrealized_pnl[0] = self._owner.broker_stat['unrealized_pnl'][-1]
+        except IndexError:
+            self.lines.unrealized_pnl[0] = 0.0
+
+        try:
             self.lines.max_unrealized_pnl[0] = self._owner.broker_stat['max_unrealized_pnl'][-1]
             self.lines.min_unrealized_pnl[0] = self._owner.broker_stat['min_unrealized_pnl'][-1]
 
-        except IndexError:
-            self.lines.unrealized_pnl[0] = 0.0
+        except (IndexError, KeyError):
             self.lines.max_unrealized_pnl[0] = 0.0
             self.lines.min_unrealized_pnl[0] = 0.0
