@@ -710,7 +710,7 @@ class BTgymServer(multiprocessing.Process):
                 cerebro.adddata(feed, name='base_asset')
 
             # Finally:
-            episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True)[0]
+            episode = cerebro.run(stdstats=True, preload=False, oldbuysell=True, tradehistory=True)[0]
 
             self.log.debug('Episode run finished.')
 
