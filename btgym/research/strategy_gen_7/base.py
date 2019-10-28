@@ -292,14 +292,9 @@ class BaseStrategy7(bt.Strategy):
         self.log.debug('is_test: {}'.format(self.is_test))
 
         # Broker data lines of interest (used for estimation inner state of agent:
-        self.broker_datalines = [
-            'cash',
-            'value',
-            'exposure',
-            'drawdown',
-            'realized_pnl',
-            'unrealized_pnl',
-        ]
+        self.broker_datalines = []
+        self.set_broker_datalines()
+        
         # Define flat collection dictionary looking up for methods for estimating broker statistics,
         # one method for one mode, should be named .get_broker_[mode_name]():
         self.collection_get_broker_stat_methods = {}
@@ -537,6 +532,23 @@ class BaseStrategy7(bt.Strategy):
         self.current_order_sizes = np.fromiter(self.p.order_size.values(), dtype=np.float)
         return self.current_order_sizes
 
+    def set_broker_datalines(self):
+        """
+        The following broker datalines are the baseline for any strategy.
+        Any other custom data lines, should be explicitly defined by overriding this method with a call to super().
+        Any new data line should have a corresponding method of form 'get_broker_{}'.
+        Invoked once by Strategy.__init__().
+        Data can then be retrieved by self.broker_stat[]
+        """
+        self.broker_datalines = [
+            'cash',
+            'value',
+            'exposure',
+            'drawdown',
+            'realized_pnl',
+            'unrealized_pnl',
+        ]
+    
     def get_broker_value(self, current_value, normalizer, **kwargs):
         """
         Args:
