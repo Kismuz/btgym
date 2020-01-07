@@ -1,0 +1,3 @@
+[program:jupyter]
+command=jupyter notebook --notebook-dir=/workspace/ --ip 0.0.0.0 --allow-root --NotebookApp.allow_origin='https://colab.research.google.com' --port=8888 --NotebookApp.port_retries=0
+autorestart=true
