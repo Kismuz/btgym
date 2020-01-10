@@ -22,7 +22,7 @@ https://gym.openai.com/
 ### <a name="outline"></a>Outline
 
 General purpose of this project is to provide gym-integrated framework for
-running reinforcement learning experiments 
+running reinforcement learning experiments
 in [close to] real world algorithmic trading environments.
 
 ```
@@ -33,8 +33,8 @@ Can be unstable, buggy, poor performing and is subject to change.
 Note that this package is neither out-of-the-box-moneymaker, nor it provides ready-to-converge RL solutions.
 Think of it as framework for setting experiments with complex non-stationary stochastic environments.
 
-As a research project BTGym in its current stage can hardly deliver easy end-user experience in as sense that 
-setting meaninfull  experiments will require some practical programming experience as well as general knowledge 
+As a research project BTGym in its current stage can hardly deliver easy end-user experience in as sense that
+setting meaninfull  experiments will require some practical programming experience as well as general knowledge
 of reinforcement learning theory.
 ```
 ****
@@ -52,8 +52,8 @@ of reinforcement learning theory.
 - [Known bugs and limitations](#issues)
 - [Roadmap](#roadmap)
 - [Update news](#news)
-   
-   
+
+
 ****
 ### <a name="install"></a>[Installation](#contents)
 It is highly recommended to run BTGym in designated virtual environment.
@@ -78,8 +78,8 @@ To update to latest version::
 1. BTGym requres **Matplotlib version 2.0.2**, downgrade your installation if you have version 2.1:
 
     pip install matplotlib==2.0.2
-    
-2. **LSOF utility** should be installed to your OS, which can not be the default case for some Linux distributives, 
+
+2. **LSOF utility** should be installed to your OS, which can not be the default case for some Linux distributives,
 see: https://en.wikipedia.org/wiki/Lsof
 
 ****
@@ -88,7 +88,7 @@ Making gym environment with all parmeters set to defaults is as simple as:
 
 ```python
 from btgym import BTgymEnv
- 
+
 MyEnvironment = BTgymEnv(filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv',)
 ```
 Adding more controls may look like:
@@ -181,7 +181,7 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
 - ~~no 'skip-frames' implementation within environment;~~ done
 - ~~no plotting features, except if using pycharm integration observer.~~
     ~~Not sure if it is suited for intraday strategies.~~ [partially] done
-- ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ fixed 
+- ~~making new environment kills all processes using specified network port. Watch out your jupyter kernels.~~ fixed
 
 ****
 ### <a name="roadmap"></a> [TODO's and Road Map:](#title)
@@ -204,10 +204,10 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
  - [ ] risk-sensitive agents implementation;
  - [x] sequential and sliding time-window sampling;
  - [x] multiply instruments trading;
- - [ ] docker image;
+ - [x] docker image; - CPU version
  - [ ] TF serving model serialisation functionality;
- 
- 
+
+
 ### <a name="news"></a>[News and updates:](#title)
 - 9.02.2019:
     - **Introduction to analytic data model** notebook added to [model_based_stat_arb](./examples/model_based_stat_arb/) examples folder.
@@ -228,7 +228,7 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
     - **strategy_gen_6** data handling and pre-processing has been redesigned:
         - market data SSA decomposition;
         - data model state as additional input to policy
-        - variance-based normalisation for broker statistics 
+        - variance-based normalisation for broker statistics
 
 - 11.12.2018: updates and fixes:
     - **training Launcher class** got convenience features to save and reload model parameters,
@@ -283,46 +283,46 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
             - all but `episode` rendering modes are temporally disabled;
             - whole thing is shamelessly resource-hungry;
 
-- 17.02.18: First results on applying guided policy search ideas (GPS) to btgym setup can be seen 
+- 17.02.18: First results on applying guided policy search ideas (GPS) to btgym setup can be seen
            [here](./examples/guided_a3c.ipynb).  
-    - tensorboard summaries are updated with additional renderings: 
+    - tensorboard summaries are updated with additional renderings:
       actions distribution, value function and LSTM_state; presented in the same notebook.
 
-- 6.02.18: Common update to all a3c agents architectures: 
-    - all dense layers are now Noisy-Net ones, 
-      see: [Noisy Networks for Exploration](https://arxiv.org/abs/1706.10295) paper by Fortunato at al.; 
+- 6.02.18: Common update to all a3c agents architectures:
+    - all dense layers are now Noisy-Net ones,
+      see: [Noisy Networks for Exploration](https://arxiv.org/abs/1706.10295) paper by Fortunato at al.;
     - note that entropy regularization is still here, kept in ~0.01 to ensure proper exploration;
     - policy output distribution is 'centered' using layer normalisation technique;
-    
+
         - all of the above results in about 2x training speedup in terms of train iterations;
 
 - 20.01.18: Project [Wiki pages](https://github.com/Kismuz/btgym/wiki) added;
 
-- 12.01.18: Minor fixes to logging, enabled BTgymDataset train/test data split. AAC framework train/test cycle enabled 
-            via 
-            [`episode_train_test_cycle`](https://kismuz.github.io/btgym/btgym.algorithms.html#module-btgym.algorithms.aac) 
+- 12.01.18: Minor fixes to logging, enabled BTgymDataset train/test data split. AAC framework train/test cycle enabled
+            via
+            [`episode_train_test_cycle`](https://kismuz.github.io/btgym/btgym.algorithms.html#module-btgym.algorithms.aac)
             kwarg.
 
 - 7.01.18: Update:
-    - Major data pipe redesign. `Domain -> Trial -> Episode` sampling routine implemented. For motivation and 
-      formal definitions refer to 
-      [Section 1.Data of this DRAFT](https://github.com/Kismuz/btgym/blob/master/docs/papers/btgym_formalism_draft.pdf), 
-      API [Documentation](https://kismuz.github.io/btgym/btgym.datafeed.html#btgym-datafeed-package) 
+    - Major data pipe redesign. `Domain -> Trial -> Episode` sampling routine implemented. For motivation and
+      formal definitions refer to
+      [Section 1.Data of this DRAFT](https://github.com/Kismuz/btgym/blob/master/docs/papers/btgym_formalism_draft.pdf),
+      API [Documentation](https://kismuz.github.io/btgym/btgym.datafeed.html#btgym-datafeed-package)
       and [Intro example](./examples/data_domain_api_intro.ipynb). Changes should be backward compatible.
-      In brief, it is necessry framework for upcoming meta-learning algorithms. 
+      In brief, it is necessry framework for upcoming meta-learning algorithms.
     - logging changes: now relying in python `logbook` module. Should eliminate errors under Windows.
-    - Stacked_LSTM_Policy agent implemented. Based on NAV_A3C from 
-      [DeepMind paper](https://arxiv.org/pdf/1611.03673.pdf) with some minor mods. Basic usage 
-      [Example is here](./examples/unreal_stacked_lstm_strat_4_11.ipynb). 
-      Still in research code area and need further tuning; yet faster than simple LSTM agent, 
+    - Stacked_LSTM_Policy agent implemented. Based on NAV_A3C from
+      [DeepMind paper](https://arxiv.org/pdf/1611.03673.pdf) with some minor mods. Basic usage
+      [Example is here](./examples/unreal_stacked_lstm_strat_4_11.ipynb).
+      Still in research code area and need further tuning; yet faster than simple LSTM agent,
       able to converge on 6-month 1m dataset.
 
 - 5.12.17: Inner btgym comm. fixes >> speedup ~5%.
 
-- 02.12.17: Basic `sliding time-window train/test` framework implemented via 
+- 02.12.17: Basic `sliding time-window train/test` framework implemented via
             [BTgymSequentialTrial()](https://kismuz.github.io/btgym/btgym.html#btgym.datafeed.BTgymSequentialTrial)
             class. UPD: replaced by `BTgymSequentialDataDomain` class.
-            
+
 - 29.11.17: Basic meta-learning RL^2 functionality implemented.
     - See [Trial_Iterator Class](https://kismuz.github.io/btgym/btgym.html#btgym.datafeed.BTgymRandomTrial) and
     [RL^2 policy](https://kismuz.github.io/btgym/btgym.research.html#btgym.research.policy_rl2.AacRL2Policy)
@@ -338,7 +338,7 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
 
 - 14.11.17: BaseAAC framework refraction; added per worker batch-training option and LSTM time_flatten option; Atari
             examples updated; see [Documentation](https://kismuz.github.io/btgym/) for details.
-            
+
 - 30.10.17: Major update, some backward incompatibility:
     - BTGym now can be thougt as two-part package: one is environment itself and the other one is
       RL algoritms tuned for solving algo-trading tasks. Some basic work on shaping of later is done. Three advantage
@@ -351,7 +351,7 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
     - some progress on estimator architecture search, state and reward shaping;
 
 - 22.09.17: A3C [test_4](./examples/a3c/a3c_test_4_sma_bank_features.ipynb) added:
-    - passing train convergence test on small (1 month) dataset of EURUSD 1-minute bar data; 
+    - passing train convergence test on small (1 month) dataset of EURUSD 1-minute bar data;
 
 - 20.09.17: A3C optimised sine-wave test added [here.](./examples/a3c/a3c_reject_test_3_sine_conv1d_sma_log_grad.ipynb)
     - This notebook presents some basic ideas on state presentation, reward shaping,
@@ -376,7 +376,7 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
      - rendering can now be performed for avery entry in observation dictionary as long as it is Box ranked <=3
             and same key is passed in reneder_modes kwarg of environment.
             'Agent' mode renamed to 'state'. See updated examples.
- 
+
 
 - 07.08.17: BTgym is now optimized for asynchronous operation with multiply environment instances.
      - dedicated data_server is used for dataset management;
@@ -384,7 +384,7 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
      - see example `async_btgym_workers.ipynb` in [`examples`](./examples) directory.
 
 - 15.07.17: UPDATE, BACKWARD INCOMPATIBILITY: now state observation can be tensor of any rank.
-     - Consequently, dim. ordering convention has changed to ensure compatibility with 
+     - Consequently, dim. ordering convention has changed to ensure compatibility with
             existing tf models: time embedding is first dimension from now on, e.g. state
             with shape (30, 20, 4) is 30x steps time embedded with 20 features and 4 'channels'.
             For the sake of 2d visualisation only one 'cannel' can be rendered, can be
@@ -398,9 +398,9 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
 
 - 5.07.17:  Tensorboard monitoring wrapper added; pyplot memory leak fixed.
 
-- 30.06.17: EXAMPLES updated with 'Setting up: full throttle' how-to. 
+- 30.06.17: EXAMPLES updated with 'Setting up: full throttle' how-to.
 
-- 29.06.17: UPGRADE: be sure to run `pip install --upgrade -e .` 
+- 29.06.17: UPGRADE: be sure to run `pip install --upgrade -e .`
     - major rendering rebuild: updated with modes: `human`, `agent`, `episode`;
       render process now performed by server and returned to environment as `rgb numpy array`.
       Pictures can be shown either via matplolib or as pillow.Image(preferred).
@@ -410,16 +410,16 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
     - new packages requirements: `matplotlib` and `pillow`.
 
 - 25.06.17:
-  Basic rendering implemented. 
+  Basic rendering implemented.
 
 - 23.06.17:
   alpha 0.0.4:
   added skip-frame feature,
   redefined parameters inheritance logic,
   refined overall stability;
-  
+
 - 17.06.17:
   first working alpha v0.0.2.
- 
- 
+
+
 <a href="https://stackexchange.com/users/10204071/andrew-muzikin"><img src="https://stackexchange.com/users/flair/10204071.png" width="208" height="58" alt="profile for Andrew Muzikin on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for Andrew Muzikin on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
