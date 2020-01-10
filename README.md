@@ -204,11 +204,15 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
  - [ ] risk-sensitive agents implementation;
  - [x] sequential and sliding time-window sampling;
  - [x] multiply instruments trading;
- - [x] docker image; - CPU version
+ - [x] docker image; - CPU version, `Signalprime` contribution, 
  - [ ] TF serving model serialisation functionality;
 
 
 ### <a name="news"></a>[News and updates:](#title)
+- 10.01.2019:
+    - **docker CPU version** is now available, contributed by `Signalprime`, 
+    (https://github.com/signalprime), see `btgym/docker/README.md` for details;
+
 - 9.02.2019:
     - **Introduction to analytic data model** notebook added to [model_based_stat_arb](./examples/model_based_stat_arb/) examples folder.
 

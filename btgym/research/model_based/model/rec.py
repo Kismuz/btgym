@@ -177,7 +177,7 @@ class SSA:
                         if set to True - discards embedded trajectory already being kept.
 
         Returns:
-            embedded update
+            embedded update/home/muzikin/Repos/ml_serving
 
         """
         assert len(x.shape) == 1, 'Expected 1d trajectory but got input shaped: {}'.format(x.shape)
