@@ -78,7 +78,7 @@ class BaseAAC(object):
                  opt_momentum=0.0,
                  opt_epsilon=1e-8,
                  rollout_length=20,
-                 time_flat=True,
+                 time_flat=False,
                  episode_train_test_cycle=(1,0),
                  episode_summary_freq=2,  # every i`th environment episode
                  env_render_freq=10,  # every i`th environment episode
@@ -138,7 +138,7 @@ class BaseAAC(object):
             opt_momentum:           scalar, optimizer momentum, if apll.
             opt_epsilon:            scalar, optimizer epsilon
             rollout_length:         int, on-policy rollout length
-            time_flat:              bool, flatten rnn time-steps in rollouts while training - see `Notes` below
+            time_flat:              bool, flatten rnn time-steps in rollouts of size 1 - see `Notes` below
             episode_train_test_cycle:   tuple or list as (train_number, test_number), def=(1,0): enables infinite
                                         loop such as: run `train_number` of train data episodes,
                                         than `test_number` of test data episodes, repeat. Should be consistent
@@ -175,35 +175,15 @@ class BaseAAC(object):
         Note:
             - On `time_flat` arg:
 
-                There are two alternatives to run RNN part of policy estimator:
+                Note that previous explanation of this arg was erroneous;
+                Time_flat=False:
+                    Implements Truncated BPTT with backpropagation depth equal to rollout length.
+                    In this case we need to feed initial rnn_states for rollouts only.
+                    Thus, when time_flat=False, we unroll RNN in specified number of time-steps for every rollout.
 
-                a. Feed initial RNN state for every experience frame in rollout
-                        (those are stored anyway if we want random memory repaly sampling) and do single time-step RNN
-                        advance for all experiences in a batch; this is when time_flat=True;
-
-                b. Reshape incoming batch after convolution part of network in time-wise fashion
-                        for every rollout in a batch i.e. batch_size=number_of_rollouts and
-                        rnn_timesteps=max_rollout_length. In this case we need to feed initial rnn_states
-                        for rollouts only. There is some little extra work to pad rollouts to max_time_size
-                        and feed true rollout lengths to rnn. Thus, when time_flat=False, we unroll RNN in
-                        specified number of time-steps for every rollout.
-
-                Both options has pros and cons:
-
-                Unrolling dynamic RNN is computationally more expensive but gives clearly faster convergence,
-                    [possibly] due to the fact that RNN states for 2nd, 3rd, ... frames
-                    of rollouts are computed using updated policy estimator, which is supposed to be
-                    closer to optimal one. When time_flattened, every time-step uses RNN states computed
-                    when rollout was collected (i.e. by behavioral policy estimator with older
-                    parameters).
-
-                Nevertheless, time_flat:
-                    - allows use of static RNN;
-                    - one can safely shuffle training batch or mix on-policy and off-policy data in single mini-batch,
-                    ensuring iid property;
-                    - allowing second-order derivatives which is impossible in current tf dynamic RNN implementation as
-                    it uses tf.while_loop internally;
-                    - computationally cheaper;
+                Time_flat=True:
+                Basicaly forces TBPTT with rollout depth = 1.
+                Not recommended to use as it prevents policy from learning long-range dependencies.
         """
         # Logging:
         self.log_level = log_level
