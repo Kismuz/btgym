@@ -162,7 +162,7 @@ _Notice: data shaping approach is under development, expect some changes. [7.01.
 - Browse **[Development Wiki](https://github.com/Kismuz/btgym/wiki)**.
 - Review opened and closed **[Issues](https://github.com/Kismuz/btgym/issues?utf8=%E2%9C%93&q=)**.
 - Go to **[BTGym Slack channel](https://btgym.slack.com)**. If you are new -
-[use this invite link](https://join.slack.com/t/btgym/shared_invite/enQtNTU5NDU5ODA2NjU4LTBjNGExOTc1YzkxYjYxMWFmYTYyMmIyZDFiZmZmMmU5OGI1YTdlNDk5NDk2ZjEzNmU3MDM2NDYzYzg5MTk5NTk)
+[use this invite link](https://join.slack.com/t/btgym/shared_invite/zt-750fx9ky-hT0o6diVw1f4Oa1FGZLf4A)
  to join.
 
 
