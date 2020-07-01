@@ -644,8 +644,8 @@ class CasualConvStrategyMulti(CasualConvStrategy_0):
 
         # Now when we know exact maximum possible episode length -
         #  can extract relevant episode data and make expert predictions:
-        # data = self.datas[0].p.dataname.as_matrix()[self.inner_embedding:, :]
-        data = {d._name : d.p.dataname.as_matrix()[self.inner_embedding:, :] for d in self.datas}
+        # data = self.datas[0].p.dataname.values[self.inner_embedding:, :]
+        data = {d._name : d.p.dataname.values[self.inner_embedding:, :] for d in self.datas}
 
         # Note: need to form sort of environment 'custom candels' by taking min and max price values over every
         # skip_frame period; this is done inside Oracle class;

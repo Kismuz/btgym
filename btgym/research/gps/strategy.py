@@ -120,7 +120,7 @@ class GuidedStrategy_0_0(DevStrat_4_12):
 
         # Now when we know exact maximum possible episode length -
         #  can extract relevant episode data and make expert predictions:
-        data = self.datas[0].p.dataname.as_matrix()[self.inner_embedding:, :]
+        data = self.datas[0].p.dataname.values[self.inner_embedding:, :]
 
         # Note: need to form sort of environment 'custom candels' by taking min and max price values over every
         # skip_frame period; this is done inside Oracle class;
