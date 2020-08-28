@@ -1,4 +1,4 @@
-from tensorflow.contrib.layers import flatten as batch_flatten
+import tensorflow_addons as tfa
 
 from btgym.algorithms.policy.base import BaseAacPolicy
 from btgym.algorithms.nn.networks import *
@@ -27,7 +27,7 @@ class StackedLstmPolicy(BaseAacPolicy):
                  ac_space,
                  rp_sequence_size,
                  state_encoder_class_ref=conv_2d_network,
-                 lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
+                 lstm_class_ref=tfa.rnn.LayerNormLSTMCell,
                  lstm_layers=(256, 256),
                  linear_layer_ref=noisy_linear,
                  share_encoder_params=False,
@@ -47,7 +47,7 @@ class StackedLstmPolicy(BaseAacPolicy):
             ob_space:               instance of btgym.spaces.DictSpace
             ac_space:               instance of btgym.spaces.ActionDictSpace
             rp_sequence_size:       reward prediction sample length
-            lstm_class_ref:         tf.nn.lstm class to use
+            lstm_class_ref:         tfa.rnn class to use
             lstm_layers:            tuple of LSTM layers sizes
             linear_layer_ref:       linear layer class to use
             share_encoder_params:   bool, whether to share encoder parameters for every 'external' data stream

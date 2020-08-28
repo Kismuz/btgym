@@ -1,4 +1,4 @@
-import tensorflow as tf
+import tensorflow_addons as tfa
 from btgym.algorithms.policy.stacked_lstm import AacStackedRL2Policy
 from btgym.algorithms.nn.layers import noisy_linear
 
@@ -16,7 +16,7 @@ class GuidedPolicy_0_0(AacStackedRL2Policy):
                 (64, (3, 1), (2, 1)),
                 (64, (3, 1), (2, 1))
             ),
-            lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
+            lstm_class_ref=tfa.rnn.LayerNormLSTMCell,
             lstm_layers=(256, 256),
             lstm_2_init_period=50,
             linear_layer_ref=noisy_linear,

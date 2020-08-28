@@ -1,4 +1,4 @@
-from tensorflow.contrib.layers import flatten as batch_flatten
+import tensorflow_addons as tfa
 
 from btgym.algorithms.policy.base import BaseAacPolicy
 from btgym.algorithms.policy.stacked_lstm import AacStackedRL2Policy
@@ -51,7 +51,7 @@ class bVAENPolicy(AacStackedRL2Policy):
                      (32, (3, 1), (2, 1)),
                      (32, (3, 1), (2, 1))
                  ),
-                 lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
+                 lstm_class_ref=tfa.rnn.LayerNormLSTMCell,
                  lstm_layers=(256, 256),
                  lstm_2_init_period=50,
                  linear_layer_ref=noisy_linear,
@@ -68,7 +68,7 @@ class bVAENPolicy(AacStackedRL2Policy):
             ob_space:           dictionary of observation state shapes
             ac_space:           discrete action space shape (length)
             rp_sequence_size:   reward prediction sample length
-            lstm_class_ref:     tf.nn.lstm class to use
+            lstm_class_ref:     tfa.rnn class to use
             lstm_layers:        tuple of LSTM layers sizes
             lstm_2_init_period: number of `get_initial_context()` method calls before force LSTM_2 context reset.
             linear_layer_ref:   linear layer class to use

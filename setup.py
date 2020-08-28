@@ -53,6 +53,7 @@ setup(
     version='0.0.8',
     install_requires=[
         'tensorflow>=2.3',
+        'tensorflow_addons>=0.11',
         'opencv-python',
         'gym[atari]',
         'backtrader',
