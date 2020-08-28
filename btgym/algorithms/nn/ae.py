@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.layers import flatten as batch_flatten
-from tensorflow.contrib.layers import layer_norm as norm_layer
 
 from btgym.algorithms.nn.layers import normalized_columns_initializer, linear, conv2d
 
@@ -35,6 +34,7 @@ def conv2d_encoder(x,
         layer_shapes = [x.get_shape()]
         layer_outputs = []
         for i, layer_spec in enumerate(layer_config, 1):
+            norm_layer = tf.keras.layers.LayerNormalization()
             x = tf.nn.elu(
                 norm_layer(
                     conv2d(

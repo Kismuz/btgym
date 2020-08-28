@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
-from tensorflow.contrib.layers import layer_norm as norm_layer
 from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.algorithms.nn.layers import normalized_columns_initializer, categorical_sample
@@ -35,6 +34,7 @@ def conv_2d_network_skip(x,
     layers = []
     with tf.compat.v1.variable_scope(name, reuse=reuse):
         for i, num_filters in enumerate(conv_2d_num_filters):
+            norm_layer = tf.keras.layers.LayerNormalization()
             x = tf.nn.elu(
                 norm_layer(
                     conv_2d_layer_ref(

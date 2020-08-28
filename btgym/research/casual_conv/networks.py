@@ -1,6 +1,6 @@
 
 import tensorflow as tf
-from tensorflow.contrib.layers import layer_norm as norm_layer
+import tensorflow_addons as tfa
 
 import numpy as np
 import math
@@ -78,7 +78,8 @@ def conv_1d_casual_encoder(
             # b2t:
             y = tf.reshape(y, [-1, num_time_batches, conv_1d_num_filters], name='layer_{}_output'.format(i))
 
-            y = norm_layer(y)
+            normalization_layer = tf.keras.layers.LayerNormalization()
+            y = normalization_layer(y)
             if conv_1d_activation is not None:
                 y = conv_1d_activation(y)
 
@@ -137,7 +138,7 @@ def conv_1d_casual_encoder(
     return encoded
 
 
-def attention_layer(inputs, attention_ref=tf.contrib.seq2seq.LuongAttention, name='attention_layer', **kwargs):
+def attention_layer(inputs, attention_ref=tfa.seq2seq.LuongAttention, name='attention_layer', **kwargs):
     """
     Temporal attention layer.
     Computes attention context based on last(left) value in time dim.
@@ -201,7 +202,7 @@ def conv_1d_casual_attention_encoder(
         conv_1d_num_filters=32,
         conv_1d_filter_size=2,
         conv_1d_activation=tf.nn.elu,
-        conv_1d_attention_ref=tf.contrib.seq2seq.LuongAttention,
+        conv_1d_attention_ref=tfa.seq2seq.LuongAttention,
         name='casual_encoder',
         keep_prob=None,
         conv_1d_gated=False,
