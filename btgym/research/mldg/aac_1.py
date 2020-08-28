@@ -73,7 +73,7 @@ class AMLDG_1(GuidedAAC):
                 name=name,
                 **kwargs
             )
-            self.model_summary_op = tf.summary.merge(
+            self.model_summary_op = tf.compat.v1.summary.merge(
                 [self.model_summary_op, self._combine_meta_summaries()],
                 name='meta_model_summary'
             )
@@ -98,7 +98,7 @@ class AMLDG_1(GuidedAAC):
         )
         # Guidance annealing:
         if self.guided_decay_steps is not None:
-            self.guided_lambda_decayed = tf.train.polynomial_decay(
+            self.guided_lambda_decayed = tf.compat.v1.train.polynomial_decay(
                 self.guided_lambda,
                 self.global_step + 1,
                 self.guided_decay_steps,
@@ -152,16 +152,16 @@ class AMLDG_1(GuidedAAC):
             *[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_prime.var_list)]
         )
         self.sync = [self.sync_pi, self.sync_pi_prime]
-        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
-        self.fast_optimizer = tf.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
+        self.fast_optimizer = tf.compat.v1.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
 
         # Clipped gradients:
         pi.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.meta_train_loss, pi.var_list),
+            tf.gradients(ys=self.meta_train_loss, xs=pi.var_list),
             40.0
         )
         pi_prime.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.meta_test_loss, pi_prime.var_list),
+            tf.gradients(ys=self.meta_test_loss, xs=pi_prime.var_list),
             40.0
         )
         # Meta_optimisation gradients as sum of meta-train and meta-test gradients:
@@ -189,7 +189,7 @@ class AMLDG_1(GuidedAAC):
 
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
-        self.inc_step = self.global_step.assign_add(tf.shape(self.local_network.on_state_in['external'])[0])
+        self.inc_step = self.global_step.assign_add(tf.shape(input=self.local_network.on_state_in['external'])[0])
 
         # Local fast optimisation op:
         self.fast_train_op = self.fast_optimizer.apply_gradients(train_grads_and_vars)
@@ -204,9 +204,9 @@ class AMLDG_1(GuidedAAC):
         """
         Additional summaries here.
         """
-        with tf.name_scope(self.name):
+        with tf.compat.v1.name_scope(self.name):
             meta_model_summaries = [
-                tf.summary.scalar('meta_grad_global_norm', tf.global_norm(self.grads)),
+                tf.compat.v1.summary.scalar('meta_grad_global_norm', tf.linalg.global_norm(self.grads)),
                 # tf.summary.scalar('total_meta_loss', self.loss),
                 # tf.summary.scalar('alpha_learn_rate', self.alpha_rate),
                 # tf.summary.scalar('alpha_learn_rate_loss', self.alpha_rate_loss)

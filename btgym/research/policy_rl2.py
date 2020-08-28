@@ -41,7 +41,7 @@ class AacRL2Policy(Aac1dPolicy):
         try:
             if state['metadata']['trial_num'] != self.current_trial_num or context is None or state['metadata']['type']:
                 # Assume new/initial trial or test, reset context:
-                sess = tf.get_default_session()
+                sess = tf.compat.v1.get_default_session()
                 new_context = sess.run(self.on_lstm_init_state)
                 print('RL^2 policy context reset')
 

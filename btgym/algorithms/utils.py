@@ -19,14 +19,14 @@ def rnn_placeholders(state):
 
     Returns:    tuple of placeholders
     """
-    if isinstance(state, tf.contrib.rnn.LSTMStateTuple):
+    if isinstance(state, tf.nn.rnn_cell.LSTMStateTuple):
         c, h = state
-        c = tf.placeholder(tf.float32, tf.TensorShape([None]).concatenate(c.get_shape()[1:]), c.op.name + '_c_pl')
-        h = tf.placeholder(tf.float32, tf.TensorShape([None]).concatenate(h.get_shape()[1:]), h.op.name + '_h_pl')
-        return tf.contrib.rnn.LSTMStateTuple(c, h)
+        c = tf.compat.v1.placeholder(tf.float32, tf.TensorShape([None]).concatenate(c.get_shape()[1:]), c.op.name + '_c_pl')
+        h = tf.compat.v1.placeholder(tf.float32, tf.TensorShape([None]).concatenate(h.get_shape()[1:]), h.op.name + '_h_pl')
+        return tf.nn.rnn_cell.LSTMStateTuple(c, h)
     elif isinstance(state, tf.Tensor):
         h = state
-        h = tf.placeholder(tf.float32, tf.TensorShape([None]).concatenate(h.get_shape()[1:]), h.op.name + '_h_pl')
+        h = tf.compat.v1.placeholder(tf.float32, tf.TensorShape([None]).concatenate(h.get_shape()[1:]), h.op.name + '_h_pl')
         return h
     else:
         structure = [rnn_placeholders(x) for x in state]
@@ -49,7 +49,7 @@ def nested_placeholders(ob_space, batch_dim=None, name='nested'):
         out = {key: nested_placeholders(value, batch_dim, name + '_' + key) for key, value in ob_space.items()}
         return out
     else:
-        out = tf.placeholder(tf.float32, [batch_dim] + list(ob_space), name + '_pl')
+        out = tf.compat.v1.placeholder(tf.float32, [batch_dim] + list(ob_space), name + '_pl')
         return out
 
 

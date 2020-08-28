@@ -78,33 +78,33 @@ class BaseAacPolicy(object):
         self.rp_state_in = nested_placeholders(self.ob_space.shape, batch_dim=None, name='rp_state_in')
 
         # Placeholders for previous step action[multi-categorical vector encoding]  and reward [scalar]:
-        self.on_last_a_in = tf.placeholder(
+        self.on_last_a_in = tf.compat.v1.placeholder(
             tf.float32,
             [None, self.ac_space.encoded_depth],
             name='on_policy_last_action_in_pl'
         )
-        self.on_last_reward_in = tf.placeholder(tf.float32, [None], name='on_policy_last_reward_in_pl')
+        self.on_last_reward_in = tf.compat.v1.placeholder(tf.float32, [None], name='on_policy_last_reward_in_pl')
 
-        self.off_last_a_in = tf.placeholder(
+        self.off_last_a_in = tf.compat.v1.placeholder(
             tf.float32,
             [None, self.ac_space.encoded_depth],
             name='off_policy_last_action_in_pl'
         )
-        self.off_last_reward_in = tf.placeholder(tf.float32, [None], name='off_policy_last_reward_in_pl')
+        self.off_last_reward_in = tf.compat.v1.placeholder(tf.float32, [None], name='off_policy_last_reward_in_pl')
 
         # Placeholders for rnn batch and time-step dimensions:
-        self.on_batch_size = tf.placeholder(tf.int32, name='on_policy_batch_size')
-        self.on_time_length = tf.placeholder(tf.int32, name='on_policy_sequence_size')
+        self.on_batch_size = tf.compat.v1.placeholder(tf.int32, name='on_policy_batch_size')
+        self.on_time_length = tf.compat.v1.placeholder(tf.int32, name='on_policy_sequence_size')
 
-        self.off_batch_size = tf.placeholder(tf.int32, name='off_policy_batch_size')
-        self.off_time_length = tf.placeholder(tf.int32, name='off_policy_sequence_size')
+        self.off_batch_size = tf.compat.v1.placeholder(tf.int32, name='off_policy_batch_size')
+        self.off_time_length = tf.compat.v1.placeholder(tf.int32, name='off_policy_sequence_size')
 
         try:
             if self.train_phase is not None:
                 pass
 
         except AttributeError:
-            self.train_phase = tf.placeholder_with_default(
+            self.train_phase = tf.compat.v1.placeholder_with_default(
                 tf.constant(False, dtype=tf.bool),
                 shape=(),
                 name='train_phase_flag_pl'
@@ -114,7 +114,7 @@ class BaseAacPolicy(object):
         on_aac_x = conv_2d_network(self.on_state_in['external'], self.ob_space.shape['external'], ac_space, **kwargs)
 
         # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
-        x_shape_dynamic = tf.shape(on_aac_x)
+        x_shape_dynamic = tf.shape(input=on_aac_x)
         max_seq_len = tf.cast(x_shape_dynamic[0] / self.on_batch_size, tf.int32)
         x_shape_static = on_aac_x.get_shape().as_list()
 
@@ -167,7 +167,7 @@ class BaseAacPolicy(object):
         off_aac_x = conv_2d_network(self.off_state_in['external'], self.ob_space.shape['external'], ac_space, reuse=True, **kwargs)
 
         # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
-        x_shape_dynamic = tf.shape(off_aac_x)
+        x_shape_dynamic = tf.shape(input=off_aac_x)
         max_seq_len = tf.cast(x_shape_dynamic[0] / self.off_batch_size, tf.int32)
         x_shape_static = off_aac_x.get_shape().as_list()
 
@@ -239,7 +239,7 @@ class BaseAacPolicy(object):
         self.vr_value = self.off_vf
 
         # Aux3: `Reward prediction` network:
-        self.rp_batch_size = tf.placeholder(tf.int32, name='rp_batch_size')
+        self.rp_batch_size = tf.compat.v1.placeholder(tf.int32, name='rp_batch_size')
 
         # Shared conv. output:
         rp_x = conv_2d_network(self.rp_state_in['external'], self.ob_space.shape['external'], ac_space, reuse=True, **kwargs)
@@ -252,13 +252,13 @@ class BaseAacPolicy(object):
         self.rp_logits = dense_rp_network(rp_x)
 
         # Batch-norm related :
-        self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        self.update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
         # Add moving averages to save list:
-        moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')
-        renorm_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*renorm.*')
+        moving_var_list = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, tf.compat.v1.get_variable_scope().name + '.*moving.*')
+        renorm_var_list = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, tf.compat.v1.get_variable_scope().name + '.*renorm.*')
 
         # What to save:
-        self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
+        self.var_list = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, tf.compat.v1.get_variable_scope().name)
         self.var_list += moving_var_list + renorm_var_list
 
         # Callbacks:
@@ -273,7 +273,7 @@ class BaseAacPolicy(object):
             LSTM zero-state tuple.
         """
         # TODO: rework as in: AacStackedMetaPolicy --> base runner, verbose runner; synchro_runner ok
-        sess = tf.get_default_session()
+        sess = tf.compat.v1.get_default_session()
         return sess.run(self.on_lstm_init_state)
 
     def act(self, observation, lstm_state, last_action, last_reward, deterministic=False):
@@ -293,7 +293,7 @@ class BaseAacPolicy(object):
             Action as dictionary of several action encodings, actions logits, V-fn value, output RNN state
         """
         try:
-            sess = tf.get_default_session()
+            sess = tf.compat.v1.get_default_session()
             feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
             feeder.update(feed_dict_from_nested(self.on_state_in, observation, expand_batch=True))
             feeder.update(
@@ -353,7 +353,7 @@ class BaseAacPolicy(object):
         Returns:
             V-function value
         """
-        sess = tf.get_default_session()
+        sess = tf.compat.v1.get_default_session()
         feeder = feed_dict_rnn_context(self.on_lstm_state_pl_flatten, lstm_state)
         feeder.update(feed_dict_from_nested(self.on_state_in, observation, expand_batch=True))
         feeder.update(
@@ -380,7 +380,7 @@ class BaseAacPolicy(object):
         Returns:
             Estimated absolute difference between two subsampled states.
         """
-        sess = tf.get_default_session()
+        sess = tf.compat.v1.get_default_session()
         feeder = {self.pc_change_state_in: state['external'], self.pc_change_last_state_in: last_state['external']}
 
         return sess.run(self.pc_target, feeder)[0,...,0]

@@ -19,14 +19,14 @@ class MetaSubPolicy:
             learn_rate:             meta-policy learning rate
             name:                   name scope
         """
-        with tf.variable_scope(name_or_scope=name):
+        with tf.compat.v1.variable_scope(name_or_scope=name):
             self.task = task
             self.learn_rate = learn_rate
             self.num_host_policies = num_host_policies
 
-            self.input_stat_pl = tf.placeholder(dtype=tf.float32, name='in_stat_pl')
+            self.input_stat_pl = tf.compat.v1.placeholder(dtype=tf.float32, name='in_stat_pl')
 
-            self.input_stat = tf.reduce_mean(self.input_stat_pl)
+            self.input_stat = tf.reduce_mean(input_tensor=self.input_stat_pl)
 
             self.initial_cluster_value = tf.concat(
                 [
@@ -43,38 +43,38 @@ class MetaSubPolicy:
                 name='cluster_wide_averages_slot'
             )
 
-            update_task_iteration = tf.scatter_nd_add(self.cluster_averages_slot, [[0, task]], [1])
+            update_task_iteration = tf.compat.v1.scatter_nd_add(self.cluster_averages_slot, [[0, task]], [1])
 
             with tf.control_dependencies([update_task_iteration]):
                 avg_prev = self.cluster_averages_slot[1, task]
                 k = self.cluster_averages_slot[0, task]
                 avg = avg_prev + (self.input_stat - avg_prev) / k
-                self.update_op = tf.scatter_nd_update(self.cluster_averages_slot, [[1, task]], [avg])
+                self.update_op = tf.compat.v1.scatter_nd_update(self.cluster_averages_slot, [[1, task]], [avg])
 
-            self.reset_op = tf.assign(
+            self.reset_op = tf.compat.v1.assign(
                 self.cluster_averages_slot,
                 self.initial_cluster_value
             )
 
             # Toy network:
-            prob = tf.layers.dense(
+            prob = tf.compat.v1.layers.dense(
                 tf.expand_dims(self.cluster_averages_slot[1, :], axis=-1),
                 units=10,
                 activation=tf.nn.sigmoid,
                 use_bias=False,
             )
-            self.next_step_prob = tf.layers.dense(
+            self.next_step_prob = tf.compat.v1.layers.dense(
                 prob,
                 units=1,
                 activation=tf.nn.sigmoid,
                 use_bias=False,
             )
-            self.distribution = tf.distributions.Bernoulli(
-                probs=tf.reduce_max(self.next_step_prob)
+            self.distribution = tf.compat.v1.distributions.Bernoulli(
+                probs=tf.reduce_max(input_tensor=self.next_step_prob)
             )
             self.sample = self.distribution.sample()
 
-            self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
+            self.var_list = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, tf.compat.v1.get_variable_scope().name)
 
             self.cluster_stat = tf.clip_by_value(
                 # tf.reduce_mean(
@@ -86,26 +86,26 @@ class MetaSubPolicy:
             )
             bound_avg = tf.sigmoid(- self.cluster_stat)
             self.loss = tf.reduce_mean(
-                bound_avg * (1 - self.next_step_prob) + (1 - bound_avg) * self.next_step_prob
+                input_tensor=bound_avg * (1 - self.next_step_prob) + (1 - bound_avg) * self.next_step_prob
             )
-            self.grads = tf.gradients(self.loss, self.var_list)
+            self.grads = tf.gradients(ys=self.loss, xs=self.var_list)
 
             self.summaries = [
-                tf.summary.scalar('worker_avg_stat', self.cluster_averages_slot[1, task]),
-                tf.summary.scalar('worker_iterations', self.cluster_averages_slot[0, task]),
+                tf.compat.v1.summary.scalar('worker_avg_stat', self.cluster_averages_slot[1, task]),
+                tf.compat.v1.summary.scalar('worker_iterations', self.cluster_averages_slot[0, task]),
                 #tf.summary.histogram('clipped_cluster_stat', self.cluster_stat),
-                tf.summary.scalar('loss', self.loss),
-                tf.summary.histogram('next_step_prob', self.next_step_prob),
-                tf.summary.scalar('grads_norm', tf.global_norm(self.grads))
+                tf.compat.v1.summary.scalar('loss', self.loss),
+                tf.compat.v1.summary.histogram('next_step_prob', self.next_step_prob),
+                tf.compat.v1.summary.scalar('grads_norm', tf.linalg.global_norm(self.grads))
             ]
 
     def update(self, input_stat):
-        sess = tf.get_default_session()
+        sess = tf.compat.v1.get_default_session()
         feed_dict = {self.input_stat_pl: input_stat}
         sess.run(self.update_op, feed_dict)
 
     def reset(self):
-        sess = tf.get_default_session()
+        sess = tf.compat.v1.get_default_session()
         sess.run(self.reset_op)
 
     def global_reset(self):
@@ -122,7 +122,7 @@ class MetaSubPolicy:
         Returns:
 
         """
-        sess = tf.get_default_session()
+        sess = tf.compat.v1.get_default_session()
         fetched = sess.run([self.sample])
 
         return fetched[-1]

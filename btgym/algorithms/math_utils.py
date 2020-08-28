@@ -36,22 +36,22 @@ def log_uniform(lo_hi, size):
 
 
 def cat_entropy(logits):
-    a0 = logits - tf.reduce_max(logits, 1, keepdims=True)
+    a0 = logits - tf.reduce_max(input_tensor=logits, axis=1, keepdims=True)
     ea0 = tf.exp(a0)
-    z0 = tf.reduce_sum(ea0, 1, keepdims=True)
+    z0 = tf.reduce_sum(input_tensor=ea0, axis=1, keepdims=True)
     p0 = ea0 / z0
-    return tf.reduce_sum(p0 * (tf.log(z0) - a0), 1)
+    return tf.reduce_sum(input_tensor=p0 * (tf.math.log(z0) - a0), axis=1)
 
 
 def kl_divergence(logits_1, logits_2):
-    a0 = logits_1 - tf.reduce_max(logits_1, axis=-1, keepdims=True)
-    a1 = logits_2 - tf.reduce_max(logits_2, axis=-1, keepdims=True)
+    a0 = logits_1 - tf.reduce_max(input_tensor=logits_1, axis=-1, keepdims=True)
+    a1 = logits_2 - tf.reduce_max(input_tensor=logits_2, axis=-1, keepdims=True)
     ea0 = tf.exp(a0)
     ea1 = tf.exp(a1)
-    z0 = tf.reduce_sum(ea0, axis=-1, keepdims=True)
-    z1 = tf.reduce_sum(ea1, axis=-1, keepdims=True)
+    z0 = tf.reduce_sum(input_tensor=ea0, axis=-1, keepdims=True)
+    z1 = tf.reduce_sum(input_tensor=ea1, axis=-1, keepdims=True)
     p0 = ea0 / z0
-    return tf.reduce_sum(p0 * (a0 - tf.log(z0) - a1 + tf.log(z1)), axis=-1)
+    return tf.reduce_sum(input_tensor=p0 * (a0 - tf.math.log(z0) - a1 + tf.math.log(z1)), axis=-1)
 
 
 # def softmax(x):

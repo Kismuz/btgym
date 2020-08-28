@@ -46,7 +46,7 @@ class AacStackedMetaPolicy(GuidedPolicy_0_0):
         #print('Meta_policy_init_metadata:', state['metadata'])
         #print('self.current_trial_num:', self.current_trial_num)
         try:
-            sess = tf.get_default_session()
+            sess = tf.compat.v1.get_default_session()
             new_context = list(sess.run(self.on_lstm_init_state))
             if context is not None:
                 if state['metadata']['trial_num'] == self.current_trial_num or state['metadata']['type']:

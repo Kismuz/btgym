@@ -97,16 +97,16 @@ class AMLDG_1d(AMLDG_1):
             *[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_prime.var_list)]
         )
         self.sync = [self.sync_pi, self.sync_pi_prime]
-        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
-        self.fast_optimizer = tf.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
+        self.fast_optimizer = tf.compat.v1.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
 
         # Clipped gradients:
         pi.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.meta_train_loss, pi.var_list),
+            tf.gradients(ys=self.meta_train_loss, xs=pi.var_list),
             40.0
         )
         pi_prime.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.meta_test_loss, pi_prime.var_list),
+            tf.gradients(ys=self.meta_test_loss, xs=pi_prime.var_list),
             40.0
         )
         # Meta_optimisation gradients as sum of meta-train and meta-test gradients:
@@ -134,7 +134,7 @@ class AMLDG_1d(AMLDG_1):
 
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
-        self.inc_step = self.global_step.assign_add(tf.shape(pi_prime.on_state_in['external'])[0])
+        self.inc_step = self.global_step.assign_add(tf.shape(input=pi_prime.on_state_in['external'])[0])
 
         # Local fast optimisation op:
         self.fast_train_op = self.fast_optimizer.apply_gradients(train_grads_and_vars)
