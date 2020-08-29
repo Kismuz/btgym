@@ -1,6 +1,5 @@
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.rnn as rnn
 from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.algorithms.nn.layers import normalized_columns_initializer, categorical_sample

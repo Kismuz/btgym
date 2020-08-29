@@ -8,7 +8,7 @@
 
 import numpy as np
 
-from tensorflow.contrib.rnn import LSTMStateTuple
+from tensorflow._api.v2.compat.v1.nn.rnn_cell import LSTMStateTuple
 from btgym.algorithms.math_utils import discount
 from btgym.algorithms.utils import batch_pad
 

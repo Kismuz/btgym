@@ -6,7 +6,7 @@
 
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.rnn as rnn
+import tensorflow_addons as tfa
 from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.algorithms.nn.layers import normalized_columns_initializer, categorical_sample
@@ -105,7 +105,7 @@ def conv_1d_network(x,
 def lstm_network(
         x,
         lstm_sequence_length,
-        lstm_class=rnn.BasicLSTMCell,
+        lstm_class=tf.compat.v1.nn.rnn_cell.BasicLSTMCell,
         lstm_layers=(256,),
         static=False,
         keep_prob=None,
@@ -141,7 +141,7 @@ def lstm_network(
 
             lstm.append(layer)
 
-        lstm = rnn.MultiRNNCell(lstm, state_is_tuple=True)
+        lstm = tf.compat.v1.nn.rnn_cell.MultiRNNCell(lstm, state_is_tuple=True)
         # Get time_dimension as [1]-shaped tensor:
         step_size = tf.expand_dims(tf.shape(input=x)[1], [0])
 
@@ -185,6 +185,7 @@ def dense_aac_network(x, ac_space_depth, name='dense_aac', linear_layer_ref=nois
 
     with tf.compat.v1.variable_scope(name, reuse=reuse):
         # Center-logits:
+        norm_layer = tf.keras.layers.LayerNormalization()
         logits = norm_layer(
             linear_layer_ref(
                 x=x,

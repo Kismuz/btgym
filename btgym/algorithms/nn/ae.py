@@ -1,6 +1,5 @@
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib.layers import flatten as batch_flatten
 
 from btgym.algorithms.nn.layers import normalized_columns_initializer, linear, conv2d
 
@@ -165,7 +164,7 @@ def conv2d_autoencoder(
             reuse=reuse
         )
         # Flatten hidden state, pass through dense :
-        z = batch_flatten(encoder_layers[-1])
+        z = tf.reshape(encoder_layers[-1], [tf.shape(encoder_layers[-1])[0], -1])
         h, w, c = encoder_layers[-1].get_shape().as_list()[1:]
 
         z = linear_layer_ref(
