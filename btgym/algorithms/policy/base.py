@@ -10,6 +10,7 @@
 #
 
 from gym.spaces import Discrete, Dict
+from tensorflow._api.v2.compat.v1.nn.rnn_cell import BasicLSTMCell
 
 from btgym.algorithms.nn.networks import *
 from btgym.algorithms.utils import *
@@ -34,7 +35,7 @@ class BaseAacPolicy(object):
                  ob_space,
                  ac_space,
                  rp_sequence_size,
-                 lstm_class=rnn.BasicLSTMCell,
+                 lstm_class=BasicLSTMCell,
                  lstm_layers=(256,),
                  action_dp_alpha=200.0,
                  aux_estimate=False,
@@ -405,7 +406,7 @@ class Aac1dPolicy(BaseAacPolicy):
                  ob_space,
                  ac_space,
                  rp_sequence_size,
-                 lstm_class=rnn.BasicLSTMCell,
+                 lstm_class=BasicLSTMCell,
                  lstm_layers=(256,),
                  action_dp_alpha=200.0,
                  aux_estimate=True,
