@@ -3,7 +3,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.util.nest import flatten as flatten_nested
 from tensorflow.python.util.nest import assert_same_structure
-from tensorflow.contrib.rnn import LSTMStateTuple
 
 from gym.spaces import Discrete, Dict
 
@@ -19,14 +18,14 @@ def rnn_placeholders(state):
 
     Returns:    tuple of placeholders
     """
-    if isinstance(state, tf.contrib.rnn.LSTMStateTuple):
+    if isinstance(state, tf.compat.v1.nn.rnn_cell.LSTMStateTuple):
         c, h = state
-        c = tf.placeholder(tf.float32, tf.TensorShape([None]).concatenate(c.get_shape()[1:]), c.op.name + '_c_pl')
-        h = tf.placeholder(tf.float32, tf.TensorShape([None]).concatenate(h.get_shape()[1:]), h.op.name + '_h_pl')
-        return tf.contrib.rnn.LSTMStateTuple(c, h)
+        c = tf.compat.v1.placeholder(tf.float32, tf.TensorShape([None]).concatenate(c.get_shape()[1:]), c.op.name + '_c_pl')
+        h = tf.compat.v1.placeholder(tf.float32, tf.TensorShape([None]).concatenate(h.get_shape()[1:]), h.op.name + '_h_pl')
+        return tf.compat.v1.nn.rnn_cell.LSTMStateTuple(c, h)
     elif isinstance(state, tf.Tensor):
         h = state
-        h = tf.placeholder(tf.float32, tf.TensorShape([None]).concatenate(h.get_shape()[1:]), h.op.name + '_h_pl')
+        h = tf.compat.v1.placeholder(tf.float32, tf.TensorShape([None]).concatenate(h.get_shape()[1:]), h.op.name + '_h_pl')
         return h
     else:
         structure = [rnn_placeholders(x) for x in state]
@@ -49,7 +48,7 @@ def nested_placeholders(ob_space, batch_dim=None, name='nested'):
         out = {key: nested_placeholders(value, batch_dim, name + '_' + key) for key, value in ob_space.items()}
         return out
     else:
-        out = tf.placeholder(tf.float32, [batch_dim] + list(ob_space), name + '_pl')
+        out = tf.compat.v1.placeholder(tf.float32, [batch_dim] + list(ob_space), name + '_pl')
         return out
 
 
@@ -180,10 +179,10 @@ def batch_stack(dict_list, _top=True):
             value_list = [value[key] for value in dict_list]
             batch[key] = batch_stack(value_list, False)
 
-    elif isinstance(master, LSTMStateTuple):
+    elif isinstance(master, tf.compat.v1.nn.rnn_cell.LSTMStateTuple):
         c = batch_stack([state[0] for state in dict_list], False)
         h = batch_stack([state[1] for state in dict_list], False)
-        batch = LSTMStateTuple(c=c, h=h)
+        batch = tf.compat.v1.nn.rnn_cell.LSTMStateTuple(c=c, h=h)
 
     elif isinstance(master, tuple):
         batch = tuple([batch_stack([struct[i] for struct in dict_list], False) for i in range(len(master))])
@@ -220,10 +219,10 @@ def batch_gather(batch_dict, indices, _top=True):
         for key, value in batch_dict.items():
             batch[key] = batch_gather(value, indices, False)
 
-    elif isinstance(batch_dict, LSTMStateTuple):
+    elif isinstance(batch_dict, tf.compat.v1.nn.rnn_cell.LSTMStateTuple):
         c = batch_gather(batch_dict[0], indices, False)
         h = batch_gather(batch_dict[1], indices, False)
-        batch = LSTMStateTuple(c=c, h=h)
+        batch = tf.compat.v1.nn.rnn_cell.LSTMStateTuple(c=c, h=h)
 
     elif isinstance(batch_dict, tuple):
         batch = tuple([batch_gather(struct, indices, False) for struct in batch_dict])
@@ -312,7 +311,7 @@ def _show_struct(struct):
             print(key)
             _show_struct(value)
 
-    elif type(struct) in [LSTMStateTuple, tuple, list]:
+    elif type(struct) in [tf.compat.v1.nn.rnn_cell.LSTMStateTuple, tuple, list]:
         print('LSTM/tuple/list:', type(struct), len(struct))
         for i in struct:
             _show_struct(i)

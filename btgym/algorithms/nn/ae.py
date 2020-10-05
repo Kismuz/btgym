@@ -1,7 +1,5 @@
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib.layers import flatten as batch_flatten
-from tensorflow.contrib.layers import layer_norm as norm_layer
 
 from btgym.algorithms.nn.layers import normalized_columns_initializer, linear, conv2d
 
@@ -31,10 +29,11 @@ def conv2d_encoder(x,
         level-wise list of encoding layers shapes, first ro last.
 
     """
-    with tf.variable_scope(name, reuse=reuse):
+    with tf.compat.v1.variable_scope(name, reuse=reuse):
         layer_shapes = [x.get_shape()]
         layer_outputs = []
         for i, layer_spec in enumerate(layer_config, 1):
+            norm_layer = tf.keras.layers.LayerNormalization()
             x = tf.nn.elu(
                 norm_layer(
                     conv2d(
@@ -83,7 +82,7 @@ def conv2d_decoder(z,
         list of tensors holding decoded features for every layer inner to outer
 
     """
-    with tf.variable_scope(name, reuse=reuse):
+    with tf.compat.v1.variable_scope(name, reuse=reuse):
         x = z
         layer_shapes = list(layer_shapes)
         layer_shapes.reverse()
@@ -91,7 +90,7 @@ def conv2d_decoder(z,
         layer_config.reverse()
         layer_output = []
         for i, (layer_spec, layer_shape) in enumerate(zip(layer_config,layer_shapes[1:]), 1):
-            x = tf.image.resize_images(
+            x = tf.image.resize(
                 images=x,
                 size=[int(layer_shape[1]), int(layer_shape[2])],
                 method=resize_method,
@@ -156,7 +155,7 @@ def conv2d_autoencoder(
         None value
 
     """
-    with tf.variable_scope(name, reuse=reuse):
+    with tf.compat.v1.variable_scope(name, reuse=reuse):
         # Encode:
         encoder_layers, shapes = conv2d_encoder(
             x=inputs,
@@ -165,7 +164,7 @@ def conv2d_autoencoder(
             reuse=reuse
         )
         # Flatten hidden state, pass through dense :
-        z = batch_flatten(encoder_layers[-1])
+        z = tf.reshape(encoder_layers[-1], [tf.shape(encoder_layers[-1])[0], -1])
         h, w, c = encoder_layers[-1].get_shape().as_list()[1:]
 
         z = linear_layer_ref(
@@ -223,7 +222,7 @@ def cw_conv2d_autoencoder(
         None value
 
     """
-    with tf.variable_scope(name, reuse=reuse):
+    with tf.compat.v1.variable_scope(name, reuse=reuse):
         ae_bank = []
         for i in range(inputs.get_shape().as_list()[-1]):
             # Making list of list of AE's:
@@ -313,7 +312,7 @@ def beta_var_conv2d_autoencoder(
         tensor holding estimated KL divergence
 
     """
-    with tf.variable_scope(name, reuse=reuse):
+    with tf.compat.v1.variable_scope(name, reuse=reuse):
 
         # Encode:
         encoder_layers, shapes = conv2d_encoder(
@@ -358,8 +357,8 @@ def beta_var_conv2d_autoencoder(
 
         # Oversized noise generator:
         #eps = tf.random_normal(shape=[max_batch_size, half_size_z], mean=0., stddev=1.)
-        eps = tf.random_normal(shape=[max_batch_size, size_z], mean=0., stddev=1.)
-        eps = eps[:tf.shape(z)[0],:]
+        eps = tf.random.normal(shape=[max_batch_size, size_z], mean=0., stddev=1.)
+        eps = eps[:tf.shape(input=z)[0],:]
 
         # Get sample z ~ Q(z|X):
         z_sampled = mu + tf.exp(log_sigma / 2) * eps
@@ -405,18 +404,18 @@ class KernelMonitor():
             conv_input:         convolution stack input tensor
             layer_output:       tensor holding output of layer of interest from stack
         """
-        self.idx = tf.placeholder(tf.int32, name='kernel_index')
+        self.idx = tf.compat.v1.placeholder(tf.int32, name='kernel_index')
         self.conv_input = conv_input
         self.layer_output = layer_output
         # Build a loss function that maximizes the activation
         # of the n-th filter of the layer considered:
-        self.vis_loss = tf.reduce_mean(self.layer_output[:, :, :, self.idx])
+        self.vis_loss = tf.reduce_mean(input_tensor=self.layer_output[:, :, :, self.idx])
 
         # Gradient of the input picture wrt this loss:
-        self.vis_grads = tf.gradients(self.vis_loss, self.conv_input)[0]
+        self.vis_grads = tf.gradients(ys=self.vis_loss, xs=self.conv_input)[0]
 
         # Normalization trick:
-        self.vis_grads /= (tf.sqrt(tf.reduce_mean(tf.square(self.vis_grads))) + 1e-5)
+        self.vis_grads /= (tf.sqrt(tf.reduce_mean(input_tensor=tf.square(self.vis_grads))) + 1e-5)
 
     def _iterate(self, sess, signal, kernel_index):
         """

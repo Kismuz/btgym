@@ -279,7 +279,7 @@ class CA3Ca(CA3C):
 
         # Guidance annealing:
         if self.guided_decay_steps is not None:
-            self.guided_lambda_decayed = tf.train.polynomial_decay(
+            self.guided_lambda_decayed = tf.compat.v1.train.polynomial_decay(
                 self.guided_lambda,
                 self.global_step + 1,
                 self.guided_decay_steps,
@@ -327,14 +327,14 @@ class CA3Ca(CA3C):
         """
 
         # Each worker gets a different set of adam optimizer parameters:
-        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
 
         # Clipped gradients:
         self.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.loss, pi.var_list),
+            tf.gradients(ys=self.loss, xs=pi.var_list),
             40.0
         )
-        self.grads_global_norm = tf.global_norm(self.grads)
+        self.grads_global_norm = tf.linalg.global_norm(self.grads)
         # Copy weights from the parameter server to the local model
         self.sync = self.sync_pi = tf.group(
             *[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_global.var_list)]
@@ -351,21 +351,21 @@ class CA3Ca(CA3C):
 
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
-        self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in['external'])[0])
+        self.inc_step = self.global_step.assign_add(tf.shape(input=pi.on_state_in['external'])[0])
 
         self.local_network.meta.grads_and_vars = list(
             zip(self.local_network.meta.grads, self.network.meta.var_list)
         )
-        self.meta_opt = tf.train.GradientDescentOptimizer(self.local_network.meta.learn_rate)
+        self.meta_opt = tf.compat.v1.train.GradientDescentOptimizer(self.local_network.meta.learn_rate)
 
         self.meta_train_op = self.meta_opt.apply_gradients(self.local_network.meta.grads_and_vars)
 
-        self.local_network.meta.sync_slot_op = tf.assign(
+        self.local_network.meta.sync_slot_op = tf.compat.v1.assign(
             self.local_network.meta.cluster_averages_slot,
             self.network.meta.cluster_averages_slot,
         )
 
-        self.local_network.meta.send_stat_op = tf.scatter_nd_update(
+        self.local_network.meta.send_stat_op = tf.compat.v1.scatter_nd_update(
             self.network.meta.cluster_averages_slot,
             [[0, self.task], [1, self.task]],
             [

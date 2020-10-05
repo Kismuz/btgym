@@ -198,7 +198,7 @@ class BaseAAC(object):
             self.random_seed = random_seed
             if self.random_seed is not None:
                 np.random.seed(self.random_seed)
-                tf.set_random_seed(self.random_seed)
+                tf.compat.v1.set_random_seed(self.random_seed)
             self.log.debug('rnd_seed:{}, log_u_sample_(0,1]x5: {}'.
                            format(random_seed, log_uniform([1e-10,1], 5)))
 
@@ -405,7 +405,7 @@ class BaseAAC(object):
             self.log.debug('started building graphs...')
             if self.use_global_network:
                 # PS:
-                with tf.device(tf.train.replica_device_setter(1, worker_device=self.worker_device)):
+                with tf.device(tf.compat.v1.train.replica_device_setter(1, worker_device=self.worker_device)):
                     self.network = pi_global = self._make_policy('global')
                     if self.use_target_policy:
                         self.network_prime = self._make_policy('global_prime')
@@ -417,7 +417,7 @@ class BaseAAC(object):
 
             # Worker:
             with tf.device(self.worker_device):
-                with tf.variable_scope(self.name):
+                with tf.compat.v1.variable_scope(self.name):
                     self.local_network = pi = self._make_policy('local')
 
                     if self.use_target_policy:
@@ -429,7 +429,7 @@ class BaseAAC(object):
                     self.worker_device_callback_0()  # if need more networks etc.
 
                     # Meant for Batch-norm layers:
-                    pi.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='.*local.*')
+                    pi.update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS, scope='.*local.*')
 
                     # Just in case:
                     self.dummy_pi = self._make_dummy_policy()
@@ -440,7 +440,7 @@ class BaseAAC(object):
                         self.log.debug('{}: {}'.format(v.name, v.get_shape()))
 
                     #  Learning rate annealing:
-                    self.learn_rate_decayed = tf.train.polynomial_decay(
+                    self.learn_rate_decayed = tf.compat.v1.train.polynomial_decay(
                         self.opt_learn_rate,
                         self.global_step + 1,
                         self.opt_decay_steps,
@@ -507,13 +507,13 @@ class BaseAAC(object):
             tensor holding estimated loss graph
             list of related summaries
         """
-        with tf.name_scope(name):
+        with tf.compat.v1.name_scope(name):
             # On-policy AAC loss definition:
-            pi.on_pi_act_target = tf.placeholder(
+            pi.on_pi_act_target = tf.compat.v1.placeholder(
                 tf.float32, [None, self.ref_env.action_space.one_hot_depth], name="on_policy_action_pl"
             )
-            pi.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
-            pi.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
+            pi.on_pi_adv_target = tf.compat.v1.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
+            pi.on_pi_r_target = tf.compat.v1.placeholder(tf.float32, [None], name="on_policy_return_pl")
 
             clip_epsilon = tf.cast(self.clip_epsilon * self.learn_rate_decayed / self.opt_learn_rate, tf.float32)
 
@@ -534,10 +534,10 @@ class BaseAAC(object):
             model_summaries = on_pi_summaries
 
             # Off-policy losses:
-            pi.off_pi_act_target = tf.placeholder(
+            pi.off_pi_act_target = tf.compat.v1.placeholder(
                 tf.float32, [None, self.ref_env.action_space.one_hot_depth], name="off_policy_action_pl")
-            pi.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
-            pi.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
+            pi.off_pi_adv_target = tf.compat.v1.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
+            pi.off_pi_r_target = tf.compat.v1.placeholder(tf.float32, [None], name="off_policy_return_pl")
 
             if self.use_off_policy_aac:
                 # Off-policy AAC loss graph mirrors on-policy:
@@ -558,8 +558,8 @@ class BaseAAC(object):
 
             if self.use_pixel_control:
                 # Pixel control loss:
-                pi.pc_action = tf.placeholder(tf.float32, [None, self.ref_env.action_space.tensor_shape[0]], name="pc_action")
-                pi.pc_target = tf.placeholder(tf.float32, [None, None, None], name="pc_target")
+                pi.pc_action = tf.compat.v1.placeholder(tf.float32, [None, self.ref_env.action_space.tensor_shape[0]], name="pc_action")
+                pi.pc_target = tf.compat.v1.placeholder(tf.float32, [None, None, None], name="pc_target")
 
                 pc_loss, pc_summaries = self.pc_loss(
                     actions=pi.pc_action,
@@ -574,7 +574,7 @@ class BaseAAC(object):
 
             if self.use_value_replay:
                 # Value function replay loss:
-                pi.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
+                pi.vr_target = tf.compat.v1.placeholder(tf.float32, [None], name="vr_target")
                 vr_loss, vr_summaries = self.vr_loss(
                     r_target=pi.vr_target,
                     pi_vf=pi.vr_value,
@@ -586,7 +586,7 @@ class BaseAAC(object):
 
             if self.use_reward_prediction:
                 # Reward prediction loss:
-                pi.rp_target = tf.placeholder(tf.float32, [None, 3], name="rp_target")
+                pi.rp_target = tf.compat.v1.placeholder(tf.float32, [None, 3], name="rp_target")
 
                 rp_loss, rp_summaries = self.rp_loss(
                     rp_targets=pi.rp_target,
@@ -613,7 +613,7 @@ class BaseAAC(object):
         """
 
         # Each worker gets a different set of adam optimizer parameters:
-        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
 
         # self.optimizer = tf.train.RMSPropOptimizer(
         #    learning_rate=train_learn_rate,
@@ -624,10 +624,10 @@ class BaseAAC(object):
 
         # Clipped gradients:
         self.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.loss, pi.var_list),
+            tf.gradients(ys=self.loss, xs=pi.var_list),
             40.0
         )
-        self.grads_global_norm = tf.global_norm(self.grads)
+        self.grads_global_norm = tf.linalg.global_norm(self.grads)
         # Copy weights from the parameter server to the local model
         self.sync = self.sync_pi = tf.group(
             *[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_global.var_list)]
@@ -649,7 +649,7 @@ class BaseAAC(object):
             stream = pi.on_state_in['external'][list(pi.on_state_in['external'].keys())[0]]
         else:
             stream = pi.on_state_in['external']
-        self.inc_step = self.global_step.assign_add(tf.shape(stream)[0])
+        self.inc_step = self.global_step.assign_add(tf.shape(input=stream)[0])
 
         train_op = self.optimizer.apply_gradients(grads_and_vars)
         self.log.debug('train_op defined')
@@ -666,71 +666,71 @@ class BaseAAC(object):
         if model_summaries is not None:
             if self.use_global_network:
                 # Model-wide statistics:
-                with tf.name_scope('model'):
+                with tf.compat.v1.name_scope('model'):
                     model_summaries += [
-                        tf.summary.scalar("grad_global_norm", self.grads_global_norm),
+                        tf.compat.v1.summary.scalar("grad_global_norm", self.grads_global_norm),
                         # TODO: add gradient variance summary
                         #tf.summary.scalar("learn_rate", self.train_learn_rate),
-                        tf.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
-                        tf.summary.scalar("total_loss", self.loss),
+                        tf.compat.v1.summary.scalar("learn_rate", self.learn_rate_decayed),  # cause actual rate is a jaggy due to test freezes
+                        tf.compat.v1.summary.scalar("total_loss", self.loss),
                         # tf.summary.scalar('roll_reward', tf.reduce_mean(self.local_network.on_last_reward_in)),
                         # tf.summary.scalar('roll_advantage', tf.reduce_mean(self.local_network.on_pi_adv_target)),
                     ]
                     if policy is not None:
-                        model_summaries += [tf.summary.scalar("var_global_norm", tf.global_norm(policy.var_list))]
+                        model_summaries += [tf.compat.v1.summary.scalar("var_global_norm", tf.linalg.global_norm(policy.var_list))]
         else:
             model_summaries = []
         # Model stat. summary:
-        model_summary = tf.summary.merge(model_summaries, name='model_summary')
+        model_summary = tf.compat.v1.summary.merge(model_summaries, name='model_summary')
 
         # Episode-related summaries:
         ep_summary = dict(
             # Summary placeholders
-            render_atari=tf.placeholder(tf.uint8, [None, None, None, 1]),
-            total_r=tf.placeholder(tf.float32, ),
-            cpu_time=tf.placeholder(tf.float32, ),
-            final_value=tf.placeholder(tf.float32, ),
-            steps=tf.placeholder(tf.int32, ),
+            render_atari=tf.compat.v1.placeholder(tf.uint8, [None, None, None, 1]),
+            total_r=tf.compat.v1.placeholder(tf.float32, ),
+            cpu_time=tf.compat.v1.placeholder(tf.float32, ),
+            final_value=tf.compat.v1.placeholder(tf.float32, ),
+            steps=tf.compat.v1.placeholder(tf.int32, ),
         )
         if self.test_mode:
             # For Atari:
-            ep_summary['render_op'] = tf.summary.image("model/state", ep_summary['render_atari'])
+            ep_summary['render_op'] = tf.compat.v1.summary.image("model/state", ep_summary['render_atari'])
 
         else:
             # BTGym rendering:
             ep_summary.update(
                 {
-                    mode: tf.placeholder(tf.uint8, [None, None, None, None], name=mode + '_pl')
+                    mode: tf.compat.v1.placeholder(tf.uint8, [None, None, None, None], name=mode + '_pl')
                     for mode in self.env_list[0].render_modes + self.aux_render_modes
                 }
             )
-            ep_summary['render_op'] = tf.summary.merge(
-                [tf.summary.image(mode, ep_summary[mode])
+            ep_summary['render_op'] = tf.compat.v1.summary.merge(
+                [tf.compat.v1.summary.image(mode, ep_summary[mode])
                  for mode in self.env_list[0].render_modes + self.aux_render_modes]
             )
         # Episode stat. summary:
-        ep_summary['btgym_stat_op'] = tf.summary.merge(
+        ep_summary['btgym_stat_op'] = tf.compat.v1.summary.merge(
             [
-                tf.summary.scalar('episode_train/total_reward', ep_summary['total_r']),
-                tf.summary.scalar('episode_train/cpu_time_sec', ep_summary['cpu_time']),
-                tf.summary.scalar('episode_train/final_value', ep_summary['final_value']),
-                tf.summary.scalar('episode_train/env_steps', ep_summary['steps'])
+                tf.compat.v1.summary.scalar('episode_train/total_reward', ep_summary['total_r']),
+                tf.compat.v1.summary.scalar('episode_train/cpu_time_sec', ep_summary['cpu_time']),
+                tf.compat.v1.summary.scalar('episode_train/final_value', ep_summary['final_value']),
+                tf.compat.v1.summary.scalar('episode_train/env_steps', ep_summary['steps'])
             ],
             name='episode_train_btgym'
         )
         # Test episode stat. summary:
-        ep_summary['test_btgym_stat_op'] = tf.summary.merge(
+        ep_summary['test_btgym_stat_op'] = tf.compat.v1.summary.merge(
             [
-                tf.summary.scalar('episode_test/total_reward', ep_summary['total_r']),
-                tf.summary.scalar('episode_test/final_value', ep_summary['final_value']),
-                tf.summary.scalar('episode_test/env_steps', ep_summary['steps'])
+                tf.compat.v1.summary.scalar('episode_test/total_reward', ep_summary['total_r']),
+                tf.compat.v1.summary.scalar('episode_test/final_value', ep_summary['final_value']),
+                tf.compat.v1.summary.scalar('episode_test/env_steps', ep_summary['steps'])
             ],
             name='episode_test_btgym'
         )
-        ep_summary['atari_stat_op'] = tf.summary.merge(
+        ep_summary['atari_stat_op'] = tf.compat.v1.summary.merge(
             [
-                tf.summary.scalar('episode/total_reward', ep_summary['total_r']),
-                tf.summary.scalar('episode/steps', ep_summary['steps'])
+                tf.compat.v1.summary.scalar('episode/total_reward', ep_summary['total_r']),
+                tf.compat.v1.summary.scalar('episode/steps', ep_summary['steps'])
             ],
             name='episode_atari'
         )
@@ -798,24 +798,24 @@ class BaseAAC(object):
         Returns:
             None, sets attrs.
         """
-        self.global_step = tf.get_variable(
+        self.global_step = tf.compat.v1.get_variable(
             "global_step",
             [],
             tf.int32,
-            initializer=tf.constant_initializer(
+            initializer=tf.compat.v1.constant_initializer(
                 0,
                 dtype=tf.int32
             ),
             trainable=False
         )
-        tf.add_to_collection(tf.GraphKeys.GLOBAL_STEP, self.global_step)
+        tf.compat.v1.add_to_collection(tf.compat.v1.GraphKeys.GLOBAL_STEP, self.global_step)
         self.reset_global_step = self.global_step.assign(0)
 
-        self.global_episode = tf.get_variable(
+        self.global_episode = tf.compat.v1.get_variable(
             "global_episode",
             [],
             tf.int32,
-            initializer=tf.constant_initializer(
+            initializer=tf.compat.v1.constant_initializer(
                 0,
                 dtype=tf.int32
             ),
@@ -837,7 +837,7 @@ class BaseAAC(object):
         Returns:
             policy instance
         """
-        with tf.variable_scope(scope):
+        with tf.compat.v1.variable_scope(scope):
             # Make policy instance:
             network = self.policy_class(**self.policy_kwargs)
             if 'global' not in scope:
@@ -1313,7 +1313,7 @@ class BaseAAC(object):
 
         # Every worker writes train episode summaries:
         if model_data is not None:
-            self.summary_writer.add_summary(tf.Summary.FromString(model_data), step)
+            self.summary_writer.add_summary(tf.compat.v1.Summary.FromString(model_data), step)
         self.summary_writer.flush()
 
     def process(self, sess, **kwargs):

@@ -1,3 +1,5 @@
+import tensorflow_addons as tfa
+
 from btgym.algorithms.policy.base import BaseAacPolicy
 from btgym.algorithms.nn.networks import *
 from btgym.algorithms.utils import *
@@ -17,7 +19,7 @@ class RegressionTestPolicy(BaseAacPolicy):
                  ac_space,
                  rp_sequence_size=4,
                  state_encoder_class_ref=conv_2d_network,
-                 lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
+                 lstm_class_ref=tfa.rnn.LayerNormLSTMCell,
                  lstm_layers=(256, 256),
                  linear_layer_ref=noisy_linear,
                  share_encoder_params=False,
@@ -39,7 +41,7 @@ class RegressionTestPolicy(BaseAacPolicy):
             ob_space:               instance of btgym.spaces.DictSpace
             ac_space:               instance of btgym.spaces.ActionDictSpace
             rp_sequence_size:       reward prediction sample length
-            lstm_class_ref:         tf.nn.lstm class to use
+            lstm_class_ref:         tfa.rnn class to use
             lstm_layers:            tuple of LSTM layers sizes
             linear_layer_ref:       linear layer class to use
             share_encoder_params:   bool, whether to share encoder parameters for every 'external' data stream
@@ -72,7 +74,7 @@ class RegressionTestPolicy(BaseAacPolicy):
         self.encode_internal_state = encode_internal_state
         self.share_encoder_params = share_encoder_params
         if self.share_encoder_params:
-            self.reuse_encoder_params = tf.AUTO_REUSE
+            self.reuse_encoder_params = tf.compat.v1.AUTO_REUSE
 
         else:
             self.reuse_encoder_params = False
@@ -88,16 +90,16 @@ class RegressionTestPolicy(BaseAacPolicy):
         self.on_state_in = nested_placeholders(self.ob_space.shape, batch_dim=None, name='on_policy_state_in')
 
         # Placeholders for previous step action[multi-categorical vector encoding]  and reward [scalar]:
-        self.on_last_a_in = tf.placeholder(
+        self.on_last_a_in = tf.compat.v1.placeholder(
             tf.float32,
             [None, self.ac_space.encoded_depth],
             name='on_policy_last_action_in_pl'
         )
-        self.on_last_reward_in = tf.placeholder(tf.float32, [None], name='on_policy_last_reward_in_pl')
+        self.on_last_reward_in = tf.compat.v1.placeholder(tf.float32, [None], name='on_policy_last_reward_in_pl')
 
         # Placeholders for rnn batch and time-step dimensions:
-        self.on_batch_size = tf.placeholder(tf.int32, name='on_policy_batch_size')
-        self.on_time_length = tf.placeholder(tf.int32, name='on_policy_sequence_size')
+        self.on_batch_size = tf.compat.v1.placeholder(tf.int32, name='on_policy_batch_size')
+        self.on_time_length = tf.compat.v1.placeholder(tf.int32, name='on_policy_sequence_size')
 
         self.debug['on_state_in_keys'] = list(self.on_state_in.keys())
 
@@ -111,7 +113,7 @@ class RegressionTestPolicy(BaseAacPolicy):
                 pass
 
         except AttributeError:
-            self.train_phase = tf.placeholder_with_default(
+            self.train_phase = tf.compat.v1.placeholder_with_default(
                 tf.constant(False, dtype=tf.bool),
                 shape=(),
                 name='train_phase_flag_pl'
@@ -146,7 +148,7 @@ class RegressionTestPolicy(BaseAacPolicy):
                     else:
                         layer_name_template = 'encoded_{}_{}'
                     encoded_streams = {
-                        name: tf.layers.flatten(
+                        name: tf.compat.v1.layers.flatten(
                             self.state_encoder_class_ref(
                                 x=stream,
                                 ob_space=self.ob_space.shape[key][name],
@@ -165,7 +167,7 @@ class RegressionTestPolicy(BaseAacPolicy):
                     )
                 else:
                     # Got single data stream:
-                    encoded_mode = tf.layers.flatten(
+                    encoded_mode = tf.compat.v1.layers.flatten(
                         self.state_encoder_class_ref(
                             x=self.on_state_in[key],
                             ob_space=self.ob_space.shape[key],
@@ -184,14 +186,14 @@ class RegressionTestPolicy(BaseAacPolicy):
 
         # TODO: for encoder prediction test, output `naive` estimates for logits and value directly from encoder:
         [self.on_simple_logits, self.on_simple_value, _] = dense_aac_network(
-            tf.layers.flatten(on_aac_x),
+            tf.compat.v1.layers.flatten(on_aac_x),
             ac_space_depth=self.ac_space.one_hot_depth,
             linear_layer_ref=linear_layer_ref,
             name='aac_dense_simple_pi_v'
         )
 
         # Reshape rnn inputs for batch training as: [rnn_batch_dim, rnn_time_dim, flattened_depth]:
-        x_shape_dynamic = tf.shape(on_aac_x)
+        x_shape_dynamic = tf.shape(input=on_aac_x)
         max_seq_len = tf.cast(x_shape_dynamic[0] / self.on_batch_size, tf.int32)
         x_shape_static = on_aac_x.get_shape().as_list()
 
@@ -280,7 +282,7 @@ class RegressionTestPolicy(BaseAacPolicy):
         self.debug['self.on_lstm_1_state_pl_flatten'] = self.on_lstm_1_state_pl_flatten
 
         # For time_flat only: Reshape on_lstm_1_state_out from [1,2,20,size] -->[20,1,2,size] --> [20,1, 2xsize]:
-        reshape_lstm_1_state_out = tf.transpose(self.on_lstm_1_state_out, [2, 0, 1, 3])
+        reshape_lstm_1_state_out = tf.transpose(a=self.on_lstm_1_state_out, perm=[2, 0, 1, 3])
         reshape_lstm_1_state_out_shape_static = reshape_lstm_1_state_out.get_shape().as_list()
 
         # Take policy logits off first LSTM-dense layer:
@@ -363,7 +365,7 @@ class RegressionTestPolicy(BaseAacPolicy):
             # )
             #self.regression = tf.layers.flatten(self.debug['on_state_external_encoded'])
             self.regression = linear(
-                x=tf.layers.flatten(self.debug['on_state_external_encoded']),
+                x=tf.compat.v1.layers.flatten(self.debug['on_state_external_encoded']),
                 size=self.regression_targets.shape.as_list()[-1],
                 initializer=normalized_columns_initializer(0.1),
                 name='on_dense_simple_regression',
@@ -379,7 +381,7 @@ class RegressionTestPolicy(BaseAacPolicy):
             #     name='on_dense_rnn_regression'
             # )
             self.regression = linear(
-                x=tf.layers.flatten(self.debug['reshaped_on_x_lstm_2_out']),
+                x=tf.compat.v1.layers.flatten(self.debug['reshaped_on_x_lstm_2_out']),
                 size=self.regression_targets.shape.as_list()[-1],
                 initializer=normalized_columns_initializer(0.1),
                 name='on_dense_rnn_regression',
@@ -394,13 +396,13 @@ class RegressionTestPolicy(BaseAacPolicy):
         self.on_lstm_state_pl_flatten = self.on_lstm_1_state_pl_flatten + self.on_lstm_2_state_pl_flatten
 
         # Batch-norm related:
-        self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        self.update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
         # Add moving averages to save list:
-        moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')
-        renorm_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*renorm.*')
+        moving_var_list = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, tf.compat.v1.get_variable_scope().name + '.*moving.*')
+        renorm_var_list = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, tf.compat.v1.get_variable_scope().name + '.*renorm.*')
 
         # What to save:
-        self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
+        self.var_list = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, tf.compat.v1.get_variable_scope().name)
         self.var_list += moving_var_list + renorm_var_list
 
         # RL2 related:
@@ -434,7 +436,7 @@ class RegressionTestPolicy(BaseAacPolicy):
             KeyError if [`metadata`]:[`trial_num`,`type`] keys not found
         """
         try:
-            sess = tf.get_default_session()
+            sess = tf.compat.v1.get_default_session()
             new_context = list(sess.run(self.on_lstm_init_state))
             if state['metadata']['trial_num'] != self.current_trial_num\
                     or context is None\
@@ -473,7 +475,7 @@ class RegressionTestPolicy(BaseAacPolicy):
         Returns:
             Action as dictionary of several action encodings, actions logits, V-fn value, output RNN state
         """
-        sess = tf.get_default_session()
+        sess = tf.compat.v1.get_default_session()
         feeder = {pl: value for pl, value in zip(self.on_lstm_state_pl_flatten, flatten_nested(lstm_state))}
         feeder.update(feed_dict_from_nested(self.on_state_in, observation, expand_batch=True))
         feeder.update(

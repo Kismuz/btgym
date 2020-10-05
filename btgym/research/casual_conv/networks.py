@@ -1,6 +1,6 @@
 
 import tensorflow as tf
-from tensorflow.contrib.layers import layer_norm as norm_layer
+import tensorflow_addons as tfa
 
 import numpy as np
 import math
@@ -32,7 +32,7 @@ def conv_1d_casual_encoder(
         tensor holding state features;
     """
 
-    with tf.variable_scope(name_or_scope=name, reuse=reuse):
+    with tf.compat.v1.variable_scope(name_or_scope=name, reuse=reuse):
         shape = x.get_shape().as_list()
         if len(shape) > 3:  # remove pseudo 2d dimension
             x = x[:, :, 0, :]
@@ -53,7 +53,7 @@ def conv_1d_casual_encoder(
             if tail != 0:
                 pad = conv_1d_filter_size - tail
                 paddings = [[0, 0], [pad, 0], [0, 0]]
-                y = tf.pad(y, paddings)
+                y = tf.pad(tensor=y, paddings=paddings)
                 length += pad
 
             # print('padded_length: ', length)
@@ -78,12 +78,13 @@ def conv_1d_casual_encoder(
             # b2t:
             y = tf.reshape(y, [-1, num_time_batches, conv_1d_num_filters], name='layer_{}_output'.format(i))
 
-            y = norm_layer(y)
+            normalization_layer = tf.keras.layers.LayerNormalization()
+            y = normalization_layer(y)
             if conv_1d_activation is not None:
                 y = conv_1d_activation(y)
 
             if keep_prob is not None:
-                y = tf.nn.dropout(y, keep_prob=keep_prob, name="_layer_{}_with_dropout".format(i))
+                y = tf.nn.dropout(y, rate=1 - (keep_prob), name="_layer_{}_with_dropout".format(i))
 
             layers.append(y)
 
@@ -137,7 +138,7 @@ def conv_1d_casual_encoder(
     return encoded
 
 
-def attention_layer(inputs, attention_ref=tf.contrib.seq2seq.LuongAttention, name='attention_layer', **kwargs):
+def attention_layer(inputs, attention_ref=tfa.seq2seq.LuongAttention, name='attention_layer', **kwargs):
     """
     Temporal attention layer.
     Computes attention context based on last(left) value in time dim.
@@ -171,7 +172,7 @@ def attention_layer(inputs, attention_ref=tf.contrib.seq2seq.LuongAttention, nam
     # Suppose there is no previous context for attention (uhm?):
     alignments = attention_mechanism(
         query_state,
-        attention_mechanism.initial_alignments(tf.shape(inputs)[0], dtype=tf.float32)
+        attention_mechanism.initial_alignments(tf.shape(input=inputs)[0], dtype=tf.float32)
     )
     # Somehow attention call returns tuple of twin tensors (wtf?):
     if isinstance(alignments, tuple):
@@ -201,7 +202,7 @@ def conv_1d_casual_attention_encoder(
         conv_1d_num_filters=32,
         conv_1d_filter_size=2,
         conv_1d_activation=tf.nn.elu,
-        conv_1d_attention_ref=tf.contrib.seq2seq.LuongAttention,
+        conv_1d_attention_ref=tfa.seq2seq.LuongAttention,
         name='casual_encoder',
         keep_prob=None,
         conv_1d_gated=False,
@@ -219,7 +220,7 @@ def conv_1d_casual_attention_encoder(
         tensor holding state features;
     """
 
-    with tf.variable_scope(name_or_scope=name, reuse=reuse):
+    with tf.compat.v1.variable_scope(name_or_scope=name, reuse=reuse):
         shape = x.get_shape().as_list()
         if len(shape) > 3:  # remove pseudo 2d dimension
             x = x[:, :, 0, :]
@@ -240,7 +241,7 @@ def conv_1d_casual_attention_encoder(
             if tail != 0:
                 pad = conv_1d_filter_size - tail
                 paddings = [[0, 0], [pad, 0], [0, 0]]
-                y = tf.pad(y, paddings)
+                y = tf.pad(tensor=y, paddings=paddings)
                 length += pad
 
             # print('padded_length: ', length)
@@ -268,7 +269,7 @@ def conv_1d_casual_attention_encoder(
                 y = conv_1d_activation(y)
 
             if keep_prob is not None:
-                y = tf.nn.dropout(y, keep_prob=keep_prob, name="_layer_{}_with_dropout".format(i))
+                y = tf.nn.dropout(y, rate=1 - (keep_prob), name="_layer_{}_with_dropout".format(i))
 
             if conv_1d_gated:
                 split_size = int(conv_1d_num_filters / 2)

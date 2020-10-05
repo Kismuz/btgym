@@ -6,8 +6,7 @@
 
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.rnn as rnn
-from tensorflow.contrib.layers import layer_norm as norm_layer
+import tensorflow_addons as tfa
 from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.algorithms.nn.layers import normalized_columns_initializer, categorical_sample
@@ -36,8 +35,9 @@ def conv_2d_network(x,
     Returns:
         tensor holding state features;
     """
-    with tf.variable_scope(name, reuse=reuse):
+    with tf.compat.v1.variable_scope(name, reuse=reuse):
         for i, num_filters in enumerate(conv_2d_num_filters):
+            norm_layer = tf.keras.layers.LayerNormalization()
             x = tf.nn.elu(
                 norm_layer(
                     conv_2d_layer_ref(
@@ -55,7 +55,7 @@ def conv_2d_network(x,
                 )
             )
             if keep_prob is not None:
-                x = tf.nn.dropout(x, keep_prob=keep_prob, name="_layer_{}_with_dropout".format(i + 1))
+                x = tf.nn.dropout(x, rate=1 - (keep_prob), name="_layer_{}_with_dropout".format(i + 1))
 
         # A3c/BaseAAC original paper design:
         # x = tf.nn.elu(conv2d(x, 16, 'conv2d_1', [8, 8], [4, 4], pad, dtype, collections, reuse))
@@ -105,7 +105,7 @@ def conv_1d_network(x,
 def lstm_network(
         x,
         lstm_sequence_length,
-        lstm_class=rnn.BasicLSTMCell,
+        lstm_class=tf.compat.v1.nn.rnn_cell.BasicLSTMCell,
         lstm_layers=(256,),
         static=False,
         keep_prob=None,
@@ -123,27 +123,27 @@ def lstm_network(
          lstm state output tensor;
          lstm flattened feed placeholders as tuple.
     """
-    with tf.variable_scope(name, reuse=reuse):
+    with tf.compat.v1.variable_scope(name, reuse=reuse):
         # Prepare rnn type:
         if static:
-            rnn_net = tf.nn.static_rnn
+            rnn_net = tf.compat.v1.nn.static_rnn
             # Remove time dimension (suppose always get one) and wrap to list:
             x = [x[:, 0, :]]
 
         else:
-            rnn_net = tf.nn.dynamic_rnn
+            rnn_net = tf.compat.v1.nn.dynamic_rnn
         # Define LSTM layers:
         lstm = []
         for size in lstm_layers:
             layer = lstm_class(size)
             if keep_prob is not None:
-                layer = tf.nn.rnn_cell.DropoutWrapper(layer, output_keep_prob=keep_prob)
+                layer = tf.compat.v1.nn.rnn_cell.DropoutWrapper(layer, output_keep_prob=keep_prob)
 
             lstm.append(layer)
 
-        lstm = rnn.MultiRNNCell(lstm, state_is_tuple=True)
+        lstm = tf.compat.v1.nn.rnn_cell.MultiRNNCell(lstm, state_is_tuple=True)
         # Get time_dimension as [1]-shaped tensor:
-        step_size = tf.expand_dims(tf.shape(x)[1], [0])
+        step_size = tf.expand_dims(tf.shape(input=x)[1], [0])
 
         lstm_init_state = lstm.zero_state(1, dtype=tf.float32)
 
@@ -183,8 +183,9 @@ def dense_aac_network(x, ac_space_depth, name='dense_aac', linear_layer_ref=nois
         for every space in ac_space_shape dictionary
     """
 
-    with tf.variable_scope(name, reuse=reuse):
+    with tf.compat.v1.variable_scope(name, reuse=reuse):
         # Center-logits:
+        norm_layer = tf.keras.layers.LayerNormalization()
         logits = norm_layer(
             linear_layer_ref(
                 x=x,
@@ -247,8 +248,8 @@ def pixel_change_2d_estimator(ob_space, pc_estimator_stride=(2, 2), **kwargs):
     Note:
         crops input array by one pix from either side; --> 1D signal to be shaped as [signal_length, 3]
     """
-    input_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_state_in')
-    input_last_state = tf.placeholder(tf.float32, list(ob_space), name='pc_change_est_last_state_in')
+    input_state = tf.compat.v1.placeholder(tf.float32, list(ob_space), name='pc_change_est_state_in')
+    input_last_state = tf.compat.v1.placeholder(tf.float32, list(ob_space), name='pc_change_est_last_state_in')
 
     x = tf.abs(tf.subtract(input_state, input_last_state)) # TODO: tf.square?
 
@@ -258,13 +259,13 @@ def pixel_change_2d_estimator(ob_space, pc_estimator_stride=(2, 2), **kwargs):
     else:
         x = tf.expand_dims(x, 0)[:, 1:-1, 1:-1, :]  # True 2D,  fake batch dim and crop H, W dims
 
-    x = tf.reduce_mean(x, axis=-1, keepdims=True)
+    x = tf.reduce_mean(input_tensor=x, axis=-1, keepdims=True)
 
-    x_out = tf.nn.max_pool(
-        x,
-        [1, pc_estimator_stride[0], pc_estimator_stride[1], 1],
-        [1, pc_estimator_stride[0], pc_estimator_stride[1], 1],
-        'SAME'
+    x_out = tf.nn.max_pool2d(
+        input=x,
+        ksize=[1, pc_estimator_stride[0], pc_estimator_stride[1], 1],
+        strides=[1, pc_estimator_stride[0], pc_estimator_stride[1], 1],
+        padding='SAME'
     )
     return input_state, input_last_state, x_out
 
@@ -285,7 +286,7 @@ def duelling_pc_network(x,
             x=x,
             size=np.prod(duell_pc_x_inner_shape),
             name='pc_dense',
-            initializer=tf.contrib.layers.xavier_initializer(),
+            initializer=tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform"),
             reuse=reuse
         )
     )
@@ -296,7 +297,7 @@ def duelling_pc_network(x,
     # Q-value estimate using advantage mean,
     # as (9) in "Dueling Network Architectures..." paper:
     # https://arxiv.org/pdf/1511.06581.pdf
-    pc_a_mean = tf.reduce_mean(pc_a, axis=-1, keepdims=True)
+    pc_a_mean = tf.reduce_mean(input_tensor=pc_a, axis=-1, keepdims=True)
     pc_q = pc_v + pc_a - pc_a_mean  # [None, 20, 20, ac_size]
 
     return pc_q

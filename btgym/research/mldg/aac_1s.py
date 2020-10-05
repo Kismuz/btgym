@@ -223,11 +223,11 @@ class AMLDG_1s(GuidedAAC):
             tensor holding estimated loss graph
             list of related summaries
         """
-        with tf.name_scope(name):
+        with tf.compat.v1.name_scope(name):
 
             # Guidance annealing:
             if self.guided_decay_steps is not None:
-                self.guided_lambda_decayed = tf.train.polynomial_decay(
+                self.guided_lambda_decayed = tf.compat.v1.train.polynomial_decay(
                     self.guided_lambda,
                     self.global_step + 1,
                     self.guided_decay_steps,
@@ -249,11 +249,11 @@ class AMLDG_1s(GuidedAAC):
             )
 
             # On-policy AAC loss definition:
-            pi.on_pi_act_target = tf.placeholder(
+            pi.on_pi_act_target = tf.compat.v1.placeholder(
                 tf.float32, [None, self.ref_env.action_space.n], name="on_policy_action_pl"
             )
-            pi.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
-            pi.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
+            pi.on_pi_adv_target = tf.compat.v1.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
+            pi.on_pi_r_target = tf.compat.v1.placeholder(tf.float32, [None], name="on_policy_return_pl")
 
             clip_epsilon = tf.cast(self.clip_epsilon * self.learn_rate_decayed / self.opt_learn_rate, tf.float32)
 
@@ -273,10 +273,10 @@ class AMLDG_1s(GuidedAAC):
             model_summaries = on_pi_summaries + g_summary
 
             # Off-policy losses:
-            pi.off_pi_act_target = tf.placeholder(
+            pi.off_pi_act_target = tf.compat.v1.placeholder(
                 tf.float32, [None, self.ref_env.action_space.n], name="off_policy_action_pl")
-            pi.off_pi_adv_target = tf.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
-            pi.off_pi_r_target = tf.placeholder(tf.float32, [None], name="off_policy_return_pl")
+            pi.off_pi_adv_target = tf.compat.v1.placeholder(tf.float32, [None], name="off_policy_advantage_pl")
+            pi.off_pi_r_target = tf.compat.v1.placeholder(tf.float32, [None], name="off_policy_return_pl")
 
             if self.use_off_policy_aac:
                 # Off-policy AAC loss graph mirrors on-policy:
@@ -296,7 +296,7 @@ class AMLDG_1s(GuidedAAC):
 
             if self.use_value_replay:
                 # Value function replay loss:
-                pi.vr_target = tf.placeholder(tf.float32, [None], name="vr_target")
+                pi.vr_target = tf.compat.v1.placeholder(tf.float32, [None], name="vr_target")
                 self.vr_loss, self.vr_summaries = self.vr_loss(
                     r_target=pi.vr_target,
                     pi_vf=pi.vr_value,
@@ -323,16 +323,16 @@ class AMLDG_1s(GuidedAAC):
             *[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_global.var_list)]
         )
         self.sync = self.sync_pi
-        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
-        self.fast_optimizer = tf.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
+        self.fast_optimizer = tf.compat.v1.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
 
         # Clipped gradients:
         pi.on_grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.on_pi_loss, pi.var_list),
+            tf.gradients(ys=self.on_pi_loss, xs=pi.var_list),
             40.0
         )
         pi.off_grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.off_pi_loss, pi.var_list),
+            tf.gradients(ys=self.off_pi_loss, xs=pi.var_list),
             40.0
         )
 
@@ -354,7 +354,7 @@ class AMLDG_1s(GuidedAAC):
 
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
-        self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in['external'])[0])
+        self.inc_step = self.global_step.assign_add(tf.shape(input=pi.on_state_in['external'])[0])
 
         # Local fast optimisation op:
         self.local_train_op = self.fast_optimizer.apply_gradients(local_grads_and_vars)
@@ -501,22 +501,22 @@ class AMLDG_1s_a(AMLDG_1s):
             *[v1.assign(v2) for v1, v2 in zip(pi.var_list, pi_global.var_list)]
         )
         self.sync = self.sync_pi
-        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
 
         # Clipped gradients:
         pi.on_grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.on_pi_loss, pi.var_list),
+            tf.gradients(ys=self.on_pi_loss, xs=pi.var_list),
             40.0
         )
         pi.off_grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.off_pi_loss, pi.var_list),
+            tf.gradients(ys=self.off_pi_loss, xs=pi.var_list),
             40.0
         )
         self.grads = pi.on_grads
 
         # Learnable fast rate:
         #self.fast_learn_rate = tf.reduce_mean(pi.off_learn_alpha, name='mean_alpha_rate') / 10
-        self.fast_optimizer = tf.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
+        self.fast_optimizer = tf.compat.v1.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
         # self.alpha_rate_loss = tf.global_norm(pi.off_grads)
         # self.alpha_grads, _ = tf.clip_by_global_norm(
         #     tf.gradients(self.alpha_rate_loss, pi.var_list),
@@ -539,7 +539,7 @@ class AMLDG_1s_a(AMLDG_1s):
 
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
-        self.inc_step = self.global_step.assign_add(tf.shape(pi.on_state_in['external'])[0])
+        self.inc_step = self.global_step.assign_add(tf.shape(input=pi.on_state_in['external'])[0])
 
         # Local fast optimisation op:
         self.local_train_op = self.fast_optimizer.apply_gradients(local_grads_and_vars)

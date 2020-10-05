@@ -93,7 +93,7 @@ class GuidedAAC(BaseAAC):
 
         # Guidance annealing:
         if self.guided_decay_steps is not None:
-            self.guided_lambda_decayed = tf.train.polynomial_decay(
+            self.guided_lambda_decayed = tf.compat.v1.train.polynomial_decay(
                 self.guided_lambda,
                 self.global_step + 1,
                 self.guided_decay_steps,

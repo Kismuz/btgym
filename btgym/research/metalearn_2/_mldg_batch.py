@@ -260,7 +260,7 @@ class MLDG():
 
         except:
             msg = 'start() exception occurred' + \
-                '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
+                  '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
             self.log.exception(msg)
             raise RuntimeError(msg)
 
@@ -401,16 +401,16 @@ class MLDG():
 
             test_feed_dict = self.test_aac.process_data(sess,,,,, test_data,,
 
-                             # self.log.warning('Test data rollout for step {} ok.'.format(self.local_steps))
-                             #
-                             # self.log.warning(
-                             #     'Test data trial_num: {}'.format(
-                             #         np.asarray(test_data['on_policy'][0]['state']['metadata']['trial_num'])
-                             #     )
-                             # )
+            # self.log.warning('Test data rollout for step {} ok.'.format(self.local_steps))
+            #
+            # self.log.warning(
+            #     'Test data trial_num: {}'.format(
+            #         np.asarray(test_data['on_policy'][0]['state']['metadata']['trial_num'])
+            #     )
+            # )
 
-                             # Sample train data of same size:
-                             feed_dict = self.train_aac._get_main_feeder(
+            # Sample train data of same size:
+            feed_dict = self.train_aac._get_main_feeder(
                 sess,
                 self.train_aac.sample_batch(on_policy_batch, test_batch_size),
                 self.train_aac.sample_batch(off_policy_batch, test_batch_size),
@@ -527,4 +527,5 @@ class MLDG():
                   '\n\nPress `Ctrl-C` or jupyter:[Kernel]->[Interrupt] for clean exit.\n'
             self.log.exception(msg)
             raise RuntimeError(msg)
+
 

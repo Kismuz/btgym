@@ -69,7 +69,7 @@ class BTgymMonitor2():
             p = psutil.Popen(['rm', '-R', ] + files, stdout=PIPE, stderr=PIPE)
 
         # Prepare writer:
-        self.writer = tf.summary.FileWriter(self.logdir, graph=tf.get_default_graph())
+        self.writer = tf.compat.v1.summary.FileWriter(self.logdir, graph=tf.compat.v1.get_default_graph())
 
 
         # Create summary:
@@ -77,25 +77,25 @@ class BTgymMonitor2():
 
         for entry in scalars:
             assert type(entry) == str
-            self.feed_holder[entry] = tf.placeholder(tf.float32)
-            summaries += [tf.summary.scalar(entry, self.feed_holder[entry],)]
+            self.feed_holder[entry] = tf.compat.v1.placeholder(tf.float32)
+            summaries += [tf.compat.v1.summary.scalar(entry, self.feed_holder[entry],)]
 
         for entry in images:
             assert type(entry) == str
-            self.feed_holder[entry] = tf.placeholder(tf.uint8, [None, None, None, 3])
-            summaries += [tf.summary.image(entry, self.feed_holder[entry], )]
+            self.feed_holder[entry] = tf.compat.v1.placeholder(tf.uint8, [None, None, None, 3])
+            summaries += [tf.compat.v1.summary.image(entry, self.feed_holder[entry], )]
 
         for entry in histograms:
             assert type(entry) == str
-            self.feed_holder[entry] = tf.placeholder(tf.float32,[None, None],)
-            summaries += [tf.summary.histogram(entry, self.feed_holder[entry], )]
+            self.feed_holder[entry] = tf.compat.v1.placeholder(tf.float32,[None, None],)
+            summaries += [tf.compat.v1.summary.histogram(entry, self.feed_holder[entry], )]
 
         for entry in text:
             assert type(entry) == str
-            self.feed_holder[entry] = tf.placeholder(tf.string)
-            summaries += [tf.summary.histogram(entry, self.feed_holder[entry], )]
+            self.feed_holder[entry] = tf.compat.v1.placeholder(tf.string)
+            summaries += [tf.compat.v1.summary.histogram(entry, self.feed_holder[entry], )]
 
-        self.summary = tf.summary.merge(summaries)
+        self.summary = tf.compat.v1.summary.merge(summaries)
 
     def write(self, sess, feed_dict, global_step):
         """

@@ -44,67 +44,67 @@ class OUpAAC(GuidedAAC):
         if model_summaries is not None:
             if self.use_global_network:
                 # Model-wide statistics:
-                with tf.name_scope('model'):
+                with tf.compat.v1.name_scope('model'):
                     model_summaries += [
-                        tf.summary.scalar("grad_global_norm", self.grads_global_norm),
-                        tf.summary.scalar("learn_rate", self.learn_rate_decayed),
+                        tf.compat.v1.summary.scalar("grad_global_norm", self.grads_global_norm),
+                        tf.compat.v1.summary.scalar("learn_rate", self.learn_rate_decayed),
                         # cause actual rate is a jaggy due to test freezes
-                        tf.summary.scalar("total_loss", self.loss),
+                        tf.compat.v1.summary.scalar("total_loss", self.loss),
                     ]
                     if policy is not None:
-                        model_summaries += [tf.summary.scalar("var_global_norm", tf.global_norm(policy.var_list))]
+                        model_summaries += [tf.compat.v1.summary.scalar("var_global_norm", tf.linalg.global_norm(policy.var_list))]
         else:
             model_summaries = []
         # Model stat. summary:
-        model_summary = tf.summary.merge(model_summaries, name='model_summary')
+        model_summary = tf.compat.v1.summary.merge(model_summaries, name='model_summary')
 
         # Episode-related summaries:
         ep_summary = dict(
             # Summary placeholders
-            render_atari=tf.placeholder(tf.uint8, [None, None, None, 1]),
-            total_r=tf.placeholder(tf.float32, ),
-            cpu_time=tf.placeholder(tf.float32, ),
-            final_value=tf.placeholder(tf.float32, ),
-            steps=tf.placeholder(tf.int32, ),
-            ou_lambda=tf.placeholder(tf.float32, ),
-            ou_sigma=tf.placeholder(tf.float32, ),
-            ou_mu=tf.placeholder(tf.float32, ),
+            render_atari=tf.compat.v1.placeholder(tf.uint8, [None, None, None, 1]),
+            total_r=tf.compat.v1.placeholder(tf.float32, ),
+            cpu_time=tf.compat.v1.placeholder(tf.float32, ),
+            final_value=tf.compat.v1.placeholder(tf.float32, ),
+            steps=tf.compat.v1.placeholder(tf.int32, ),
+            ou_lambda=tf.compat.v1.placeholder(tf.float32, ),
+            ou_sigma=tf.compat.v1.placeholder(tf.float32, ),
+            ou_mu=tf.compat.v1.placeholder(tf.float32, ),
 
         )
         ep_summary.update(
             {
-                mode: tf.placeholder(tf.uint8, [None, None, None, None], name=mode + '_pl')
+                mode: tf.compat.v1.placeholder(tf.uint8, [None, None, None, None], name=mode + '_pl')
                 for mode in self.env_list[0].render_modes + self.aux_render_modes
             }
         )
-        ep_summary['render_op'] = tf.summary.merge(
-            [tf.summary.image(mode, ep_summary[mode])
+        ep_summary['render_op'] = tf.compat.v1.summary.merge(
+            [tf.compat.v1.summary.image(mode, ep_summary[mode])
              for mode in self.env_list[0].render_modes + self.aux_render_modes]
         )
         # Episode stat. summary:
-        ep_summary['btgym_stat_op'] = tf.summary.merge(
+        ep_summary['btgym_stat_op'] = tf.compat.v1.summary.merge(
             [
-                tf.summary.scalar('episode_train/cpu_time_sec', ep_summary['cpu_time']),
-                tf.summary.scalar('episode_train/final_value', ep_summary['final_value']),
-                tf.summary.scalar('episode_train/total_reward', ep_summary['total_r']),
-                tf.summary.scalar('episode_train/ou_lambda', ep_summary['ou_lambda']),
-                tf.summary.scalar('episode_train/ou_sigma', ep_summary['ou_sigma']),
-                tf.summary.scalar('episode_train/ou_mu', ep_summary['ou_mu']),
+                tf.compat.v1.summary.scalar('episode_train/cpu_time_sec', ep_summary['cpu_time']),
+                tf.compat.v1.summary.scalar('episode_train/final_value', ep_summary['final_value']),
+                tf.compat.v1.summary.scalar('episode_train/total_reward', ep_summary['total_r']),
+                tf.compat.v1.summary.scalar('episode_train/ou_lambda', ep_summary['ou_lambda']),
+                tf.compat.v1.summary.scalar('episode_train/ou_sigma', ep_summary['ou_sigma']),
+                tf.compat.v1.summary.scalar('episode_train/ou_mu', ep_summary['ou_mu']),
             ],
             name='episode_train_btgym'
         )
         # Test episode stat. summary:
-        ep_summary['test_btgym_stat_op'] = tf.summary.merge(
+        ep_summary['test_btgym_stat_op'] = tf.compat.v1.summary.merge(
             [
-                tf.summary.scalar('episode_test/total_reward', ep_summary['total_r']),
-                tf.summary.scalar('episode_test/final_value', ep_summary['final_value']),
+                tf.compat.v1.summary.scalar('episode_test/total_reward', ep_summary['total_r']),
+                tf.compat.v1.summary.scalar('episode_test/final_value', ep_summary['final_value']),
             ],
             name='episode_test_btgym'
         )
-        ep_summary['atari_stat_op'] = tf.summary.merge(
+        ep_summary['atari_stat_op'] = tf.compat.v1.summary.merge(
             [
-                tf.summary.scalar('episode/total_reward', ep_summary['total_r']),
-                tf.summary.scalar('episode/steps', ep_summary['steps'])
+                tf.compat.v1.summary.scalar('episode/total_reward', ep_summary['total_r']),
+                tf.compat.v1.summary.scalar('episode/steps', ep_summary['steps'])
             ],
             name='episode_atari'
         )
@@ -280,16 +280,16 @@ class AMLDG:
         # Clipped gradients for critic (critic's train op is disabled by `_use_global_network=False`
         # to avoid actor's name scope violation):
         self.critic_aac.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.critic_aac.loss, pi_critic.var_list),
+            tf.gradients(ys=self.critic_aac.loss, xs=pi_critic.var_list),
             40.0
         )
         # Placeholders for stored gradients values, include None's to correctly map Vars:
         self.actor_aac.grads_placeholders = [
-            tf.placeholder(shape=grad.shape, dtype=grad.dtype) if grad is not None else None
+            tf.compat.v1.placeholder(shape=grad.shape, dtype=grad.dtype) if grad is not None else None
             for grad in self.actor_aac.grads
         ]
         self.critic_aac.grads_placeholders = [
-            tf.placeholder(shape=grad.shape, dtype=grad.dtype) if grad is not None else None
+            tf.compat.v1.placeholder(shape=grad.shape, dtype=grad.dtype) if grad is not None else None
             for grad in self.critic_aac.grads
         ]
 
@@ -317,7 +317,7 @@ class AMLDG:
         self.inc_step = self.actor_aac.inc_step
 
         # Op to update critic with gradients from actor:
-        self.critic_aac.optimizer = tf.train.AdamOptimizer(self.actor_aac.learn_rate_decayed, epsilon=1e-5)
+        self.critic_aac.optimizer = tf.compat.v1.train.AdamOptimizer(self.actor_aac.learn_rate_decayed, epsilon=1e-5)
         self.update_critic_op = self.critic_aac.optimizer.apply_gradients(critic_grads_and_vars)
 
         # Use actor optimizer to update global policy instance:

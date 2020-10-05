@@ -235,7 +235,7 @@ class AMLDG():
 
             self._make_train_op()
 
-            self.test_aac.model_summary_op = tf.summary.merge(
+            self.test_aac.model_summary_op = tf.compat.v1.summary.merge(
                 [self.test_aac.model_summary_op, self._combine_meta_summaries()],
                 name='meta_model_summary'
             )
@@ -279,11 +279,11 @@ class AMLDG():
 
         # Clipped gradients:
         self.train_aac.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.train_aac.loss, pi.var_list),
+            tf.gradients(ys=self.train_aac.loss, xs=pi.var_list),
             40.0
         )
         self.test_aac.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.test_aac.loss, pi_prime.var_list),
+            tf.gradients(ys=self.test_aac.loss, xs=pi_prime.var_list),
             40.0
         )
         # Aliases:
@@ -320,18 +320,18 @@ class AMLDG():
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
         self.train_aac.inc_step = self.train_aac.global_step.assign_add(
-            tf.shape(self.test_aac.local_network.on_state_in['external'])[0]
+            tf.shape(input=self.test_aac.local_network.on_state_in['external'])[0]
         )
         self.inc_step = self.train_aac.inc_step
         # Pi to pi_prime local adaptation op:
         # self.train_op = self.train_aac.optimizer.apply_gradients(train_grads_and_vars)
 
         # self.fast_opt = tf.train.GradientDescentOptimizer(self.alpha_rate)
-        self.fast_opt = tf.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
+        self.fast_opt = tf.compat.v1.train.GradientDescentOptimizer(self.fast_opt_learn_rate)
         self.train_op = self.fast_opt.apply_gradients(train_grads_and_vars)
 
         #  Learning rate annealing:
-        self.learn_rate_decayed = tf.train.polynomial_decay(
+        self.learn_rate_decayed = tf.compat.v1.train.polynomial_decay(
             self.opt_learn_rate,
             self.global_step + 1,
             self.opt_decay_steps,
@@ -341,7 +341,7 @@ class AMLDG():
         )
 
         # Optimizer for meta-update, sharing same learn rate (change?):
-        self.optimizer = tf.train.AdamOptimizer(self.learn_rate_decayed, epsilon=1e-5)
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(self.learn_rate_decayed, epsilon=1e-5)
 
         # Global meta-optimisation op:
         self.meta_train_op = self.optimizer.apply_gradients(meta_grads_and_vars)
@@ -353,8 +353,8 @@ class AMLDG():
         Additional summaries here.
         """
         meta_model_summaries = [
-            tf.summary.scalar('meta_grad_global_norm', tf.global_norm(self.grads)),
-            tf.summary.scalar('total_meta_loss', self.loss),
+            tf.compat.v1.summary.scalar('meta_grad_global_norm', tf.linalg.global_norm(self.grads)),
+            tf.compat.v1.summary.scalar('total_meta_loss', self.loss),
             #tf.summary.scalar('alpha_learn_rate', self.alpha_rate),
             #tf.summary.scalar('alpha_learn_rate_loss', self.alpha_rate_loss)
         ]
@@ -848,11 +848,11 @@ class AMLDG_3(AMLDG):
 
         # Clipped gradients:
         self.train_aac.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.train_aac.loss, pi.var_list),
+            tf.gradients(ys=self.train_aac.loss, xs=pi.var_list),
             40.0
         )
         self.test_aac.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.test_aac.loss, pi_prime.var_list),
+            tf.gradients(ys=self.test_aac.loss, xs=pi_prime.var_list),
             40.0
         )
         # Aliases:
@@ -889,17 +889,17 @@ class AMLDG_3(AMLDG):
         assert 'external' in obs_space_keys, \
             'Expected observation space to contain `external` mode, got: {}'.format(obs_space_keys)
         self.train_aac.inc_step = self.train_aac.global_step.assign_add(
-            tf.shape(self.train_aac.local_network.on_state_in['external'])[0]
+            tf.shape(input=self.train_aac.local_network.on_state_in['external'])[0]
         )
         # Simple SGD, no average statisitics:
-        self.fast_optimizer_train = tf.train.GradientDescentOptimizer(self.fast_learn_rate_train)
-        self.fast_optimizer_test = tf.train.GradientDescentOptimizer(self.fast_learn_rate_test)
+        self.fast_optimizer_train = tf.compat.v1.train.GradientDescentOptimizer(self.fast_learn_rate_train)
+        self.fast_optimizer_test = tf.compat.v1.train.GradientDescentOptimizer(self.fast_learn_rate_test)
 
         # Pi to pi_prime local adaptation op:
         self.train_op = self.fast_optimizer_train.apply_gradients(train_grads_and_vars)
 
         # Optimizer for meta-update, sharing same learn rate (change?):
-        self.optimizer = tf.train.AdamOptimizer(self.train_aac.train_learn_rate, epsilon=1e-5)
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(self.train_aac.train_learn_rate, epsilon=1e-5)
 
         # Global meta-optimisation op:
         self.meta_train_op = self.optimizer.apply_gradients(meta_grads_and_vars)

@@ -553,13 +553,13 @@ class RegressionTestAAC(BaseAAC):
             tensor holding estimated loss graph
             list of related summaries
         """
-        with tf.name_scope(name):
+        with tf.compat.v1.name_scope(name):
             # On-policy AAC loss definition:
-            pi.on_pi_act_target = tf.placeholder(
+            pi.on_pi_act_target = tf.compat.v1.placeholder(
                 tf.float32, [None, self.ref_env.action_space.one_hot_depth], name="on_policy_action_pl"
             )
-            pi.on_pi_adv_target = tf.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
-            pi.on_pi_r_target = tf.placeholder(tf.float32, [None], name="on_policy_return_pl")
+            pi.on_pi_adv_target = tf.compat.v1.placeholder(tf.float32, [None], name="on_policy_advantage_pl")
+            pi.on_pi_r_target = tf.compat.v1.placeholder(tf.float32, [None], name="on_policy_return_pl")
 
             # clip_epsilon = tf.cast(self.clip_epsilon * self.learn_rate_decayed / self.opt_learn_rate, tf.float32)
             #
@@ -576,20 +576,20 @@ class RegressionTestAAC(BaseAAC):
             #     verbose=verbose
             # )
             pi_regression = tf.exp(pi.regression)
-            regress_loss = tf.losses.mean_squared_error(
+            regress_loss = tf.compat.v1.losses.mean_squared_error(
                 labels=pi.regression_targets,
                 predictions=pi_regression,
                 weights=self.regress_lambda,
             )
 
-            self.mse = tf.metrics.mean_squared_error(
+            self.mse = tf.compat.v1.metrics.mean_squared_error(
                 labels=pi.regression_targets,
                 predictions=pi_regression
             )
 
             model_summaries = [
-                tf.summary.scalar('regress_loss', regress_loss),
-                tf.summary.scalar('mse_metric', self.mse[0])
+                tf.compat.v1.summary.scalar('regress_loss', regress_loss),
+                tf.compat.v1.summary.scalar('mse_metric', self.mse[0])
             ]
             # Accumulate total loss:
             # loss = float(self.class_lambda) * regress_loss + float(self.aac_lambda) * on_pi_loss\
@@ -615,14 +615,14 @@ class RegressionTestAAC(BaseAAC):
         """
 
         # Each worker gets a different set of adam optimizer parameters:
-        self.optimizer = tf.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(self.train_learn_rate, epsilon=1e-5)
 
         # Clipped gradients:
         self.grads, _ = tf.clip_by_global_norm(
-            tf.gradients(self.loss, pi.var_list),
+            tf.gradients(ys=self.loss, xs=pi.var_list),
             40.0
         )
-        self.grads_global_norm = tf.global_norm(self.grads)
+        self.grads_global_norm = tf.linalg.global_norm(self.grads)
 
         # Copy weights from the parameter server to the local model:
         self.sync = self.sync_pi = tf.group(
@@ -647,7 +647,7 @@ class RegressionTestAAC(BaseAAC):
             stream = pi.on_state_in['external'][list(pi.on_state_in['external'].keys())[0]]
         else:
             stream = pi.on_state_in['external']
-        self.inc_step = self.global_step.assign_add(tf.shape(stream)[0])
+        self.inc_step = self.global_step.assign_add(tf.shape(input=stream)[0])
 
         train_op = [self.optimizer.apply_gradients(grads_and_vars), self.mse]
 
@@ -665,64 +665,64 @@ class RegressionTestAAC(BaseAAC):
         if model_summaries is not None:
             if self.use_global_network:
                 # Model-wide statistics:
-                with tf.name_scope('model'):
+                with tf.compat.v1.name_scope('model'):
                     model_summaries += [
-                        tf.summary.scalar("grad_global_norm", self.grads_global_norm),
-                        tf.summary.scalar("learn_rate", self.learn_rate_decayed),
+                        tf.compat.v1.summary.scalar("grad_global_norm", self.grads_global_norm),
+                        tf.compat.v1.summary.scalar("learn_rate", self.learn_rate_decayed),
                         # cause actual rate is a jaggy due to test freezes
-                        tf.summary.scalar("total_loss", self.loss),
+                        tf.compat.v1.summary.scalar("total_loss", self.loss),
                     ]
                     if policy is not None:
-                        model_summaries += [tf.summary.scalar("var_global_norm", tf.global_norm(policy.var_list))]
+                        model_summaries += [tf.compat.v1.summary.scalar("var_global_norm", tf.linalg.global_norm(policy.var_list))]
         else:
             model_summaries = []
         # Model stat. summary:
-        model_summary = tf.summary.merge(model_summaries, name='model_summary')
+        model_summary = tf.compat.v1.summary.merge(model_summaries, name='model_summary')
 
         # Episode-related summaries:
         ep_summary = dict(
             # Summary placeholders
-            render_atari=tf.placeholder(tf.uint8, [None, None, None, 1]),
-            total_r=tf.placeholder(tf.float32, ),
-            cpu_time=tf.placeholder(tf.float32, ),
-            final_value=tf.placeholder(tf.float32, ),
-            steps=tf.placeholder(tf.int32, ),
+            render_atari=tf.compat.v1.placeholder(tf.uint8, [None, None, None, 1]),
+            total_r=tf.compat.v1.placeholder(tf.float32, ),
+            cpu_time=tf.compat.v1.placeholder(tf.float32, ),
+            final_value=tf.compat.v1.placeholder(tf.float32, ),
+            steps=tf.compat.v1.placeholder(tf.int32, ),
         )
         if self.test_mode:
             # For Atari:
-            ep_summary['render_op'] = tf.summary.image("model/state", ep_summary['render_atari'])
+            ep_summary['render_op'] = tf.compat.v1.summary.image("model/state", ep_summary['render_atari'])
 
         else:
             # BTGym rendering:
             ep_summary.update(
                 {
-                    mode: tf.placeholder(tf.uint8, [None, None, None, None], name=mode + '_pl')
+                    mode: tf.compat.v1.placeholder(tf.uint8, [None, None, None, None], name=mode + '_pl')
                     for mode in self.env_list[0].render_modes + self.aux_render_modes
                 }
             )
-            ep_summary['render_op'] = tf.summary.merge(
-                [tf.summary.image(mode, ep_summary[mode])
+            ep_summary['render_op'] = tf.compat.v1.summary.merge(
+                [tf.compat.v1.summary.image(mode, ep_summary[mode])
                  for mode in self.env_list[0].render_modes + self.aux_render_modes]
             )
         # Episode stat. summary:
-        ep_summary['btgym_stat_op'] = tf.summary.merge(
+        ep_summary['btgym_stat_op'] = tf.compat.v1.summary.merge(
             [
-                tf.summary.scalar('episode_train/cpu_time_sec', ep_summary['cpu_time']),
-                tf.summary.scalar('episode_train/total_reward', ep_summary['total_r']),
+                tf.compat.v1.summary.scalar('episode_train/cpu_time_sec', ep_summary['cpu_time']),
+                tf.compat.v1.summary.scalar('episode_train/total_reward', ep_summary['total_r']),
             ],
             name='episode_train_btgym'
         )
         # Test episode stat. summary:
-        ep_summary['test_btgym_stat_op'] = tf.summary.merge(
+        ep_summary['test_btgym_stat_op'] = tf.compat.v1.summary.merge(
             [
-                tf.summary.scalar('episode_test/total_reward', ep_summary['total_r']),
+                tf.compat.v1.summary.scalar('episode_test/total_reward', ep_summary['total_r']),
             ],
             name='episode_test_btgym'
         )
-        ep_summary['atari_stat_op'] = tf.summary.merge(
+        ep_summary['atari_stat_op'] = tf.compat.v1.summary.merge(
             [
-                tf.summary.scalar('episode/total_reward', ep_summary['total_r']),
-                tf.summary.scalar('episode/steps', ep_summary['steps'])
+                tf.compat.v1.summary.scalar('episode/total_reward', ep_summary['total_r']),
+                tf.compat.v1.summary.scalar('episode/steps', ep_summary['steps'])
             ],
             name='episode_atari'
         )

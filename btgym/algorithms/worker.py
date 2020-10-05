@@ -16,10 +16,10 @@ import datetime
 import tensorflow as tf
 
 sys.path.insert(0, '..')
-tf.logging.set_verbosity(tf.logging.INFO)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
 
-class FastSaver(tf.train.Saver):
+class FastSaver(tf.compat.v1.train.Saver):
     """
     Disables write_meta_graph argument,
     which freezes entire process and is mostly useless.
@@ -188,7 +188,7 @@ class Worker(multiprocessing.Process):
         StreamHandler(sys.stdout).push_application()
         self.log = Logger('Worker_{}'.format(self.task), level=self.log_level)
         try:
-            tf.reset_default_graph()
+            tf.compat.v1.reset_default_graph()
 
             if self.test_mode:
                 import gym
@@ -198,22 +198,22 @@ class Worker(multiprocessing.Process):
 
             # Start tf.server:
             if self.job_name in 'ps':
-                server = tf.train.Server(
+                server = tf.distribute.Server(
                     cluster,
                     job_name=self.job_name,
                     task_index=self.task,
-                    config=tf.ConfigProto(device_filters=["/job:ps"])
+                    config=tf.compat.v1.ConfigProto(device_filters=["/job:ps"])
                 )
                 self.log.debug('parameters_server started.')
                 # Just block here:
                 server.join()
 
             else:
-                server = tf.train.Server(
+                server = tf.distribute.Server(
                     cluster,
                     job_name='worker',
                     task_index=self.task,
-                    config=tf.ConfigProto(
+                    config=tf.compat.v1.ConfigProto(
                         intra_op_parallelism_threads=4,  # original was: 1
                         inter_op_parallelism_threads=4,  # original was: 2
                     )
@@ -308,11 +308,11 @@ class Worker(multiprocessing.Process):
                 self.log.debug('trainer ok.')
 
                 # Saver-related:
-                variables_to_save = [v for v in tf.global_variables() if not 'local' in v.name]
-                local_variables = [v for v in tf.global_variables() if 'local' in v.name] + tf.local_variables()
-                init_op = tf.initializers.variables(variables_to_save)
-                local_init_op = tf.initializers.variables(local_variables)
-                init_all_op = tf.global_variables_initializer()
+                variables_to_save = [v for v in tf.compat.v1.global_variables() if not 'local' in v.name]
+                local_variables = [v for v in tf.compat.v1.global_variables() if 'local' in v.name] + tf.compat.v1.local_variables()
+                init_op = tf.compat.v1.initializers.variables(variables_to_save)
+                local_init_op = tf.compat.v1.initializers.variables(local_variables)
+                init_all_op = tf.compat.v1.global_variables_initializer()
 
                 def init_fn(_sess):
                     self.log.notice("initializing all parameters...")
@@ -332,12 +332,12 @@ class Worker(multiprocessing.Process):
 
                 self.saver = FastSaver(var_list=variables_to_save, max_to_keep=1, save_relative_paths=True)
 
-                self.config = tf.ConfigProto(device_filters=["/job:ps", "/job:worker/task:{}/cpu:0".format(self.task)])
+                self.config = tf.compat.v1.ConfigProto(device_filters=["/job:ps", "/job:worker/task:{}/cpu:0".format(self.task)])
 
-                sess_manager = tf.train.SessionManager(
+                sess_manager = tf.compat.v1.train.SessionManager(
                     local_init_op=local_init_op,
                     ready_op=None,
-                    ready_for_local_init_op=tf.report_uninitialized_variables(variables_to_save),
+                    ready_for_local_init_op=tf.compat.v1.report_uninitialized_variables(variables_to_save),
                     graph=None,
                     recovery_wait_secs=90,
                 )
@@ -364,7 +364,7 @@ class Worker(multiprocessing.Process):
 
                     self.log.info("connecting to the parameter server... ")
 
-                    self.summary_writer = tf.summary.FileWriter(self.summary_dir, sess.graph)
+                    self.summary_writer = tf.compat.v1.summary.FileWriter(self.summary_dir, sess.graph)
                     trainer.start(sess, self.summary_writer)
 
                     # Note: `self.global_step` refers to number of environment steps

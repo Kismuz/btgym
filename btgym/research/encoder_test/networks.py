@@ -1,7 +1,5 @@
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.rnn as rnn
-from tensorflow.contrib.layers import layer_norm as norm_layer
 from tensorflow.python.util.nest import flatten as flatten_nested
 
 from btgym.algorithms.nn.layers import normalized_columns_initializer, categorical_sample
@@ -33,8 +31,9 @@ def conv_2d_network_skip(x,
     """
     assert conv_2d_num_filters[-1] % 2 == 0
     layers = []
-    with tf.variable_scope(name, reuse=reuse):
+    with tf.compat.v1.variable_scope(name, reuse=reuse):
         for i, num_filters in enumerate(conv_2d_num_filters):
+            norm_layer = tf.keras.layers.LayerNormalization()
             x = tf.nn.elu(
                 norm_layer(
                     conv_2d_layer_ref(
@@ -52,7 +51,7 @@ def conv_2d_network_skip(x,
                 )
             )
             if keep_prob is not None:
-                x = tf.nn.dropout(x, keep_prob=keep_prob, name="_layer_{}_with_dropout".format(i + 1))
+                x = tf.nn.dropout(x, rate=1 - (keep_prob), name="_layer_{}_with_dropout".format(i + 1))
 
             layers.append(x)
 
@@ -72,7 +71,7 @@ def conv_2d_network_skip(x,
             # print('{}.shape = {}'.format(x.name, x.get_shape().as_list()))
 
         if conv_2d_enable_skip:
-            x = tf.concat([tf.layers.flatten(l) for l in layers], axis=-1, name='flattened_encoded_state')
+            x = tf.concat([tf.compat.v1.layers.flatten(l) for l in layers], axis=-1, name='flattened_encoded_state')
 
         # print('{}.shape = {}'.format(x.name, x.get_shape().as_list()))
         return x
@@ -85,7 +84,7 @@ def identity_encoder(x, name='identity_encoder', **kwargs):
     Returns:
         tensor holding state features;
     """
-    with tf.variable_scope(name,):
-        x = tf.layers.flatten(x)
+    with tf.compat.v1.variable_scope(name,):
+        x = tf.compat.v1.layers.flatten(x)
 
         return x

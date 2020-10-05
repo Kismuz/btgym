@@ -1,4 +1,4 @@
-from tensorflow.contrib.layers import flatten as batch_flatten
+import tensorflow_addons as tfa
 
 from btgym.algorithms.policy.base import BaseAacPolicy
 from btgym.algorithms.policy.stacked_lstm import AacStackedRL2Policy
@@ -51,7 +51,7 @@ class bVAENPolicy(AacStackedRL2Policy):
                      (32, (3, 1), (2, 1)),
                      (32, (3, 1), (2, 1))
                  ),
-                 lstm_class_ref=tf.contrib.rnn.LayerNormBasicLSTMCell,
+                 lstm_class_ref=tfa.rnn.LayerNormLSTMCell,
                  lstm_layers=(256, 256),
                  lstm_2_init_period=50,
                  linear_layer_ref=noisy_linear,
@@ -68,7 +68,7 @@ class bVAENPolicy(AacStackedRL2Policy):
             ob_space:           dictionary of observation state shapes
             ac_space:           discrete action space shape (length)
             rp_sequence_size:   reward prediction sample length
-            lstm_class_ref:     tf.nn.lstm class to use
+            lstm_class_ref:     tfa.rnn class to use
             lstm_layers:        tuple of LSTM layers sizes
             lstm_2_init_period: number of `get_initial_context()` method calls before force LSTM_2 context reset.
             linear_layer_ref:   linear layer class to use
@@ -107,15 +107,15 @@ class bVAENPolicy(AacStackedRL2Policy):
         self.rp_state_in = nested_placeholders(ob_space, batch_dim=None, name='rp_state_in')
 
         # Placeholders for concatenated action [one-hot] and reward [scalar]:
-        self.on_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='on_policy_action_reward_in_pl')
-        self.off_a_r_in = tf.placeholder(tf.float32, [None, ac_space + 1], name='off_policy_action_reward_in_pl')
+        self.on_a_r_in = tf.compat.v1.placeholder(tf.float32, [None, ac_space + 1], name='on_policy_action_reward_in_pl')
+        self.off_a_r_in = tf.compat.v1.placeholder(tf.float32, [None, ac_space + 1], name='off_policy_action_reward_in_pl')
 
         # Placeholders for rnn batch and time-step dimensions:
-        self.on_batch_size = tf.placeholder(tf.int32, name='on_policy_batch_size')
-        self.on_time_length = tf.placeholder(tf.int32, name='on_policy_sequence_size')
+        self.on_batch_size = tf.compat.v1.placeholder(tf.int32, name='on_policy_batch_size')
+        self.on_time_length = tf.compat.v1.placeholder(tf.int32, name='on_policy_sequence_size')
 
-        self.off_batch_size = tf.placeholder(tf.int32, name='off_policy_batch_size')
-        self.off_time_length = tf.placeholder(tf.int32, name='off_policy_sequence_size')
+        self.off_batch_size = tf.compat.v1.placeholder(tf.int32, name='off_policy_batch_size')
+        self.off_time_length = tf.compat.v1.placeholder(tf.int32, name='off_policy_sequence_size')
 
         # ============= Base on-policy AAC network ===========
 
@@ -133,7 +133,7 @@ class bVAENPolicy(AacStackedRL2Policy):
         self.on_vae_d_kl_ext = on_d_kl_ext
 
         # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
-        x_shape_dynamic = tf.shape(on_aac_x_ext)
+        x_shape_dynamic = tf.shape(input=on_aac_x_ext)
         max_seq_len = tf.cast(x_shape_dynamic[0] / self.on_batch_size, tf.int32)
         x_shape_static = on_aac_x_ext.get_shape().as_list()
 
@@ -158,7 +158,7 @@ class bVAENPolicy(AacStackedRL2Policy):
                 x_int_shape_static = on_x_int.get_shape().as_list()
                 on_x_int = [
                     tf.reshape(on_x_int, [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])])]
-                self.debug['state_internal_enc'] = tf.shape(on_x_int)
+                self.debug['state_internal_enc'] = tf.shape(input=on_x_int)
 
             else:
                 # Feed as is:
@@ -167,7 +167,7 @@ class bVAENPolicy(AacStackedRL2Policy):
                     self.on_state_in['internal'],
                     [self.on_batch_size, max_seq_len, np.prod(x_int_shape_static[1:])]
                 )
-                self.debug['state_internal'] = tf.shape(self.on_state_in['internal'])
+                self.debug['state_internal'] = tf.shape(input=self.on_state_in['internal'])
                 on_x_int = [on_x_int]
                 self.on_state_decoded_int = None
                 self.on_vae_d_kl_int = None
@@ -177,7 +177,7 @@ class bVAENPolicy(AacStackedRL2Policy):
             self.on_state_decoded_int = None
             self.on_vae_d_kl_int = None
 
-        self.debug['conv_input_to_lstm1'] = tf.shape(on_aac_x_ext)
+        self.debug['conv_input_to_lstm1'] = tf.shape(input=on_aac_x_ext)
 
         # Feed last last_reward into LSTM_1 layer along with encoded `external` state features:
         on_stage2_1_input = [on_aac_x_ext, on_a_r_in[..., -1][..., None]] #+ on_x_internal
@@ -188,18 +188,18 @@ class bVAENPolicy(AacStackedRL2Policy):
         # LSTM_1 full input:
         on_aac_x_ext = tf.concat(on_stage2_1_input, axis=-1)
 
-        self.debug['concat_input_to_lstm1'] = tf.shape(on_aac_x_ext)
+        self.debug['concat_input_to_lstm1'] = tf.shape(input=on_aac_x_ext)
 
         # First LSTM layer takes encoded `external` state:
         [on_x_lstm_1_out, self.on_lstm_1_init_state, self.on_lstm_1_state_out, self.on_lstm_1_state_pl_flatten] =\
             lstm_network(on_aac_x_ext, self.on_time_length, lstm_class_ref, (lstm_layers[0],), name='lstm_1')
 
-        self.debug['on_x_lstm_1_out'] = tf.shape(on_x_lstm_1_out)
-        self.debug['self.on_lstm_1_state_out'] = tf.shape(self.on_lstm_1_state_out)
-        self.debug['self.on_lstm_1_state_pl_flatten'] = tf.shape(self.on_lstm_1_state_pl_flatten)
+        self.debug['on_x_lstm_1_out'] = tf.shape(input=on_x_lstm_1_out)
+        self.debug['self.on_lstm_1_state_out'] = tf.shape(input=self.on_lstm_1_state_out)
+        self.debug['self.on_lstm_1_state_pl_flatten'] = tf.shape(input=self.on_lstm_1_state_pl_flatten)
 
         # For time_flat only: Reshape on_lstm_1_state_out from [1,2,20,size] -->[20,1,2,size] --> [20,1, 2xsize]:
-        reshape_lstm_1_state_out = tf.transpose(self.on_lstm_1_state_out, [2, 0, 1, 3])
+        reshape_lstm_1_state_out = tf.transpose(a=self.on_lstm_1_state_out, perm=[2, 0, 1, 3])
         reshape_lstm_1_state_out_shape_static = reshape_lstm_1_state_out.get_shape().as_list()
         reshape_lstm_1_state_out = tf.reshape(
             reshape_lstm_1_state_out,
@@ -212,7 +212,7 @@ class bVAENPolicy(AacStackedRL2Policy):
         x_shape_static = on_x_lstm_1_out.get_shape().as_list()
         rsh_on_x_lstm_1_out = tf.reshape(on_x_lstm_1_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-        self.debug['reshaped_on_x_lstm_1_out'] = tf.shape(rsh_on_x_lstm_1_out)
+        self.debug['reshaped_on_x_lstm_1_out'] = tf.shape(input=rsh_on_x_lstm_1_out)
 
         # Aac policy output and action-sampling function:
         [self.on_logits, _, self.on_sample] = dense_aac_network(
@@ -231,20 +231,20 @@ class bVAENPolicy(AacStackedRL2Policy):
         # LSTM_2 full input:
         on_aac_x_ext = tf.concat(on_stage2_2_input, axis=-1)
 
-        self.debug['on_stage2_2_input'] = tf.shape(on_aac_x_ext)
+        self.debug['on_stage2_2_input'] = tf.shape(input=on_aac_x_ext)
 
         [on_x_lstm_2_out, self.on_lstm_2_init_state, self.on_lstm_2_state_out, self.on_lstm_2_state_pl_flatten] = \
             lstm_network(on_aac_x_ext, self.on_time_length, lstm_class_ref, (lstm_layers[-1],), name='lstm_2')
 
-        self.debug['on_x_lstm_2_out'] = tf.shape(on_x_lstm_2_out)
-        self.debug['self.on_lstm_2_state_out'] = tf.shape(self.on_lstm_2_state_out)
-        self.debug['self.on_lstm_2_state_pl_flatten'] = tf.shape(self.on_lstm_2_state_pl_flatten)
+        self.debug['on_x_lstm_2_out'] = tf.shape(input=on_x_lstm_2_out)
+        self.debug['self.on_lstm_2_state_out'] = tf.shape(input=self.on_lstm_2_state_out)
+        self.debug['self.on_lstm_2_state_pl_flatten'] = tf.shape(input=self.on_lstm_2_state_pl_flatten)
 
         # Reshape back to [batch, flattened_depth], where batch = rnn_batch_dim * rnn_time_dim:
         x_shape_static = on_x_lstm_2_out.get_shape().as_list()
         on_x_lstm_out = tf.reshape(on_x_lstm_2_out, [x_shape_dynamic[0], x_shape_static[-1]])
 
-        self.debug['reshaped_on_x_lstm_out'] = tf.shape(on_x_lstm_out)
+        self.debug['reshaped_on_x_lstm_out'] = tf.shape(input=on_x_lstm_out)
 
         # Aac value function:
         [_, self.on_vf, _] = dense_aac_network(
@@ -274,7 +274,7 @@ class bVAENPolicy(AacStackedRL2Policy):
         self.off_vae_d_kl_ext = off_d_kl_ext
 
         # Reshape rnn inputs for  batch training as [rnn_batch_dim, rnn_time_dim, flattened_depth]:
-        x_shape_dynamic = tf.shape(off_aac_x)
+        x_shape_dynamic = tf.shape(input=off_aac_x)
         max_seq_len = tf.cast(x_shape_dynamic[0] / self.off_batch_size, tf.int32)
         x_shape_static = off_aac_x.get_shape().as_list()
 
@@ -397,7 +397,7 @@ class bVAENPolicy(AacStackedRL2Policy):
 
         # Aux3:
         # `Reward prediction` network.
-        self.rp_batch_size = tf.placeholder(tf.int32, name='rp_batch_size')
+        self.rp_batch_size = tf.compat.v1.placeholder(tf.int32, name='rp_batch_size')
 
         # Shared conv. output:
         rp_encoded_layers, rp_x, rp_decoded_layers, _, rp_d_kl = encoder_class_ref(
@@ -421,18 +421,18 @@ class bVAENPolicy(AacStackedRL2Policy):
                 pass
 
         except AttributeError:
-            self.train_phase = tf.placeholder_with_default(
+            self.train_phase = tf.compat.v1.placeholder_with_default(
                 tf.constant(False, dtype=tf.bool),
                 shape=(),
                 name='train_phase_flag_pl'
             )
-        self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        self.update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
         # Add moving averages to save list:
-        moving_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*moving.*')
-        renorm_var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, tf.get_variable_scope().name + '.*renorm.*')
+        moving_var_list = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, tf.compat.v1.get_variable_scope().name + '.*moving.*')
+        renorm_var_list = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, tf.compat.v1.get_variable_scope().name + '.*renorm.*')
 
         # What to save:
-        self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
+        self.var_list = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, tf.compat.v1.get_variable_scope().name)
         self.var_list += moving_var_list + renorm_var_list
 
         # Callbacks:
@@ -465,7 +465,7 @@ class bVAENPolicy(AacStackedRL2Policy):
             KeyError if [`metadata`]:[`trial_num`,`type`] keys not found
         """
         try:
-            sess = tf.get_default_session()
+            sess = tf.compat.v1.get_default_session()
             new_context = list(sess.run(self.on_lstm_init_state))
             if state['metadata']['trial_num'] != self.current_trial_num\
                     or context is None\
@@ -503,7 +503,7 @@ class bVAENA3C(BaseAAC):
         try:
             super(bVAENA3C, self).__init__(name=_log_name, **kwargs)
             with tf.device(self.worker_device):
-                with tf.variable_scope('local'):
+                with tf.compat.v1.variable_scope('local'):
                     on_vae_loss_ext, on_ae_summary_ext = ae_loss(
                         targets=self.local_network.on_state_in['external'],
                         logits=self.local_network.on_state_decoded_ext,
@@ -531,7 +531,7 @@ class bVAENA3C(BaseAAC):
 
                     # Override train op def:
                     self.grads, _ = tf.clip_by_global_norm(
-                        tf.gradients(self.loss, self.local_network.var_list),
+                        tf.gradients(ys=self.loss, xs=self.local_network.var_list),
                         40.0
                     )
                     grads_and_vars = list(zip(self.grads, self.network.var_list))
@@ -539,7 +539,7 @@ class bVAENA3C(BaseAAC):
 
                     # Merge summary:
                     extended_summary.append(self.model_summary_op)
-                    self.model_summary_op = tf.summary.merge(extended_summary, name='extended_summary')
+                    self.model_summary_op = tf.compat.v1.summary.merge(extended_summary, name='extended_summary')
 
         except:
             msg = 'Child 0.0 class __init()__ exception occurred' + \
