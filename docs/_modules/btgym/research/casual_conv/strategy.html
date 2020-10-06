@@ -825,7 +825,7 @@
 
         <span class="c1"># Now when we know exact maximum possible episode length -</span>
         <span class="c1">#  can extract relevant episode data and make expert predictions:</span>
-        <span class="c1"># data = self.datas[0].p.dataname.as_matrix()[self.inner_embedding:, :]</span>
+        <span class="c1"># data = self.datas[0].p.dataname.values[self.inner_embedding:, :]</span>
         <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="n">d</span><span class="o">.</span><span class="n">_name</span> <span class="p">:</span> <span class="n">d</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">dataname</span><span class="o">.</span><span class="n">as_matrix</span><span class="p">()[</span><span class="bp">self</span><span class="o">.</span><span class="n">inner_embedding</span><span class="p">:,</span> <span class="p">:]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">datas</span><span class="p">}</span></div>
 
         <span class="c1"># Note: need to form sort of environment &#39;custom candels&#39; by taking min and max price values over every</span>
