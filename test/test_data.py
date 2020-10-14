@@ -1,12 +1,11 @@
-
 import unittest
-from .derivative import BTgymDataset, BTgymRandomDataDomain
-from .stateful import BTgymSequentialDataDomain
 
+from btgym.datafeed.derivative import BTgymDataset, BTgymRandomDataDomain
+from btgym.datafeed.stateful import BTgymSequentialDataDomain
 
-filename='../examples/data/DAT_ASCII_EURUSD_M1_2016.csv'
+filename = '../examples/data/DAT_ASCII_EURUSD_M1_2016.csv'
 
-trial_params=dict(
+trial_params = dict(
     start_weekdays={0, 1, 2, 3, 4, 5, 6},
     sample_duration={'days': 8, 'hours': 0, 'minutes': 0},
     start_00=False,
@@ -14,16 +13,16 @@ trial_params=dict(
     test_period={'days': 2, 'hours': 0, 'minutes': 0},
 )
 
-episode_params=dict(
+episode_params = dict(
     start_weekdays={0, 1, 2, 3, 4, 5, 6},
     sample_duration={'days': 0, 'hours': 23, 'minutes': 55},
     start_00=False,
     time_gap={'days': 0, 'hours': 10},
 )
 
-target_period={'days': 29, 'hours': 0, 'minutes': 0}
+target_period = {'days': 29, 'hours': 0, 'minutes': 0}
 
-log_level=12
+log_level = 12
 
 
 class DomainTest(unittest.TestCase):
@@ -49,11 +48,11 @@ class DomainTest(unittest.TestCase):
         Same true for train/test episodes.
         """
         domain = BTgymDataset(
-          filename=filename,
-          episode_duration={'days': 0, 'hours': 23, 'minutes': 55},
-          start_00=False,
-          time_gap={'days': 0, 'hours': 10},
-          target_period={'days': 40, 'hours': 0, 'minutes': 0}
+            filename=filename,
+            episode_duration={'days': 0, 'hours': 23, 'minutes': 55},
+            start_00=False,
+            time_gap={'days': 0, 'hours': 10},
+            target_period={'days': 40, 'hours': 0, 'minutes': 0}
         )
         domain.reset()
         sup_train_time = 0
@@ -192,7 +191,3 @@ class DomainTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-
-
-
