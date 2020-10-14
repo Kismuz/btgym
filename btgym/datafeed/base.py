@@ -17,18 +17,16 @@
 #
 ###############################################################################
 
-from logbook import Logger, StreamHandler, WARNING
-
+import copy
 import datetime
 import random
-from numpy.random import beta as random_beta
-import copy
-import os
-import sys
 
-from backtrader import TimeFrame
 import backtrader.feeds as btfeeds
 import pandas as pd
+import sys
+from backtrader import TimeFrame
+from logbook import Logger, StreamHandler, WARNING
+from numpy.random import beta as random_beta
 
 DataSampleConfig = dict(
     get_new=True,
@@ -58,18 +56,17 @@ dict: Conventional reset configuration template to pass to environment `reset()`
 class BTgymBaseData:
     """
     Base BTgym data provider class.
-    Provides core data loading, sampling, splitting  and converting functionality.
+    Provides core sampling, splitting  and converting functionality.
     Do not use directly.
 
     Enables Pipe::
 
-        CSV[source data]-->pandas[for efficient sampling]-->bt.feeds
+        pandas[for efficient sampling]-->bt.feeds
 
     """
 
     def __init__(
             self,
-            filename=None,
             dataframe=None,
             parsing_params=None,
             sampling_params=None,
@@ -84,17 +81,7 @@ class BTgymBaseData:
         """
         Args:
 
-            filename:                       Str or iterable of of str, filenames holding csv data;
-                                            should be given either here or when calling read_csv(), see `Notes`
-            dataframe:                      pd.dataframe holding data, if this arg is given - overrides ``filename` arg.
-
-            specific_params CSV to Pandas parsing
-
-            sep:                            ';'
-            header:                         0
-            index_col:                      0
-            parse_dates:                    True
-            names:                          ['open', 'high', 'low', 'close', 'volume']
+            dataframe:                      pd.dataframe holding data
 
             specific_params Pandas to BT.feeds conversion
 
@@ -140,21 +127,11 @@ class BTgymBaseData:
             - Default parameters are source-specific and made to correctly parse 1 minute Forex generic ASCII
               data files from www.HistData.com. Tune according to your data source.
         """
-        self.filename = filename
+
+        self._set_dataframe(dataframe)
 
         if parsing_params is None:
             self.parsing_params = dict(
-                # Default parameters for source-specific CSV datafeed class,
-                # correctly parses 1 minute Forex generic ASCII
-                # data files from www.HistData.com:
-
-                # CSV to Pandas params.
-                sep=';',
-                header=0,
-                index_col=0,
-                parse_dates=True,
-                names=['open', 'high', 'low', 'close', 'volume'],
-
                 # Pandas to BT.feeds params:
                 timeframe=1,  # 1 minute.
                 datetime=0,
@@ -200,12 +177,6 @@ class BTgymBaseData:
         self.data_names = data_names
         self.data_name = self.data_names[0]
 
-        if dataframe is not None:
-            self.data = dataframe
-
-        else:
-            self.data = None  # will hold actual data as pandas dataframe
-
         self.is_ready = False
 
         self.global_timestamp = 0
@@ -213,7 +184,6 @@ class BTgymBaseData:
         self.final_timestamp = 0
 
         self.data_stat = None  # Dataset descriptive statistic as pandas dataframe
-        self.data_range_delta = None  # Dataset total duration timedelta
         self.max_time_gap = None
         self.time_gap = None
         self.max_sample_len_delta = None
@@ -229,7 +199,6 @@ class BTgymBaseData:
         self.train_range_delta = None
         self.test_num_records = 0
         self.train_num_records = 0
-        self.total_num_records = 0
         self.train_interval = [0, 0]
         self.test_interval = [0, 0]
         self.test_period = {'days': 0, 'hours': 0, 'minutes': 0}
@@ -267,7 +236,7 @@ class BTgymBaseData:
 
         # Logging:
         StreamHandler(sys.stdout).push_application()
-        self.log = Logger('{}_{}'.format(self.name, self.task), level=self.log_level)
+        self.set_logger(self.log_level, self.task)
 
         # Legacy parameter dictionary, left here for BTgym API_shell:
         self.params = {}
@@ -281,6 +250,14 @@ class BTgymBaseData:
             self.frozen_time_split = None
 
         self.frozen_split_timestamp = None
+
+    def _set_dataframe(self, dataframe: pd.DataFrame):
+        if dataframe is not None:
+            self.data = dataframe
+        else:
+            raise AssertionError("Data frame has to be defined.")
+        if self.data.empty:
+            raise AssertionError("DataFrame holds no data.")
 
     def set_params(self, params_dict):
         """
@@ -311,20 +288,17 @@ class BTgymBaseData:
         if self.data is not None:
             self.global_timestamp = self.data.index[0].timestamp()
 
-    def reset(self, data_filename=None, **kwargs):
+    def reset(self, **kwargs):
         """
         Gets instance ready.
 
         Args:
-            data_filename:  [opt] string or list of strings.
             kwargs:         not used.
 
         """
-        self._reset(data_filename=data_filename, **kwargs)
+        self._reset(**kwargs)
 
-    def _reset(self, data_filename=None, timestamp=None, **kwargs):
-
-        self.read_csv(data_filename)
+    def _reset(self, timestamp=None, **kwargs):
 
         # Add global timepoints:
         self.start_timestamp = self.data.index[0].timestamp()
@@ -413,60 +387,8 @@ class BTgymBaseData:
         self.sample_num = 0
         self.is_ready = True
 
-    def read_csv(self, data_filename=None, force_reload=False):
-        """
-        Populates instance by loading data: CSV file --> pandas dataframe.
 
-        Args:
-            data_filename: [opt] csv data filename as string or list of such strings.
-            force_reload:  ignore loaded data.
-        """
-        if self.data is not None and not force_reload:
-            data_range = pd.to_datetime(self.data.index)
-            self.total_num_records = self.data.shape[0]
-            self.data_range_delta = (data_range[-1] - data_range[0]).to_pytimedelta()
-            self.log.debug('data has been already loaded. Use `force_reload=True` to reload')
-            return
-        if data_filename:
-            self.filename = data_filename  # override data source if one is given
-        if type(self.filename) == str:
-            self.filename = [self.filename]
-
-        dataframes = []
-        for filename in self.filename:
-            try:
-                assert filename and os.path.isfile(filename)
-                current_dataframe = pd.read_csv(
-                    filename,
-                    sep=self.sep,
-                    header=self.header,
-                    index_col=self.index_col,
-                    parse_dates=self.parse_dates,
-                    names=self.names,
-                )
-
-                # Check and remove duplicate datetime indexes:
-                duplicates = current_dataframe.index.duplicated(keep='first')
-                how_bad = duplicates.sum()
-                if how_bad > 0:
-                    current_dataframe = current_dataframe[~duplicates]
-                    self.log.warning('Found {} duplicated date_time records in <{}>.\
-                     Removed all but first occurrences.'.format(how_bad, filename))
-
-                dataframes += [current_dataframe]
-                self.log.info('Loaded {} records from <{}>.'.format(dataframes[-1].shape[0], filename))
-
-            except:
-                msg = 'Data file <{}> not specified / not found / parser error.'.format(str(filename))
-                self.log.error(msg)
-                raise FileNotFoundError(msg)
-
-        self.data = pd.concat(dataframes)
-        data_range = pd.to_datetime(self.data.index)
-        self.total_num_records = self.data.shape[0]
-        self.data_range_delta = (data_range[-1] - data_range[0]).to_pytimedelta()
-
-    def describe(self):
+    def describe(self): #TODO: remove. There is one dependency, probably not used.
         """
         Returns summary dataset statistic as pandas dataframe:
 
@@ -514,26 +436,21 @@ class BTgymBaseData:
             if minutes / 1440 == 1:
                 timeframe = TimeFrame.Days
             return timeframe
-        try:
-            assert not self.data.empty
-            btfeed = btfeeds.PandasDirectData(
-                dataname=self.data,
-                timeframe=bt_timeframe(self.timeframe),
-                datetime=self.datetime,
-                open=self.open,
-                high=self.high,
-                low=self.low,
-                close=self.close,
-                volume=self.volume,
-                openinterest=self.openinterest
-            )
-            btfeed.numrecords = self.data.shape[0]
-            return {self.data_name: btfeed}
 
-        except (AssertionError, AttributeError) as e:
-            msg = 'Instance holds no data. Hint: forgot to call .read_csv()?'
-            self.log.error(msg)
-            raise AssertionError(msg)
+        btfeed = btfeeds.PandasDirectData(
+            dataname=self.data,
+            timeframe=bt_timeframe(self.timeframe),
+            datetime=self.datetime,
+            open=self.open,
+            high=self.high,
+            low=self.low,
+            close=self.close,
+            volume=self.volume,
+            openinterest=self.openinterest
+        )
+        btfeed.numrecords = self.data.shape[0]
+        return {self.data_name: btfeed}
+
 
     def sample(self, **kwargs):
         return self._sample(**kwargs)
@@ -1147,9 +1064,3 @@ class BTgymBaseData:
         new_instance.metadata['last_row'] = last_row
 
         return new_instance
-
-
-
-
-
-

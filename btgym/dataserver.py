@@ -125,7 +125,7 @@ class BTgymDataFeedServer(multiprocessing.Process):
             assert not self.dataset.data.empty
 
         except (AssertionError, AttributeError) as e:
-            self.dataset.read_csv()
+            self.dataset._read_csv()
 
         # Describe dataset:
         self.dataset_stat = self.dataset.describe()

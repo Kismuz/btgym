@@ -159,7 +159,7 @@ class BTgymMultiData:
         # Load:
         indexes = []
         for stream in self.data.values():
-            stream.read_csv(force_reload=force_reload)
+            stream._read_csv(force_reload=force_reload)
             indexes.append(stream.data.index)
 
         # Get indexes intersection:
