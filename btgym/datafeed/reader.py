@@ -65,7 +65,7 @@ class ForexReader:
         self.data_range_delta = (data_range[-1] - data_range[0]).to_pytimedelta()
 
         def get_data():
-            pass
+            return self.data
 
         def get_data_range_delta():
-            pass
+            return self.data_range_delta

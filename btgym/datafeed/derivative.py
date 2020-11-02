@@ -32,7 +32,7 @@ class BTgymEpisode(BTgymBaseData):
     """
     def __init__(
             self,
-            filename=None,
+            dataframe,
             parsing_params=None,
             sampling_params=None,
             name=None,
@@ -43,7 +43,7 @@ class BTgymEpisode(BTgymBaseData):
     ):
 
         super(BTgymEpisode, self).__init__(
-            filename=filename,
+            dataframe=dataframe,
             parsing_params=parsing_params,
             sampling_params=None,
             name='episode',
@@ -73,7 +73,7 @@ class BTgymDataTrial(BTgymBaseData):
 
     def __init__(
             self,
-            filename=None,
+            dataframe,
             parsing_params=None,
             sampling_params=None,
             name=None,
@@ -96,7 +96,7 @@ class BTgymDataTrial(BTgymBaseData):
         """
 
         super(BTgymDataTrial, self).__init__(
-            filename=filename,
+            dataframe=dataframe,
             parsing_params=parsing_params,
             sampling_params=sampling_params,
             name='Trial',
@@ -126,8 +126,7 @@ class BTgymRandomDataDomain(BTgymBaseData):
             self,
             trial_params,
             episode_params,
-            filename=None,
-            dataframe=None,
+            dataframe,
             parsing_params=None,
             target_period=None,
             use_target_backshift=False,
@@ -139,7 +138,6 @@ class BTgymRandomDataDomain(BTgymBaseData):
     ):
         """
         Args:
-            filename:               Str or list of str, file_names containing CSV historic data;
             dataframe:          pd.dataframe or iterable of pd.dataframes containing historic data;
             parsing_params:         csv parsing options, see base class description for details;
             trial_params:           dict, describes trial parameters, should contain keys:
@@ -171,17 +169,6 @@ class BTgymRandomDataDomain(BTgymBaseData):
 
         if parsing_params is None:
             parsing_params = dict(
-                # Default parameters for source-specific CSV datafeed class,
-                # correctly parses 1 minute Forex generic ASCII
-                # data files from www.HistData.com:
-
-                # CSV to Pandas params.
-                sep=';',
-                header=0,
-                index_col=0,
-                parse_dates=True,
-                names=['open', 'high', 'low', 'close', 'volume'],
-
                 # Pandas to BT.feeds params:
                 timeframe=1,  # 1 minute.
                 datetime=0,
@@ -238,7 +225,6 @@ class BTgymRandomDataDomain(BTgymBaseData):
         )
 
         super(BTgymRandomDataDomain, self).__init__(
-            filename=filename,
             dataframe=dataframe,
             parsing_params=parsing_params,
             sampling_params=trial_params,
@@ -251,130 +237,6 @@ class BTgymRandomDataDomain(BTgymBaseData):
         )
 
 
-class BTgymDataset(BTgymRandomDataDomain):
-    """
-    DEPRECATED CLASS, use BTgymDataset2 instead.
-    Does not support dataframe input.
-    Simple top-level data class, implements direct random episode sampling from data set induced by csv file,
-    i.e it is a special case for `Trial=def=Episode`.
-    Supports source and target data domains separation with some caveat - see Note.
-
-    Note:
-        Due to current implementation sampling test episode actually requires sampling test TRIAL.
-        To be improved.
-
-    """
-
-    class BTgymSimpleTrial(BTgymDataTrial):
-        """
-        Truncated Trial without test period: always samples from train,
-        sampled episode inherits tarin/test metadata of parent trail.
-        """
-
-        def sample(self, sample_type=0, **kwargs):
-            episode = self._sample(sample_type=0, **kwargs)
-            episode.metadata['type'] = sample_type
-            return episode
-
-    # Override trial sample class:
-    trial_class_ref = BTgymSimpleTrial
-
-    params_deprecated=dict(
-        episode_len_days=('episode_duration', 'days'),
-        episode_len_hours=('episode_duration','hours'),
-        episode_len_minutes=('episode_duration', 'minutes'),
-        time_gap_days=('time_gap', 'days'),
-        time_gap_hours=('time_gap', 'hours')
-    )
-
-    def __init__(
-            self,
-            filename=None,
-            episode_duration=None,
-            time_gap=None,
-            start_00=False,
-            start_weekdays=None,
-            parsing_params=None,
-            target_period=None,
-            name='SimpleDataSet',
-            data_names=('default_asset',),
-            log_level=WARNING,
-            **kwargs
-    ):
-        """
-        Args:
-            filename:           Str or list of str, file_names containing CSV historic data;
-            episode_duration:   dict, maximum episode duration in d:h:m, def={'days': 0, 'hours': 23, 'minutes': 55},
-                                alias for `sample_duration`;
-            time_gap:           dict, data time gap allowed within sample in d:h:m, def={'days': 0, 'hours': 6};
-            start_00:           bool, episode start point will be shifted back to first record;
-                                of the day (usually 00:00), def=False;
-            start_weekdays:     list, only weekdays from the list will be used for sample start,
-                                def=[0, 1, 2, 3, 4, 5, 6];
-            target_period:      domain test(aka target) period. def={'days': 0, 'hours': 0, 'minutes': 0};
-                                setting this param to non-zero duration forces data separation to train/test
-                                subsets. Train data always precedes test one.
-            parsing_params:     csv parsing options, see base class description for details;
-            name:               str, instance name;
-            log_level:          int, logbook.level;
-            **kwargs:           deprecated kwargs;
-        """
-        print('BTgymDataset class is DEPRECATED, use btgym.datafeed.derivative.BTgymDataset2 instead.')
-        # Default sample time duration:
-        if episode_duration is None:
-            self._episode_duration = dict(
-                    days=0,
-                    hours=23,
-                    minutes=55,
-                )
-        else:
-            self._episode_duration = episode_duration
-
-        # Default data time gap allowed within sample:
-        if time_gap is None:
-            self._time_gap = dict(
-                days=0,
-                hours=6,
-            )
-        else:
-            self._time_gap = time_gap
-
-        # Default weekdays:
-        if start_weekdays is None:
-            start_weekdays = [0, 1, 2, 3, 4, 5, 6]
-
-        # Insert deprecated params, if any:
-        for key, value in kwargs.items():
-            if key in self.params_deprecated.keys():
-                self.log.warning(
-                    'Key: <{}> is deprecated, use: <{}> instead'.format(key, self.params_deprecated[key])
-                )
-                key1, key2 = self.params_deprecated[key]
-                attr = getattr(self, key1)
-                attr[key2] = value
-
-        trial_params = dict(
-            sample_duration=self._episode_duration,
-            start_weekdays=start_weekdays,
-            start_00=start_00,
-            time_gap=self._time_gap,
-            # test_period={'days': 0, 'hours': 0, 'minutes': 0},
-            test_period=target_period,
-            expanding=False
-        )
-        episode_params = trial_params.copy()
-        super(BTgymDataset, self).__init__(
-            filename=filename,
-            parsing_params=parsing_params,
-            trial_params=trial_params,
-            episode_params=episode_params,
-            target_period=target_period,
-            name=name,
-            data_names=data_names,
-            log_level=log_level,
-        )
-
-
 class BTgymDataset2(BTgymRandomDataDomain):
     """
     Simple top-level data class, implements direct random episode sampling from data set induced by csv file,
@@ -382,8 +244,7 @@ class BTgymDataset2(BTgymRandomDataDomain):
     """
     def __init__(
             self,
-            filename=None,
-            dataframe=None,
+            dataframe,
             episode_duration=None,
             time_gap=None,
             start_00=False,
@@ -397,7 +258,6 @@ class BTgymDataset2(BTgymRandomDataDomain):
     ):
         """
         Args:
-            filename:           Str or list of str, file_names containing CSV historic data;
             dataframe:          pd.dataframe or iterable of pd.dataframes containing historic data;
             episode_duration:   dict, maximum episode duration in d:h:m, def={'days': 0, 'hours': 23, 'minutes': 55},
                                 alias for `sample_duration`;
@@ -448,7 +308,6 @@ class BTgymDataset2(BTgymRandomDataDomain):
         )
         episode_params = trial_params.copy()
         super(BTgymDataset2, self).__init__(
-            filename=filename,
             dataframe=dataframe,
             parsing_params=parsing_params,
             trial_params=trial_params,
