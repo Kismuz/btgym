@@ -31,11 +31,12 @@ from collections import OrderedDict
 
 import backtrader as bt
 
-from btgym import BTgymServer, BTgymBaseStrategy, BTgymDataset, BTgymRendering, BTgymDataFeedServer
+from btgym import BTgymServer, BTgymBaseStrategy, BTgymDataset2, BTgymRendering, BTgymDataFeedServer
 from btgym import DictSpace, ActionDictSpace
 from btgym.datafeed.multi import BTgymMultiData
 
 from btgym.rendering import BTgymNullRendering
+
 
 ############################## OpenAI Gym Environment  ##############################
 
@@ -75,11 +76,11 @@ class BTgymEnv(gym.Env):
 
     # Connection timeout:
     connect_timeout = 60  # server connection timeout in seconds.
-    #connect_timeout_step = 0.01  # time between retries in seconds.
+    # connect_timeout_step = 0.01  # time between retries in seconds.
 
     # Rendering:
     render_enabled = True
-    render_modes = ['human', 'episode',]
+    render_modes = ['human', 'episode', ]
     # `episode` - plotted episode results.
     # `human` - raw_state observation in conventional human-readable format.
     #  <obs_space_key> - rendering of arbitrary state presented in observation_space with same key.
@@ -105,11 +106,7 @@ class BTgymEnv(gym.Env):
         """
 
         Keyword Args:
-            filename=None (str, list):                      csv data file.
-            **datafeed_args (any):                          any datafeed-related args, passed through to
-                                                            default btgym.datafeed class.
-            dataset=None (btgym.datafeed):                  BTgymDataDomain instance,
-                                                            overrides `filename` or any other datafeed-related args.
+            dataset (btgym.datafeed):                       BTgymDataDomain instance
             strategy=None (btgym.startegy):                 strategy to be used by `engine`, any subclass of
                                                             btgym.strategy.base.BTgymBaseStrateg
             engine=None (bt.Cerebro):                       environment simulation engine, any bt.Cerebro subclass,
@@ -183,34 +180,7 @@ class BTgymEnv(gym.Env):
             ),
             render=dict(),
         )
-        p2 = dict(  # IS HERE FOR REFERENCE ONLY
-            # Strategy related parameters:
-            # Observation state shape is dictionary of Gym spaces,
-            # at least should contain `raw_state` field.
-            # By convention first dimension of every Gym Box space is time embedding one;
-            # one can define any shape; should match env.observation_space.shape.
-            # observation space state min/max values,
-            # For `raw_state' - absolute min/max values from BTgymDataset will be used.
-            state_shape=dict(
-                raw=spaces.Box(
-                    shape=(10, 4),
-                    low=-100,
-                    high=100,
-                    dtype=np.float32
-                )
-            ),
-            drawdown_call=None,  # episode maximum drawdown threshold, default is 90% of initial value.
-            portfolio_actions=None,
-                # agent actions,
-                # should consist with BTgymStrategy order execution logic;
-                # defaults are: 0 - 'do nothing', 1 - 'buy', 2 - 'sell', 3 - 'close position'.
-            skip_frame=None,
-                # Number of environment steps to skip before returning next response,
-                # e.g. if set to 10 -- agent will interact with environment every 10th episode step;
-                # Every other step agent's action is assumed to be 'hold'.
-                # Note: INFO part of environment response is a list of all skipped frame's info's,
-                #       i.e. [info[-9], info[-8], ..., info[0].
-        )
+
         # Update self attributes, remove used kwargs:
         for key in dir(self):
             if key in kwargs.keys():
@@ -263,37 +233,10 @@ class BTgymEnv(gym.Env):
             )
             raise ValueError
 
-        if self.data_master:
+        if self.data_master:  # TODO: remove as data preparation is a responsibility of another class.
             # DATASET preparation, only data_master executes this:
-            #
-            if self.dataset is not None:
-                # If BTgymDataset instance has been passed:
-                # do nothing.
-                msg = 'Custom Dataset class used.'
-
-            else:
-                # If no BTgymDataset has been passed,
-                # Make default dataset with given CSV file:
-                try:
-                    os.path.isfile(str(self.params['dataset']['filename']))
-
-                except:
-                    raise FileNotFoundError('Dataset source data file not specified/not found')
-
-                # Use kwargs to instantiate dataset:
-                self.dataset = BTgymDataset(**kwargs)
-                msg = 'Base Dataset class used.'
-
-            # Append logging:
-            self.dataset.set_logger(self.log_level, self.task)
-
-            # Update params -2: pull from dataset, remove used kwargs:
-            self.params['dataset'].update(self.dataset.params)
-            for key in self.params['dataset'].keys():
-                if key in kwargs.keys():
-                    _ = kwargs.pop(key)
-
-            self.log.info(msg)
+            if self.dataset is None:
+                raise AttributeError()
 
         # Connect/Start data server (and get dataset configuration and statistic):
         self.log.info('Connecting data_server...')
@@ -337,7 +280,7 @@ class BTgymEnv(gym.Env):
                 msg2 = 'Base Strategy class used.'
 
             # Add, using kwargs on top of defaults:
-            #self.log.debug('kwargs for strategy: {}'.format(kwargs))
+            # self.log.debug('kwargs for strategy: {}'.format(kwargs))
             strat_idx = self.engine.addstrategy(self.strategy, **kwargs)
 
             msg += ' ' + msg2
@@ -388,9 +331,8 @@ class BTgymEnv(gym.Env):
             self.log.error(msg)
             raise ValueError(msg)
 
-
         # ... Push it all back (don't ask):
-        for key, value in  self.params['strategy'].items():
+        for key, value in self.params['strategy'].items():
             self.engine.strats[0][0][2][key] = value
 
         # For 'raw_state' min/max values,
@@ -399,14 +341,14 @@ class BTgymEnv(gym.Env):
             # Exclude 'volume' from columns we count:
             self.dataset_columns.remove('volume')
 
-            #print(self.params['strategy'])
-            #print('self.engine.strats[0][0][2]:', self.engine.strats[0][0][2])
-            #print('self.engine.strats[0][0][0].params:', self.engine.strats[0][0][0].params._gettuple())
+            # print(self.params['strategy'])
+            # print('self.engine.strats[0][0][2]:', self.engine.strats[0][0][2])
+            # print('self.engine.strats[0][0][0].params:', self.engine.strats[0][0][0].params._gettuple())
 
             # Override with absolute price min and max values:
-            self.params['strategy']['state_shape']['raw'].low =\
-                self.engine.strats[0][0][2]['state_shape']['raw'].low =\
-                np.zeros(self.params['strategy']['state_shape']['raw'].shape) +\
+            self.params['strategy']['state_shape']['raw'].low = \
+                self.engine.strats[0][0][2]['state_shape']['raw'].low = \
+                np.zeros(self.params['strategy']['state_shape']['raw'].shape) + \
                 self.dataset_stat.loc['min', self.dataset_columns].min()
 
             self.params['strategy']['state_shape']['raw'].high = \
@@ -422,7 +364,7 @@ class BTgymEnv(gym.Env):
         self.observation_space = DictSpace(self.params['strategy']['state_shape'])
 
         self.log.debug('Obs. shape: {}'.format(self.observation_space.spaces))
-        #self.log.debug('Obs. min:\n{}\nmax:\n{}'.format(self.observation_space.low, self.observation_space.high))
+        # self.log.debug('Obs. min:\n{}\nmax:\n{}'.format(self.observation_space.low, self.observation_space.high))
 
         # Set action space (one-key dict for this class) and corresponding server messages:
         self.action_space = ActionDictSpace(
@@ -450,7 +392,7 @@ class BTgymEnv(gym.Env):
         np.random.seed(self.random_seed)
 
     @staticmethod
-    def _comm_with_timeout( socket, message,):
+    def _comm_with_timeout(socket, message, ):
         """
         Exchanges messages via socket, timeout sensitive.
 
@@ -543,7 +485,7 @@ class BTgymEnv(gym.Env):
         )
         if self.server_response['status'] in 'ok':
             self.log.info('Server seems ready with response: <{}>'.
-                           format(self.server_response['message']))
+                          format(self.server_response['message']))
 
         else:
             msg = 'Server unreachable with status: <{}>.'.format(self.server_response['status'])
@@ -652,7 +594,7 @@ class BTgymEnv(gym.Env):
 
             except (KeyError, AttributeError, ArithmeticError, ValueError) as e:
                 pass
-                #response += '\n{}'.format(e)
+                # response += '\n{}'.format(e)
 
         return response
 
@@ -737,14 +679,14 @@ class BTgymEnv(gym.Env):
                 for step_info in self.env_response[-1]:
                     msg3 += '{}\n'.format(step_info)
                 msg = (
-                    '\nState observation shape/range mismatch!\n' +
-                    'Space set by env: \n{}\n' +
-                    'Space returned by server: \n{}\n' +
-                    'Full response:\n{}\n' +
-                    'Reward: {}\n' +
-                    'Done: {}\n' +
-                    'Info:\n{}\n' +
-                    'Hint: Wrong Strategy.get_state() parameters?'
+                        '\nState observation shape/range mismatch!\n' +
+                        'Space set by env: \n{}\n' +
+                        'Space returned by server: \n{}\n' +
+                        'Full response:\n{}\n' +
+                        'Reward: {}\n' +
+                        'Done: {}\n' +
+                        'Info:\n{}\n' +
+                        'Hint: Wrong Strategy.get_state() parameters?'
                 ).format(
                     msg1,
                     msg2,
@@ -802,17 +744,17 @@ class BTgymEnv(gym.Env):
 
             self.log.debug('got action as scalar: {}, converted to: {}'.format(a, action))
 
-        if not self._closed\
-            and (self.socket is not None)\
-            and not self.socket.closed:
+        if not self._closed \
+                and (self.socket is not None) \
+                and not self.socket.closed:
             pass
 
         else:
             msg = (
-                '\nAt least one of these is true:\n' +
-                'Environment closed: {}\n' +
-                'Network error [socket doesnt exists or closed]: {}\n' +
-                'Hint: forgot to call reset() or out of action space?'
+                    '\nAt least one of these is true:\n' +
+                    'Environment closed: {}\n' +
+                    'Network error [socket doesnt exists or closed]: {}\n' +
+                    'Hint: forgot to call reset() or out of action space?'
             ).format(
                 self._closed,
                 not self.socket or self.socket.closed,
@@ -822,7 +764,7 @@ class BTgymEnv(gym.Env):
 
         # Send action (as dict of strings) to backtrader engine, receive environment response:
         action_as_dict = {key: self.server_actions[key][value] for key, value in action.items()}
-        #print('step: ', action, action_as_dict)
+        # print('step: ', action, action_as_dict)
         env_response = self._comm_with_timeout(
             socket=self.socket,
             message={'action': action_as_dict}
@@ -832,7 +774,7 @@ class BTgymEnv(gym.Env):
             self.log.error(msg)
             raise ConnectionError(msg)
 
-        self.env_response = env_response ['message']
+        self.env_response = env_response['message']
 
         return self.env_response
 
@@ -875,18 +817,18 @@ class BTgymEnv(gym.Env):
         if close:
             return None
 
-        if not self._closed\
-            and self.socket\
-            and not self.socket.closed:
+        if not self._closed \
+                and self.socket \
+                and not self.socket.closed:
             pass
 
         else:
             msg = (
-                '\nCan''t get renderings.'
-                '\nAt least one of these is true:\n' +
-                'Environment closed: {}\n' +
-                'Network error [socket doesnt exists or closed]: {}\n' +
-                'Hint: forgot to call reset()?'
+                    '\nCan''t get renderings.'
+                    '\nAt least one of these is true:\n' +
+                    'Environment closed: {}\n' +
+                    'Network error [socket doesnt exists or closed]: {}\n' +
+                    'Hint: forgot to call reset()?'
             ).format(
                 self._closed,
                 not self.socket or self.socket.closed,
@@ -967,16 +909,16 @@ class BTgymEnv(gym.Env):
         )
         if self.data_server_response['status'] in 'ok':
             self.log.debug('Data_server seems ready with response: <{}>'.
-                          format(self.data_server_response['message']))
+                           format(self.data_server_response['message']))
 
         else:
-            msg = 'Data_server unreachable with status: <{}>.'.\
+            msg = 'Data_server unreachable with status: <{}>.'. \
                 format(self.data_server_response['status'])
             self.log.error(msg)
             raise ConnectionError(msg)
 
         # Get info and statistic:
-        self.dataset_stat, self.dataset_columns, self.data_server_pid,  self.data_lines_names = self._get_dataset_info()
+        self.dataset_stat, self.dataset_columns, self.data_server_pid, self.data_lines_names = self._get_dataset_info()
 
     def _stop_data_server(self):
         """
@@ -1015,10 +957,10 @@ class BTgymEnv(gym.Env):
         self.data_socket.send_pyobj({'ctrl': '_get_info'})
         self.data_server_response = self.data_socket.recv_pyobj()
 
-        return self.data_server_response['dataset_stat'],\
-            self.data_server_response['dataset_columns'],\
-            self.data_server_response['pid'], \
-            self.data_server_response['data_names']
+        return self.data_server_response['dataset_stat'], \
+               self.data_server_response['dataset_columns'], \
+               self.data_server_response['pid'], \
+               self.data_server_response['data_names']
 
     def reset_data(self, **kwargs):
         """
@@ -1060,5 +1002,3 @@ class BTgymEnv(gym.Env):
 
         else:
             pass
-
-

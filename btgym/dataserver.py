@@ -120,12 +120,12 @@ class BTgymDataFeedServer(multiprocessing.Process):
         socket = context.socket(zmq.REP)
         socket.bind(self.network_address)
 
-        # Actually load data to BTgymDataset instance, will reset it later on:
         try:
             assert not self.dataset.data.empty
 
         except (AssertionError, AttributeError) as e:
-            self.dataset._read_csv()
+            self.log.error("no data defined.")
+            raise e     # fail the app
 
         # Describe dataset:
         self.dataset_stat = self.dataset.describe()

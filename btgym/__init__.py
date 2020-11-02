@@ -22,7 +22,7 @@ from gym.envs.registration import register
 from .spaces import DictSpace, ActionDictSpace
 from .strategy import BTgymBaseStrategy
 from .server import BTgymServer
-from .datafeed import BTgymDataset, BTgymRandomDataDomain, BTgymSequentialDataDomain
+from .datafeed import BTgymDataset2, BTgymRandomDataDomain, BTgymSequentialDataDomain
 from .datafeed import DataSampleConfig, EnvResetConfig
 from .dataserver import BTgymDataFeedServer
 from .rendering import BTgymRendering

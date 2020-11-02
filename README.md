@@ -19,6 +19,8 @@ https://gym.openai.com/
 
 ****
 
+### Current statis of this fork is to redesign data feed and write unit tests. Work is ongoing on the data_model branch.  
+
 ### <a name="outline"></a>Outline
 
 General purpose of this project is to provide gym-integrated framework for

@@ -19,5 +19,5 @@
 
 
 from .base import BTgymBaseData, DataSampleConfig, EnvResetConfig
-from .derivative import BTgymEpisode, BTgymDataTrial, BTgymRandomDataDomain, BTgymDataset
+from .derivative import BTgymEpisode, BTgymDataTrial, BTgymRandomDataDomain, BTgymDataset2
 from .stateful import BTgymSequentialDataDomain
